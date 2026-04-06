@@ -2,14 +2,54 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, Dispatch, SetStateAction } from "react";
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  status: string;
+  joined: string;
+}
+
+interface Merchant {
+  id: number;
+  name: string;
+  category: string;
+  rating: number;
+  sales: number;
+  validUntil: string;
+}
+
+interface MerchantRequest {
+  id: number;
+  name: string;
+  category: string;
+  date: string;
+}
+
+interface Category {
+  name: string;
+  items: number;
+  status: string;
+  banner: string;
+  fixedSlots: number;
+}
+
+interface Settings {
+  maintenance: boolean;
+  expressApproval: boolean;
+  notifications: boolean;
+  twoFactor: boolean;
+  publicProfile: boolean;
+}
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // --- Global State for Functionalities ---
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<Settings>({
     maintenance: false,
     expressApproval: true,
     notifications: true,
@@ -17,25 +57,25 @@ export default function Dashboard() {
     publicProfile: true,
   });
 
-  const [users, setUsers] = useState([
+  const [users, setUsers] = useState<User[]>([
     { id: 1, name: "Rahul Sharma", email: "rahul@example.com", status: "Active", joined: "2024-01-12" },
     { id: 2, name: "Sneha Patil", email: "sneha@example.com", status: "Inactive", joined: "2024-02-05" },
     { id: 3, name: "Amit Verma", email: "amit@example.com", status: "Active", joined: "2024-02-28" },
     { id: 4, name: "Priya Singh", email: "priya@example.com", status: "Active", joined: "2024-03-10" },
   ]);
 
-  const [activeMerchants, setActiveMerchants] = useState([
+  const [activeMerchants, setActiveMerchants] = useState<Merchant[]>([
     { id: 1, name: "TechHub", category: "Electronics", rating: 4.8, sales: 1242, validUntil: "2024-12-31" },
     { id: 2, name: "FashionBox", category: "Apparel", rating: 4.5, sales: 890, validUntil: "2024-08-15" },
     { id: 3, name: "FreshMart", category: "Grocery", rating: 4.2, sales: 2105, validUntil: "2024-06-20" },
   ]);
 
-  const [merchantRequests, setMerchantRequests] = useState([
+  const [merchantRequests, setMerchantRequests] = useState<MerchantRequest[]>([
     { id: 1, name: "GreenGardens", category: "Home & Garden", date: "2024-03-20" },
     { id: 2, name: "ArtisanalBakes", category: "Food & Beverage", date: "2024-03-21" },
   ]);
 
-  const [categories, setCategories] = useState([
+  const [categories, setCategories] = useState<Category[]>([
     { name: "Electronics", items: 452, status: "Active", banner: "Set", fixedSlots: 3 },
     { name: "Fashion", items: 1205, status: "Active", banner: "Not Set", fixedSlots: 2 },
     { name: "Home & Garden", items: 320, status: "Active", banner: "Set", fixedSlots: 0 },
@@ -428,7 +468,7 @@ function DashboardContent({ setActiveTab }: { setActiveTab: (tab: string) => voi
   );
 }
 
-function UsersContent({ users, setUsers }: { users: any[], setUsers: any }) {
+function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<SetStateAction<User[]>> }) {
   const handleDeleteUser = (id: number) => {
     if (confirm("Are you sure you want to delete this user?")) {
       setUsers(users.filter(u => u.id !== id));
@@ -522,21 +562,31 @@ function UsersContent({ users, setUsers }: { users: any[], setUsers: any }) {
   );
 }
 
-function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequests, setMerchantRequests }: any) {
+function MerchantsContent({ 
+  activeMerchants, 
+  setActiveMerchants, 
+  merchantRequests, 
+  setMerchantRequests 
+}: { 
+  activeMerchants: Merchant[], 
+  setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>, 
+  merchantRequests: MerchantRequest[], 
+  setMerchantRequests: Dispatch<SetStateAction<MerchantRequest[]>> 
+}) {
   const [subTab, setSubTab] = useState("Active");
   const [extendingMerchant, setExtendingMerchant] = useState<string | null>(null);
 
   const handleUpdateDate = () => {
     if (!extendingMerchant) return;
-    setActiveMerchants((prev: any[]) => prev.map(m => 
+    setActiveMerchants((prev: Merchant[]) => prev.map(m => 
       m.name === extendingMerchant ? { ...m, validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] } : m
     ));
     setExtendingMerchant(null);
     alert(`${extendingMerchant}'s subscription has been extended!`);
   };
 
-  const handleApprove = (req: any) => {
-    setActiveMerchants((prev: any[]) => [
+  const handleApprove = (req: MerchantRequest) => {
+    setActiveMerchants((prev: Merchant[]) => [
       ...prev,
       {
         id: Date.now(),
@@ -547,13 +597,13 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
         validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       }
     ]);
-    setMerchantRequests((prev: any[]) => prev.filter(r => r.id !== req.id));
+    setMerchantRequests((prev: MerchantRequest[]) => prev.filter(r => r.id !== req.id));
     alert(`${req.name} has been approved and added to active merchants!`);
   };
 
-  const handleReject = (req: any) => {
+  const handleReject = (req: MerchantRequest) => {
     if (confirm(`Are you sure you want to reject ${req.name}?`)) {
-      setMerchantRequests((prev: any[]) => prev.filter(r => r.id !== req.id));
+      setMerchantRequests((prev: MerchantRequest[]) => prev.filter(r => r.id !== req.id));
       alert(`${req.name} request has been rejected.`);
     }
   };
@@ -727,13 +777,13 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
   );
 }
 
-function CategoriesContent({ categories, setCategories }: any) {
+function CategoriesContent({ categories, setCategories }: { categories: Category[], setCategories: Dispatch<SetStateAction<Category[]>> }) {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [actionType, setActionType] = useState<"banner" | "slots" | null>(null);
 
   const handleBannerUpload = () => {
     if (!editingCategory) return;
-    setCategories((prev: any[]) => prev.map(cat => 
+    setCategories((prev: Category[]) => prev.map(cat => 
       cat.name === editingCategory ? { ...cat, banner: "Set" } : cat
     ));
     setEditingCategory(null);
@@ -742,7 +792,7 @@ function CategoriesContent({ categories, setCategories }: any) {
 
   const handleFixSlot = (pos: number) => {
     if (!editingCategory) return;
-    setCategories((prev: any[]) => prev.map(cat => {
+    setCategories((prev: Category[]) => prev.map(cat => {
       if (cat.name === editingCategory) {
         return { ...cat, fixedSlots: Math.min(cat.fixedSlots + 1, 5) };
       }
@@ -754,7 +804,7 @@ function CategoriesContent({ categories, setCategories }: any) {
   const handleNewCategory = () => {
     const name = prompt("Enter new category name:");
     if (name) {
-      setCategories((prev: any[]) => [
+      setCategories((prev: Category[]) => [
         ...prev,
         { name, items: 0, status: "Active", banner: "Not Set", fixedSlots: 0 }
       ]);
@@ -1030,7 +1080,12 @@ function PaymentsContent() {
   );
 }
 
-function BroadcastsContent({ message, setMessage, audience, setAudience }: any) {
+function BroadcastsContent({ message, setMessage, audience, setAudience }: { 
+  message: string, 
+  setMessage: Dispatch<SetStateAction<string>>, 
+  audience: string, 
+  setAudience: Dispatch<SetStateAction<string>> 
+}) {
   const handleDeploy = () => {
     if (!message.trim()) {
       alert("Please enter a message to broadcast.");
@@ -1107,7 +1162,7 @@ function BroadcastsContent({ message, setMessage, audience, setAudience }: any) 
   );
 }
 
-function SettingsContent({ settings, setSettings }: { settings: any, setSettings: any }) {
+function SettingsContent({ settings, setSettings }: { settings: Settings, setSettings: Dispatch<SetStateAction<Settings>> }) {
   const toggleSetting = (key: string) => {
     setSettings((prev: any) => ({ ...prev, [key]: !prev[key] }));
   };
