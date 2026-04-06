@@ -42,6 +42,7 @@ interface Settings {
   notifications: boolean;
   twoFactor: boolean;
   publicProfile: boolean;
+  [key: string]: boolean;
 }
 
 export default function Dashboard() {
