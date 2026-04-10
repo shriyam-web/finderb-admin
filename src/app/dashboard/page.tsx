@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, Dispatch, SetStateAction } from "react";
+import { useState, Dispatch, SetStateAction, useEffect } from "react";
+import { createClient } from "../../../utils/supabase/client";
 
 interface User {
   id: number;
@@ -13,7 +14,7 @@ interface User {
 }
 
 interface Merchant {
-  id: number;
+  id: string;
   name: string;
   category: string;
   rating: number;
@@ -22,10 +23,42 @@ interface Merchant {
 }
 
 interface MerchantRequest {
-  id: number;
+  id: string;
   name: string;
   category: string;
   date: string;
+}
+
+interface BusinessData {
+  id: string;
+  fullName: string;
+  workEmail: string;
+  mobile: string;
+  businessName: string;
+  category: string;
+  location: string | null;
+  publicPhone: string;
+  businessAddress: string;
+  selectedPlan: string;
+  billingCycle: string;
+  isVerified: boolean;
+  registrationNumber: string | null;
+  panNumber: string | null;
+  aadharNumber: string | null;
+  panUrl: string | null;
+  aadharUrl: string | null;
+  msmeGstUrl: string | null;
+  kycStatus: string;
+  hasVerifiedBadge: boolean;
+  paymentStatus: string;
+  paymentId: string | null;
+  orderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  city: string | null;
+  email: string | null;
+  password: string | null;
+  state: string | null;
 }
 
 interface Category {
@@ -34,6 +67,10 @@ interface Category {
   status: string;
   banner: string;
   fixedSlots: number;
+  type: 'Merchant' | 'Service';
+  position_1_business_id?: string;
+  position_2_business_id?: string;
+  position_3_business_id?: string;
 }
 
 interface Settings {
@@ -48,7 +85,7 @@ interface Settings {
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+
   // --- Global State for Functionalities ---
   const [settings, setSettings] = useState<Settings>({
     maintenance: false,
@@ -58,73 +95,118 @@ export default function Dashboard() {
     publicProfile: true,
   });
 
-  const [users, setUsers] = useState<User[]>([
-    { id: 1, name: "Rahul Sharma", email: "rahul@example.com", status: "Active", joined: "2024-01-12" },
-    { id: 2, name: "Sneha Patil", email: "sneha@example.com", status: "Inactive", joined: "2024-02-05" },
-    { id: 3, name: "Amit Verma", email: "amit@example.com", status: "Active", joined: "2024-02-28" },
-    { id: 4, name: "Priya Singh", email: "priya@example.com", status: "Active", joined: "2024-03-10" },
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [activeMerchants, setActiveMerchants] = useState<Merchant[]>([]);
+  const [merchantRequests, setMerchantRequests] = useState<MerchantRequest[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryError, setCategoryError] = useState<string | null>(null);
 
-  const [activeMerchants, setActiveMerchants] = useState<Merchant[]>([
-    { id: 1, name: "TechHub", category: "Electronics", rating: 4.8, sales: 1242, validUntil: "2024-12-31" },
-    { id: 2, name: "FashionBox", category: "Apparel", rating: 4.5, sales: 890, validUntil: "2024-08-15" },
-    { id: 3, name: "FreshMart", category: "Grocery", rating: 4.2, sales: 2105, validUntil: "2024-06-20" },
-  ]);
+  useEffect(() => {
+    const fetchData = async () => {
+      const supabase = createClient();
 
-  const [merchantRequests, setMerchantRequests] = useState<MerchantRequest[]>([
-    { id: 1, name: "GreenGardens", category: "Home & Garden", date: "2024-03-20" },
-    { id: 2, name: "ArtisanalBakes", category: "Food & Beverage", date: "2024-03-21" },
-  ]);
+      const { data: catData, error: catError } = await supabase.from('categories').select('*');
+      if (catError) {
+        console.error("Category fetch error:", catError);
+        const missingTable = catError.message?.toLowerCase().includes("public.categories") || catError.message?.toLowerCase().includes("relation \"categories\" does not exist") || catError.code === "42P01";
+        setCategoryError(missingTable
+          ? "Categories table is missing. Create it with db/create_categories_table.sql or via the Supabase SQL editor."
+          : catError.message
+        );
+      } else {
+        setCategoryError(null);
+      }
+      if (catData) setCategories(catData.map(c => ({
+        name: c.name,
+        items: c.items_count || 0,
+        status: c.status || 'Active',
+        banner: c.banner || 'Not Set',
+        fixedSlots: c.fixed_slots || 0,
+        type: c.type || 'Merchant',
+        position_1_business_id: c.position_1_business_id,
+        position_2_business_id: c.position_2_business_id,
+        position_3_business_id: c.position_3_business_id
+      })));
 
-  const [categories, setCategories] = useState<Category[]>([
-    { name: "Electronics", items: 452, status: "Active", banner: "Set", fixedSlots: 3 },
-    { name: "Fashion", items: 1205, status: "Active", banner: "Not Set", fixedSlots: 2 },
-    { name: "Home & Garden", items: 320, status: "Active", banner: "Set", fixedSlots: 0 },
-    { name: "Health & Beauty", items: 840, status: "Active", banner: "Set", fixedSlots: 5 },
-    { name: "Sports", items: 156, status: "Active", banner: "Not Set", fixedSlots: 1 },
-    { name: "Toys & Games", items: 210, status: "Inactive", banner: "Not Set", fixedSlots: 0 },
-  ]);
+      const { data: merchantData } = await supabase.from('Business').select('*');
+      if (merchantData) {
+        setActiveMerchants(merchantData
+          .filter((m: any) => m.kycStatus !== 'pending' && m.kycStatus !== 'rejected')
+          .map((m: any) => ({
+            id: m.id,
+            name: m.businessName || m.fullName || 'Unknown Merchant',
+            category: m.category || 'Other',
+            rating: 0,
+            sales: 0,
+            validUntil: new Date(m.updatedAt || m.createdAt || Date.now()).toISOString().split('T')[0]
+          })));
+        setMerchantRequests(merchantData
+          .filter((m: any) => m.kycStatus === 'pending')
+          .map((m: any) => ({
+            id: m.id,
+            name: m.businessName || m.fullName || 'Unknown Merchant',
+            category: m.category || 'Other',
+            date: new Date(m.createdAt || Date.now()).toLocaleDateString()
+          })));
+      }
+    };
+    fetchData();
+  }, []);
 
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [broadcastAudience, setBroadcastAudience] = useState("Everyone");
 
   const menuItems = [
-    { name: "Dashboard", icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-      </svg>
-    )},
-    { name: "Users", icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
-    )},
-    { name: "Merchants", icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-      </svg>
-    )},
-    { name: "Categories", icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-      </svg>
-    )},
-    { name: "Payments & Subscriptions", icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-      </svg>
-    )},
-    { name: "Broadcasts", icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-      </svg>
-    )},
-    { name: "Settings", icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    )},
+    {
+      name: "Dashboard", icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      )
+    },
+    {
+      name: "Users", icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      )
+    },
+    {
+      name: "Merchants", icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      )
+    },
+    {
+      name: "Categories", icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+      )
+    },
+    {
+      name: "Payments & Subscriptions", icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+      )
+    },
+    {
+      name: "Broadcasts", icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+      )
+    },
+    {
+      name: "Settings", icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      )
+    },
   ];
 
   const renderContent = () => {
@@ -135,21 +217,21 @@ export default function Dashboard() {
         return <UsersContent users={users} setUsers={setUsers} />;
       case "Merchants":
         return (
-          <MerchantsContent 
-            activeMerchants={activeMerchants} 
+          <MerchantsContent
+            activeMerchants={activeMerchants}
             setActiveMerchants={setActiveMerchants}
             merchantRequests={merchantRequests}
             setMerchantRequests={setMerchantRequests}
           />
         );
       case "Categories":
-        return <CategoriesContent categories={categories} setCategories={setCategories} />;
+        return <CategoriesContent categories={categories} setCategories={setCategories} categoryError={categoryError} />;
       case "Payments & Subscriptions":
         return <PaymentsContent />;
       case "Broadcasts":
         return (
-          <BroadcastsContent 
-            message={broadcastMessage} 
+          <BroadcastsContent
+            message={broadcastMessage}
             setMessage={setBroadcastMessage}
             audience={broadcastAudience}
             setAudience={setBroadcastAudience}
@@ -166,7 +248,7 @@ export default function Dashboard() {
     <div className="flex min-h-screen bg-[#f9fafb]">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
@@ -179,8 +261,8 @@ export default function Dashboard() {
             <Image
               src="/logo.png"
               alt="Logo"
-              width={36}
-              height={36}
+              width={72}
+              height={72}
               className="rounded"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -190,7 +272,7 @@ export default function Dashboard() {
             <span className="text-xl font-bold text-[#111827] tracking-tight">Admin</span>
           </Link>
         </div>
-        
+
         <nav className="flex-1 mt-6 px-3 space-y-1">
           {menuItems.map((item) => (
             <button
@@ -199,11 +281,10 @@ export default function Dashboard() {
                 setActiveTab(item.name);
                 setIsSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                activeTab === item.name 
-                  ? "bg-[#f3f4f6] text-[#111827]" 
-                  : "text-[#4b5563] hover:bg-[#f9fafb] hover:text-[#111827]"
-              }`}
+              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === item.name
+                ? "bg-[#f3f4f6] text-[#111827]"
+                : "text-[#4b5563] hover:bg-[#f9fafb] hover:text-[#111827]"
+                }`}
             >
               <span className={`${activeTab === item.name ? "text-[#2563eb]" : "text-[#9ca3af]"}`}>
                 {item.icon}
@@ -212,7 +293,7 @@ export default function Dashboard() {
             </button>
           ))}
         </nav>
-        
+
         <div className="p-4 border-t border-[#f3f4f6]">
           <div className="flex items-center gap-3 px-2 py-2">
             <div className="w-8 h-8 rounded-full bg-[#e5e7eb] flex items-center justify-center text-xs font-semibold text-[#4b5563]">
@@ -230,7 +311,7 @@ export default function Dashboard() {
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
         <header className="h-16 bg-white border-b border-[#e5e7eb] flex items-center justify-between px-4 lg:px-8 sticky top-0 z-10 shadow-sm/5">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               className="p-2 text-[#6b7280] lg:hidden hover:bg-[#f9fafb] rounded-lg"
               onClick={() => setIsSidebarOpen(true)}
             >
@@ -240,7 +321,7 @@ export default function Dashboard() {
             </button>
             <h2 className="text-sm font-bold text-[#111827] uppercase tracking-wider">{activeTab}</h2>
           </div>
-          
+
           <div className="flex items-center gap-3 lg:gap-6">
             <button className="p-2 text-[#6b7280] hover:text-[#111827] transition-colors rounded-lg hover:bg-[#f9fafb]">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,7 +383,7 @@ function DashboardContent({ setActiveTab }: { setActiveTab: (tab: string) => voi
             12% Growth
           </p>
         </div>
-        
+
         <div className="p-6 bg-white rounded-2xl shadow-sm border border-[#e5e7eb] hover:shadow-md transition-all cursor-pointer group" onClick={() => setActiveTab("Merchants")}>
           <div className="flex items-center justify-between mb-4">
             <p className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">Active Merchants</p>
@@ -353,7 +434,7 @@ function DashboardContent({ setActiveTab }: { setActiveTab: (tab: string) => voi
               </div>
             </div>
           </div>
-          
+
           <div className="h-64 flex items-end justify-between gap-2 lg:gap-6 px-4">
             {chartData.map((d, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-4 h-full justify-end group">
@@ -362,13 +443,13 @@ function DashboardContent({ setActiveTab }: { setActiveTab: (tab: string) => voi
                     <span className="block font-bold mb-0.5">{d.label}</span>
                     <span className="text-blue-300 text-[9px]">{d.users} Active Users</span>
                   </div>
-                  <div 
+                  <div
                     className="w-full max-w-[20px] bg-blue-600 rounded-t-lg transition-all duration-700 ease-out cursor-pointer hover:bg-blue-700 shadow-sm relative group"
                     style={{ height: `${(d.users / maxVal) * 100}%` }}
                   >
                     <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/20 to-transparent rounded-t-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   </div>
-                  <div 
+                  <div
                     className="w-full max-w-[20px] bg-indigo-50 rounded-t-md transition-all duration-700 ease-out cursor-pointer hover:bg-indigo-100"
                     style={{ height: `${(d.merchants / maxVal) * 100}%` }}
                   ></div>
@@ -406,7 +487,7 @@ function DashboardContent({ setActiveTab }: { setActiveTab: (tab: string) => voi
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button 
+                  <button
                     onClick={() => {
                       alert(`${merchant.name} approved!`);
                     }}
@@ -416,7 +497,7 @@ function DashboardContent({ setActiveTab }: { setActiveTab: (tab: string) => voi
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                     </svg>
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       alert(`${merchant.name} rejected.`);
                     }}
@@ -477,7 +558,7 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
   };
 
   const toggleUserStatus = (id: number) => {
-    setUsers(users.map(u => 
+    setUsers(users.map(u =>
       u.id === id ? { ...u, status: u.status === "Active" ? "Inactive" : "Active" } : u
     ));
   };
@@ -489,7 +570,7 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
           <h1 className="text-2xl font-bold text-[#111827]">User Management</h1>
           <p className="text-sm text-[#6b7280]">View and manage registered users on the platform.</p>
         </div>
-        <button 
+        <button
           onClick={() => alert("Add User functionality coming soon!")}
           className="px-4 py-2 bg-[#111827] text-white text-sm font-bold rounded-lg hover:bg-[#1f2937] transition-all active:scale-95"
         >
@@ -523,11 +604,10 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <button 
+                    <button
                       onClick={() => toggleUserStatus(user.id)}
-                      className={`inline-flex px-2 py-0.5 text-[10px] font-bold uppercase rounded-full border transition-all hover:scale-105 active:scale-95 ${
-                        user.status === "Active" ? "bg-green-50 text-green-700 border-green-100" : "bg-gray-50 text-gray-700 border-gray-100"
-                      }`}
+                      className={`inline-flex px-2 py-0.5 text-[10px] font-bold uppercase rounded-full border transition-all hover:scale-105 active:scale-95 ${user.status === "Active" ? "bg-green-50 text-green-700 border-green-100" : "bg-gray-50 text-gray-700 border-gray-100"
+                        }`}
                     >
                       {user.status}
                     </button>
@@ -535,7 +615,7 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
                   <td className="px-6 py-4 text-xs font-bold text-[#4b5563] whitespace-nowrap">{user.joined}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button 
+                      <button
                         onClick={() => alert(`Editing ${user.name}...`)}
                         className="p-2 text-[#6b7280] hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-transparent hover:border-blue-100 transition-all"
                       >
@@ -543,7 +623,7 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteUser(user.id)}
                         className="p-2 text-[#9ca3af] hover:text-red-600 hover:bg-red-50 rounded-lg border border-transparent hover:border-red-100 transition-all"
                       >
@@ -563,34 +643,66 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
   );
 }
 
-function MerchantsContent({ 
-  activeMerchants, 
-  setActiveMerchants, 
-  merchantRequests, 
-  setMerchantRequests 
-}: { 
-  activeMerchants: Merchant[], 
-  setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>, 
-  merchantRequests: MerchantRequest[], 
-  setMerchantRequests: Dispatch<SetStateAction<MerchantRequest[]>> 
+function MerchantsContent({
+  activeMerchants,
+  setActiveMerchants,
+  merchantRequests,
+  setMerchantRequests
+}: {
+  activeMerchants: Merchant[],
+  setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>,
+  merchantRequests: MerchantRequest[],
+  setMerchantRequests: Dispatch<SetStateAction<MerchantRequest[]>>
 }) {
   const [subTab, setSubTab] = useState("Active");
   const [extendingMerchant, setExtendingMerchant] = useState<string | null>(null);
+  const [selectedBusiness, setSelectedBusiness] = useState<BusinessData | null>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  const openBusinessModal = async (merchantId: string) => {
+    setViewLoading(true);
+    const supabase = createClient();
+    const { data, error } = await supabase.from('Business').select('*').eq('id', merchantId).single();
+    setViewLoading(false);
+
+    if (error) {
+      alert("Error loading merchant details: " + error.message);
+      return;
+    }
+
+    setSelectedBusiness(data as BusinessData);
+    setIsViewOpen(true);
+  };
 
   const handleUpdateDate = () => {
     if (!extendingMerchant) return;
-    setActiveMerchants((prev: Merchant[]) => prev.map(m => 
+    setActiveMerchants((prev: Merchant[]) => prev.map(m =>
       m.name === extendingMerchant ? { ...m, validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] } : m
     ));
     setExtendingMerchant(null);
     alert(`${extendingMerchant}'s subscription has been extended!`);
   };
 
-  const handleApprove = (req: MerchantRequest) => {
+  const handleApprove = async (req: MerchantRequest) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('Business')
+      .update({
+        kycStatus: 'approved',
+        isVerified: true
+      })
+      .eq('id', req.id);
+
+    if (error) {
+      alert("Error approving merchant: " + error.message);
+      return;
+    }
+
     setActiveMerchants((prev: Merchant[]) => [
       ...prev,
       {
-        id: Date.now(),
+        id: req.id,
         name: req.name,
         category: req.category,
         rating: 0,
@@ -602,8 +714,18 @@ function MerchantsContent({
     alert(`${req.name} has been approved and added to active merchants!`);
   };
 
-  const handleReject = (req: MerchantRequest) => {
+  const handleReject = async (req: MerchantRequest) => {
     if (confirm(`Are you sure you want to reject ${req.name}?`)) {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('Business')
+        .update({ kycStatus: 'rejected', isVerified: false })
+        .eq('id', req.id);
+
+      if (error) {
+        alert("Error rejecting merchant: " + error.message);
+        return;
+      }
       setMerchantRequests((prev: MerchantRequest[]) => prev.filter(r => r.id !== req.id));
       alert(`${req.name} request has been rejected.`);
     }
@@ -617,19 +739,17 @@ function MerchantsContent({
           <p className="text-sm text-[#6b7280]">Manage active partners and verify new requests.</p>
         </div>
         <div className="flex p-1 bg-[#f3f4f6] rounded-xl w-full sm:w-fit border border-[#e5e7eb]">
-          <button 
+          <button
             onClick={() => setSubTab("Active")}
-            className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
-              subTab === "Active" ? "bg-white text-[#111827] shadow-sm" : "text-[#6b7280] hover:text-[#111827]"
-            }`}
+            className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${subTab === "Active" ? "bg-white text-[#111827] shadow-sm" : "text-[#6b7280] hover:text-[#111827]"
+              }`}
           >
             Active
           </button>
-          <button 
+          <button
             onClick={() => setSubTab("Requests")}
-            className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
-              subTab === "Requests" ? "bg-white text-[#111827] shadow-sm" : "text-[#6b7280] hover:text-[#111827]"
-            }`}
+            className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${subTab === "Requests" ? "bg-white text-[#111827] shadow-sm" : "text-[#6b7280] hover:text-[#111827]"
+              }`}
           >
             New Requests
           </button>
@@ -649,12 +769,12 @@ function MerchantsContent({
                   <p className="text-xs font-bold text-[#9ca3af] uppercase tracking-wider">{merchant.category}</p>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4 py-4 border-y border-[#f3f4f6] mb-4">
                 <div>
                   <p className="text-[10px] uppercase font-bold text-[#9ca3af] tracking-widest mb-1">Rating</p>
                   <p className="text-sm font-bold text-[#111827] flex items-center gap-1">
-                    {merchant.rating} 
+                    {merchant.rating}
                     <svg className="w-3.5 h-3.5 text-yellow-400 fill-current" viewBox="0 0 20 20">
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
@@ -670,7 +790,7 @@ function MerchantsContent({
                 <p className="text-[10px] uppercase font-bold text-[#9ca3af] tracking-widest mb-1">Validity Period</p>
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-[#111827]">Until {new Date(merchant.validUntil).toLocaleDateString()}</p>
-                  <button 
+                  <button
                     onClick={() => setExtendingMerchant(merchant.name)}
                     className="text-[10px] font-bold text-blue-600 hover:underline uppercase"
                   >
@@ -680,6 +800,12 @@ function MerchantsContent({
               </div>
 
               <div className="flex gap-3">
+                <button
+                  onClick={() => openBusinessModal(merchant.id)}
+                  className="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all"
+                >
+                  View
+                </button>
                 <button className="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-600 hover:text-white transition-all">
                   Analytics
                 </button>
@@ -709,13 +835,20 @@ function MerchantsContent({
                     <td className="px-6 py-4 text-xs font-bold text-[#6b7280] uppercase tracking-wider">{req.category}</td>
                     <td className="px-6 py-4 text-xs font-bold text-[#6b7280]">{req.date}</td>
                     <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                      <button 
+                      <button
+                        onClick={() => openBusinessModal(req.id)}
+                        disabled={viewLoading}
+                        className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all disabled:cursor-not-allowed disabled:bg-blue-300"
+                      >
+                        {viewLoading ? 'Loading...' : 'View'}
+                      </button>
+                      <button
                         onClick={() => handleApprove(req)}
                         className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm transition-all"
                       >
                         Approve
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleReject(req)}
                         className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-sm transition-all"
                       >
@@ -744,12 +877,12 @@ function MerchantsContent({
                 </svg>
               </button>
             </div>
-            
+
             <div className="p-8 space-y-6">
               <div className="space-y-3">
                 <label className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-[0.2em]">Select New Expiry Date</label>
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                   defaultValue={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
                 />
@@ -764,7 +897,7 @@ function MerchantsContent({
                 </p>
               </div>
             </div>
-            
+
             <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-4">
               <button onClick={() => setExtendingMerchant(null)} className="flex-1 py-4 bg-white text-gray-900 text-sm font-bold rounded-2xl border border-gray-200 hover:bg-gray-50 transition-all uppercase tracking-widest">Cancel</button>
               <button onClick={handleUpdateDate} className="flex-1 py-4 bg-[#111827] text-white text-sm font-bold rounded-2xl hover:bg-[#1f2937] shadow-xl shadow-black/10 transition-all active:scale-95">
@@ -774,52 +907,220 @@ function MerchantsContent({
           </div>
         </div>
       )}
+
+      {isViewOpen && selectedBusiness && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-y-auto p-3 sm:p-5">
+          <div className="bg-white rounded-3xl w-full max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl mx-auto max-h-[calc(100vh-3rem)] shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-200 overflow-hidden">
+            <div className="px-5 py-4 sm:px-8 sm:py-6 border-b border-gray-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-[#111827]">Merchant Details</h3>
+                <p className="text-sm text-gray-500 mt-1">Full details for {selectedBusiness.businessName || selectedBusiness.fullName}</p>
+              </div>
+              <button onClick={() => setIsViewOpen(false)} className="p-2 hover:bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition-all">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto max-h-[calc(100vh-18rem)] p-5 sm:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { label: 'Business Name', value: selectedBusiness.businessName },
+                  { label: 'Owner Name', value: selectedBusiness.fullName },
+                  { label: 'Work Email', value: selectedBusiness.workEmail },
+                  { label: 'Email', value: selectedBusiness.email || 'N/A' },
+                  { label: 'Mobile', value: selectedBusiness.mobile },
+                  { label: 'Public Phone', value: selectedBusiness.publicPhone },
+                  { label: 'Category', value: selectedBusiness.category },
+                  { label: 'Location', value: selectedBusiness.location || 'N/A' },
+                  { label: 'City', value: selectedBusiness.city || 'N/A' },
+                  { label: 'State', value: selectedBusiness.state || 'N/A' },
+                  { label: 'Address', value: selectedBusiness.businessAddress },
+                  { label: 'Selected Plan', value: selectedBusiness.selectedPlan },
+                  { label: 'Billing Cycle', value: selectedBusiness.billingCycle },
+                  { label: 'KYC Status', value: selectedBusiness.kycStatus },
+                  { label: 'Verified', value: selectedBusiness.isVerified ? 'Yes' : 'No' },
+                  { label: 'Verified Badge', value: selectedBusiness.hasVerifiedBadge ? 'Yes' : 'No' },
+                  { label: 'Payment Status', value: selectedBusiness.paymentStatus },
+                  { label: 'Payment ID', value: selectedBusiness.paymentId || 'N/A' },
+                  { label: 'Order ID', value: selectedBusiness.orderId || 'N/A' },
+                  { label: 'Registration #', value: selectedBusiness.registrationNumber || 'N/A' },
+                  { label: 'PAN #', value: selectedBusiness.panNumber || 'N/A' },
+                  { label: 'Aadhar #', value: selectedBusiness.aadharNumber || 'N/A' },
+                  { label: 'Created At', value: new Date(selectedBusiness.createdAt).toLocaleString() },
+                  { label: 'Updated At', value: new Date(selectedBusiness.updatedAt).toLocaleString() }
+                ].map((item) => (
+                  <div key={item.label} className="rounded-3xl border border-[#e5e7eb] p-4 sm:p-5 bg-[#f9fafb]">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#6b7280] mb-2">{item.label}</p>
+                    <p className="text-sm font-bold text-[#111827]">{item.value}</p>
+                  </div>
+                ))}
+
+                {[
+                  { label: 'PAN Document', value: selectedBusiness.panUrl },
+                  { label: 'Aadhar Document', value: selectedBusiness.aadharUrl },
+                  { label: 'MSME/GST', value: selectedBusiness.msmeGstUrl }
+                ].map((item) => (
+                  <div key={item.label} className="rounded-3xl border border-[#e5e7eb] p-4 sm:p-5 bg-[#f9fafb] md:col-span-2">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#6b7280] mb-2">{item.label}</p>
+                    {item.value ? (
+                      <a href={item.value} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:underline break-all">{item.value}</a>
+                    ) : (
+                      <p className="text-sm font-bold text-[#111827]">Not available</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-5 py-4 sm:px-8 sm:py-6 bg-gray-50 border-t border-gray-100 text-right">
+              <button onClick={() => setIsViewOpen(false)} className="inline-flex items-center justify-center px-6 py-3 text-sm font-bold uppercase tracking-wider text-[#111827] bg-white border border-gray-200 rounded-2xl hover:bg-gray-100 transition-all">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function CategoriesContent({ categories, setCategories }: { categories: Category[], setCategories: Dispatch<SetStateAction<Category[]>> }) {
+function CategoriesContent({ categories, setCategories, categoryError }: { categories: Category[], setCategories: Dispatch<SetStateAction<Category[]>>, categoryError: string | null }) {
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [actionType, setActionType] = useState<"banner" | "slots" | null>(null);
+  const [actionType, setActionType] = useState<"banner" | "slots" | "edit" | null>(null);
+  const [businesses, setBusinesses] = useState<BusinessData[]>([]);
+  const [currentCategoryData, setCurrentCategoryData] = useState<any>(null);
 
-  const handleBannerUpload = () => {
+  const filteredCategories = categories;
+
+  useEffect(() => {
+    const fetchBusinesses = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.from('Business').select('*');
+      if (data) setBusinesses(data);
+    };
+    fetchBusinesses();
+  }, []);
+
+  useEffect(() => {
+    if (editingCategory && actionType === "slots") {
+      const fetchCategoryData = async () => {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('name', editingCategory)
+          .single();
+        if (data) setCurrentCategoryData(data);
+      };
+      fetchCategoryData();
+    }
+  }, [editingCategory, actionType]);
+
+  const handleAssignPosition = async (position: number, businessId: string) => {
     if (!editingCategory) return;
-    setCategories((prev: Category[]) => prev.map(cat => 
-      cat.name === editingCategory ? { ...cat, banner: "Set" } : cat
+    const supabase = createClient();
+    const positionField = `position_${position}_business_id`;
+    const { error } = await supabase
+      .from('categories')
+      .update({ [positionField]: businessId })
+      .eq('name', editingCategory);
+
+    if (error) {
+      alert("Error assigning position: " + error.message);
+      return;
+    }
+
+    // Update local state
+    setCategories((prev: Category[]) => prev.map(c => {
+      if (c.name === editingCategory) {
+        return { ...c, fixedSlots: Math.max(c.fixedSlots, position) };
+      }
+      return c;
+    }));
+    alert(`Business assigned to position #${position}`);
+  };
+
+  const handleUpdateCategory = async () => {
+    if (!editingCategory) return;
+    const nameInput = document.getElementById('edit-cat-name') as HTMLInputElement;
+    const statusSelect = document.getElementById('edit-cat-status') as HTMLSelectElement;
+    const typeSelect = document.getElementById('edit-cat-type') as HTMLSelectElement;
+
+    const newName = nameInput.value;
+    const newStatus = statusSelect.value;
+    const newType = typeSelect.value as 'Merchant' | 'Service';
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('categories')
+      .update({ name: newName, status: newStatus, type: newType })
+      .eq('name', editingCategory);
+
+    if (error) {
+      alert("Error updating category: " + error.message);
+      return;
+    }
+
+    setCategories((prev: Category[]) => prev.map(c =>
+      c.name === editingCategory ? { ...c, name: newName, status: newStatus, type: newType } : c
     ));
     setEditingCategory(null);
-    alert("Banner uploaded successfully!");
+    alert("Category updated successfully!");
   };
 
-  const handleFixSlot = (pos: number) => {
-    if (!editingCategory) return;
-    setCategories((prev: Category[]) => prev.map(cat => {
-      if (cat.name === editingCategory) {
-        return { ...cat, fixedSlots: Math.min(cat.fixedSlots + 1, 5) };
-      }
-      return cat;
-    }));
-    alert(`Merchant fixed at position #${pos}`);
-  };
-
-  const handleNewCategory = () => {
+  const handleNewCategory = async () => {
     const name = prompt("Enter new category name:");
     if (name) {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('categories')
+        .insert([{ name, items_count: 0, status: 'Active', banner: 'Not Set', fixed_slots: 0, type: 'Merchant' }]);
+
+      if (error) {
+        alert("Error creating category: " + error.message);
+        return;
+      }
+
       setCategories((prev: Category[]) => [
         ...prev,
-        { name, items: 0, status: "Active", banner: "Not Set", fixedSlots: 0 }
+        { name, items: 0, status: "Active", banner: "Not Set", fixedSlots: 0, type: 'Merchant' as 'Merchant' | 'Service', position_1_business_id: null, position_2_business_id: null, position_3_business_id: null }
       ]);
+    }
+  };
+
+  const handleDeleteCategory = async (name: string) => {
+    if (confirm(`Are you sure you want to delete category "${name}"?`)) {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('name', name);
+
+      if (error) {
+        alert("Error deleting category: " + error.message);
+        return;
+      }
+
+      setCategories((prev: Category[]) => prev.filter(c => c.name !== name));
     }
   };
 
   return (
     <div className="space-y-6">
+      {categoryError && (
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p className="font-bold">Categories table missing</p>
+          <p>{categoryError}</p>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-[#111827]">Category Management</h1>
           <p className="text-sm text-[#6b7280]">Manage category-wise banners and fixed top positions.</p>
         </div>
-        <button 
+        <button
           onClick={handleNewCategory}
           className="w-full sm:w-auto px-4 py-2 bg-[#111827] text-white text-sm font-bold rounded-lg hover:bg-[#1f2937] transition-all active:scale-95"
         >
@@ -828,7 +1129,7 @@ function CategoriesContent({ categories, setCategories }: { categories: Category
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {categories.map((cat, i) => (
+        {filteredCategories.map((cat, i) => (
           <div key={i} className="bg-white rounded-2xl border border-[#e5e7eb] shadow-sm flex flex-col hover:border-blue-500 transition-all group overflow-hidden">
             <div className="p-6 flex-1">
               <div className="flex justify-between items-start mb-4">
@@ -836,13 +1137,12 @@ function CategoriesContent({ categories, setCategories }: { categories: Category
                   <h3 className="font-bold text-[#111827] text-lg truncate group-hover:text-blue-600 transition-colors">{cat.name}</h3>
                   <p className="text-xs font-bold text-[#6b7280]">{cat.items} products listed</p>
                 </div>
-                <span className={`px-2 py-0.5 text-[9px] font-bold rounded-md uppercase tracking-wider border ${
-                  cat.status === "Active" ? "bg-green-50 text-green-600 border-green-100" : "bg-gray-50 text-gray-400 border-gray-100"
-                }`}>
+                <span className={`px-2 py-0.5 text-[9px] font-bold rounded-md uppercase tracking-wider border ${cat.status === "Active" ? "bg-green-50 text-green-600 border-green-100" : "bg-gray-50 text-gray-400 border-gray-100"
+                  }`}>
                   {cat.status}
                 </span>
               </div>
-              
+
               <div className="space-y-3 mt-4 pt-4 border-t border-[#f3f4f6]">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-[#6b7280]">Banner Status</span>
@@ -852,27 +1152,40 @@ function CategoriesContent({ categories, setCategories }: { categories: Category
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-[#6b7280]">Fixed Positions</span>
-                  <span className="text-xs font-bold text-[#111827]">{cat.fixedSlots} slots filled</span>
+                  <span className="text-xs font-bold text-[#111827]">{(cat.position_1_business_id ? 1 : 0) + (cat.position_2_business_id ? 1 : 0) + (cat.position_3_business_id ? 1 : 0)} slots filled</span>
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-[#f9fafb] px-6 py-3 flex justify-between items-center border-t border-[#e5e7eb]">
               <div className="flex gap-2">
-                <button 
+                <button
+                  onClick={() => { setEditingCategory(cat.name); setActionType("edit"); }}
+                  className="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
+                >
+                  Edit
+                </button>
+                <div className="w-px h-3 bg-[#e5e7eb]"></div>
+                <button
                   onClick={() => { setEditingCategory(cat.name); setActionType("banner"); }}
                   className="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
                 >
                   Set Banner
                 </button>
                 <div className="w-px h-3 bg-[#e5e7eb]"></div>
-                <button 
+                <button
                   onClick={() => { setEditingCategory(cat.name); setActionType("slots"); }}
                   className="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
                 >
                   Fix Slots
                 </button>
               </div>
+              <button
+                onClick={() => handleDeleteCategory(cat.name)}
+                className="text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-600"
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))}
@@ -883,7 +1196,7 @@ function CategoriesContent({ categories, setCategories }: { categories: Category
           <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-200 overflow-hidden">
             <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-xl font-bold text-[#111827]">
-                {actionType === "banner" ? `Set Banner: ${editingCategory}` : `Fix Positions: ${editingCategory}`}
+                {actionType === "banner" ? `Set Banner: ${editingCategory}` : actionType === "slots" ? `Fix Positions: ${editingCategory}` : `Edit Category: ${editingCategory}`}
               </h3>
               <button onClick={() => setEditingCategory(null)} className="p-2 hover:bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition-all">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -891,54 +1204,112 @@ function CategoriesContent({ categories, setCategories }: { categories: Category
                 </svg>
               </button>
             </div>
-            
+
             <div className="p-8 space-y-6">
-              {actionType === "banner" ? (
+              {actionType === "edit" ? (
                 <div className="space-y-4">
-                  <div 
-                    onClick={handleBannerUpload}
-                    className="border-2 border-dashed border-gray-200 rounded-2xl p-12 text-center hover:border-blue-400 transition-colors cursor-pointer group bg-gray-50/50"
-                  >
-                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mx-auto mb-4 text-blue-600 group-hover:scale-110 transition-transform">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider">Category Name</label>
+                    <input
+                      type="text"
+                      defaultValue={editingCategory || ""}
+                      className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-bold"
+                      id="edit-cat-name"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider">Status</label>
+                    <select
+                      defaultValue={categories.find(c => c.name === editingCategory)?.status}
+                      className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-bold"
+                      id="edit-cat-status"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider">Type</label>
+                    <select
+                      defaultValue={categories.find(c => c.name === editingCategory)?.type}
+                      className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-bold"
+                      id="edit-cat-type"
+                    >
+                      <option value="Merchant">Merchant</option>
+                      <option value="Service">Service</option>
+                    </select>
+                  </div>
+                </div>
+              ) : actionType === "banner" ? (
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-gray-200 rounded-2xl p-12 text-center bg-gray-50/50">
+                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mx-auto mb-4 text-gray-400">
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <p className="text-sm font-bold text-gray-900">Upload Banner Image</p>
-                    <p className="text-xs text-gray-500 mt-1 uppercase tracking-wider font-medium">Recommended: 1200 x 400px</p>
+                    <p className="text-sm font-bold text-gray-500">Banner Upload Feature</p>
+                    <p className="text-xs text-gray-400 mt-1 uppercase tracking-wider font-medium">Coming Soon</p>
                   </div>
-                  <div className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
-                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-                    <p className="text-xs font-bold text-blue-700">Currently active banner will be replaced upon upload.</p>
+                  <div className="flex items-center gap-3 p-4 bg-amber-50/50 rounded-xl border border-amber-100">
+                    <div className="w-2 h-2 bg-amber-600 rounded-full"></div>
+                    <p className="text-xs font-bold text-amber-700">Banner upload functionality is not yet implemented.</p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {[1, 2, 3].map((pos) => (
-                    <div key={pos} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between hover:bg-white hover:border-blue-200 transition-all group">
-                      <div className="flex items-center gap-4">
-                        <span className="w-8 h-8 rounded-lg bg-[#111827] text-white flex items-center justify-center text-xs font-bold shadow-sm">#{pos}</span>
-                        <div>
-                          <p className="text-sm font-bold text-gray-900">Position {pos}</p>
-                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Awaiting Selection</p>
+                  {[1, 2, 3].map((pos) => {
+                    const positionField = `position_${pos}_business_id`;
+                    const currentBusinessId = currentCategoryData?.[positionField];
+                    const currentBusiness = businesses.find(b => b.id === currentBusinessId);
+                    return (
+                      <div key={pos} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between hover:bg-white hover:border-blue-200 transition-all group">
+                        <div className="flex items-center gap-4 flex-1">
+                          <span className="w-8 h-8 rounded-lg bg-[#111827] text-white flex items-center justify-center text-xs font-bold shadow-sm">#{pos}</span>
+                          <div className="flex-1">
+                            <p className="text-sm font-bold text-gray-900">Position {pos}</p>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                              {currentBusiness ? `Assigned: ${currentBusiness.registrationNumber || currentBusiness.businessName}` : 'No merchant assigned'}
+                            </p>
+                          </div>
                         </div>
+                        <select
+                          onChange={(e) => {
+                            const selectedId = e.target.value;
+                            if (selectedId) handleAssignPosition(pos, selectedId);
+                          }}
+                          className="px-3 py-2 bg-white text-blue-600 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-blue-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-all shadow-sm cursor-pointer"
+                          defaultValue=""
+                        >
+                          <option value="">Select by Reg #</option>
+                          {businesses
+                            .filter(b => b.kycStatus !== 'pending' && b.kycStatus !== 'rejected')
+                            .map(business => (
+                              <option key={business.id} value={business.id}>
+                                {business.registrationNumber || 'No Reg #'} - {business.businessName}
+                              </option>
+                            ))}
+                        </select>
                       </div>
-                      <button 
-                        onClick={() => handleFixSlot(pos)}
-                        className="px-4 py-2 bg-white text-blue-600 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-blue-100 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                      >
-                        Select Merchant
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
-            
+
             <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
               <button onClick={() => setEditingCategory(null)} className="text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors uppercase tracking-widest">Discard</button>
-              <button onClick={() => setEditingCategory(null)} className="px-8 py-3 bg-[#111827] text-white text-sm font-bold rounded-xl hover:bg-[#1f2937] shadow-xl shadow-black/10 transition-all active:scale-95">
-                Save Changes
+              <button
+                onClick={() => {
+                  if (actionType === "edit") {
+                    handleUpdateCategory();
+                  } else {
+                    setEditingCategory(null);
+                  }
+                }}
+                className="px-8 py-3 bg-[#111827] text-white text-sm font-bold rounded-xl hover:bg-[#1f2937] shadow-xl shadow-black/10 transition-all active:scale-95"
+              >
+                {actionType === "edit" ? "Save Changes" : "Close"}
               </button>
             </div>
           </div>
@@ -972,19 +1343,18 @@ function PaymentsContent() {
         </div>
         <div className="flex p-1 bg-[#f3f4f6] rounded-xl w-full sm:w-fit border border-[#e5e7eb]">
           {["User Payments", "Merchant Subscriptions"].map((tab) => (
-            <button 
+            <button
               key={tab}
               onClick={() => setSubTab(tab)}
-              className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
-                subTab === tab ? "bg-white text-[#111827] shadow-sm" : "text-[#6b7280] hover:text-[#111827]"
-              }`}
+              className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${subTab === tab ? "bg-white text-[#111827] shadow-sm" : "text-[#6b7280] hover:text-[#111827]"
+                }`}
             >
               {tab}
             </button>
           ))}
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="p-6 bg-white rounded-2xl border border-[#e5e7eb] shadow-sm">
           <p className="text-[10px] uppercase font-bold text-[#9ca3af] tracking-widest mb-1">Total Revenue</p>
@@ -1006,7 +1376,7 @@ function PaymentsContent() {
       <div className="bg-white rounded-2xl border border-[#e5e7eb] shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-[#f3f4f6] flex items-center justify-between bg-[#f9fafb]">
           <h3 className="font-bold text-[#111827]">{subTab} History</h3>
-          <button 
+          <button
             onClick={() => alert(`Exporting ${subTab} history as CSV...`)}
             className="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:underline"
           >
@@ -1043,9 +1413,8 @@ function PaymentsContent() {
                     <td className="px-6 py-4 font-bold text-[#111827]">{txn.amount}</td>
                     <td className="px-6 py-4 font-medium text-[#6b7280]">{txn.method}</td>
                     <td className="px-6 py-4 text-right">
-                      <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${
-                        txn.status === "Completed" ? "bg-green-50 text-green-700 border-green-100" : "bg-blue-50 text-blue-700 border-blue-100"
-                      }`}>
+                      <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${txn.status === "Completed" ? "bg-green-50 text-green-700 border-green-100" : "bg-blue-50 text-blue-700 border-blue-100"
+                        }`}>
                         {txn.status}
                       </span>
                     </td>
@@ -1057,10 +1426,9 @@ function PaymentsContent() {
                     <td className="px-6 py-4 font-mono text-xs font-bold text-[#9ca3af]">{sub.id}</td>
                     <td className="px-6 py-4 font-bold text-[#111827]">{sub.merchant}</td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        sub.plan === "Enterprise" ? "bg-indigo-100 text-indigo-700" : 
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${sub.plan === "Enterprise" ? "bg-indigo-100 text-indigo-700" :
                         sub.plan === "Pro" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
-                      }`}>
+                        }`}>
                         {sub.plan}
                       </span>
                     </td>
@@ -1081,11 +1449,11 @@ function PaymentsContent() {
   );
 }
 
-function BroadcastsContent({ message, setMessage, audience, setAudience }: { 
-  message: string, 
-  setMessage: Dispatch<SetStateAction<string>>, 
-  audience: string, 
-  setAudience: Dispatch<SetStateAction<string>> 
+function BroadcastsContent({ message, setMessage, audience, setAudience }: {
+  message: string,
+  setMessage: Dispatch<SetStateAction<string>>,
+  audience: string,
+  setAudience: Dispatch<SetStateAction<string>>
 }) {
   const handleDeploy = () => {
     if (!message.trim()) {
@@ -1109,10 +1477,10 @@ function BroadcastsContent({ message, setMessage, audience, setAudience }: {
           <div className="flex flex-wrap gap-6">
             {["Everyone", "Verified Users", "Merchant Owners"].map((target) => (
               <label key={target} className="flex items-center gap-3 cursor-pointer group">
-                <input 
-                  type="radio" 
-                  name="target" 
-                  className="w-5 h-5 text-[#111827] focus:ring-offset-0 focus:ring-0 border-[#d1d5db]" 
+                <input
+                  type="radio"
+                  name="target"
+                  className="w-5 h-5 text-[#111827] focus:ring-offset-0 focus:ring-0 border-[#d1d5db]"
                   checked={audience === target}
                   onChange={() => setAudience(target)}
                 />
@@ -1124,7 +1492,7 @@ function BroadcastsContent({ message, setMessage, audience, setAudience }: {
 
         <div className="space-y-4">
           <label className="text-[10px] font-bold text-[#6b7280] uppercase tracking-[0.2em]">Message Body</label>
-          <textarea 
+          <textarea
             rows={5}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -1134,13 +1502,13 @@ function BroadcastsContent({ message, setMessage, audience, setAudience }: {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-4">
-          <button 
+          <button
             onClick={handleDeploy}
             className="w-full sm:flex-1 py-4 bg-[#111827] text-white text-sm font-bold rounded-2xl hover:bg-[#1f2937] shadow-xl shadow-black/10 active:scale-[0.98] transition-all"
           >
             Deploy Broadcast
           </button>
-          <button 
+          <button
             onClick={() => { setMessage(""); alert("Message discarded."); }}
             className="w-full sm:w-auto px-8 py-4 text-[#4b5563] text-sm font-bold hover:text-[#111827] transition-colors"
           >
@@ -1256,15 +1624,13 @@ function SettingsContent({ settings, setSettings }: { settings: Settings, setSet
                       <p className="text-xs text-[#6b7280]">{item.description}</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => toggleSetting(item.id)}
-                    className={`w-12 h-6 rounded-full relative transition-all duration-300 focus:outline-none ${
-                      settings[item.id] ? "bg-blue-600" : "bg-[#d1d5db]"
-                    }`}
+                    className={`w-12 h-6 rounded-full relative transition-all duration-300 focus:outline-none ${settings[item.id] ? "bg-blue-600" : "bg-[#d1d5db]"
+                      }`}
                   >
-                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${
-                      settings[item.id] ? "left-7" : "left-1"
-                    }`}></span>
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${settings[item.id] ? "left-7" : "left-1"
+                      }`}></span>
                   </button>
                 </div>
               ))}
@@ -1289,7 +1655,7 @@ function SettingsContent({ settings, setSettings }: { settings: Settings, setSet
                 <p className="text-xs text-red-600/80">Clears all temporary data, active sessions, and CDN edge cache.</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={handleFlush}
               className="px-6 py-2.5 bg-white text-red-600 text-xs font-bold uppercase tracking-wider rounded-xl border border-red-200 hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-95"
             >
