@@ -28,8 +28,8 @@ export default function Home() {
             <Image
               src="/logo.png"
               alt="Boomb"
-              width={40}
-              height={40}
+              width={80}
+              height={80}
               className="rounded-lg"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
@@ -52,7 +52,7 @@ export default function Home() {
               {error}
             </div>
           )}
-          
+
           <div className="space-y-4">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-[#374151] mb-1.5">
@@ -70,7 +70,7 @@ export default function Home() {
                 placeholder="admin@boomb.in"
               />
             </div>
-            
+
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label htmlFor="password" className="block text-sm font-medium text-[#374151]">

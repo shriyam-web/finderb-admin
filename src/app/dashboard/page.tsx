@@ -260,9 +260,9 @@ export default function Dashboard() {
           <Link href="/dashboard" className="flex items-center gap-2.5">
             <Image
               src="/logo.png"
-              alt="Logo"
-              width={72}
-              height={72}
+              alt="Boomb logo"
+              width={144}
+              height={144}
               className="rounded"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
