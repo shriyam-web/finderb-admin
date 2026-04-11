@@ -185,6 +185,20 @@ export default function Dashboard() {
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [broadcastAudience, setBroadcastAudience] = useState("Everyone");
 
+  const getMenuItemDisplayName = (name: string) => {
+    // Show abbreviated names on mobile, full names on larger screens
+    const abbreviations: { [key: string]: string } = {
+      "Dashboard": "Dash",
+      "Users": "Users",
+      "Merchants": "Merch",
+      "Categories": "Cats",
+      "Payments & Subscriptions": "Pay",
+      "Broadcasts": "Cast",
+      "Settings": "Set"
+    };
+    return abbreviations[name] || name;
+  };
+
   const menuItems = [
     {
       name: "Dashboard", icon: (
@@ -284,7 +298,7 @@ export default function Dashboard() {
       )}
 
       {/* Sidebar */}
-      <aside className={`w-64 bg-white/95 border-r border-slate-200 flex flex-col fixed inset-y-0 shadow-2xl z-50 transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+      <aside className={`w-48 sm:w-56 lg:w-64 bg-white/95 border-r border-slate-200 flex flex-col fixed inset-y-0 shadow-2xl z-50 transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
         <div className="h-20 lg:h-24 flex items-center px-4 lg:px-6 gap-3 lg:gap-4 border-b border-slate-200 bg-gradient-to-r from-sky-600 to-cyan-500 text-white">
           <Link href="/dashboard" className="flex items-center gap-2 lg:gap-3 min-w-0">
             <div className="w-12 lg:w-14 h-12 lg:h-14 rounded-3xl bg-white/15 p-1.5 lg:p-2 flex items-center justify-center shadow-inner shrink-0">
@@ -300,8 +314,8 @@ export default function Dashboard() {
                 }}
               />
             </div>
-            <div className="min-w-0 hidden sm:block">
-              <p className="text-base lg:text-lg font-semibold tracking-tight">Boomb Admin</p>
+            <div className="min-w-0 block">
+              <p className="text-sm lg:text-lg font-semibold tracking-tight">Boomb Admin</p>
               <p className="text-[10px] lg:text-xs text-sky-100/90 uppercase tracking-[0.24em]">Control Center</p>
             </div>
           </Link>
@@ -323,6 +337,7 @@ export default function Dashboard() {
               <span className={`${activeTab === item.name ? "text-sky-300" : "text-slate-400"} shrink-0`}>
                 {item.icon}
               </span>
+              <span className="sm:hidden text-[10px] font-medium text-slate-900">{getMenuItemDisplayName(item.name)}</span>
               <span className="hidden sm:inline text-slate-900">{item.name}</span>
             </button>
           ))}
@@ -333,7 +348,7 @@ export default function Dashboard() {
             <div className="w-9 lg:w-10 h-9 lg:h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-sm lg:text-base font-semibold text-slate-600 shrink-0">
               AD
             </div>
-            <div className="flex-1 min-w-0 hidden sm:block">
+            <div className="flex-1 min-w-0 block">
               <p className="text-xs lg:text-sm font-semibold text-slate-900 truncate">Admin User</p>
               <p className="text-[10px] lg:text-xs text-slate-500 truncate">admin@boomb.in</p>
             </div>
@@ -354,7 +369,7 @@ export default function Dashboard() {
               </svg>
             </button>
             <div className="min-w-0">
-              <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 hidden sm:block">Current View</p>
+              <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 block">Current View</p>
               <h2 className="text-base lg:text-xl font-bold text-slate-950 tracking-tight truncate">{activeTab}</h2>
             </div>
           </div>
@@ -416,7 +431,7 @@ function DashboardContent({ setActiveTab }: { setActiveTab: (tab: string) => voi
           <div className="min-w-0">
             <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-[0.34em] text-sky-600">Control Panel</p>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-950 tracking-tight mt-2">Platform performance & approvals.</h1>
-            <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-6 sm:leading-7 text-slate-600 hidden sm:block">A beautifully balanced overview with metrics, partner requests, and activity insights.</p>
+            <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-6 sm:leading-7 text-slate-600 block">A beautifully balanced overview with metrics, partner requests, and activity insights.</p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:gap-3 shrink-0">
             <div className="rounded-2xl lg:rounded-3xl bg-slate-950/95 p-3 sm:p-4 text-white shadow-lg shadow-slate-950/10 ring-1 ring-slate-900/5">
