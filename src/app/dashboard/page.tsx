@@ -323,7 +323,7 @@ export default function Dashboard() {
               <span className={`${activeTab === item.name ? "text-sky-300" : "text-slate-400"} shrink-0`}>
                 {item.icon}
               </span>
-              <span className="hidden sm:inline">{item.name}</span>
+              <span className="hidden sm:inline text-slate-900">{item.name}</span>
             </button>
           ))}
         </nav>
