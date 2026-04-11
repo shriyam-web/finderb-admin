@@ -100,56 +100,85 @@ export default function Dashboard() {
   const [merchantRequests, setMerchantRequests] = useState<MerchantRequest[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      const supabase = createClient();
+      try {
+        setDataLoading(true);
+        setFetchError(null);
 
-      const { data: catData, error: catError } = await supabase.from('categories').select('*');
-      if (catError) {
-        console.error("Category fetch error:", catError);
-        const missingTable = catError.message?.toLowerCase().includes("public.categories") || catError.message?.toLowerCase().includes("relation \"categories\" does not exist") || catError.code === "42P01";
-        setCategoryError(missingTable
-          ? "Categories table is missing. Create it with db/create_categories_table.sql or via the Supabase SQL editor."
-          : catError.message
-        );
-      } else {
-        setCategoryError(null);
-      }
-      if (catData) setCategories(catData.map(c => ({
-        name: c.name,
-        items: c.items_count || 0,
-        status: c.status || 'Active',
-        banner: c.banner || 'Not Set',
-        fixedSlots: c.fixed_slots || 0,
-        type: c.type || 'Merchant',
-        position_1_business_id: c.position_1_business_id,
-        position_2_business_id: c.position_2_business_id,
-        position_3_business_id: c.position_3_business_id
-      })));
+        const supabase = createClient();
 
-      const { data: merchantData } = await supabase.from('Business').select('*');
-      if (merchantData) {
-        setActiveMerchants(merchantData
-          .filter((m: any) => m.kycStatus !== 'pending' && m.kycStatus !== 'rejected')
-          .map((m: any) => ({
-            id: m.id,
-            name: m.businessName || m.fullName || 'Unknown Merchant',
-            category: m.category || 'Other',
-            rating: 0,
-            sales: 0,
-            validUntil: new Date(m.updatedAt || m.createdAt || Date.now()).toISOString().split('T')[0]
+        console.log("🚀 Fetching categories from Supabase...");
+        const { data: catData, error: catError } = await supabase.from('categories').select('*');
+
+        if (catError) {
+          console.error("❌ Category fetch error:", catError);
+          const missingTable = catError.message?.toLowerCase().includes("public.categories") || catError.message?.toLowerCase().includes("relation \"categories\" does not exist") || catError.code === "42P01";
+          setCategoryError(missingTable
+            ? "Categories table is missing. Create it with db/create_categories_table.sql or via the Supabase SQL editor."
+            : catError.message
+          );
+        } else {
+          setCategoryError(null);
+          console.log("✅ Categories fetched:", catData?.length || 0);
+        }
+
+        if (catData) {
+          setCategories(catData.map(c => ({
+            name: c.name,
+            items: c.items_count || 0,
+            status: c.status || 'Active',
+            banner: c.banner || 'Not Set',
+            fixedSlots: c.fixed_slots || 0,
+            type: c.type || 'Merchant',
+            position_1_business_id: c.position_1_business_id,
+            position_2_business_id: c.position_2_business_id,
+            position_3_business_id: c.position_3_business_id
           })));
-        setMerchantRequests(merchantData
-          .filter((m: any) => m.kycStatus === 'pending')
-          .map((m: any) => ({
-            id: m.id,
-            name: m.businessName || m.fullName || 'Unknown Merchant',
-            category: m.category || 'Other',
-            date: new Date(m.createdAt || Date.now()).toLocaleDateString()
-          })));
+        }
+
+        console.log("🚀 Fetching business data from Supabase...");
+        const { data: merchantData, error: merchantError } = await supabase.from('Business').select('*');
+
+        if (merchantError) {
+          console.error("❌ Business fetch error:", merchantError);
+          setFetchError(`Failed to fetch business data: ${merchantError.message}`);
+        } else {
+          console.log("✅ Business data fetched:", merchantData?.length || 0);
+          if (merchantData && merchantData.length > 0) {
+            setActiveMerchants(merchantData
+              .filter((m: any) => m.kycStatus !== 'pending' && m.kycStatus !== 'rejected')
+              .map((m: any) => ({
+                id: m.id,
+                name: m.businessName || m.fullName || 'Unknown Merchant',
+                category: m.category || 'Other',
+                rating: 0,
+                sales: 0,
+                validUntil: new Date(m.updatedAt || m.createdAt || Date.now()).toISOString().split('T')[0]
+              })));
+            setMerchantRequests(merchantData
+              .filter((m: any) => m.kycStatus === 'pending')
+              .map((m: any) => ({
+                id: m.id,
+                name: m.businessName || m.fullName || 'Unknown Merchant',
+                category: m.category || 'Other',
+                date: new Date(m.createdAt || Date.now()).toLocaleDateString()
+              })));
+          } else {
+            console.warn("⚠️ No business data returned from Supabase");
+          }
+        }
+      } catch (error: any) {
+        console.error("❌ Unexpected error during fetch:", error);
+        setFetchError(`Unexpected error: ${error?.message || 'Unknown error'}`);
+      } finally {
+        setDataLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
@@ -255,25 +284,30 @@ export default function Dashboard() {
       )}
 
       {/* Sidebar */}
-      <aside className={`w-64 bg-white border-r border-[#e5e7eb] flex flex-col fixed inset-y-0 shadow-sm z-50 transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
-        <div className="h-16 flex items-center px-6 border-b border-[#f3f4f6]">
-          <Link href="/dashboard" className="flex items-center gap-2.5">
-            <Image
-              src="/logo.png"
-              alt="Boomb logo"
-              width={144}
-              height={144}
-              className="rounded"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = "/next.svg";
-              }}
-            />
-            <span className="text-xl font-bold text-[#111827] tracking-tight">Admin</span>
+      <aside className={`w-64 bg-white/95 border-r border-slate-200 flex flex-col fixed inset-y-0 shadow-2xl z-50 transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        <div className="h-20 lg:h-24 flex items-center px-4 lg:px-6 gap-3 lg:gap-4 border-b border-slate-200 bg-gradient-to-r from-sky-600 to-cyan-500 text-white">
+          <Link href="/dashboard" className="flex items-center gap-2 lg:gap-3 min-w-0">
+            <div className="w-12 lg:w-14 h-12 lg:h-14 rounded-3xl bg-white/15 p-1.5 lg:p-2 flex items-center justify-center shadow-inner shrink-0">
+              <Image
+                src="/logo.png"
+                alt="Boomb logo"
+                width={48}
+                height={48}
+                className="rounded-2xl"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = "/next.svg";
+                }}
+              />
+            </div>
+            <div className="min-w-0 hidden sm:block">
+              <p className="text-base lg:text-lg font-semibold tracking-tight">Boomb Admin</p>
+              <p className="text-[10px] lg:text-xs text-sky-100/90 uppercase tracking-[0.24em]">Control Center</p>
+            </div>
           </Link>
         </div>
 
-        <nav className="flex-1 mt-6 px-3 space-y-1">
+        <nav className="flex-1 mt-4 lg:mt-6 px-3 lg:px-4 space-y-1.5 lg:space-y-2">
           {menuItems.map((item) => (
             <button
               key={item.name}
@@ -281,27 +315,27 @@ export default function Dashboard() {
                 setActiveTab(item.name);
                 setIsSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === item.name
-                ? "bg-[#f3f4f6] text-[#111827]"
-                : "text-[#4b5563] hover:bg-[#f9fafb] hover:text-[#111827]"
+              className={`w-full flex items-center gap-3 px-3 lg:px-4 py-2.5 lg:py-3 text-xs lg:text-sm font-semibold rounded-2xl transition-all duration-200 ${activeTab === item.name
+                ? "bg-slate-950 text-white shadow-sm"
+                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 }`}
             >
-              <span className={`${activeTab === item.name ? "text-[#2563eb]" : "text-[#9ca3af]"}`}>
+              <span className={`${activeTab === item.name ? "text-sky-300" : "text-slate-400"} shrink-0`}>
                 {item.icon}
               </span>
-              {item.name}
+              <span className="hidden sm:inline">{item.name}</span>
             </button>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-[#f3f4f6]">
-          <div className="flex items-center gap-3 px-2 py-2">
-            <div className="w-8 h-8 rounded-full bg-[#e5e7eb] flex items-center justify-center text-xs font-semibold text-[#4b5563]">
+        <div className="p-3 lg:p-5 border-t border-slate-200 bg-slate-50">
+          <div className="flex items-center gap-2 lg:gap-3 px-1.5 lg:px-2 py-1.5 lg:py-2 rounded-3xl bg-white shadow-sm">
+            <div className="w-9 lg:w-10 h-9 lg:h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-sm lg:text-base font-semibold text-slate-600 shrink-0">
               AD
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[#111827] truncate">Admin User</p>
-              <p className="text-xs text-[#6b7280] truncate">admin@boomb.in</p>
+            <div className="flex-1 min-w-0 hidden sm:block">
+              <p className="text-xs lg:text-sm font-semibold text-slate-900 truncate">Admin User</p>
+              <p className="text-[10px] lg:text-xs text-slate-500 truncate">admin@boomb.in</p>
             </div>
           </div>
         </div>
@@ -309,33 +343,50 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-[#e5e7eb] flex items-center justify-between px-4 lg:px-8 sticky top-0 z-10 shadow-sm/5">
-          <div className="flex items-center gap-4">
+        <header className="h-16 lg:h-20 bg-white/95 border-b border-slate-200 flex items-center justify-between px-3 lg:px-8 sticky top-0 z-20 shadow-sm backdrop-blur-sm">
+          <div className="flex items-center gap-3 lg:gap-4 min-w-0">
             <button
-              className="p-2 text-[#6b7280] lg:hidden hover:bg-[#f9fafb] rounded-lg"
+              className="p-2 lg:p-3 text-slate-500 lg:hidden hover:bg-slate-100 rounded-2xl transition-all"
               onClick={() => setIsSidebarOpen(true)}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 lg:w-6 h-5 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h2 className="text-sm font-bold text-[#111827] uppercase tracking-wider">{activeTab}</h2>
+            <div className="min-w-0">
+              <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 hidden sm:block">Current View</p>
+              <h2 className="text-base lg:text-xl font-bold text-slate-950 tracking-tight truncate">{activeTab}</h2>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3 lg:gap-6">
-            <button className="p-2 text-[#6b7280] hover:text-[#111827] transition-colors rounded-lg hover:bg-[#f9fafb]">
+          <div className="flex items-center gap-2 lg:gap-5 shrink-0">
+            <button className="p-2 lg:p-3 text-slate-500 hover:text-slate-900 transition-all rounded-2xl hover:bg-slate-100">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
             </button>
-            <div className="h-6 w-px bg-[#e5e7eb] hidden sm:block"></div>
-            <Link href="/" className="text-sm font-bold text-[#dc2626] hover:text-[#b91c1c] transition-colors whitespace-nowrap">
+            <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
+            <Link href="/" className="text-xs lg:text-sm font-semibold text-rose-600 hover:text-rose-700 transition-all whitespace-nowrap">
               Log out
             </Link>
           </div>
         </header>
 
-        <main className="p-4 lg:p-8 max-w-7xl mx-auto w-full">
+        <main className="p-3 sm:p-4 lg:p-8 max-w-7xl mx-auto w-full">
+          {fetchError && (
+            <div className="mb-4 sm:mb-6 rounded-2xl bg-red-50 border border-red-200 p-3 sm:p-4 text-red-800">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="text-sm font-medium">
+                  <p className="font-semibold">Data Fetch Error</p>
+                  <p className="mt-1 text-red-700">{fetchError}</p>
+                  <p className="mt-2 text-xs text-red-600">Check browser console (F12) for more details. Ensure Supabase environment variables are correctly set in production.</p>
+                </div>
+              </div>
+            </div>
+          )}
           {renderContent()}
         </main>
       </div>
@@ -359,141 +410,166 @@ function DashboardContent({ setActiveTab }: { setActiveTab: (tab: string) => voi
   const maxVal = Math.max(...chartData.map(d => d.users));
 
   return (
-    <div className="space-y-6 lg:space-y-8">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl lg:text-2xl font-bold text-[#111827]">Overview Dashboard</h1>
-        <p className="text-sm text-[#6b7280]">Real-time analytics and platform health summary.</p>
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+      <div className="rounded-2xl sm:rounded-3xl lg:rounded-[36px] border border-slate-200 bg-white p-4 sm:p-6 lg:p-8 shadow-xl shadow-slate-200/40">
+        <div className="flex flex-col gap-4 lg:gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-[0.34em] text-sky-600">Control Panel</p>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-950 tracking-tight mt-2">Platform performance & approvals.</h1>
+            <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-6 sm:leading-7 text-slate-600 hidden sm:block">A beautifully balanced overview with metrics, partner requests, and activity insights.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 shrink-0">
+            <div className="rounded-2xl lg:rounded-3xl bg-slate-950/95 p-3 sm:p-4 text-white shadow-lg shadow-slate-950/10 ring-1 ring-slate-900/5">
+              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.35em] text-slate-300">Weekly visits</p>
+              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-semibold">28.4k</p>
+              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400">+18% vs last week</p>
+            </div>
+            <div className="rounded-2xl lg:rounded-3xl bg-slate-950/95 p-3 sm:p-4 text-white shadow-lg shadow-slate-950/10 ring-1 ring-slate-900/5">
+              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.35em] text-slate-300">Revenue</p>
+              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-semibold">₹4.3L</p>
+              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400">85% of monthly</p>
+            </div>
+            <div className="rounded-2xl lg:rounded-3xl bg-slate-950/95 p-3 sm:p-4 text-white shadow-lg shadow-slate-950/10 ring-1 ring-slate-900/5 col-span-2 sm:col-span-1">
+              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.35em] text-slate-300">Approvals</p>
+              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-semibold">38</p>
+              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400">Need review</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
-        <div className="p-6 bg-white rounded-2xl shadow-sm border border-[#e5e7eb] hover:shadow-md transition-all cursor-pointer group" onClick={() => setActiveTab("Users")}>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">Total Users</p>
-            <span className="p-2 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
+        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200 bg-white p-4 sm:p-6 shadow-lg shadow-slate-200/40 transition-all hover:-translate-y-1 hover:shadow-xl">
+          <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">Total Users</p>
+              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-950">12,842</h3>
+            </div>
+            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-sky-100 text-sky-700 shadow-sm shrink-0">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
-            </span>
+            </div>
           </div>
-          <h3 className="text-2xl lg:text-3xl font-bold text-[#111827]">12,842</h3>
-          <p className="mt-2 text-xs text-green-600 font-bold flex items-center gap-1 bg-green-50 w-fit px-2 py-0.5 rounded-lg">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-            </svg>
-            12% Growth
-          </p>
+          <div className="rounded-2xl lg:rounded-3xl bg-slate-100 p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-slate-500">12% growth last 7 days</p>
+          </div>
         </div>
 
-        <div className="p-6 bg-white rounded-2xl shadow-sm border border-[#e5e7eb] hover:shadow-md transition-all cursor-pointer group" onClick={() => setActiveTab("Merchants")}>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">Active Merchants</p>
-            <span className="p-2 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-all">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200 bg-white p-4 sm:p-6 shadow-lg shadow-slate-200/40 transition-all hover:-translate-y-1 hover:shadow-xl">
+          <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">Active Merchants</p>
+              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-950">573</h3>
+            </div>
+            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-100 text-emerald-700 shadow-sm shrink-0">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
-            </span>
+            </div>
           </div>
-          <h3 className="text-2xl lg:text-3xl font-bold text-[#111827]">573</h3>
-          <p className="mt-2 text-xs text-blue-600 font-bold flex items-center gap-1 bg-blue-50 w-fit px-2 py-0.5 rounded-lg">
-            8 New Onboarded
-          </p>
+          <div className="rounded-2xl lg:rounded-3xl bg-slate-100 p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-slate-500">8 new merchants onboarded</p>
+          </div>
         </div>
 
-        <div className="p-6 bg-white rounded-2xl shadow-sm border border-[#e5e7eb] hover:shadow-md transition-all cursor-pointer group" onClick={() => setActiveTab("Payments & Subscriptions")}>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">Monthly Revenue</p>
-            <span className="p-2 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200 bg-white p-4 sm:p-6 shadow-lg shadow-slate-200/40 transition-all hover:-translate-y-1 hover:shadow-xl sm:col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
+            <div className="min-w-0">
+              <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">Monthly Revenue</p>
+              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-950">₹4.3L</h3>
+            </div>
+            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-indigo-100 text-indigo-700 shadow-sm shrink-0">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-            </span>
+            </div>
           </div>
-          <h3 className="text-2xl lg:text-3xl font-bold text-[#111827]">₹4,29,100</h3>
-          <p className="mt-2 text-xs text-indigo-600 font-bold flex items-center gap-1 bg-indigo-50 w-fit px-2 py-0.5 rounded-lg">
-            Target: 85% Reached
-          </p>
+          <div className="rounded-2xl lg:rounded-3xl bg-slate-100 p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-slate-500">Target pace: 85% reached</p>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
         {/* Graphical Section */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-[#e5e7eb] p-6 lg:p-8 hover:shadow-lg transition-shadow duration-300">
-          <div className="flex items-center justify-between mb-8 pb-6 border-b border-[#f3f4f6]">
+        <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-[32px] shadow-xl border border-slate-200 p-4 sm:p-6 lg:p-8 transition-all duration-300 hover:-translate-y-0.5">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 pb-4 sm:pb-6 border-b border-slate-200">
             <div>
-              <h3 className="font-bold text-[#111827] text-lg">Engagement Metrics</h3>
-              <p className="text-xs text-[#6b7280]">Traffic vs Conversion Ratio</p>
+              <h3 className="font-semibold text-slate-950 text-base sm:text-lg">Engagement Metrics</h3>
+              <p className="text-[10px] sm:text-sm text-slate-500 mt-1">Traffic and merchant activity in the last 7 days.</p>
             </div>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 bg-blue-600 rounded-full shadow-sm"></div>
-                <span className="text-[10px] font-bold text-[#4b5563] uppercase tracking-wider">Users</span>
+            <div className="flex items-center gap-3 sm:gap-5 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-2.5 h-2.5 bg-sky-600 rounded-full shadow-sm"></div>
+                <span className="text-[8px] sm:text-xs font-semibold text-slate-500 uppercase tracking-[0.24em]">Users</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 bg-indigo-200 rounded-full shadow-sm"></div>
-                <span className="text-[10px] font-bold text-[#4b5563] uppercase tracking-wider">Merchants</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-sm"></div>
+                <span className="text-[8px] sm:text-xs font-semibold text-slate-500 uppercase tracking-[0.24em]">Merchants</span>
               </div>
             </div>
           </div>
 
-          <div className="h-64 flex items-end justify-between gap-2 lg:gap-6 px-4">
+          <div className="h-48 sm:h-56 lg:h-64 flex items-end justify-between gap-1.5 sm:gap-2 lg:gap-6 px-2 sm:px-4">
             {chartData.map((d, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-4 h-full justify-end group">
-                <div className="w-full flex flex-col items-center gap-1.5 relative h-full justify-end">
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#111827] text-white text-[10px] py-1.5 px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-20 pointer-events-none shadow-xl border border-white/10">
+              <div key={i} className="flex-1 flex flex-col items-center gap-2 sm:gap-4 h-full justify-end group">
+                <div className="w-full flex flex-col items-center gap-1 sm:gap-1.5 relative h-full justify-end">
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#111827] text-white text-[8px] sm:text-[10px] py-1 sm:py-1.5 px-2 sm:px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-20 pointer-events-none shadow-xl border border-white/10">
                     <span className="block font-bold mb-0.5">{d.label}</span>
-                    <span className="text-blue-300 text-[9px]">{d.users} Active Users</span>
+                    <span className="text-blue-300 text-[7px] sm:text-[9px]">{d.users} Users</span>
                   </div>
                   <div
-                    className="w-full max-w-[20px] bg-blue-600 rounded-t-lg transition-all duration-700 ease-out cursor-pointer hover:bg-blue-700 shadow-sm relative group"
+                    className="w-full max-w-[12px] sm:max-w-[20px] bg-blue-600 rounded-t-lg transition-all duration-700 ease-out cursor-pointer hover:bg-blue-700 shadow-sm relative group"
                     style={{ height: `${(d.users / maxVal) * 100}%` }}
                   >
                     <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/20 to-transparent rounded-t-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   </div>
                   <div
-                    className="w-full max-w-[20px] bg-indigo-50 rounded-t-md transition-all duration-700 ease-out cursor-pointer hover:bg-indigo-100"
+                    className="w-full max-w-[12px] sm:max-w-[20px] bg-indigo-50 rounded-t-md transition-all duration-700 ease-out cursor-pointer hover:bg-indigo-100"
                     style={{ height: `${(d.merchants / maxVal) * 100}%` }}
                   ></div>
                 </div>
-                <span className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">{d.label}</span>
+                <span className="text-[8px] sm:text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">{d.label}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Merchant Requests Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-[#e5e7eb] overflow-hidden flex flex-col hover:shadow-lg transition-shadow duration-300">
-          <div className="px-6 py-5 border-b border-[#f3f4f6] flex items-center justify-between bg-white sticky top-0 z-10">
-            <div>
-              <h3 className="font-bold text-[#111827]">Partner Requests</h3>
-              <p className="text-[10px] text-[#9ca3af] font-bold uppercase tracking-wider mt-0.5">Approval Queue</p>
+        <div className="bg-white rounded-2xl sm:rounded-[32px] shadow-xl border border-slate-200 overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 flex items-center justify-between bg-white sticky top-0 z-10">
+            <div className="min-w-0">
+              <h3 className="font-semibold text-slate-950 text-sm sm:text-base">Partner Requests</h3>
+              <p className="text-[8px] sm:text-xs text-slate-400 uppercase tracking-[0.24em] mt-0.5 sm:mt-1">Approval queue</p>
             </div>
-            <button className="text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-widest" onClick={() => setActiveTab("Merchants")}>All Requests</button>
+            <button className="text-[8px] sm:text-xs font-semibold text-sky-600 hover:text-sky-700 uppercase tracking-[0.24em] shrink-0" onClick={() => setActiveTab("Merchants")}>View all</button>
           </div>
-          <div className="flex-1 divide-y divide-[#f3f4f6]">
+          <div className="flex-1 divide-y divide-slate-200">
             {[
               { name: "Urban Threads", cat: "Fashion", code: "UT" },
               { name: "Kitchen Masters", cat: "Home", code: "KM" },
               { name: "Pet Paradise", cat: "Services", code: "PP" },
               { name: "Elite Fitness", cat: "Health", code: "EF" }
             ].map((merchant, i) => (
-              <div key={i} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-all group">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-600 font-bold text-xs border border-gray-100 group-hover:bg-white group-hover:shadow-sm transition-all uppercase tracking-tighter">
+              <div key={i} className="px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-gray-50/50 transition-all group">
+                <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                  <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gray-50 flex items-center justify-center text-gray-600 font-bold text-[10px] sm:text-xs border border-gray-100 group-hover:bg-white group-hover:shadow-sm transition-all uppercase tracking-tighter shrink-0">
                     {merchant.code}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-[#111827] truncate">{merchant.name}</p>
-                    <p className="text-[10px] text-[#9ca3af] font-bold uppercase tracking-wider">{merchant.cat}</p>
+                    <p className="text-xs sm:text-sm font-bold text-[#111827] truncate">{merchant.name}</p>
+                    <p className="text-[8px] sm:text-[10px] text-slate-500 font-semibold uppercase tracking-wider">{merchant.cat}</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1 sm:gap-2 shrink-0">
                   <button
                     onClick={() => {
                       alert(`${merchant.name} approved!`);
                     }}
-                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors border border-transparent hover:border-green-100"
+                    className="p-1.5 sm:p-2 text-green-600 hover:bg-green-50 rounded-lg sm:rounded-lg transition-colors border border-transparent hover:border-green-100"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                     </svg>
                   </button>
@@ -501,9 +577,9 @@ function DashboardContent({ setActiveTab }: { setActiveTab: (tab: string) => voi
                     onClick={() => {
                       alert(`${merchant.name} rejected.`);
                     }}
-                    className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                    className="p-1.5 sm:p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg sm:rounded-lg transition-colors border border-transparent hover:border-red-100"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -517,13 +593,13 @@ function DashboardContent({ setActiveTab }: { setActiveTab: (tab: string) => voi
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-[#e5e7eb] overflow-hidden hover:shadow-lg transition-shadow duration-300">
-        <div className="px-6 py-5 border-b border-[#f3f4f6] flex items-center justify-between bg-white">
+      <div className="bg-white rounded-[32px] shadow-xl border border-slate-200 overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl">
+        <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-white">
           <div>
-            <h3 className="font-bold text-[#111827]">Recent Platform Activity</h3>
-            <p className="text-[10px] text-[#9ca3af] font-bold uppercase tracking-wider mt-0.5">Global Event Log</p>
+            <h3 className="font-semibold text-slate-950">Recent Platform Activity</h3>
+            <p className="text-xs text-slate-400 uppercase tracking-[0.24em] mt-1">Global event log</p>
           </div>
-          <button className="text-[10px] font-bold text-gray-500 hover:text-[#111827] uppercase tracking-widest" onClick={() => setActiveTab("Users")}>Full Log</button>
+          <button className="text-xs font-semibold text-slate-500 hover:text-slate-900 uppercase tracking-[0.24em]" onClick={() => setActiveTab("Users")}>Full log</button>
         </div>
         <div className="divide-y divide-[#f3f4f6]">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -1085,7 +1161,17 @@ function CategoriesContent({ categories, setCategories, categoryError }: { categ
 
       setCategories((prev: Category[]) => [
         ...prev,
-        { name, items: 0, status: "Active", banner: "Not Set", fixedSlots: 0, type: 'Merchant' as 'Merchant' | 'Service', position_1_business_id: null, position_2_business_id: null, position_3_business_id: null }
+        {
+          name,
+          items: 0,
+          status: "Active",
+          banner: "Not Set",
+          fixedSlots: 0,
+          type: 'Merchant' as 'Merchant' | 'Service',
+          position_1_business_id: undefined,
+          position_2_business_id: undefined,
+          position_3_business_id: undefined
+        } as Category
       ]);
     }
   };

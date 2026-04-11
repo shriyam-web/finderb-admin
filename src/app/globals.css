@@ -35,7 +35,9 @@
 }
 
 body {
-  background: var(--background);
+  background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.14), transparent 24%),
+              radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.12), transparent 28%),
+              var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
