@@ -68,9 +68,9 @@ interface Category {
   banner: string;
   fixedSlots: number;
   type: 'Merchant' | 'Service';
-  position_1_business_id?: string;
-  position_2_business_id?: string;
-  position_3_business_id?: string;
+  position_1_business_id?: string | null;
+  position_2_business_id?: string | null;
+  position_3_business_id?: string | null;
 }
 
 interface Settings {
