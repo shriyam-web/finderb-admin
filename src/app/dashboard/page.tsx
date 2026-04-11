@@ -335,66 +335,99 @@ export default function Dashboard() {
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 lg:hidden transition-opacity"
+          className="fixed inset-0 bg-black/50 backdrop-blur-md z-40 lg:hidden transition-all duration-300"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}
 
       {/* Sidebar */}
-      <aside className={`w-56 sm:w-56 lg:w-64 bg-white/95 border-r border-slate-200 flex flex-col fixed inset-y-0 shadow-2xl z-50 transition-transform duration-300 transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
-        <div className="h-20 lg:h-24 flex items-center px-4 lg:px-6 gap-3 lg:gap-4 border-b border-slate-200 bg-gradient-to-r from-sky-600 to-cyan-500 text-white">
-          <Link href="/dashboard" className="flex items-center gap-2 lg:gap-3 min-w-0">
-            <div className="w-12 lg:w-14 h-12 lg:h-14 rounded-3xl bg-white/15 p-1.5 lg:p-2 flex items-center justify-center shadow-inner shrink-0">
+      <aside className={`w-72 sm:w-80 lg:w-64 bg-white border-r border-slate-200/80 flex flex-col fixed inset-y-0 shadow-2xl z-50 transition-all duration-300 ease-out transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} lg:shadow-lg`}>
+        {/* Header */}
+        <div className="h-20 lg:h-24 flex items-center px-6 lg:px-6 gap-4 border-b border-slate-200/60 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white relative overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-sky-400/20 rounded-full translate-y-12 -translate-x-12"></div>
+          </div>
+
+          <Link href="/dashboard" className="flex items-center gap-3 min-w-0 relative z-10">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm p-2 flex items-center justify-center shadow-lg border border-white/20 shrink-0">
               <Image
                 src="/logo.png"
                 alt="Boomb logo"
-                width={48}
-                height={48}
-                className="rounded-2xl"
+                width={40}
+                height={40}
+                className="rounded-xl"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = "/next.svg";
                 }}
               />
             </div>
-            <div className="min-w-0 block">
-              <p className="text-sm lg:text-lg font-semibold tracking-tight">Boomb Admin</p>
-              <p className="text-[10px] lg:text-xs text-sky-100/90 uppercase tracking-[0.24em]">Control Center</p>
+            <div className="min-w-0">
+              <p className="text-lg font-bold tracking-tight">Boomb</p>
+              <p className="text-xs text-slate-300/90 uppercase tracking-wider font-medium">Admin Panel</p>
             </div>
           </Link>
+
+          {/* Close Button for Mobile */}
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="ml-auto p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all lg:hidden"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
-        <nav className="flex-1 mt-4 lg:mt-6 px-3 lg:px-4 space-y-1.5 lg:space-y-2">
-          {menuItems.map((item) => (
+        {/* Navigation */}
+        <nav className="flex-1 mt-6 px-4 space-y-2">
+          {menuItems.map((item, index) => (
             <button
               key={item.name}
               onClick={() => {
                 setActiveTab(item.name);
                 setIsSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-3 lg:px-4 py-2.5 lg:py-3 text-xs lg:text-sm font-semibold rounded-2xl transition-all duration-200 ${activeTab === item.name
-                ? "bg-slate-950 text-white shadow-sm"
-                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+              className={`w-full flex items-center gap-4 px-4 py-3.5 text-sm font-medium rounded-2xl transition-all duration-200 group relative overflow-hidden ${activeTab === item.name
+                ? "bg-gradient-to-r from-sky-600 to-sky-700 text-white shadow-lg shadow-sky-600/25"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:shadow-md"
                 }`}
             >
-              <span className={`${activeTab === item.name ? "text-sky-300" : "text-slate-400"} shrink-0`}>
+              {/* Active Indicator */}
+              {activeTab === item.name && (
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full"></div>
+              )}
+
+              {/* Icon */}
+              <span className={`shrink-0 transition-all duration-200 ${activeTab === item.name ? "text-sky-200 scale-110" : "text-slate-400 group-hover:text-sky-600"
+                }`}>
                 {item.icon}
               </span>
-              <span className="sm:hidden text-xs font-medium text-slate-900">{item.name}</span>
-              <span className="hidden sm:inline text-slate-900">{item.name}</span>
+
+              {/* Label */}
+              <span className="font-medium">{item.name}</span>
+
+              {/* Hover Effect */}
+              {activeTab !== item.name && (
+                <div className="absolute inset-0 bg-gradient-to-r from-sky-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-2xl"></div>
+              )}
             </button>
           ))}
         </nav>
 
-        <div className="p-3 lg:p-5 border-t border-slate-200 bg-slate-50">
-          <div className="flex items-center gap-2 lg:gap-3 px-1.5 lg:px-2 py-1.5 lg:py-2 rounded-3xl bg-white shadow-sm">
-            <div className="w-9 lg:w-10 h-9 lg:h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-sm lg:text-base font-semibold text-slate-600 shrink-0">
+        {/* User Profile */}
+        <div className="p-4 border-t border-slate-200/60 bg-slate-50/50">
+          <div className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-white shadow-sm border border-slate-200/50 hover:shadow-md transition-all duration-200">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-white font-bold text-sm shadow-md">
               AD
             </div>
-            <div className="flex-1 min-w-0 block">
-              <p className="text-xs lg:text-sm font-semibold text-slate-900 truncate">Admin User</p>
-              <p className="text-[10px] lg:text-xs text-slate-500 truncate">admin@boomb.in</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-900 truncate">Admin User</p>
+              <p className="text-xs text-slate-500 truncate">admin@boomb.in</p>
             </div>
+            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm"></div>
           </div>
         </div>
       </aside>
@@ -412,7 +445,7 @@ export default function Dashboard() {
               </svg>
             </button>
             <div className="min-w-0">
-              <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Current View</p>
+
               <h2 className="text-base lg:text-xl font-bold text-slate-950 tracking-tight truncate">{activeTab}</h2>
             </div>
           </div>
@@ -475,29 +508,10 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8">
       <div className="rounded-2xl sm:rounded-3xl lg:rounded-[36px] border border-slate-200 bg-white p-4 sm:p-6 lg:p-8 shadow-xl shadow-slate-200/40">
-        <div className="flex flex-col gap-4 lg:gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-[0.34em] text-sky-600">Control Panel</p>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-950 tracking-tight mt-2">Platform performance & approvals.</h1>
-            <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-6 sm:leading-7 text-slate-600 block">A beautifully balanced overview with metrics, partner requests, and activity insights.</p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 shrink-0">
-            <div className="rounded-2xl lg:rounded-3xl bg-slate-950 p-3 sm:p-4 text-white shadow-lg shadow-slate-950/10">
-              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.35em] text-slate-300">Weekly visits</p>
-              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-semibold">28.4k</p>
-              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400">+18% vs last week</p>
-            </div>
-            <div className="rounded-2xl lg:rounded-3xl bg-slate-950 p-3 sm:p-4 text-white shadow-lg shadow-slate-950/10">
-              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.35em] text-slate-300">Revenue</p>
-              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-semibold">₹4.3L</p>
-              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400">85% of monthly</p>
-            </div>
-            <div className="rounded-2xl lg:rounded-3xl bg-slate-950 p-3 sm:p-4 text-white shadow-lg shadow-slate-950/10 col-span-2 sm:col-span-1">
-              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.35em] text-slate-300">Approvals</p>
-              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-semibold">38</p>
-              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400">Need review</p>
-            </div>
-          </div>
+        <div className="min-w-0">
+          <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-[0.34em] text-sky-600">Control Panel</p>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-950 tracking-tight mt-2">Platform performance & approvals.</h1>
+          <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-6 sm:leading-7 text-slate-600 block">A beautifully balanced overview with metrics, partner requests, and activity insights.</p>
         </div>
       </div>
 
