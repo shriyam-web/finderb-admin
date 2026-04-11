@@ -509,7 +509,7 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
     <div className="space-y-4 sm:space-y-6 lg:space-y-8">
       <div className="rounded-2xl sm:rounded-3xl lg:rounded-[36px] border border-slate-200 bg-white p-4 sm:p-6 lg:p-8 shadow-xl shadow-slate-200/40">
         <div className="min-w-0">
-          <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-[0.34em] text-sky-600">Control Panel</p>
+
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-950 tracking-tight mt-2">Platform performance & approvals.</h1>
           <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-6 sm:leading-7 text-slate-600 block">A beautifully balanced overview with metrics, partner requests, and activity insights.</p>
         </div>
