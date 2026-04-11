@@ -331,11 +331,11 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#f9fafb]">
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100/50">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 lg:hidden transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}
@@ -401,10 +401,10 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
-        <header className="h-16 lg:h-20 bg-white/95 border-b border-slate-200 flex items-center justify-between px-3 lg:px-8 sticky top-0 z-20 shadow-sm backdrop-blur-sm">
+        <header className="h-16 lg:h-20 bg-gradient-to-r from-slate-50 via-white to-slate-50/80 border-b border-slate-200/60 flex items-center justify-between px-3 lg:px-8 sticky top-0 z-20 shadow-lg shadow-slate-200/20 backdrop-blur-md">
           <div className="flex items-center gap-3 lg:gap-4 min-w-0">
             <button
-              className="p-2 lg:p-3 text-slate-500 lg:hidden hover:bg-slate-100 rounded-2xl transition-all"
+              className="p-2 lg:p-3 text-slate-600 lg:hidden hover:bg-slate-100/80 hover:text-slate-900 rounded-2xl transition-all duration-200 hover:shadow-md"
               onClick={() => setIsSidebarOpen(true)}
             >
               <svg className="w-5 lg:w-6 h-5 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -412,35 +412,35 @@ export default function Dashboard() {
               </svg>
             </button>
             <div className="min-w-0">
-              <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-[0.28em] text-slate-500 block">Current View</p>
-              <h2 className="text-base lg:text-xl font-bold text-slate-950 tracking-tight truncate">{activeTab}</h2>
+              <p className="text-[10px] lg:text-xs font-bold uppercase tracking-[0.32em] text-slate-500 block bg-gradient-to-r from-slate-600 to-slate-400 bg-clip-text text-transparent">Current View</p>
+              <h2 className="text-base lg:text-xl font-bold text-slate-900 tracking-tight truncate bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">{activeTab}</h2>
             </div>
           </div>
 
           <div className="flex items-center gap-2 lg:gap-5 shrink-0">
-            <button className="p-2 lg:p-3 text-slate-500 hover:text-slate-900 transition-all rounded-2xl hover:bg-slate-100">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button className="p-2 lg:p-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 rounded-2xl transition-all duration-200 hover:shadow-md group">
+              <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
             </button>
-            <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
-            <Link href="/" className="text-xs lg:text-sm font-semibold text-rose-600 hover:text-rose-700 transition-all whitespace-nowrap">
+            <div className="h-6 w-px bg-gradient-to-b from-transparent via-slate-300 to-transparent hidden sm:block"></div>
+            <Link href="/" className="text-xs lg:text-sm font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-3 py-1.5 rounded-xl transition-all duration-200 hover:shadow-md whitespace-nowrap">
               Log out
             </Link>
           </div>
         </header>
 
-        <main className="p-3 sm:p-4 lg:p-8 max-w-7xl mx-auto w-full">
+        <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           {fetchError && (
-            <div className="mb-4 sm:mb-6 rounded-2xl bg-red-50 border border-red-200 p-3 sm:p-4 text-red-800">
+            <div className="mb-4 sm:mb-6 rounded-2xl bg-gradient-to-r from-red-50 to-red-100/50 border border-red-200/60 p-4 sm:p-5 text-red-800 shadow-lg shadow-red-500/10 ring-1 ring-red-200/20">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="text-sm font-medium">
-                  <p className="font-semibold">Data Fetch Error</p>
-                  <p className="mt-1 text-red-700">{fetchError}</p>
-                  <p className="mt-2 text-xs text-red-600">Check browser console (F12) for more details. Ensure Supabase environment variables are correctly set in production.</p>
+                  <p className="font-bold text-red-900">Data Fetch Error</p>
+                  <p className="mt-1 text-red-800">{fetchError}</p>
+                  <p className="mt-2 text-xs text-red-700">Check browser console (F12) for more details. Ensure Supabase environment variables are correctly set in production.</p>
                 </div>
               </div>
             </div>
@@ -474,102 +474,102 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-      <div className="rounded-2xl sm:rounded-3xl lg:rounded-[36px] border border-slate-200 bg-white p-4 sm:p-6 lg:p-8 shadow-xl shadow-slate-200/40">
+      <div className="rounded-2xl sm:rounded-3xl lg:rounded-[36px] border border-slate-200/60 bg-gradient-to-br from-white via-slate-50/30 to-white p-4 sm:p-6 lg:p-8 shadow-2xl shadow-slate-200/30 ring-1 ring-slate-200/20">
         <div className="flex flex-col gap-4 lg:gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
-            <p className="text-[9px] sm:text-xs font-semibold uppercase tracking-[0.34em] text-sky-600">Control Panel</p>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-950 tracking-tight mt-2">Platform performance & approvals.</h1>
+            <p className="text-[9px] sm:text-xs font-bold uppercase tracking-[0.4em] text-transparent bg-gradient-to-r from-sky-600 via-indigo-600 to-purple-600 bg-clip-text">Control Panel</p>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight mt-2 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-transparent">Platform performance & approvals.</h1>
             <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-6 sm:leading-7 text-slate-600 block">A beautifully balanced overview with metrics, partner requests, and activity insights.</p>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 shrink-0">
-            <div className="rounded-2xl lg:rounded-3xl bg-slate-950/95 p-3 sm:p-4 text-white shadow-lg shadow-slate-950/10 ring-1 ring-slate-900/5">
-              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.35em] text-slate-300">Weekly visits</p>
-              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-semibold">28.4k</p>
-              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400">+18% vs last week</p>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 shrink-0">
+            <div className="rounded-2xl lg:rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-3 sm:p-4 text-white shadow-xl shadow-slate-950/20 ring-1 ring-slate-900/10 hover:shadow-2xl transition-all duration-300">
+              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.4em] text-slate-300 font-medium">Weekly visits</p>
+              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-bold bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">28.4k</p>
+              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-emerald-400 font-semibold">+18% vs last week</p>
             </div>
-            <div className="rounded-2xl lg:rounded-3xl bg-slate-950/95 p-3 sm:p-4 text-white shadow-lg shadow-slate-950/10 ring-1 ring-slate-900/5">
-              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.35em] text-slate-300">Revenue</p>
-              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-semibold">₹4.3L</p>
-              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400">85% of monthly</p>
+            <div className="rounded-2xl lg:rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 p-3 sm:p-4 text-white shadow-xl shadow-indigo-600/20 ring-1 ring-indigo-500/10 hover:shadow-2xl transition-all duration-300">
+              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.4em] text-indigo-200 font-medium">Revenue</p>
+              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-bold bg-gradient-to-r from-white to-indigo-100 bg-clip-text text-transparent">₹4.3L</p>
+              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-indigo-300 font-semibold">85% of monthly</p>
             </div>
-            <div className="rounded-2xl lg:rounded-3xl bg-slate-950/95 p-3 sm:p-4 text-white shadow-lg shadow-slate-950/10 ring-1 ring-slate-900/5 col-span-2 sm:col-span-1">
-              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.35em] text-slate-300">Approvals</p>
-              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-semibold">38</p>
-              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-slate-400">Need review</p>
+            <div className="rounded-2xl lg:rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-emerald-700 p-3 sm:p-4 text-white shadow-xl shadow-emerald-600/20 ring-1 ring-emerald-500/10 hover:shadow-2xl transition-all duration-300 col-span-2 sm:col-span-1">
+              <p className="text-[9px] sm:text-[11px] uppercase tracking-[0.4em] text-emerald-200 font-medium">Approvals</p>
+              <p className="mt-2 sm:mt-4 text-xl sm:text-3xl font-bold bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent">38</p>
+              <p className="mt-1 sm:mt-2 text-[10px] sm:text-sm text-emerald-300 font-semibold">Need review</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
-        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200 bg-white p-4 sm:p-6 shadow-lg shadow-slate-200/40 transition-all hover:-translate-y-1 hover:shadow-xl">
+        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/50 p-4 sm:p-6 shadow-xl shadow-slate-200/30 ring-1 ring-slate-200/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-sky-500/10">
           <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
             <div className="min-w-0">
-              <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">Total Users</p>
-              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-950">12,842</h3>
+              <p className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.32em] text-slate-500 bg-gradient-to-r from-slate-600 to-slate-500 bg-clip-text text-transparent">Total Users</p>
+              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-bold text-slate-900 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">12,842</h3>
             </div>
-            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-sky-100 text-sky-700 shadow-sm shrink-0">
+            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-sky-500 to-sky-600 text-white shadow-lg shadow-sky-500/30 shrink-0 group-hover:scale-110 transition-transform duration-300">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             </div>
           </div>
-          <div className="rounded-2xl lg:rounded-3xl bg-slate-100 p-2 sm:p-3">
-            <p className="text-[10px] sm:text-xs text-slate-500">12% growth last 7 days</p>
+          <div className="rounded-2xl lg:rounded-3xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 p-2 sm:p-3 border border-emerald-200/50">
+            <p className="text-[10px] sm:text-xs text-emerald-700 font-semibold">12% growth last 7 days</p>
           </div>
         </div>
 
-        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200 bg-white p-4 sm:p-6 shadow-lg shadow-slate-200/40 transition-all hover:-translate-y-1 hover:shadow-xl">
+        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/50 p-4 sm:p-6 shadow-xl shadow-slate-200/30 ring-1 ring-slate-200/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-emerald-500/10">
           <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
             <div className="min-w-0">
-              <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">Active Merchants</p>
-              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-950">573</h3>
+              <p className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.32em] text-slate-500 bg-gradient-to-r from-slate-600 to-slate-500 bg-clip-text text-transparent">Active Merchants</p>
+              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-bold text-slate-900 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">573</h3>
             </div>
-            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-100 text-emerald-700 shadow-sm shrink-0">
+            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 shrink-0 group-hover:scale-110 transition-transform duration-300">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
             </div>
           </div>
-          <div className="rounded-2xl lg:rounded-3xl bg-slate-100 p-2 sm:p-3">
-            <p className="text-[10px] sm:text-xs text-slate-500">8 new merchants onboarded</p>
+          <div className="rounded-2xl lg:rounded-3xl bg-gradient-to-r from-emerald-50 to-emerald-100/50 p-2 sm:p-3 border border-emerald-200/50">
+            <p className="text-[10px] sm:text-xs text-emerald-700 font-semibold">8 new merchants onboarded</p>
           </div>
         </div>
 
-        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200 bg-white p-4 sm:p-6 shadow-lg shadow-slate-200/40 transition-all hover:-translate-y-1 hover:shadow-xl sm:col-span-2 lg:col-span-1">
+        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200/60 bg-gradient-to-br from-white to-slate-50/50 p-4 sm:p-6 shadow-xl shadow-slate-200/30 ring-1 ring-slate-200/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-indigo-500/10 sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
             <div className="min-w-0">
-              <p className="text-[9px] sm:text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">Monthly Revenue</p>
-              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-950">₹4.3L</h3>
+              <p className="text-[9px] sm:text-[11px] font-bold uppercase tracking-[0.32em] text-slate-500 bg-gradient-to-r from-slate-600 to-slate-500 bg-clip-text text-transparent">Monthly Revenue</p>
+              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-bold text-slate-900 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">₹4.3L</h3>
             </div>
-            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-indigo-100 text-indigo-700 shadow-sm shrink-0">
+            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/30 shrink-0 group-hover:scale-110 transition-transform duration-300">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
-          <div className="rounded-2xl lg:rounded-3xl bg-slate-100 p-2 sm:p-3">
-            <p className="text-[10px] sm:text-xs text-slate-500">Target pace: 85% reached</p>
+          <div className="rounded-2xl lg:rounded-3xl bg-gradient-to-r from-indigo-50 to-indigo-100/50 p-2 sm:p-3 border border-indigo-200/50">
+            <p className="text-[10px] sm:text-xs text-indigo-700 font-semibold">Target pace: 85% reached</p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
         {/* Graphical Section */}
-        <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-[32px] shadow-xl border border-slate-200 p-4 sm:p-6 lg:p-8 transition-all duration-300 hover:-translate-y-0.5">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 pb-4 sm:pb-6 border-b border-slate-200">
+        <div className="lg:col-span-2 bg-gradient-to-br from-white via-slate-50/30 to-white rounded-2xl sm:rounded-[32px] shadow-2xl border border-slate-200/60 ring-1 ring-slate-200/20 p-4 sm:p-6 lg:p-8 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-3xl">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 pb-4 sm:pb-6 border-b border-slate-200/60">
             <div>
-              <h3 className="font-semibold text-slate-950 text-base sm:text-lg">Engagement Metrics</h3>
-              <p className="text-[10px] sm:text-sm text-slate-500 mt-1">Traffic and merchant activity in the last 7 days.</p>
+              <h3 className="font-bold text-slate-900 text-base sm:text-lg bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Engagement Metrics</h3>
+              <p className="text-[10px] sm:text-sm text-slate-600 mt-1 font-medium">Traffic and merchant activity in the last 7 days.</p>
             </div>
             <div className="flex items-center gap-3 sm:gap-5 shrink-0">
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-2.5 h-2.5 bg-sky-600 rounded-full shadow-sm"></div>
-                <span className="text-[8px] sm:text-xs font-semibold text-slate-500 uppercase tracking-[0.24em]">Users</span>
+                <div className="w-2.5 h-2.5 bg-gradient-to-r from-sky-500 to-sky-600 rounded-full shadow-sm"></div>
+                <span className="text-[8px] sm:text-xs font-bold text-slate-700 uppercase tracking-[0.24em]">Users</span>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-sm"></div>
-                <span className="text-[8px] sm:text-xs font-semibold text-slate-500 uppercase tracking-[0.24em]">Merchants</span>
+                <div className="w-2.5 h-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full shadow-sm"></div>
+                <span className="text-[8px] sm:text-xs font-bold text-slate-700 uppercase tracking-[0.24em]">Merchants</span>
               </div>
             </div>
           </div>
@@ -578,62 +578,62 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
             {chartData.map((d, i) => (
               <div key={i} className="flex-1 flex flex-col items-center gap-2 sm:gap-4 h-full justify-end group">
                 <div className="w-full flex flex-col items-center gap-1 sm:gap-1.5 relative h-full justify-end">
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#111827] text-white text-[8px] sm:text-[10px] py-1 sm:py-1.5 px-2 sm:px-3 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-20 pointer-events-none shadow-xl border border-white/10">
-                    <span className="block font-bold mb-0.5">{d.label}</span>
-                    <span className="text-blue-300 text-[7px] sm:text-[9px]">{d.users} Users</span>
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gradient-to-r from-slate-900 to-slate-800 text-white text-[8px] sm:text-[10px] py-1.5 sm:py-2 px-3 sm:px-4 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-20 pointer-events-none shadow-xl border border-white/10 font-semibold">
+                    <span className="block mb-0.5">{d.label}</span>
+                    <span className="text-sky-300 text-[7px] sm:text-[9px]">{d.users} Users</span>
                   </div>
                   <div
-                    className="w-full max-w-[12px] sm:max-w-[20px] bg-blue-600 rounded-t-lg transition-all duration-700 ease-out cursor-pointer hover:bg-blue-700 shadow-sm relative group"
+                    className="w-full max-w-[12px] sm:max-w-[20px] bg-gradient-to-t from-sky-500 to-sky-600 rounded-t-lg transition-all duration-700 ease-out cursor-pointer hover:from-sky-600 hover:to-sky-700 shadow-sm relative group"
                     style={{ height: `${(d.users / maxVal) * 100}%` }}
                   >
-                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/20 to-transparent rounded-t-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-b from-white/30 to-transparent rounded-t-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   </div>
                   <div
-                    className="w-full max-w-[12px] sm:max-w-[20px] bg-indigo-50 rounded-t-md transition-all duration-700 ease-out cursor-pointer hover:bg-indigo-100"
+                    className="w-full max-w-[12px] sm:max-w-[20px] bg-gradient-to-t from-indigo-400 to-purple-500 rounded-t-md transition-all duration-700 ease-out cursor-pointer hover:from-indigo-500 hover:to-purple-600"
                     style={{ height: `${(d.merchants / maxVal) * 100}%` }}
                   ></div>
                 </div>
-                <span className="text-[8px] sm:text-[10px] font-bold text-[#9ca3af] uppercase tracking-widest">{d.label}</span>
+                <span className="text-[8px] sm:text-[10px] font-bold text-slate-600 uppercase tracking-widest">{d.label}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Merchant Requests Section */}
-        <div className="bg-white rounded-2xl sm:rounded-[32px] shadow-xl border border-slate-200 overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl">
-          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 flex items-center justify-between bg-white sticky top-0 z-10">
+        <div className="bg-gradient-to-br from-white via-slate-50/30 to-white rounded-2xl sm:rounded-[32px] shadow-2xl border border-slate-200/60 ring-1 ring-slate-200/20 overflow-hidden flex flex-col transition-all duration-300 hover:-translate-y-0.5 hover:shadow-3xl">
+          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200/60 flex items-center justify-between bg-gradient-to-r from-white to-slate-50/50 sticky top-0 z-10">
             <div className="min-w-0">
-              <h3 className="font-semibold text-slate-950 text-sm sm:text-base">Partner Requests</h3>
-              <p className="text-[8px] sm:text-xs text-slate-400 uppercase tracking-[0.24em] mt-0.5 sm:mt-1">Approval queue</p>
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Partner Requests</h3>
+              <p className="text-[8px] sm:text-xs text-slate-500 uppercase tracking-[0.28em] mt-0.5 sm:mt-1 font-semibold">Approval queue</p>
             </div>
-            <button className="text-[8px] sm:text-xs font-semibold text-sky-600 hover:text-sky-700 uppercase tracking-[0.24em] shrink-0" onClick={() => setActiveTab("Merchants")}>View all</button>
+            <button className="text-[8px] sm:text-xs font-bold text-sky-600 hover:text-sky-700 hover:bg-sky-50 px-3 py-1.5 rounded-xl uppercase tracking-[0.24em] shrink-0 transition-all duration-200 hover:shadow-md" onClick={() => setActiveTab("Merchants")}>View all</button>
           </div>
-          <div className="flex-1 divide-y divide-slate-200">
+          <div className="flex-1 divide-y divide-slate-200/60">
             {merchantRequests.length > 0 ? merchantRequests.slice(0, 4).map((merchant) => (
-              <div key={merchant.id} className="px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-gray-50/50 transition-all group">
+              <div key={merchant.id} className="px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-gradient-to-r hover:from-slate-50/50 hover:to-white transition-all group">
                 <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                  <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gray-50 flex items-center justify-center text-gray-600 font-bold text-[10px] sm:text-xs border border-gray-100 group-hover:bg-white group-hover:shadow-sm transition-all uppercase tracking-tighter shrink-0">
+                  <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-700 font-bold text-[10px] sm:text-xs border border-slate-300/50 group-hover:bg-gradient-to-br group-hover:from-slate-200 group-hover:to-slate-100 group-hover:shadow-md transition-all uppercase tracking-tighter shrink-0">
                     {merchant.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs sm:text-sm font-bold text-[#111827] truncate">{merchant.name}</p>
+                    <p className="text-xs sm:text-sm font-bold text-slate-900 truncate group-hover:text-slate-800 transition-colors">{merchant.name}</p>
                     <p className="text-[8px] sm:text-[10px] text-slate-500 font-semibold uppercase tracking-wider">{merchant.category}</p>
                   </div>
                 </div>
                 <div className="flex gap-1 sm:gap-2 shrink-0">
                   <button
                     onClick={() => handleApprove(merchant)}
-                    className="p-1.5 sm:p-2 text-green-600 hover:bg-green-50 rounded-lg sm:rounded-lg transition-colors border border-transparent hover:border-green-100"
+                    className="p-1.5 sm:p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg sm:rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-200 hover:shadow-md group"
                   >
-                    <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                     </svg>
                   </button>
                   <button
                     onClick={() => handleReject(merchant)}
-                    className="p-1.5 sm:p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg sm:rounded-lg transition-colors border border-transparent hover:border-red-100"
+                    className="p-1.5 sm:p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg sm:rounded-lg transition-all duration-200 border border-transparent hover:border-red-200 hover:shadow-md group"
                   >
-                    <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -641,12 +641,12 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
               </div>
             )) : (
               <div className="px-3 sm:px-6 py-8 text-center">
-                <p className="text-sm text-slate-500">No pending partner requests</p>
+                <p className="text-sm text-slate-500 font-medium">No pending partner requests</p>
               </div>
             )}
           </div>
-          <div className="p-4 bg-gray-50 border-t border-[#f3f4f6]">
-            <p className="text-[10px] text-center font-bold text-[#9ca3af] uppercase tracking-widest">Awaiting Verification ({merchantRequests.length} Total)</p>
+          <div className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200/60">
+            <p className="text-[10px] text-center font-bold text-slate-600 uppercase tracking-widest">Awaiting Verification ({merchantRequests.length} Total)</p>
           </div>
         </div>
       </div>
