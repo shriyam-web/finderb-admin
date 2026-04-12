@@ -71,6 +71,8 @@ interface Category {
   position_1_business_id?: string | null;
   position_2_business_id?: string | null;
   position_3_business_id?: string | null;
+  position_4_business_id?: string | null;
+  position_5_business_id?: string | null;
 }
 
 interface Settings {
@@ -136,7 +138,9 @@ export default function Dashboard() {
             type: c.type || 'Merchant',
             position_1_business_id: c.position_1_business_id,
             position_2_business_id: c.position_2_business_id,
-            position_3_business_id: c.position_3_business_id
+            position_3_business_id: c.position_3_business_id,
+            position_4_business_id: c.position_4_business_id,
+            position_5_business_id: c.position_5_business_id
           })));
         }
 
@@ -188,49 +192,49 @@ export default function Dashboard() {
   const menuItems = [
     {
       name: "Dashboard", icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
         </svg>
       )
     },
     {
       name: "Users", icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>
       )
     },
     {
       name: "Merchants", icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
         </svg>
       )
     },
     {
       name: "Categories", icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
         </svg>
       )
     },
     {
       name: "Payments & Subscriptions", icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
         </svg>
       )
     },
     {
       name: "Broadcasts", icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
         </svg>
       )
     },
     {
       name: "Settings", icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -285,6 +289,29 @@ export default function Dashboard() {
     }
   };
 
+  const handleUpdateCategory = async (catName: string, updates: Partial<Category>) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('categories')
+      .update({
+        banner: updates.banner,
+        position_1_business_id: updates.position_1_business_id,
+        position_2_business_id: updates.position_2_business_id,
+        position_3_business_id: updates.position_3_business_id,
+        position_4_business_id: updates.position_4_business_id,
+        position_5_business_id: updates.position_5_business_id,
+      })
+      .eq('name', catName);
+
+    if (error) {
+      alert("Error updating category: " + error.message);
+      return;
+    }
+
+    setCategories(prev => prev.map(c => c.name === catName ? { ...c, ...updates } : c));
+    alert(`Category ${catName} updated successfully!`);
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case "Dashboard":
@@ -306,7 +333,7 @@ export default function Dashboard() {
           />
         );
       case "Categories":
-        return <CategoriesContent categories={categories} setCategories={setCategories} categoryError={categoryError} />;
+        return <CategoriesContent categories={categories} setCategories={setCategories} categoryError={categoryError} onUpdateCategory={handleUpdateCategory} />;
       case "Payments & Subscriptions":
         return <PaymentsContent />;
       case "Broadcasts":
@@ -331,149 +358,124 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100/50">
+    <div className="flex min-h-screen bg-[#F8FAFC] font-sans text-slate-900">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-md z-40 lg:hidden transition-all duration-300"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}
 
       {/* Sidebar */}
-      <aside className={`w-72 sm:w-80 lg:w-64 bg-white border-r border-slate-200/80 flex flex-col fixed inset-y-0 shadow-2xl z-50 transition-all duration-300 ease-out transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} lg:shadow-lg`}>
+      <aside className={`w-64 bg-sidebar-background border-r border-slate-200 flex flex-col fixed inset-y-0 z-50 transition-all duration-300 ease-in-out transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} lg:shadow-none`}>
         {/* Header */}
-        <div className="h-20 lg:h-24 flex items-center px-6 lg:px-6 gap-4 border-b border-slate-200/60 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white relative overflow-hidden">
-          {/* Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-sky-400/20 rounded-full translate-y-12 -translate-x-12"></div>
-          </div>
-
-          <Link href="/dashboard" className="flex items-center gap-3 min-w-0 relative z-10">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm p-2 flex items-center justify-center shadow-lg border border-white/20 shrink-0">
-              <Image
-                src="/logo.png"
-                alt="Boomb logo"
-                width={40}
-                height={40}
-                className="rounded-xl"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = "/next.svg";
-                }}
-              />
-            </div>
-            <div className="min-w-0">
-              <p className="text-lg font-bold tracking-tight">Boomb</p>
-              <p className="text-xs text-slate-300/90 uppercase tracking-wider font-medium">Admin Panel</p>
-            </div>
+        <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-100/50">
+          <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0">
+            <Image
+              src="/logo1.png"
+              alt="FinderB Logo"
+              width={140}
+              height={40}
+              className="object-contain"
+              priority
+            />
           </Link>
 
           {/* Close Button for Mobile */}
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="ml-auto p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all lg:hidden"
+            className="ml-auto p-1.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-md transition-all lg:hidden"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 mt-6 px-4 space-y-2">
-          {menuItems.map((item, index) => (
+        <nav className="flex-1 mt-6 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
+          {menuItems.map((item) => (
             <button
               key={item.name}
               onClick={() => {
                 setActiveTab(item.name);
                 setIsSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-4 px-4 py-3.5 text-sm font-medium rounded-2xl transition-all duration-200 group relative overflow-hidden ${activeTab === item.name
-                ? "bg-gradient-to-r from-sky-600 to-sky-700 text-white shadow-lg shadow-sky-600/25"
-                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:shadow-md"
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-[11px] font-bold rounded-xl transition-all duration-200 group relative ${activeTab === item.name
+                ? "bg-primary text-white shadow-lg shadow-primary/25"
+                : "text-sidebar-foreground hover:bg-primary/5 hover:text-primary"
                 }`}
             >
-              {/* Active Indicator */}
               {activeTab === item.name && (
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full"></div>
+                <div className="absolute left-0 w-1 h-4 bg-secondary rounded-r-full"></div>
               )}
-
-              {/* Icon */}
-              <span className={`shrink-0 transition-all duration-200 ${activeTab === item.name ? "text-sky-200 scale-110" : "text-slate-400 group-hover:text-sky-600"
+              <span className={`shrink-0 transition-all duration-200 ${activeTab === item.name ? "text-secondary scale-110" : "text-slate-400 group-hover:text-primary group-hover:scale-110"
                 }`}>
                 {item.icon}
               </span>
-
-              {/* Label */}
-              <span className="font-medium">{item.name}</span>
-
-              {/* Hover Effect */}
-              {activeTab !== item.name && (
-                <div className="absolute inset-0 bg-gradient-to-r from-sky-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-2xl"></div>
-              )}
+              <span className="tracking-tight">{item.name}</span>
             </button>
           ))}
         </nav>
 
         {/* User Profile */}
-        <div className="p-4 border-t border-slate-200/60 bg-slate-50/50">
-          <div className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-white shadow-sm border border-slate-200/50 hover:shadow-md transition-all duration-200">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-white font-bold text-sm shadow-md">
+        <div className="p-4 border-t border-slate-100/50 bg-slate-50/30">
+          <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 cursor-pointer group border border-transparent hover:border-slate-100">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-700 flex items-center justify-center text-white font-bold text-xs shadow-sm group-hover:scale-105 transition-transform">
               AD
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-900 truncate">Admin User</p>
-              <p className="text-xs text-slate-500 truncate">admin@boomb.in</p>
+              <p className="text-[11px] font-bold text-slate-900 truncate">Admin User</p>
+              <p className="text-[10px] text-slate-500 truncate font-semibold">admin@finderb.in</p>
             </div>
-            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm"></div>
+            <div className="relative">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></div>
+              <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-25"></div>
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
-        <header className="h-16 lg:h-20 bg-white border-b border-slate-200 flex items-center justify-between px-3 lg:px-8 sticky top-0 z-20 shadow-sm">
-          <div className="flex items-center gap-3 lg:gap-4 min-w-0">
+        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20">
+          <div className="flex items-center gap-3 min-w-0">
             <button
-              className="p-2 lg:p-3 text-slate-500 lg:hidden hover:bg-slate-100 rounded-2xl transition-all"
+              className="p-2 text-slate-500 lg:hidden hover:bg-primary/5 hover:text-primary rounded-xl transition-all"
               onClick={() => setIsSidebarOpen(true)}
             >
-              <svg className="w-5 lg:w-6 h-5 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <div className="min-w-0">
-
-              <h2 className="text-base lg:text-xl font-bold text-slate-950 tracking-tight truncate">{activeTab}</h2>
-            </div>
+            <h2 className="text-sm lg:text-base font-black text-primary tracking-tight truncate uppercase">{activeTab}</h2>
           </div>
 
-          <div className="flex items-center gap-2 lg:gap-5 shrink-0">
-            <button className="p-2 lg:p-3 text-slate-500 hover:text-slate-900 transition-all rounded-2xl hover:bg-slate-100">
+          <div className="flex items-center gap-4 shrink-0">
+            <button className="p-2 text-slate-400 hover:text-primary transition-all rounded-xl hover:bg-primary/5 relative">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
+              <span className="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full border-2 border-white"></span>
             </button>
-            <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
-            <Link href="/" className="text-xs lg:text-sm font-semibold text-rose-600 hover:text-rose-700 transition-all whitespace-nowrap">
-              Log out
+            <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
+            <Link href="/" className="text-[11px] font-black text-slate-400 hover:text-rose-600 transition-all uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 hover:border-rose-100 hover:bg-rose-50/50">
+              Sign out
             </Link>
           </div>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        <main className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto w-full space-y-6">
           {fetchError && (
-            <div className="mb-4 sm:mb-6 rounded-2xl bg-gradient-to-r from-red-50 to-red-100/50 border border-red-200/60 p-4 sm:p-5 text-red-800 shadow-lg shadow-red-500/10 ring-1 ring-red-200/20">
+            <div className="rounded-xl bg-rose-50 border border-rose-100 p-4 text-rose-800 shadow-sm ring-1 ring-rose-200/20">
               <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <div className="text-sm font-medium">
-                  <p className="font-bold text-red-900">Data Fetch Error</p>
-                  <p className="mt-1 text-red-800">{fetchError}</p>
-                  <p className="mt-2 text-xs text-red-700">Check browser console (F12) for more details. Ensure Supabase environment variables are correctly set in production.</p>
+                <div className="text-[11px] font-semibold">
+                  <p className="font-bold text-rose-900">System Alert</p>
+                  <p className="mt-0.5 text-rose-700">{fetchError}</p>
                 </div>
               </div>
             </div>
@@ -506,189 +508,164 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
   const maxVal = Math.max(...chartData.map(d => d.users));
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-      <div className="rounded-2xl sm:rounded-3xl lg:rounded-[36px] border border-slate-200 bg-white p-4 sm:p-6 lg:p-8 shadow-xl shadow-slate-200/40">
-        <div className="min-w-0">
-
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-slate-950 tracking-tight mt-2">Platform performance & approvals.</h1>
-          <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-6 sm:leading-7 text-slate-600 block">A beautifully balanced overview with metrics, partner requests, and activity insights.</p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-1.5 px-1">
+        <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">System Overview</h1>
+        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Real-time performance and partner engagement metrics.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
-        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200 bg-white p-4 sm:p-6 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
-          <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
-            <div className="min-w-0">
-              <p className="text-[9px] sm:text-[11px] font-medium uppercase tracking-[0.32em] text-slate-500">Total Users</p>
-              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-900">12,842</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {[
+          { label: "Total Users", value: "12,842", growth: "+12%", color: "bg-primary", icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          )},
+          { label: "Active Merchants", value: "573", growth: "+8", color: "bg-secondary", icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          )},
+          { label: "Monthly Revenue", value: "₹4.3L", growth: "85%", color: "bg-slate-900", icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          )},
+        ].map((stat, i) => (
+          <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
+            <div className="flex items-center justify-between mb-4">
+              <div className={`p-2.5 rounded-xl ${stat.color} text-white shadow-lg ${stat.color === 'bg-primary' ? 'shadow-primary/30' : stat.color === 'bg-secondary' ? 'shadow-secondary/30' : 'shadow-slate-200'} group-hover:scale-110 transition-all duration-300`}>
+                {stat.icon}
+              </div>
+              <div className="flex flex-col items-end">
+                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${stat.growth.startsWith('+') ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-50 text-slate-600 border border-slate-100'}`}>
+                  {stat.growth}
+                </span>
+              </div>
             </div>
-            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-sky-600 text-white shadow-lg shrink-0 group-hover:scale-110 transition-transform duration-300">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            </div>
-          </div>
-          <div className="rounded-2xl lg:rounded-3xl bg-emerald-50 p-2 sm:p-3 border border-emerald-200">
-            <p className="text-[10px] sm:text-xs text-emerald-700 font-medium">12% growth last 7 days</p>
-          </div>
-        </div>
-
-        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200 bg-white p-4 sm:p-6 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
-          <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
-            <div className="min-w-0">
-              <p className="text-[9px] sm:text-[11px] font-medium uppercase tracking-[0.32em] text-slate-500">Active Merchants</p>
-              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-900">573</h3>
-            </div>
-            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-600 text-white shadow-lg shrink-0 group-hover:scale-110 transition-transform duration-300">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-          </div>
-          <div className="rounded-2xl lg:rounded-3xl bg-emerald-50 p-2 sm:p-3 border border-emerald-200">
-            <p className="text-[10px] sm:text-xs text-emerald-700 font-medium">8 new merchants onboarded</p>
-          </div>
-        </div>
-
-        <div className="group cursor-pointer rounded-2xl sm:rounded-[32px] border border-slate-200 bg-white p-4 sm:p-6 shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl sm:col-span-2 lg:col-span-1">
-          <div className="flex items-center justify-between gap-3 mb-4 sm:mb-5">
-            <div className="min-w-0">
-              <p className="text-[9px] sm:text-[11px] font-medium uppercase tracking-[0.32em] text-slate-500">Monthly Revenue</p>
-              <h3 className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-slate-900">₹4.3L</h3>
-            </div>
-            <div className="flex h-10 sm:h-11 w-10 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-indigo-600 text-white shadow-lg shrink-0 group-hover:scale-110 transition-transform duration-300">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-          <div className="rounded-2xl lg:rounded-3xl bg-indigo-50 p-2 sm:p-3 border border-indigo-200">
-            <p className="text-[10px] sm:text-xs text-indigo-700 font-medium">Target pace: 85% reached</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 lg:gap-6">
-        {/* Graphical Section */}
-        <div className="lg:col-span-2 bg-white rounded-2xl sm:rounded-[32px] shadow-xl border border-slate-200 p-4 sm:p-6 lg:p-8">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 pb-4 sm:pb-6 border-b border-slate-200">
             <div>
-              <h3 className="font-semibold text-slate-900 text-base sm:text-lg">Engagement Metrics</h3>
-              <p className="text-[10px] sm:text-sm text-slate-600 mt-1">Traffic and merchant activity in the last 7 days.</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
+              <h3 className="text-2xl font-black text-slate-900 mt-1 tabular-nums">{stat.value}</h3>
             </div>
-            <div className="flex items-center gap-3 sm:gap-5 shrink-0">
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-2.5 h-2.5 bg-sky-600 rounded-full"></div>
-                <span className="text-[8px] sm:text-xs font-medium text-slate-700 uppercase tracking-[0.24em]">Users</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
+            <div>
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Engagement Metrics</h3>
+              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1 opacity-60">Activity analysis for the current week.</p>
+            </div>
+            <div className="flex gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-primary rounded-full shadow-sm shadow-primary/20"></div>
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Users</span>
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full"></div>
-                <span className="text-[8px] sm:text-xs font-medium text-slate-700 uppercase tracking-[0.24em]">Merchants</span>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-secondary rounded-full shadow-sm shadow-secondary/20"></div>
+                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Merchants</span>
               </div>
             </div>
           </div>
 
-          <div className="h-48 sm:h-56 lg:h-64 flex items-end justify-between gap-1.5 sm:gap-2 lg:gap-6 px-2 sm:px-4">
+          <div className="h-56 flex items-end justify-between gap-3 px-2">
             {chartData.map((d, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2 sm:gap-4 h-full justify-end group">
-                <div className="w-full flex flex-col items-center gap-1 sm:gap-1.5 relative h-full justify-end">
-                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[8px] sm:text-[10px] py-1.5 sm:py-2 px-3 sm:px-4 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 whitespace-nowrap z-20 pointer-events-none shadow-lg font-medium">
-                    <span className="block mb-0.5">{d.label}</span>
-                    <span className="text-sky-300 text-[7px] sm:text-[9px]">{d.users} Users</span>
-                  </div>
+              <div key={i} className="flex-1 flex flex-col items-center gap-3 h-full justify-end group relative">
+                <div className="w-full flex flex-col items-center gap-1 h-full justify-end max-w-[28px]">
                   <div
-                    className="w-full max-w-[12px] sm:max-w-[20px] bg-sky-600 rounded-t-lg transition-all duration-700 ease-out cursor-pointer hover:bg-sky-700 shadow-sm"
+                    className="w-full bg-primary/90 rounded-t-lg transition-all duration-300 hover:bg-primary cursor-pointer shadow-sm group-hover:scale-x-105"
                     style={{ height: `${(d.users / maxVal) * 100}%` }}
-                  >
-                  </div>
+                  ></div>
                   <div
-                    className="w-full max-w-[12px] sm:max-w-[20px] bg-indigo-600 rounded-t-md transition-all duration-700 ease-out cursor-pointer hover:bg-indigo-700"
+                    className="w-full bg-secondary/90 rounded-t-lg transition-all duration-300 hover:bg-secondary cursor-pointer shadow-sm group-hover:scale-x-105"
                     style={{ height: `${(d.merchants / maxVal) * 100}%` }}
                   ></div>
                 </div>
-                <span className="text-[8px] sm:text-[10px] font-medium text-slate-600 uppercase tracking-widest">{d.label}</span>
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter transition-colors group-hover:text-primary">{d.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Merchant Requests Section */}
-        <div className="bg-white rounded-2xl sm:rounded-[32px] shadow-xl border border-slate-200 overflow-hidden flex flex-col">
-          <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-200 flex items-center justify-between bg-slate-50 sticky top-0 z-10">
-            <div className="min-w-0">
-              <h3 className="font-semibold text-slate-900 text-sm sm:text-base">Partner Requests</h3>
-              <p className="text-[8px] sm:text-xs text-slate-500 uppercase tracking-[0.28em] mt-0.5 sm:mt-1">Approval queue</p>
-            </div>
-            <button className="text-[8px] sm:text-xs font-medium text-sky-600 hover:text-sky-700 hover:bg-sky-50 px-3 py-1.5 rounded-xl uppercase tracking-[0.24em] shrink-0 transition-all duration-200" onClick={() => setActiveTab("Merchants")}>View all</button>
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex flex-col overflow-hidden">
+          <div className="p-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Pending Approvals</h3>
+            <button
+              onClick={() => setActiveTab("Merchants")}
+              className="text-[9px] font-black text-primary hover:text-primary-700 uppercase tracking-widest transition-all bg-white px-2 py-1 rounded-lg border border-slate-200 hover:border-primary/20 shadow-sm"
+            >
+              View Queue
+            </button>
           </div>
-          <div className="flex-1 divide-y divide-slate-200">
-            {merchantRequests.length > 0 ? merchantRequests.slice(0, 4).map((merchant) => (
-              <div key={merchant.id} className="px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-slate-50 transition-all group">
-                <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-                  <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-slate-100 flex items-center justify-center text-slate-700 font-medium text-[10px] sm:text-xs border border-slate-300 group-hover:bg-slate-200 transition-all uppercase tracking-tighter shrink-0">
-                    {merchant.name.split(' ').map(word => word[0]).join('').slice(0, 2)}
+          <div className="flex-1 divide-y divide-slate-50/80 overflow-y-auto max-h-[340px] custom-scrollbar">
+            {merchantRequests.length > 0 ? merchantRequests.map((merchant) => (
+              <div key={merchant.id} className="p-4 flex items-center justify-between hover:bg-primary/[0.02] transition-colors group">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-primary font-black text-[10px] border border-slate-200 group-hover:from-primary/5 group-hover:to-primary/10 transition-all uppercase shrink-0 shadow-sm group-hover:scale-105">
+                    {merchant.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs sm:text-sm font-medium text-slate-900 truncate group-hover:text-slate-800 transition-colors">{merchant.name}</p>
-                    <p className="text-[8px] sm:text-[10px] text-slate-500 uppercase tracking-wider">{merchant.category}</p>
+                    <p className="text-[11px] font-black text-slate-900 truncate tracking-tight">{merchant.name}</p>
+                    <p className="text-[9px] text-secondary font-black uppercase tracking-widest mt-0.5">{merchant.category}</p>
                   </div>
                 </div>
-                <div className="flex gap-1 sm:gap-2 shrink-0">
+                <div className="flex gap-2 shrink-0">
                   <button
                     onClick={() => handleApprove(merchant)}
-                    className="p-1.5 sm:p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all duration-200 border border-transparent hover:border-emerald-200 group"
+                    className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all border border-slate-100 hover:border-emerald-200 shadow-sm"
+                    title="Approve"
                   >
-                    <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                     </svg>
                   </button>
                   <button
                     onClick={() => handleReject(merchant)}
-                    className="p-1.5 sm:p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 border border-transparent hover:border-red-200 group"
+                    className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-slate-100 hover:border-rose-200 shadow-sm"
+                    title="Reject"
                   >
-                    <svg className="w-3.5 sm:w-4 h-3.5 sm:h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
               </div>
             )) : (
-              <div className="px-3 sm:px-6 py-8 text-center">
-                <p className="text-sm text-slate-500">No pending partner requests</p>
+              <div className="h-full flex flex-col items-center justify-center p-12 opacity-40">
+                <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
+                  <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Queue Empty</p>
               </div>
             )}
-          </div>
-          <div className="p-4 bg-slate-50 border-t border-slate-200">
-            <p className="text-[10px] text-center font-medium text-slate-600 uppercase tracking-widest">Awaiting Verification ({merchantRequests.length} Total)</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-[32px] shadow-xl border border-slate-200 overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl">
-        <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between bg-white">
-          <div>
-            <h3 className="font-semibold text-slate-950">Recent Platform Activity</h3>
-            <p className="text-xs text-slate-400 uppercase tracking-[0.24em] mt-1">Global event log</p>
-          </div>
-          <button className="text-xs font-semibold text-slate-500 hover:text-slate-900 uppercase tracking-[0.24em]" onClick={() => setActiveTab("Users")}>Full log</button>
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+        <div className="p-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
+          <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Recent Activity</h3>
+          <button className="text-[9px] font-black text-primary hover:text-primary-700 uppercase tracking-widest transition-all bg-white px-2 py-1 rounded-lg border border-slate-200 hover:border-primary/20 shadow-sm" onClick={() => setActiveTab("Users")}>Full Log</button>
         </div>
-        <div className="divide-y divide-[#f3f4f6]">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-all group">
+        <div className="divide-y divide-slate-50/80">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-4 flex items-center justify-between hover:bg-primary/[0.01] transition-colors group">
               <div className="flex items-center gap-4 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center shrink-0 border border-gray-100 text-gray-400 group-hover:text-blue-500 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 text-slate-400 group-hover:text-primary group-hover:bg-primary/5 transition-all group-hover:scale-105 shadow-sm">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                   </svg>
                 </div>
                 <div className="truncate">
-                  <p className="text-sm font-bold text-[#111827] truncate">Platform Onboarding: user_0{i}84</p>
-                  <p className="text-xs text-[#6b7280] truncate leading-relaxed">Profile verification completed successfully.</p>
+                  <p className="text-[11px] font-black text-slate-900 truncate tracking-tight">Onboarding: user_0{i}84</p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 opacity-60">Verification completed successfully.</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[9px] font-bold text-[#9ca3af] uppercase bg-gray-100 px-2 py-1 rounded-md border border-gray-200">{i * 12} mins ago</span>
-              </div>
+              <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100 tabular-nums">0{i}:24 PM</span>
             </div>
           ))}
         </div>
@@ -712,67 +689,70 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-2xl font-bold text-[#111827]">User Management</h1>
-          <p className="text-sm text-[#6b7280]">View and manage registered users on the platform.</p>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">User Management</h1>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">View and manage registered users on the platform.</p>
         </div>
         <button
           onClick={() => alert("Add User functionality coming soon!")}
-          className="px-4 py-2 bg-[#111827] text-white text-sm font-bold rounded-lg hover:bg-[#1f2937] transition-all active:scale-95"
+          className="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 transition-all active:scale-95 shadow-lg shadow-primary/20 uppercase tracking-widest"
         >
-          + Add New User
+          Add New User
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#e5e7eb] shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-[#f9fafb] border-b border-[#e5e7eb]">
+            <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest whitespace-nowrap">User Info</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest whitespace-nowrap">Status</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest whitespace-nowrap">Joined Date</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest text-right whitespace-nowrap">Actions</th>
+                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">User Info</th>
+                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
+                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Joined Date</th>
+                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f3f4f6]">
+            <tbody className="divide-y divide-slate-50/80">
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-[#f9fafb] transition-colors group">
+                <tr key={user.id} className="hover:bg-primary/[0.01] transition-colors group">
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#f3f4f6] flex items-center justify-center text-xs font-bold text-[#4b5563] shrink-0 border border-[#e5e7eb] group-hover:bg-white group-hover:shadow-sm transition-all">
-                        {user.name.split(' ').map((n: string) => n[0]).join('')}
+                    <div className="flex items-center gap-4">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
+                        {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-[#111827] truncate">{user.name}</p>
-                        <p className="text-xs text-[#6b7280] truncate">{user.email}</p>
+                      <div>
+                        <p className="text-[11px] font-black text-slate-900 tracking-tight">{user.name}</p>
+                        <p className="text-[10px] text-slate-500 font-bold opacity-60">{user.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <button
-                      onClick={() => toggleUserStatus(user.id)}
-                      className={`inline-flex px-2 py-0.5 text-[10px] font-bold uppercase rounded-full border transition-all hover:scale-105 active:scale-95 ${user.status === "Active" ? "bg-green-50 text-green-700 border-green-100" : "bg-gray-50 text-gray-700 border-gray-100"
-                        }`}
-                    >
+                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${user.status === "Active"
+                      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                      : "bg-slate-50 text-slate-500 border-slate-100"
+                      }`}>
                       {user.status}
-                    </button>
+                    </span>
                   </td>
-                  <td className="px-6 py-4 text-xs font-bold text-[#4b5563] whitespace-nowrap">{user.joined}</td>
+                  <td className="px-6 py-4">
+                    <p className="text-[10px] text-slate-600 font-bold tabular-nums opacity-80">{user.joined}</p>
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => alert(`Editing ${user.name}...`)}
-                        className="p-2 text-[#6b7280] hover:text-blue-600 hover:bg-blue-50 rounded-lg border border-transparent hover:border-blue-100 transition-all"
+                        onClick={() => toggleUserStatus(user.id)}
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm"
+                        title={user.status === "Active" ? "Suspend" : "Activate"}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                       </button>
                       <button
                         onClick={() => handleDeleteUser(user.id)}
-                        className="p-2 text-[#9ca3af] hover:text-red-600 hover:bg-red-50 rounded-lg border border-transparent hover:border-red-100 transition-all"
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 shadow-sm"
+                        title="Delete"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -782,6 +762,20 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
                   </td>
                 </tr>
               ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center opacity-40">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
+                        <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                      </div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">No users found</p>
+                    </div>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -790,686 +784,329 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
   );
 }
 
-function MerchantsContent({
-  activeMerchants,
-  setActiveMerchants,
-  merchantRequests,
-  setMerchantRequests
-}: {
+function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequests, setMerchantRequests }: {
   activeMerchants: Merchant[],
   setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>,
   merchantRequests: MerchantRequest[],
   setMerchantRequests: Dispatch<SetStateAction<MerchantRequest[]>>
 }) {
-  const [subTab, setSubTab] = useState("Active");
-  const [extendingMerchant, setExtendingMerchant] = useState<string | null>(null);
-  const [selectedBusiness, setSelectedBusiness] = useState<BusinessData | null>(null);
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [viewLoading, setViewLoading] = useState(false);
+  const [merchantTab, setMerchantTab] = useState<"Active" | "Pending">("Active");
 
-  const openBusinessModal = async (merchantId: string) => {
-    setViewLoading(true);
-    const supabase = createClient();
-    const { data, error } = await supabase.from('Business').select('*').eq('id', merchantId).single();
-    setViewLoading(false);
-
-    if (error) {
-      alert("Error loading merchant details: " + error.message);
-      return;
-    }
-
-    setSelectedBusiness(data as BusinessData);
-    setIsViewOpen(true);
-  };
-
-  const handleUpdateDate = () => {
-    if (!extendingMerchant) return;
-    setActiveMerchants((prev: Merchant[]) => prev.map(m =>
-      m.name === extendingMerchant ? { ...m, validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] } : m
-    ));
-    setExtendingMerchant(null);
-    alert(`${extendingMerchant}'s subscription has been extended!`);
-  };
-
-  const handleApprove = async (req: MerchantRequest) => {
+  const handleApprove = async (merchant: MerchantRequest) => {
     const supabase = createClient();
     const { error } = await supabase
       .from('Business')
-      .update({
-        kycStatus: 'approved',
-        isVerified: true
-      })
-      .eq('id', req.id);
+      .update({ kycStatus: 'approved', isVerified: true })
+      .eq('id', merchant.id);
 
     if (error) {
-      alert("Error approving merchant: " + error.message);
+      alert("Error: " + error.message);
       return;
     }
 
-    setActiveMerchants((prev: Merchant[]) => [
-      ...prev,
-      {
-        id: req.id,
-        name: req.name,
-        category: req.category,
-        rating: 0,
-        sales: 0,
-        validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-      }
-    ]);
-    setMerchantRequests((prev: MerchantRequest[]) => prev.filter(r => r.id !== req.id));
-    alert(`${req.name} has been approved and added to active merchants!`);
+    setActiveMerchants([...activeMerchants, {
+      ...merchant,
+      rating: 0,
+      sales: 0,
+      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    }]);
+    setMerchantRequests(merchantRequests.filter(m => m.id !== merchant.id));
   };
 
-  const handleReject = async (req: MerchantRequest) => {
-    if (confirm(`Are you sure you want to reject ${req.name}?`)) {
+  const handleReject = async (id: string) => {
+    if (confirm("Reject this merchant?")) {
       const supabase = createClient();
-      const { error } = await supabase
-        .from('Business')
-        .update({ kycStatus: 'rejected', isVerified: false })
-        .eq('id', req.id);
-
-      if (error) {
-        alert("Error rejecting merchant: " + error.message);
-        return;
-      }
-      setMerchantRequests((prev: MerchantRequest[]) => prev.filter(r => r.id !== req.id));
-      alert(`${req.name} request has been rejected.`);
+      await supabase.from('Business').update({ kycStatus: 'rejected' }).eq('id', id);
+      setMerchantRequests(merchantRequests.filter(m => m.id !== id));
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-2xl font-bold text-[#111827]">Merchant Management</h1>
-          <p className="text-sm text-[#6b7280]">Manage active partners and verify new requests.</p>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Partner Management</h1>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage active partners and verify new requests.</p>
         </div>
-        <div className="flex p-1 bg-[#f3f4f6] rounded-xl w-full sm:w-fit border border-[#e5e7eb]">
+        <div className="flex p-1 bg-slate-100/50 border border-slate-200/60 rounded-xl shadow-inner">
           <button
-            onClick={() => setSubTab("Active")}
-            className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${subTab === "Active" ? "bg-white text-[#111827] shadow-sm" : "text-[#6b7280] hover:text-[#111827]"
-              }`}
+            onClick={() => setMerchantTab("Active")}
+            className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${merchantTab === "Active" ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
           >
             Active
           </button>
           <button
-            onClick={() => setSubTab("Requests")}
-            className={`flex-1 sm:flex-none px-6 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${subTab === "Requests" ? "bg-white text-[#111827] shadow-sm" : "text-[#6b7280] hover:text-[#111827]"
-              }`}
+            onClick={() => setMerchantTab("Pending")}
+            className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all relative ${merchantTab === "Pending" ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
           >
-            New Requests
+            Pending
+            {merchantRequests.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[8px] font-black text-white border-2 border-white shadow-sm shadow-secondary/20 animate-pulse">
+                {merchantRequests.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
 
-      {subTab === "Active" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {activeMerchants.map(merchant => (
-            <div key={merchant.id} className="bg-white p-6 rounded-2xl border border-[#e5e7eb] shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-xl shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
-                  {merchant.name[0]}
-                </div>
-                <div>
-                  <h3 className="font-bold text-[#111827] text-lg">{merchant.name}</h3>
-                  <p className="text-xs font-bold text-[#9ca3af] uppercase tracking-wider">{merchant.category}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 py-4 border-y border-[#f3f4f6] mb-4">
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-[#9ca3af] tracking-widest mb-1">Rating</p>
-                  <p className="text-sm font-bold text-[#111827] flex items-center gap-1">
-                    {merchant.rating}
-                    <svg className="w-3.5 h-3.5 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase font-bold text-[#9ca3af] tracking-widest mb-1">Sales</p>
-                  <p className="text-sm font-bold text-[#111827]">{merchant.sales.toLocaleString()}</p>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <p className="text-[10px] uppercase font-bold text-[#9ca3af] tracking-widest mb-1">Validity Period</p>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-bold text-[#111827]">Until {new Date(merchant.validUntil).toLocaleDateString()}</p>
-                  <button
-                    onClick={() => setExtendingMerchant(merchant.name)}
-                    className="text-[10px] font-bold text-blue-600 hover:underline uppercase"
-                  >
-                    Extend
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => openBusinessModal(merchant.id)}
-                  className="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all"
-                >
-                  View
-                </button>
-                <button className="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-600 hover:text-white transition-all">
-                  Analytics
-                </button>
-                <button className="flex-1 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-600 bg-gray-50 rounded-xl hover:bg-gray-200 transition-all">
-                  Edit Details
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden min-h-[400px]">
+        {merchantTab === "Active" ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-[#f9fafb] border-b border-[#e5e7eb]">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-slate-50/50 border-b border-slate-100">
                 <tr>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest whitespace-nowrap">Store Name</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest whitespace-nowrap">Category</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest whitespace-nowrap">Applied On</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest text-right whitespace-nowrap">Action</th>
+                  <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Business</th>
+                  <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Category</th>
+                  <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Sales</th>
+                  <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Valid Until</th>
+                  <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#f3f4f6]">
-                {merchantRequests.map((req: any) => (
-                  <tr key={req.id} className="hover:bg-[#f9fafb] transition-colors">
-                    <td className="px-6 py-4 text-sm font-bold text-[#111827]">{req.name}</td>
-                    <td className="px-6 py-4 text-xs font-bold text-[#6b7280] uppercase tracking-wider">{req.category}</td>
-                    <td className="px-6 py-4 text-xs font-bold text-[#6b7280]">{req.date}</td>
-                    <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                      <button
-                        onClick={() => openBusinessModal(req.id)}
-                        disabled={viewLoading}
-                        className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white bg-blue-600 rounded-lg hover:bg-blue-700 shadow-sm transition-all disabled:cursor-not-allowed disabled:bg-blue-300"
-                      >
-                        {viewLoading ? 'Loading...' : 'View'}
-                      </button>
-                      <button
-                        onClick={() => handleApprove(req)}
-                        className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white bg-green-600 rounded-lg hover:bg-green-700 shadow-sm transition-all"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleReject(req)}
-                        className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-sm transition-all"
-                      >
-                        Reject
+              <tbody className="divide-y divide-slate-50/80">
+                {activeMerchants.map((merchant) => (
+                  <tr key={merchant.id} className="hover:bg-primary/[0.01] transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
+                          {merchant.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        </div>
+                        <p className="text-[11px] font-black text-slate-900 tracking-tight">{merchant.name}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-secondary font-black text-[9px] uppercase tracking-widest border border-slate-100">
+                        {merchant.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-[10px] font-bold tabular-nums text-slate-600 opacity-80">{merchant.sales}</td>
+                    <td className="px-6 py-4 text-[10px] font-bold tabular-nums text-slate-600 opacity-80">{merchant.validUntil}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm ml-auto">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
                       </button>
                     </td>
                   </tr>
                 ))}
+                {activeMerchants.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center opacity-40">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
+                          <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">No active merchants</p>
+                      </div>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
-        </div>
-      )}
-
-      {extendingMerchant && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-200 overflow-hidden">
-            <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-[#111827]">Extend Subscription</h3>
-                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">{extendingMerchant}</p>
-              </div>
-              <button onClick={() => setExtendingMerchant(null)} className="p-2 hover:bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition-all">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="p-8 space-y-6">
-              <div className="space-y-3">
-                <label className="text-[10px] font-bold text-[#9ca3af] uppercase tracking-[0.2em]">Select New Expiry Date</label>
-                <input
-                  type="date"
-                  className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                  defaultValue={new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                />
-              </div>
-
-              <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
-                <svg className="w-5 h-5 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <p className="text-[11px] font-bold text-amber-800 leading-relaxed">
-                  Extending the date will update the merchant's visibility on the platform immediately. Ensure payment confirmation.
-                </p>
-              </div>
-            </div>
-
-            <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-4">
-              <button onClick={() => setExtendingMerchant(null)} className="flex-1 py-4 bg-white text-gray-900 text-sm font-bold rounded-2xl border border-gray-200 hover:bg-gray-50 transition-all uppercase tracking-widest">Cancel</button>
-              <button onClick={handleUpdateDate} className="flex-1 py-4 bg-[#111827] text-white text-sm font-bold rounded-2xl hover:bg-[#1f2937] shadow-xl shadow-black/10 transition-all active:scale-95">
-                Update Date
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isViewOpen && selectedBusiness && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-y-auto p-3 sm:p-5">
-          <div className="bg-white rounded-3xl w-full max-w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl mx-auto max-h-[calc(100vh-3rem)] shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-200 overflow-hidden">
-            <div className="px-5 py-4 sm:px-8 sm:py-6 border-b border-gray-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-[#111827]">Merchant Details</h3>
-                <p className="text-sm text-gray-500 mt-1">Full details for {selectedBusiness.businessName || selectedBusiness.fullName}</p>
-              </div>
-              <button onClick={() => setIsViewOpen(false)} className="p-2 hover:bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition-all">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="overflow-y-auto max-h-[calc(100vh-18rem)] p-5 sm:p-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  { label: 'Business Name', value: selectedBusiness.businessName },
-                  { label: 'Owner Name', value: selectedBusiness.fullName },
-                  { label: 'Work Email', value: selectedBusiness.workEmail },
-                  { label: 'Email', value: selectedBusiness.email || 'N/A' },
-                  { label: 'Mobile', value: selectedBusiness.mobile },
-                  { label: 'Public Phone', value: selectedBusiness.publicPhone },
-                  { label: 'Category', value: selectedBusiness.category },
-                  { label: 'Location', value: selectedBusiness.location || 'N/A' },
-                  { label: 'City', value: selectedBusiness.city || 'N/A' },
-                  { label: 'State', value: selectedBusiness.state || 'N/A' },
-                  { label: 'Address', value: selectedBusiness.businessAddress },
-                  { label: 'Selected Plan', value: selectedBusiness.selectedPlan },
-                  { label: 'Billing Cycle', value: selectedBusiness.billingCycle },
-                  { label: 'KYC Status', value: selectedBusiness.kycStatus },
-                  { label: 'Verified', value: selectedBusiness.isVerified ? 'Yes' : 'No' },
-                  { label: 'Verified Badge', value: selectedBusiness.hasVerifiedBadge ? 'Yes' : 'No' },
-                  { label: 'Payment Status', value: selectedBusiness.paymentStatus },
-                  { label: 'Payment ID', value: selectedBusiness.paymentId || 'N/A' },
-                  { label: 'Order ID', value: selectedBusiness.orderId || 'N/A' },
-                  { label: 'Registration #', value: selectedBusiness.registrationNumber || 'N/A' },
-                  { label: 'PAN #', value: selectedBusiness.panNumber || 'N/A' },
-                  { label: 'Aadhar #', value: selectedBusiness.aadharNumber || 'N/A' },
-                  { label: 'Created At', value: new Date(selectedBusiness.createdAt).toLocaleString() },
-                  { label: 'Updated At', value: new Date(selectedBusiness.updatedAt).toLocaleString() }
-                ].map((item) => (
-                  <div key={item.label} className="rounded-3xl border border-[#e5e7eb] p-4 sm:p-5 bg-[#f9fafb]">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#6b7280] mb-2">{item.label}</p>
-                    <p className="text-sm font-bold text-[#111827]">{item.value}</p>
+        ) : (
+          <div className="divide-y divide-slate-50/80">
+            {merchantRequests.map((req) => (
+              <div key={req.id} className="p-5 flex items-center justify-between hover:bg-primary/[0.01] transition-all group">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black border border-slate-200 group-hover:scale-105 transition-all uppercase shrink-0 shadow-sm">
+                    {req.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </div>
-                ))}
-
-                {[
-                  { label: 'PAN Document', value: selectedBusiness.panUrl },
-                  { label: 'Aadhar Document', value: selectedBusiness.aadharUrl },
-                  { label: 'MSME/GST', value: selectedBusiness.msmeGstUrl }
-                ].map((item) => (
-                  <div key={item.label} className="rounded-3xl border border-[#e5e7eb] p-4 sm:p-5 bg-[#f9fafb] md:col-span-2">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-[#6b7280] mb-2">{item.label}</p>
-                    {item.value ? (
-                      <a href={item.value} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:underline break-all">{item.value}</a>
-                    ) : (
-                      <p className="text-sm font-bold text-[#111827]">Not available</p>
-                    )}
+                  <div>
+                    <p className="text-sm font-black text-slate-900 tracking-tight truncate">{req.name}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-[9px] font-black text-secondary uppercase tracking-widest bg-secondary/5 px-2 py-0.5 rounded-lg border border-secondary/10">{req.category}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Request: {req.date}</span>
+                    </div>
                   </div>
-                ))}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => handleReject(req.id)}
+                    className="px-4 py-2 text-[10px] font-black text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 rounded-xl transition-all uppercase tracking-widest"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    onClick={() => handleApprove(req)}
+                    className="px-4 py-2 text-[10px] font-black text-white bg-primary hover:bg-primary-700 rounded-xl shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+                  >
+                    Approve Partner
+                  </button>
+                </div>
               </div>
-            </div>
-
-            <div className="px-5 py-4 sm:px-8 sm:py-6 bg-gray-50 border-t border-gray-100 text-right">
-              <button onClick={() => setIsViewOpen(false)} className="inline-flex items-center justify-center px-6 py-3 text-sm font-bold uppercase tracking-wider text-[#111827] bg-white border border-gray-200 rounded-2xl hover:bg-gray-100 transition-all">
-                Close
-              </button>
-            </div>
+            ))}
+            {merchantRequests.length === 0 && (
+              <div className="py-24 flex flex-col items-center opacity-30">
+                <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+                  <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Verification queue is empty</p>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
 
-function CategoriesContent({ categories, setCategories, categoryError }: { categories: Category[], setCategories: Dispatch<SetStateAction<Category[]>>, categoryError: string | null }) {
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [actionType, setActionType] = useState<"banner" | "slots" | "edit" | null>(null);
-  const [businesses, setBusinesses] = useState<BusinessData[]>([]);
-  const [currentCategoryData, setCurrentCategoryData] = useState<any>(null);
+function CategoriesContent({ categories, setCategories, categoryError, onUpdateCategory }: {
+  categories: Category[],
+  setCategories: Dispatch<SetStateAction<Category[]>>,
+  categoryError: string | null,
+  onUpdateCategory: (catName: string, updates: Partial<Category>) => Promise<void>
+}) {
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
-  const filteredCategories = categories;
-
-  useEffect(() => {
-    const fetchBusinesses = async () => {
-      const supabase = createClient();
-      const { data } = await supabase.from('Business').select('*');
-      if (data) setBusinesses(data);
-    };
-    fetchBusinesses();
-  }, []);
-
-  useEffect(() => {
-    if (editingCategory && actionType === "slots") {
-      const fetchCategoryData = async () => {
-        const supabase = createClient();
-        const { data } = await supabase
-          .from('categories')
-          .select('*')
-          .eq('name', editingCategory)
-          .single();
-        if (data) setCurrentCategoryData(data);
-      };
-      fetchCategoryData();
-    }
-  }, [editingCategory, actionType]);
-
-  const handleAssignPosition = async (position: number, businessId: string) => {
-    if (!editingCategory) return;
-    const supabase = createClient();
-    const positionField = `position_${position}_business_id`;
-    const { error } = await supabase
-      .from('categories')
-      .update({ [positionField]: businessId })
-      .eq('name', editingCategory);
-
-    if (error) {
-      alert("Error assigning position: " + error.message);
-      return;
-    }
-
-    // Update local state
-    setCategories((prev: Category[]) => prev.map(c => {
-      if (c.name === editingCategory) {
-        return { ...c, fixedSlots: Math.max(c.fixedSlots, position) };
-      }
-      return c;
-    }));
-    alert(`Business assigned to position #${position}`);
-  };
-
-  const handleUpdateCategory = async () => {
-    if (!editingCategory) return;
-    const nameInput = document.getElementById('edit-cat-name') as HTMLInputElement;
-    const statusSelect = document.getElementById('edit-cat-status') as HTMLSelectElement;
-    const typeSelect = document.getElementById('edit-cat-type') as HTMLSelectElement;
-
-    const newName = nameInput.value;
-    const newStatus = statusSelect.value;
-    const newType = typeSelect.value as 'Merchant' | 'Service';
-
-    const supabase = createClient();
-    const { error } = await supabase
-      .from('categories')
-      .update({ name: newName, status: newStatus, type: newType })
-      .eq('name', editingCategory);
-
-    if (error) {
-      alert("Error updating category: " + error.message);
-      return;
-    }
-
-    setCategories((prev: Category[]) => prev.map(c =>
-      c.name === editingCategory ? { ...c, name: newName, status: newStatus, type: newType } : c
-    ));
-    setEditingCategory(null);
-    alert("Category updated successfully!");
-  };
-
-  const handleNewCategory = async () => {
-    const name = prompt("Enter new category name:");
-    if (name) {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('categories')
-        .insert([{ name, items_count: 0, status: 'Active', banner: 'Not Set', fixed_slots: 0, type: 'Merchant' }]);
-
-      if (error) {
-        alert("Error creating category: " + error.message);
-        return;
-      }
-
-      setCategories((prev: Category[]) => [
-        ...prev,
-        {
-          name,
-          items: 0,
-          status: "Active",
-          banner: "Not Set",
-          fixedSlots: 0,
-          type: 'Merchant' as 'Merchant' | 'Service',
-          position_1_business_id: undefined,
-          position_2_business_id: undefined,
-          position_3_business_id: undefined
-        } as Category
-      ]);
-    }
-  };
-
-  const handleDeleteCategory = async (name: string) => {
-    if (confirm(`Are you sure you want to delete category "${name}"?`)) {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('name', name);
-
-      if (error) {
-        alert("Error deleting category: " + error.message);
-        return;
-      }
-
-      setCategories((prev: Category[]) => prev.filter(c => c.name !== name));
+  const handleSave = async () => {
+    if (editingCategory) {
+      await onUpdateCategory(editingCategory.name, editingCategory);
+      setEditingCategory(null);
     }
   };
 
   return (
     <div className="space-y-6">
-      {categoryError && (
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <p className="font-bold">Categories table missing</p>
-          <p>{categoryError}</p>
-        </div>
-      )}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-2xl font-bold text-[#111827]">Category Management</h1>
-          <p className="text-sm text-[#6b7280]">Manage category-wise banners and fixed top positions.</p>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Category Catalog</h1>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage platform categories and service types.</p>
         </div>
-        <button
-          onClick={handleNewCategory}
-          className="w-full sm:w-auto px-4 py-2 bg-[#111827] text-white text-sm font-bold rounded-lg hover:bg-[#1f2937] transition-all active:scale-95"
-        >
-          + New Category
+        <button className="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest">
+          Add New Category
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredCategories.map((cat, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-[#e5e7eb] shadow-sm flex flex-col hover:border-blue-500 transition-all group overflow-hidden">
-            <div className="p-6 flex-1">
-              <div className="flex justify-between items-start mb-4">
-                <div className="min-w-0">
-                  <h3 className="font-bold text-[#111827] text-lg truncate group-hover:text-blue-600 transition-colors">{cat.name}</h3>
-                  <p className="text-xs font-bold text-[#6b7280]">{cat.items} products listed</p>
-                </div>
-                <span className={`px-2 py-0.5 text-[9px] font-bold rounded-md uppercase tracking-wider border ${cat.status === "Active" ? "bg-green-50 text-green-600 border-green-100" : "bg-gray-50 text-gray-400 border-gray-100"
-                  }`}>
-                  {cat.status}
-                </span>
-              </div>
+      {categoryError && (
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex items-center gap-3">
+          <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p className="text-[10px] font-bold text-amber-800 uppercase tracking-widest">{categoryError}</p>
+        </div>
+      )}
 
-              <div className="space-y-3 mt-4 pt-4 border-t border-[#f3f4f6]">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-[#6b7280]">Banner Status</span>
-                  <span className={`text-[10px] font-bold uppercase ${cat.banner === "Set" ? "text-blue-600" : "text-[#9ca3af]"}`}>
-                    {cat.banner}
+      {editingCategory ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xl space-y-6 animate-in fade-in zoom-in duration-200">
+          <div className="flex items-center justify-between border-b border-slate-50 pb-4">
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Editing: {editingCategory.name}</h2>
+            <button onClick={() => setEditingCategory(null)} className="text-slate-400 hover:text-slate-600">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category Banner URL</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editingCategory.banner || ""}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, banner: e.target.value })}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="https://example.com/banner.jpg"
+                  />
+                </div>
+                {editingCategory.banner && (
+                  <div className="mt-2 h-24 w-full rounded-lg overflow-hidden border border-slate-100">
+                    <img src={editingCategory.banner} alt="Banner Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Fixed Partner Spots (Top 5)</label>
+              {[1, 2, 3, 4, 5].map((pos) => (
+                <div key={pos} className="flex items-center gap-3">
+                  <span className="text-[10px] font-black text-primary w-4">#{pos}</span>
+                  <input
+                    type="text"
+                    value={(editingCategory as any)[`position_${pos}_business_id`] || ""}
+                    onChange={(e) => setEditingCategory({ ...editingCategory, [`position_${pos}_business_id`]: e.target.value })}
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    placeholder="Enter Partner ID"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+            <button
+              onClick={() => setEditingCategory(null)}
+              className="px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-lg transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-6 py-2 bg-primary text-white text-[10px] font-black rounded-lg hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+            >
+              Save Changes
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {categories.map((cat, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black border border-slate-200 group-hover:scale-110 transition-all shadow-sm overflow-hidden">
+                  {cat.banner && cat.banner !== 'Not Set' ? (
+                    <img src={cat.banner} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    cat.name[0]
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditingCategory(cat)}
+                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                    title="Edit Category"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${cat.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                    {cat.status}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-[#6b7280]">Fixed Positions</span>
-                  <span className="text-xs font-bold text-[#111827]">{(cat.position_1_business_id ? 1 : 0) + (cat.position_2_business_id ? 1 : 0) + (cat.position_3_business_id ? 1 : 0)} slots filled</span>
+              </div>
+              <h3 className="text-sm font-black text-slate-900 tracking-tight uppercase">{cat.name}</h3>
+              <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-50">
+                <div className="flex flex-col">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Partners</span>
+                  <span className="text-xs font-black text-primary tabular-nums">{cat.items}</span>
+                </div>
+                <div className="w-px h-6 bg-slate-100"></div>
+                <div className="flex flex-col">
+                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Type</span>
+                  <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{cat.type}</span>
                 </div>
               </div>
             </div>
-
-            <div className="bg-[#f9fafb] px-6 py-3 flex justify-between items-center border-t border-[#e5e7eb]">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => { setEditingCategory(cat.name); setActionType("edit"); }}
-                  className="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
-                >
-                  Edit
-                </button>
-                <div className="w-px h-3 bg-[#e5e7eb]"></div>
-                <button
-                  onClick={() => { setEditingCategory(cat.name); setActionType("banner"); }}
-                  className="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
-                >
-                  Set Banner
-                </button>
-                <div className="w-px h-3 bg-[#e5e7eb]"></div>
-                <button
-                  onClick={() => { setEditingCategory(cat.name); setActionType("slots"); }}
-                  className="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-700"
-                >
-                  Fix Slots
-                </button>
-              </div>
-              <button
-                onClick={() => handleDeleteCategory(cat.name)}
-                className="text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-600"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {editingCategory && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-white/20 animate-in fade-in zoom-in duration-200 overflow-hidden">
-            <div className="px-8 py-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-xl font-bold text-[#111827]">
-                {actionType === "banner" ? `Set Banner: ${editingCategory}` : actionType === "slots" ? `Fix Positions: ${editingCategory}` : `Edit Category: ${editingCategory}`}
-              </h3>
-              <button onClick={() => setEditingCategory(null)} className="p-2 hover:bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition-all">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          ))}
+          {categories.length === 0 && !categoryError && (
+            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-2xl border border-slate-200/60">
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
-              </button>
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">No categories defined</p>
             </div>
-
-            <div className="p-8 space-y-6">
-              {actionType === "edit" ? (
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider">Category Name</label>
-                    <input
-                      type="text"
-                      defaultValue={editingCategory || ""}
-                      className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-bold"
-                      id="edit-cat-name"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider">Status</label>
-                    <select
-                      defaultValue={categories.find(c => c.name === editingCategory)?.status}
-                      className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-bold"
-                      id="edit-cat-status"
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-[#6b7280] uppercase tracking-wider">Type</label>
-                    <select
-                      defaultValue={categories.find(c => c.name === editingCategory)?.type}
-                      className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-sm font-bold"
-                      id="edit-cat-type"
-                    >
-                      <option value="Merchant">Merchant</option>
-                      <option value="Service">Service</option>
-                    </select>
-                  </div>
-                </div>
-              ) : actionType === "banner" ? (
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-gray-200 rounded-2xl p-12 text-center bg-gray-50/50">
-                    <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mx-auto mb-4 text-gray-400">
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm font-bold text-gray-500">Banner Upload Feature</p>
-                    <p className="text-xs text-gray-400 mt-1 uppercase tracking-wider font-medium">Coming Soon</p>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 bg-amber-50/50 rounded-xl border border-amber-100">
-                    <div className="w-2 h-2 bg-amber-600 rounded-full"></div>
-                    <p className="text-xs font-bold text-amber-700">Banner upload functionality is not yet implemented.</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {[1, 2, 3].map((pos) => {
-                    const positionField = `position_${pos}_business_id`;
-                    const currentBusinessId = currentCategoryData?.[positionField];
-                    const currentBusiness = businesses.find(b => b.id === currentBusinessId);
-                    return (
-                      <div key={pos} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between hover:bg-white hover:border-blue-200 transition-all group">
-                        <div className="flex items-center gap-4 flex-1">
-                          <span className="w-8 h-8 rounded-lg bg-[#111827] text-white flex items-center justify-center text-xs font-bold shadow-sm">#{pos}</span>
-                          <div className="flex-1">
-                            <p className="text-sm font-bold text-gray-900">Position {pos}</p>
-                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
-                              {currentBusiness ? `Assigned: ${currentBusiness.registrationNumber || currentBusiness.businessName}` : 'No merchant assigned'}
-                            </p>
-                          </div>
-                        </div>
-                        <select
-                          onChange={(e) => {
-                            const selectedId = e.target.value;
-                            if (selectedId) handleAssignPosition(pos, selectedId);
-                          }}
-                          className="px-3 py-2 bg-white text-blue-600 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-blue-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-all shadow-sm cursor-pointer"
-                          defaultValue=""
-                        >
-                          <option value="">Select by Reg #</option>
-                          {businesses
-                            .filter(b => b.kycStatus !== 'pending' && b.kycStatus !== 'rejected')
-                            .map(business => (
-                              <option key={business.id} value={business.id}>
-                                {business.registrationNumber || 'No Reg #'} - {business.businessName}
-                              </option>
-                            ))}
-                        </select>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-              <button onClick={() => setEditingCategory(null)} className="text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors uppercase tracking-widest">Discard</button>
-              <button
-                onClick={() => {
-                  if (actionType === "edit") {
-                    handleUpdateCategory();
-                  } else {
-                    setEditingCategory(null);
-                  }
-                }}
-                className="px-8 py-3 bg-[#111827] text-white text-sm font-bold rounded-xl hover:bg-[#1f2937] shadow-xl shadow-black/10 transition-all active:scale-95"
-              >
-                {actionType === "edit" ? "Save Changes" : "Close"}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>
@@ -1477,130 +1114,20 @@ function CategoriesContent({ categories, setCategories, categoryError }: { categ
 }
 
 function PaymentsContent() {
-  const [subTab, setSubTab] = useState("User Payments");
-
-  const userTransactions = [
-    { id: "TXN-U001", user: "John Doe", amount: "₹1,200", status: "Completed", date: "2024-04-01", method: "UPI" },
-    { id: "TXN-U002", user: "Jane Smith", amount: "₹450", status: "Processing", date: "2024-04-02", method: "Card" },
-    { id: "TXN-U003", user: "Robert Brown", amount: "₹2,900", status: "Completed", date: "2024-04-02", method: "UPI" },
-  ];
-
-  const merchantSubscriptions = [
-    { id: "SUB-M001", merchant: "TechHub", amount: "₹24,999", plan: "Enterprise", status: "Active", date: "2024-03-15" },
-    { id: "SUB-M002", merchant: "FashionBox", amount: "₹2,499", plan: "Pro", status: "Active", date: "2024-03-20" },
-    { id: "SUB-M003", merchant: "FreshMart", amount: "₹0", plan: "Basic", status: "Active", date: "2024-03-25" },
-  ];
-
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#111827]">Financials</h1>
-          <p className="text-sm text-[#6b7280]">Track user transactions and merchant subscriptions.</p>
-        </div>
-        <div className="flex p-1 bg-[#f3f4f6] rounded-xl w-full sm:w-fit border border-[#e5e7eb]">
-          {["User Payments", "Merchant Subscriptions"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setSubTab(tab)}
-              className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${subTab === tab ? "bg-white text-[#111827] shadow-sm" : "text-[#6b7280] hover:text-[#111827]"
-                }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-1.5 px-1">
+        <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Financial Ledger</h1>
+        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Transaction history and subscription revenue logs.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="p-6 bg-white rounded-2xl border border-[#e5e7eb] shadow-sm">
-          <p className="text-[10px] uppercase font-bold text-[#9ca3af] tracking-widest mb-1">Total Revenue</p>
-          <h3 className="text-2xl font-bold text-[#111827]">₹4,29,100</h3>
-          <p className="mt-1 text-xs text-green-600 font-bold">+12% vs last month</p>
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-24 text-center">
+        <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center mx-auto mb-6 border border-primary/10">
+          <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+          </svg>
         </div>
-        <div className="p-6 bg-white rounded-2xl border border-[#e5e7eb] shadow-sm">
-          <p className="text-[10px] uppercase font-bold text-[#9ca3af] tracking-widest mb-1">Active Subscriptions</p>
-          <h3 className="text-2xl font-bold text-[#111827]">412</h3>
-          <p className="mt-1 text-xs text-blue-600 font-bold">18 new this week</p>
-        </div>
-        <div className="p-6 bg-white rounded-2xl border border-[#e5e7eb] shadow-sm">
-          <p className="text-[10px] uppercase font-bold text-[#9ca3af] tracking-widest mb-1">Pending Payouts</p>
-          <h3 className="text-2xl font-bold text-[#111827]">₹82,450</h3>
-          <p className="mt-1 text-xs text-orange-600 font-bold">5 scheduled for today</p>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl border border-[#e5e7eb] shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#f3f4f6] flex items-center justify-between bg-[#f9fafb]">
-          <h3 className="font-bold text-[#111827]">{subTab} History</h3>
-          <button
-            onClick={() => alert(`Exporting ${subTab} history as CSV...`)}
-            className="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:underline"
-          >
-            Export CSV
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-[#f9fafb] border-b border-[#e5e7eb]">
-              {subTab === "User Payments" ? (
-                <tr>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest">ID</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest">User</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest">Amount</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest">Method</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest text-right">Status</th>
-                </tr>
-              ) : (
-                <tr>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest">ID</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest">Merchant</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest">Plan</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest">Value</th>
-                  <th className="px-6 py-4 text-[10px] font-bold text-[#6b7280] uppercase tracking-widest text-right">Status</th>
-                </tr>
-              )}
-            </thead>
-            <tbody className="divide-y divide-[#f3f4f6]">
-              {subTab === "User Payments" ? (
-                userTransactions.map((txn) => (
-                  <tr key={txn.id} className="hover:bg-[#f9fafb] transition-colors text-sm">
-                    <td className="px-6 py-4 font-mono text-xs font-bold text-[#9ca3af]">{txn.id}</td>
-                    <td className="px-6 py-4 font-bold text-[#111827]">{txn.user}</td>
-                    <td className="px-6 py-4 font-bold text-[#111827]">{txn.amount}</td>
-                    <td className="px-6 py-4 font-medium text-[#6b7280]">{txn.method}</td>
-                    <td className="px-6 py-4 text-right">
-                      <span className={`inline-flex px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border ${txn.status === "Completed" ? "bg-green-50 text-green-700 border-green-100" : "bg-blue-50 text-blue-700 border-blue-100"
-                        }`}>
-                        {txn.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                merchantSubscriptions.map((sub) => (
-                  <tr key={sub.id} className="hover:bg-[#f9fafb] transition-colors text-sm">
-                    <td className="px-6 py-4 font-mono text-xs font-bold text-[#9ca3af]">{sub.id}</td>
-                    <td className="px-6 py-4 font-bold text-[#111827]">{sub.merchant}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${sub.plan === "Enterprise" ? "bg-indigo-100 text-indigo-700" :
-                        sub.plan === "Pro" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"
-                        }`}>
-                        {sub.plan}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-bold text-[#111827]">{sub.amount}</td>
-                    <td className="px-6 py-4 text-right">
-                      <span className="inline-flex px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider border bg-green-50 text-green-700 border-green-100">
-                        {sub.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Transaction Engine Syncing...</p>
       </div>
     </div>
   );
@@ -1608,81 +1135,47 @@ function PaymentsContent() {
 
 function BroadcastsContent({ message, setMessage, audience, setAudience }: {
   message: string,
-  setMessage: Dispatch<SetStateAction<string>>,
+  setMessage: (m: string) => void,
   audience: string,
-  setAudience: Dispatch<SetStateAction<string>>
+  setAudience: (a: string) => void
 }) {
-  const handleDeploy = () => {
-    if (!message.trim()) {
-      alert("Please enter a message to broadcast.");
-      return;
-    }
-    alert(`Broadcast sent to ${audience}!\nMessage: ${message}`);
-    setMessage("");
-  };
-
   return (
-    <div className="max-w-2xl space-y-8 pb-20">
-      <div>
-        <h1 className="text-2xl font-bold text-[#111827]">Communication Hub</h1>
-        <p className="text-sm font-bold text-[#6b7280]">Targeted announcements and system updates.</p>
+    <div className="space-y-6 max-w-2xl">
+      <div className="flex flex-col gap-1.5 px-1">
+        <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Global Broadcast</h1>
+        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Push announcements and updates to platform users.</p>
       </div>
 
-      <div className="bg-white p-6 lg:p-10 rounded-3xl border border-[#e5e7eb] shadow-sm space-y-8">
-        <div className="space-y-4">
-          <label className="text-[10px] font-bold text-[#6b7280] uppercase tracking-[0.2em]">Select Audience</label>
-          <div className="flex flex-wrap gap-6">
-            {["Everyone", "Verified Users", "Merchant Owners"].map((target) => (
-              <label key={target} className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="target"
-                  className="w-5 h-5 text-[#111827] focus:ring-offset-0 focus:ring-0 border-[#d1d5db]"
-                  checked={audience === target}
-                  onChange={() => setAudience(target)}
-                />
-                <span className="text-sm font-bold text-[#4b5563] group-hover:text-[#111827] transition-colors">{target}</span>
-              </label>
-            ))}
-          </div>
+      <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-8 space-y-6">
+        <div>
+          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5">Recipient Audience</label>
+          <select
+            value={audience}
+            onChange={(e) => setAudience(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-black uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none"
+            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2394a3b8\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1em' }}
+          >
+            <option>Everyone</option>
+            <option>Merchants Only</option>
+            <option>Service Providers</option>
+            <option>New Users</option>
+          </select>
         </div>
-
-        <div className="space-y-4">
-          <label className="text-[10px] font-bold text-[#6b7280] uppercase tracking-[0.2em]">Message Body</label>
+        <div>
+          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5">Announcement Content</label>
           <textarea
-            rows={5}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="w-full p-6 text-sm font-bold rounded-2xl border border-[#e5e7eb] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all placeholder:text-[#9ca3af] bg-[#f9fafb]"
-            placeholder="Write your platform announcement..."
-          ></textarea>
+            placeholder="TYPE YOUR MESSAGE HERE..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-black uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-h-[160px] placeholder:text-slate-300"
+          />
         </div>
-
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <button
-            onClick={handleDeploy}
-            className="w-full sm:flex-1 py-4 bg-[#111827] text-white text-sm font-bold rounded-2xl hover:bg-[#1f2937] shadow-xl shadow-black/10 active:scale-[0.98] transition-all"
-          >
-            Deploy Broadcast
-          </button>
-          <button
-            onClick={() => { setMessage(""); alert("Message discarded."); }}
-            className="w-full sm:w-auto px-8 py-4 text-[#4b5563] text-sm font-bold hover:text-[#111827] transition-colors"
-          >
-            Discard
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-indigo-900 p-8 rounded-3xl border border-indigo-800 flex gap-6 shadow-2xl shadow-indigo-500/10">
-        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white shrink-0">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </div>
-        <p className="text-sm font-bold text-indigo-100 leading-relaxed">
-          Broadcasting updates will push notifications immediately to the mobile app and send summary emails to the selected audience segment.
-        </p>
+        <button
+          onClick={() => { alert("Broadcast sent!"); setMessage(""); }}
+          className="w-full py-4 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-[0.2em]"
+        >
+          Dispatch Announcement
+        </button>
       </div>
     </div>
   );
@@ -1690,137 +1183,36 @@ function BroadcastsContent({ message, setMessage, audience, setAudience }: {
 
 function SettingsContent({ settings, setSettings }: { settings: Settings, setSettings: Dispatch<SetStateAction<Settings>> }) {
   const toggleSetting = (key: string) => {
-    setSettings((prev: any) => ({ ...prev, [key]: !prev[key] }));
+    setSettings({ ...settings, [key]: !settings[key] });
   };
-
-  const handleFlush = () => {
-    if (confirm("Are you sure you want to flush the system cache? This will log out all active sessions.")) {
-      alert("System cache flushed successfully!");
-    }
-  };
-
-  const sections = [
-    {
-      title: "Platform Control",
-      description: "Manage global platform behavior and visibility.",
-      items: [
-        {
-          id: "maintenance",
-          title: "Maintenance Mode",
-          description: "Disable all public-facing features for updates.",
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          ),
-        },
-        {
-          id: "expressApproval",
-          title: "Express Approval",
-          description: "Automatically approve merchants with high trust scores.",
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          ),
-        },
-      ],
-    },
-    {
-      title: "Security & Privacy",
-      description: "Configure system security protocols and data privacy.",
-      items: [
-        {
-          id: "twoFactor",
-          title: "Mandatory 2FA",
-          description: "Force all admin accounts to use two-factor authentication.",
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          ),
-        },
-        {
-          id: "publicProfile",
-          title: "Public Merchant Profiles",
-          description: "Allow merchant profiles to be indexed by search engines.",
-          icon: (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-            </svg>
-          ),
-        },
-      ],
-    },
-  ];
 
   return (
-    <div className="max-w-4xl space-y-10 pb-20">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-[#111827]">System Settings</h1>
-        <p className="text-sm text-[#6b7280]">Configure global platform parameters and security preferences.</p>
+    <div className="space-y-6 max-w-xl">
+      <div className="flex flex-col gap-1.5 px-1">
+        <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Control Center</h1>
+        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage platform configurations and global security.</p>
       </div>
 
-      <div className="space-y-8">
-        {sections.map((section, idx) => (
-          <div key={idx} className="space-y-4">
-            <div className="px-1">
-              <h2 className="text-sm font-bold text-[#111827]">{section.title}</h2>
-              <p className="text-xs text-[#6b7280]">{section.description}</p>
-            </div>
-            <div className="bg-white rounded-2xl border border-[#e5e7eb] shadow-sm divide-y divide-[#f3f4f6] overflow-hidden">
-              {section.items.map((item) => (
-                <div key={item.id} className="p-5 sm:p-6 flex items-center justify-between hover:bg-[#f9fafb] transition-colors group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-[#f3f4f6] flex items-center justify-center text-[#4b5563] group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                      {item.icon}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-[#111827]">{item.title}</p>
-                      <p className="text-xs text-[#6b7280]">{item.description}</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => toggleSetting(item.id)}
-                    className={`w-12 h-6 rounded-full relative transition-all duration-300 focus:outline-none ${settings[item.id] ? "bg-blue-600" : "bg-[#d1d5db]"
-                      }`}
-                  >
-                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm transition-all duration-300 ${settings[item.id] ? "left-7" : "left-1"
-                      }`}></span>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        <div className="space-y-4">
-          <div className="px-1">
-            <h2 className="text-sm font-bold text-[#dc2626]">Advanced Operations</h2>
-            <p className="text-xs text-[#6b7280]">Irreversible actions that affect the entire system.</p>
-          </div>
-          <div className="bg-red-50/30 rounded-2xl border border-red-100 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-bold text-red-900">System Cache Flush</p>
-                <p className="text-xs text-red-600/80">Clears all temporary data, active sessions, and CDN edge cache.</p>
-              </div>
+      <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm divide-y divide-slate-50/80 overflow-hidden">
+        {Object.entries(settings).map(([key, val], i) => (
+          <div key={i} className="p-5 flex items-center justify-between hover:bg-primary/[0.01] transition-colors">
+            <div className="flex flex-col">
+              <span className="text-[11px] font-black text-slate-900 capitalize tracking-tight">{key.replace(/([A-Z])/g, ' $1')}</span>
+              <span className="text-[9px] text-secondary font-black uppercase tracking-widest mt-0.5">Global system flag</span>
             </div>
             <button
-              onClick={handleFlush}
-              className="px-6 py-2.5 bg-white text-red-600 text-xs font-bold uppercase tracking-wider rounded-xl border border-red-200 hover:bg-red-600 hover:text-white transition-all shadow-sm active:scale-95"
+              onClick={() => toggleSetting(key)}
+              className={`w-11 h-6 rounded-full relative transition-all duration-300 ${val ? 'bg-primary shadow-lg shadow-primary/20' : 'bg-slate-200'}`}
             >
-              Execute Flush
+              <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${val ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
-        </div>
+        ))}
       </div>
+
+      <button className="w-full py-4 text-[10px] font-black text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all active:scale-[0.98] uppercase tracking-[0.2em]">
+        Reset All System Flags
+      </button>
     </div>
   );
 }

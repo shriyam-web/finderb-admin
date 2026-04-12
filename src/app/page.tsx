@@ -13,7 +13,7 @@ export default function Home() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === "admin@boomb.in" && password === "boomb123") {
+    if (username === "admin@finderb.in" && password === "finderb123") {
       router.push("/dashboard");
     } else {
       setError("Incorrect email or password. Please try again.");
@@ -26,11 +26,11 @@ export default function Home() {
         <div className="flex flex-col items-center">
           <div className="mb-6">
             <Image
-              src="/logo.png"
-              alt="Boomb"
-              width={80}
-              height={80}
-              className="rounded-lg"
+              src="/logo1.png"
+              alt="FinderB"
+              width={200}
+              height={60}
+              className="rounded-lg object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = "/next.svg";
@@ -39,7 +39,7 @@ export default function Home() {
             />
           </div>
           <h1 className="text-xl font-semibold text-[#111827]">
-            Sign in to Boomb Admin
+            Sign in to FinderB Admin
           </h1>
           <p className="mt-2 text-sm text-[#6b7280]">
             Enter your credentials to access the portal
@@ -67,7 +67,7 @@ export default function Home() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="block w-full px-3.5 py-2.5 bg-white border border-[#d1d5db] rounded-lg text-[#111827] text-sm placeholder-[#9ca3af] focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb] outline-none transition-all shadow-sm"
-                placeholder="admin@boomb.in"
+                placeholder="admin@finderb.in"
               />
             </div>
 
@@ -123,7 +123,7 @@ export default function Home() {
 
         <div className="text-center">
           <p className="text-xs text-[#9ca3af]">
-            &copy; {new Date().getFullYear()} Boomb Technologies Inc.
+            &copy; {new Date().getFullYear()} FinderB Technologies Inc.
           </p>
         </div>
       </div>
