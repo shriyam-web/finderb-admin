@@ -13,7 +13,7 @@ export default function Home() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === "admin@finderb.in" && password === "finderb123") {
+    if (username === "admin@finderb.com" && password === "finderb123") {
       router.push("/dashboard");
     } else {
       setError("Incorrect email or password. Please try again.");
@@ -67,7 +67,7 @@ export default function Home() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="block w-full px-3.5 py-2.5 bg-white border border-[#d1d5db] rounded-lg text-[#111827] text-sm placeholder-[#9ca3af] focus:border-[#2563eb] focus:ring-1 focus:ring-[#2563eb] outline-none transition-all shadow-sm"
-                placeholder="admin@finderb.in"
+                placeholder="admin@finderb.com"
               />
             </div>
 

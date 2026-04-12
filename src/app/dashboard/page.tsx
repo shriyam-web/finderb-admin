@@ -427,7 +427,7 @@ export default function Dashboard() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-bold text-slate-900 truncate">Admin User</p>
-              <p className="text-[10px] text-slate-500 truncate font-semibold">admin@finderb.in</p>
+              <p className="text-[10px] text-slate-500 truncate font-semibold">admin@finderb.com</p>
             </div>
             <div className="relative">
               <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></div>
