@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, Dispatch, SetStateAction, useEffect } from "react";
+import { useState, Dispatch, SetStateAction, useEffect, useCallback } from "react";
 import { createClient } from "../../../utils/supabase/client";
 import { uploadToCloudinary } from "../../utils/cloudinary";
 
@@ -1244,6 +1244,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
     fixedSlots: 0,
   });
   const [uploading, setUploading] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
   const [merchantSearch, setMerchantSearch] = useState<{ [key: string]: string }>({});
 
   const handleSave = async () => {
@@ -1271,14 +1272,29 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
   const handleImageUpload = async (file: File, type: 'banner' | 'symbol', isEditing: boolean) => {
     try {
       setUploading(type);
-      const url = await uploadToCloudinary(file);
+      setUploadProgress(prev => ({ ...prev, [type]: 0 }));
+
+      const url = await uploadToCloudinary(file, (progress) => {
+        setUploadProgress(prev => ({ ...prev, [type]: progress }));
+      });
+
       if (isEditing && editingCategory) {
-        setEditingCategory({ ...editingCategory, [type]: url });
+        setEditingCategory({ ...editingCategory, [type]: url as string });
       } else {
         setNewCategory({ ...newCategory, [type]: url });
       }
+
+      // Clear progress after success
+      setTimeout(() => {
+        setUploadProgress(prev => {
+          const next = { ...prev };
+          delete next[type];
+          return next;
+        });
+      }, 1500);
+
     } catch (error: any) {
-      alert("Upload failed: " + error.message);
+      alert(`Upload failed: ${error.message}`);
     } finally {
       setUploading(null);
     }
@@ -1362,31 +1378,46 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           <div>
             <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category Banner</label>
             <div className="flex gap-3 items-center">
-              <div className="flex-1">
+              <div className="flex-1 relative">
                 <input
                   type="file"
                   onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'banner', isEditing)}
                   className="hidden"
                   id={`banner-upload-${isEditing ? 'edit' : 'new'}`}
+                  disabled={uploading === 'banner'}
                 />
                 <label
                   htmlFor={`banner-upload-${isEditing ? 'edit' : 'new'}`}
-                  className="flex items-center justify-center gap-2 w-full bg-slate-50 border border-slate-200 border-dashed rounded-lg px-3 py-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all"
+                  className={`flex flex-col items-center justify-center gap-2 w-full bg-slate-50 border-2 border-dashed rounded-lg px-3 py-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading === 'banner'
+                    ? 'border-primary/30 bg-primary/5 cursor-not-allowed'
+                    : 'border-slate-200 hover:border-primary/30'
+                    }`}
                 >
                   {uploading === 'banner' ? (
-                    <span className="animate-pulse">Uploading...</span>
+                    <>
+                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-primary to-secondary h-1.5 rounded-full shadow-sm transition-all duration-300 ease-out"
+                          style={{ width: `${uploadProgress.banner || 0}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1 text-[9px] font-black text-primary uppercase tracking-wider">
+                        <div className="w-2 h-2 bg-primary rounded-full animate-ping"></div>
+                        {uploadProgress.banner?.toFixed(0)}%
+                      </div>
+                    </>
                   ) : (
                     <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      {cat.banner && cat.banner !== 'Not Set' ? 'Change Banner' : 'Upload Banner'}
+                      <span>{cat.banner && cat.banner !== 'Not Set' ? 'Change' : 'Upload'} Banner</span>
                     </>
                   )}
                 </label>
               </div>
               {cat.banner && cat.banner !== 'Not Set' && (
-                <div className="w-16 h-12 rounded-lg overflow-hidden border border-slate-200">
+                <div className="w-16 h-12 rounded-lg overflow-hidden border border-slate-200 shadow-sm">
                   <img src={cat.banner} className="w-full h-full object-cover" alt="Banner" />
                 </div>
               )}
@@ -1396,31 +1427,46 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           <div>
             <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category Symbol (Icon)</label>
             <div className="flex gap-3 items-center">
-              <div className="flex-1">
+              <div className="flex-1 relative">
                 <input
                   type="file"
                   onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'symbol', isEditing)}
                   className="hidden"
                   id={`symbol-upload-${isEditing ? 'edit' : 'new'}`}
+                  disabled={uploading === 'symbol'}
                 />
                 <label
                   htmlFor={`symbol-upload-${isEditing ? 'edit' : 'new'}`}
-                  className="flex items-center justify-center gap-2 w-full bg-slate-50 border border-slate-200 border-dashed rounded-lg px-3 py-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all"
+                  className={`flex flex-col items-center justify-center gap-2 w-full bg-slate-50 border-2 border-dashed rounded-lg px-3 py-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading === 'symbol'
+                      ? 'border-primary/30 bg-primary/5 cursor-not-allowed'
+                      : 'border-slate-200 hover:border-primary/30'
+                    }`}
                 >
                   {uploading === 'symbol' ? (
-                    <span className="animate-pulse">Uploading...</span>
+                    <>
+                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-primary to-secondary h-1.5 rounded-full shadow-sm transition-all duration-300 ease-out"
+                          style={{ width: `${uploadProgress.symbol || 0}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-1 text-[9px] font-black text-primary uppercase tracking-wider">
+                        <div className="w-2 h-2 bg-primary rounded-full animate-ping"></div>
+                        {uploadProgress.symbol?.toFixed(0)}%
+                      </div>
+                    </>
                   ) : (
                     <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
-                      {cat.symbol && cat.symbol !== 'Not Set' ? 'Change Symbol' : 'Upload Symbol'}
+                      <span>{cat.symbol && cat.symbol !== 'Not Set' ? 'Change' : 'Upload'} Symbol</span>
                     </>
                   )}
                 </label>
               </div>
               {cat.symbol && cat.symbol !== 'Not Set' && (
-                <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center bg-slate-50">
+                <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 shadow-sm flex items-center justify-center bg-slate-50">
                   <img src={cat.symbol} className="max-w-full max-h-full object-contain" alt="Symbol" />
                 </div>
               )}
