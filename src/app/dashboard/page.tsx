@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, Dispatch, SetStateAction, useEffect } from "react";
 import { createClient } from "../../../utils/supabase/client";
+import { uploadToCloudinary } from "../../utils/cloudinary";
 
 interface User {
   id: number;
@@ -62,10 +63,13 @@ interface BusinessData {
 }
 
 interface Category {
+  id: string;
   name: string;
   items: number;
   status: string;
   banner: string;
+  symbol: string;
+  parent_id?: string | null;
   fixedSlots: number;
   type: 'Merchant' | 'Service';
   position_1_business_id?: string | null;
@@ -130,10 +134,13 @@ export default function Dashboard() {
 
         if (catData) {
           setCategories(catData.map(c => ({
+            id: c.id,
             name: c.name,
             items: c.items_count || 0,
             status: c.status || 'Active',
             banner: c.banner || 'Not Set',
+            symbol: c.symbol || 'Not Set',
+            parent_id: c.parent_id,
             fixedSlots: c.fixed_slots || 0,
             type: c.type || 'Merchant',
             position_1_business_id: c.position_1_business_id,
@@ -295,21 +302,63 @@ export default function Dashboard() {
       .from('categories')
       .update({
         banner: updates.banner,
+        symbol: updates.symbol,
+        parent_id: updates.parent_id,
         position_1_business_id: updates.position_1_business_id,
         position_2_business_id: updates.position_2_business_id,
         position_3_business_id: updates.position_3_business_id,
         position_4_business_id: updates.position_4_business_id,
         position_5_business_id: updates.position_5_business_id,
+        status: updates.status,
+        type: updates.type,
+        fixed_slots: updates.fixedSlots,
       })
-      .eq('name', catName);
+      .eq('id', updates.id);
 
     if (error) {
       alert("Error updating category: " + error.message);
       return;
     }
 
-    setCategories(prev => prev.map(c => c.name === catName ? { ...c, ...updates } : c));
-    alert(`Category ${catName} updated successfully!`);
+    setCategories(prev => prev.map(c => c.id === updates.id ? { ...c, ...updates } : c));
+    alert(`Category ${updates.name} updated successfully!`);
+  };
+
+  const handleCreateCategory = async (category: Partial<Category>) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([{
+        name: category.name,
+        type: category.type || 'Merchant',
+        status: category.status || 'Active',
+        banner: category.banner || 'Not Set',
+        symbol: category.symbol || 'Not Set',
+        parent_id: category.parent_id || null,
+        fixed_slots: category.fixedSlots || 0,
+      }])
+      .select();
+
+    if (error) {
+      alert("Error creating category: " + error.message);
+      return;
+    }
+
+    if (data) {
+      const newCat = data[0];
+      setCategories(prev => [...prev, {
+        id: newCat.id,
+        name: newCat.name,
+        items: newCat.items_count || 0,
+        status: newCat.status || 'Active',
+        banner: newCat.banner || 'Not Set',
+        symbol: newCat.symbol || 'Not Set',
+        parent_id: newCat.parent_id,
+        fixedSlots: newCat.fixed_slots || 0,
+        type: newCat.type || 'Merchant',
+      }]);
+      alert(`Category ${category.name} created successfully!`);
+    }
   };
 
   const renderContent = () => {
@@ -333,7 +382,14 @@ export default function Dashboard() {
           />
         );
       case "Categories":
-        return <CategoriesContent categories={categories} setCategories={setCategories} categoryError={categoryError} onUpdateCategory={handleUpdateCategory} />;
+        return <CategoriesContent
+          categories={categories}
+          setCategories={setCategories}
+          categoryError={categoryError}
+          onUpdateCategory={handleUpdateCategory}
+          onCreateCategory={handleCreateCategory}
+          merchants={activeMerchants}
+        />;
       case "Payments & Subscriptions":
         return <PaymentsContent />;
       case "Broadcasts":
@@ -516,21 +572,27 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {[
-          { label: "Total Users", value: "12,842", growth: "+12%", color: "bg-primary", icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-          )},
-          { label: "Active Merchants", value: "573", growth: "+8", color: "bg-secondary", icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-          )},
-          { label: "Monthly Revenue", value: "₹4.3L", growth: "85%", color: "bg-slate-900", icon: (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          )},
+          {
+            label: "Total Users", value: "12,842", growth: "+12%", color: "bg-primary", icon: (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            )
+          },
+          {
+            label: "Active Merchants", value: "573", growth: "+8", color: "bg-secondary", icon: (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            )
+          },
+          {
+            label: "Monthly Revenue", value: "₹4.3L", growth: "85%", color: "bg-slate-900", icon: (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )
+          },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
             <div className="flex items-center justify-between mb-4">
@@ -791,6 +853,49 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
   setMerchantRequests: Dispatch<SetStateAction<MerchantRequest[]>>
 }) {
   const [merchantTab, setMerchantTab] = useState<"Active" | "Pending">("Active");
+  const [selectedBusiness, setSelectedBusiness] = useState<BusinessData | null>(null);
+  const [isUploading, setIsUploading] = useState<string | null>(null);
+
+  const handleViewMerchant = async (id: string) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('Business')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      alert("Error fetching business details: " + error.message);
+      return;
+    }
+
+    setSelectedBusiness(data);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'panUrl' | 'aadharUrl' | 'msmeGstUrl') => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedBusiness) return;
+
+    try {
+      setIsUploading(field);
+      const url = await uploadToCloudinary(file);
+
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('Business')
+        .update({ [field]: url })
+        .eq('id', selectedBusiness.id);
+
+      if (error) throw error;
+
+      setSelectedBusiness({ ...selectedBusiness, [field]: url });
+      alert(`${field} updated successfully!`);
+    } catch (error: any) {
+      alert("Upload failed: " + error.message);
+    } finally {
+      setIsUploading(null);
+    }
+  };
 
   const handleApprove = async (merchant: MerchantRequest) => {
     const supabase = createClient();
@@ -881,7 +986,11 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                     <td className="px-6 py-4 text-[10px] font-bold tabular-nums text-slate-600 opacity-80">{merchant.sales}</td>
                     <td className="px-6 py-4 text-[10px] font-bold tabular-nums text-slate-600 opacity-80">{merchant.validUntil}</td>
                     <td className="px-6 py-4 text-right">
-                      <button className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm ml-auto">
+                      <button
+                        onClick={() => handleViewMerchant(merchant.id)}
+                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm ml-auto"
+                        title="View KYC Details"
+                      >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -925,6 +1034,12 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                 </div>
                 <div className="flex gap-3">
                   <button
+                    onClick={() => handleViewMerchant(req.id)}
+                    className="px-4 py-2 text-[10px] font-black text-slate-600 hover:bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-xl transition-all uppercase tracking-widest"
+                  >
+                    View KYC
+                  </button>
+                  <button
                     onClick={() => handleReject(req.id)}
                     className="px-4 py-2 text-[10px] font-black text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 rounded-xl transition-all uppercase tracking-widest"
                   >
@@ -952,17 +1067,167 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
           </div>
         )}
       </div>
+
+      {/* KYC Details Modal */}
+      {selectedBusiness && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in duration-300">
+            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">{selectedBusiness.businessName || selectedBusiness.fullName}</h2>
+                <p className="text-[10px] text-secondary font-black uppercase tracking-widest mt-1">Merchant Verification Dossier</p>
+              </div>
+              <button
+                onClick={() => setSelectedBusiness(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100 shadow-sm"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Business Info */}
+                <div className="space-y-6">
+                  <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] border-b border-primary/10 pb-2">Primary Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { label: "Full Name", value: selectedBusiness.fullName },
+                      { label: "Work Email", value: selectedBusiness.workEmail },
+                      { label: "Mobile", value: selectedBusiness.mobile },
+                      { label: "Category", value: selectedBusiness.category },
+                      { label: "City", value: selectedBusiness.city },
+                      { label: "State", value: selectedBusiness.state },
+                      { label: "KYC Status", value: selectedBusiness.kycStatus },
+                    ].map((info, i) => (
+                      <div key={i} className="space-y-1">
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{info.label}</p>
+                        <p className="text-[11px] font-bold text-slate-900">{info.value || "N/A"}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Address</p>
+                    <p className="text-[11px] font-bold text-slate-900 leading-relaxed">{selectedBusiness.businessAddress}</p>
+                  </div>
+                </div>
+
+                {/* KYC Documents */}
+                <div className="space-y-6">
+                  <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] border-b border-primary/10 pb-2">Verification Documents</h3>
+                  <div className="space-y-5">
+                    {[
+                      { label: "PAN Card", field: "panUrl", number: selectedBusiness.panNumber },
+                      { label: "Aadhar Card", field: "aadharUrl", number: selectedBusiness.aadharNumber },
+                      { label: "MSME / GST Certificate", field: "msmeGstUrl", number: selectedBusiness.registrationNumber },
+                    ].map((doc, i) => (
+                      <div key={i} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">{doc.label}</p>
+                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Ref: {doc.number || "Not Provided"}</p>
+                          </div>
+                          <label className={`cursor-pointer px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-primary hover:border-primary/30 transition-all shadow-sm flex items-center gap-2 ${isUploading === doc.field ? "opacity-50 pointer-events-none" : ""}`}>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            {isUploading === doc.field ? "Uploading..." : "Upload Photo"}
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={(e) => handleFileUpload(e, doc.field as any)}
+                            />
+                          </label>
+                        </div>
+
+                        {(selectedBusiness as any)[doc.field] ? (
+                          <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 bg-white group">
+                            <img
+                              src={(selectedBusiness as any)[doc.field]}
+                              className="w-full h-full object-contain"
+                              alt={doc.label}
+                            />
+                            <a
+                              href={(selectedBusiness as any)[doc.field]}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-black uppercase tracking-widest backdrop-blur-[2px]"
+                            >
+                              View Full Document
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="aspect-video rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center opacity-40">
+                            <svg className="w-8 h-8 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <p className="text-[9px] font-black uppercase tracking-widest">Document Not Uploaded</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-8 py-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+              <button
+                onClick={() => setSelectedBusiness(null)}
+                className="px-6 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-200"
+              >
+                Dismiss
+              </button>
+              {selectedBusiness.kycStatus === 'pending' && (
+                <>
+                  <button
+                    onClick={() => { handleReject(selectedBusiness.id); setSelectedBusiness(null); }}
+                    className="px-6 py-2.5 text-[10px] font-black text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all uppercase tracking-widest shadow-sm"
+                  >
+                    Reject KYC
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleApprove({ id: selectedBusiness.id, name: selectedBusiness.businessName || selectedBusiness.fullName || '', category: selectedBusiness.category || '', date: '' });
+                      setSelectedBusiness(null);
+                    }}
+                    className="px-8 py-2.5 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest"
+                  >
+                    Approve Merchant
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function CategoriesContent({ categories, setCategories, categoryError, onUpdateCategory }: {
+function CategoriesContent({ categories, setCategories, categoryError, onUpdateCategory, onCreateCategory, merchants }: {
   categories: Category[],
   setCategories: Dispatch<SetStateAction<Category[]>>,
   categoryError: string | null,
-  onUpdateCategory: (catName: string, updates: Partial<Category>) => Promise<void>
+  onUpdateCategory: (catName: string, updates: Partial<Category>) => Promise<void>,
+  onCreateCategory: (category: Partial<Category>) => Promise<void>,
+  merchants: Merchant[]
 }) {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState<Partial<Category>>({
+    name: "",
+    type: "Merchant",
+    status: "Active",
+    banner: "Not Set",
+    symbol: "Not Set",
+    fixedSlots: 0,
+  });
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [merchantSearch, setMerchantSearch] = useState<{ [key: string]: string }>({});
 
   const handleSave = async () => {
     if (editingCategory) {
@@ -971,6 +1236,279 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
     }
   };
 
+  const handleCreate = async () => {
+    if (newCategory.name) {
+      await onCreateCategory(newCategory);
+      setIsAddingCategory(false);
+      setNewCategory({
+        name: "",
+        type: "Merchant",
+        status: "Active",
+        banner: "Not Set",
+        symbol: "Not Set",
+        fixedSlots: 0,
+      });
+    }
+  };
+
+  const handleImageUpload = async (file: File, type: 'banner' | 'symbol', isEditing: boolean) => {
+    try {
+      setUploading(type);
+      const url = await uploadToCloudinary(file);
+      if (isEditing && editingCategory) {
+        setEditingCategory({ ...editingCategory, [type]: url });
+      } else {
+        setNewCategory({ ...newCategory, [type]: url });
+      }
+    } catch (error: any) {
+      alert("Upload failed: " + error.message);
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const getFilteredMerchants = (search: string) => {
+    if (!search) return [];
+    return merchants.filter(m =>
+      m.name.toLowerCase().includes(search.toLowerCase()) ||
+      m.id.toLowerCase().includes(search.toLowerCase())
+    ).slice(0, 5);
+  };
+
+  const renderCategoryForm = (cat: Partial<Category>, setCat: (c: any) => void, isEditing: boolean) => (
+    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xl space-y-6 animate-in fade-in zoom-in duration-200">
+      <div className="flex items-center justify-between border-b border-slate-50 pb-4">
+        <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">
+          {isEditing ? `Editing: ${cat.name}` : "Add New Category"}
+        </h2>
+        <button onClick={() => isEditing ? setEditingCategory(null) : setIsAddingCategory(false)} className="text-slate-400 hover:text-slate-600">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-4">
+          {!isEditing && (
+            <div>
+              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category Name</label>
+              <input
+                type="text"
+                value={cat.name || ""}
+                onChange={(e) => setCat({ ...cat, name: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="Category Name"
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Type</label>
+              <select
+                value={cat.type}
+                onChange={(e) => setCat({ ...cat, type: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="Merchant">Merchant</option>
+                <option value="Service">Service</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Status</label>
+              <select
+                value={cat.status}
+                onChange={(e) => setCat({ ...cat, status: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Parent Category (Optional)</label>
+            <select
+              value={cat.parent_id || ""}
+              onChange={(e) => setCat({ ...cat, parent_id: e.target.value || null })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+            >
+              <option value="">None (Top Level)</option>
+              {categories.filter(c => c.id !== cat.id && !c.parent_id).map(parent => (
+                <option key={parent.id} value={parent.id}>{parent.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category Banner</label>
+            <div className="flex gap-3 items-center">
+              <div className="flex-1">
+                <input
+                  type="file"
+                  onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'banner', isEditing)}
+                  className="hidden"
+                  id={`banner-upload-${isEditing ? 'edit' : 'new'}`}
+                />
+                <label
+                  htmlFor={`banner-upload-${isEditing ? 'edit' : 'new'}`}
+                  className="flex items-center justify-center gap-2 w-full bg-slate-50 border border-slate-200 border-dashed rounded-lg px-3 py-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all"
+                >
+                  {uploading === 'banner' ? (
+                    <span className="animate-pulse">Uploading...</span>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      {cat.banner && cat.banner !== 'Not Set' ? 'Change Banner' : 'Upload Banner'}
+                    </>
+                  )}
+                </label>
+              </div>
+              {cat.banner && cat.banner !== 'Not Set' && (
+                <div className="w-16 h-12 rounded-lg overflow-hidden border border-slate-200">
+                  <img src={cat.banner} className="w-full h-full object-cover" alt="Banner" />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category Symbol (Icon)</label>
+            <div className="flex gap-3 items-center">
+              <div className="flex-1">
+                <input
+                  type="file"
+                  onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], 'symbol', isEditing)}
+                  className="hidden"
+                  id={`symbol-upload-${isEditing ? 'edit' : 'new'}`}
+                />
+                <label
+                  htmlFor={`symbol-upload-${isEditing ? 'edit' : 'new'}`}
+                  className="flex items-center justify-center gap-2 w-full bg-slate-50 border border-slate-200 border-dashed rounded-lg px-3 py-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all"
+                >
+                  {uploading === 'symbol' ? (
+                    <span className="animate-pulse">Uploading...</span>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      {cat.symbol && cat.symbol !== 'Not Set' ? 'Change Symbol' : 'Upload Symbol'}
+                    </>
+                  )}
+                </label>
+              </div>
+              {cat.symbol && cat.symbol !== 'Not Set' && (
+                <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center bg-slate-50">
+                  <img src={cat.symbol} className="max-w-full max-h-full object-contain" alt="Symbol" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Fixed Partner Spots (Top 5)</label>
+          {[1, 2, 3, 4, 5].map((pos) => {
+            const field = `position_${pos}_business_id` as keyof Category;
+            const currentId = (cat as any)[field] || "";
+            const merchant = merchants.find(m => m.id === currentId);
+
+            return (
+              <div key={pos} className="relative space-y-1">
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] font-black text-primary w-4">#{pos}</span>
+                  <div className="flex-1 flex gap-2">
+                    <input
+                      type="text"
+                      value={merchantSearch[field] !== undefined ? merchantSearch[field] : (merchant ? merchant.name : currentId)}
+                      onChange={(e) => setMerchantSearch({ ...merchantSearch, [field]: e.target.value })}
+                      onFocus={() => setMerchantSearch({ ...merchantSearch, [field]: merchantSearch[field] || (merchant ? merchant.name : currentId) })}
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      placeholder="Search Merchant Name or ID"
+                    />
+                    {currentId && (
+                      <button
+                        onClick={() => {
+                          setCat({ ...cat, [field]: null });
+                          setMerchantSearch({ ...merchantSearch, [field]: "" });
+                        }}
+                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {merchantSearch[field] && (
+                  <div className="absolute z-10 left-7 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden max-h-40 overflow-y-auto">
+                    {getFilteredMerchants(merchantSearch[field]).map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => {
+                          setCat({ ...cat, [field]: m.id });
+                          setMerchantSearch({ ...merchantSearch, [field]: m.name });
+                          // Small delay to hide results after selection
+                          setTimeout(() => {
+                            setMerchantSearch(prev => {
+                              const next = { ...prev };
+                              delete next[field];
+                              return next;
+                            });
+                          }, 100);
+                        }}
+                        className="w-full text-left px-3 py-2 text-[10px] font-bold hover:bg-slate-50 flex flex-col border-b border-slate-50 last:border-0"
+                      >
+                        <span className="text-slate-900">{m.name}</span>
+                        <span className="text-slate-400 text-[8px] uppercase">{m.id} • {m.category}</span>
+                      </button>
+                    ))}
+                    {getFilteredMerchants(merchantSearch[field]).length === 0 && (
+                      <div className="px-3 py-2 text-[10px] text-slate-400 italic">No merchants found</div>
+                    )}
+                  </div>
+                )}
+                {merchant && !merchantSearch[field] && (
+                  <div className="ml-7 text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Linked: {merchant.name}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+        <button
+          onClick={() => isEditing ? setEditingCategory(null) : setIsAddingCategory(false)}
+          className="px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-lg transition-all"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={isEditing ? handleSave : handleCreate}
+          disabled={!cat.name || !!uploading}
+          className="px-6 py-2 bg-primary text-white text-[10px] font-black rounded-lg hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
+        >
+          {isEditing ? "Save Changes" : "Create Category"}
+        </button>
+      </div>
+    </div>
+  );
+
+  const topLevelCategories = categories.filter(c => !c.parent_id);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
@@ -978,9 +1516,14 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Category Catalog</h1>
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage platform categories and service types.</p>
         </div>
-        <button className="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest">
-          Add New Category
-        </button>
+        {!isAddingCategory && !editingCategory && (
+          <button
+            onClick={() => setIsAddingCategory(true)}
+            className="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+          >
+            Add New Category
+          </button>
+        )}
       </div>
 
       {categoryError && (
@@ -992,113 +1535,42 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
         </div>
       )}
 
-      {editingCategory ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xl space-y-6 animate-in fade-in zoom-in duration-200">
-          <div className="flex items-center justify-between border-b border-slate-50 pb-4">
-            <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Editing: {editingCategory.name}</h2>
-            <button onClick={() => setEditingCategory(null)} className="text-slate-400 hover:text-slate-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+      {isAddingCategory && renderCategoryForm(newCategory, setNewCategory, false)}
+      {editingCategory && renderCategoryForm(editingCategory, setEditingCategory, true)}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category Banner URL</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={editingCategory.banner || ""}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, banner: e.target.value })}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    placeholder="https://example.com/banner.jpg"
-                  />
-                </div>
-                {editingCategory.banner && (
-                  <div className="mt-2 h-24 w-full rounded-lg overflow-hidden border border-slate-100">
-                    <img src={editingCategory.banner} alt="Banner Preview" className="w-full h-full object-cover" />
-                  </div>
-                )}
+      {!isAddingCategory && !editingCategory && (
+        <div className="space-y-8">
+          {topLevelCategories.map(parent => (
+            <div key={parent.id} className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="h-px flex-1 bg-slate-200"></div>
+                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{parent.name} Group</h2>
+                <div className="h-px flex-1 bg-slate-200"></div>
               </div>
-            </div>
 
-            <div className="space-y-4">
-              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Fixed Partner Spots (Top 5)</label>
-              {[1, 2, 3, 4, 5].map((pos) => (
-                <div key={pos} className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-primary w-4">#{pos}</span>
-                  <input
-                    type="text"
-                    value={(editingCategory as any)[`position_${pos}_business_id`] || ""}
-                    onChange={(e) => setEditingCategory({ ...editingCategory, [`position_${pos}_business_id`]: e.target.value })}
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    placeholder="Enter Partner ID"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {/* Parent Card */}
+                <CategoryCard cat={parent} onEdit={setEditingCategory} isParent />
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
-            <button
-              onClick={() => setEditingCategory(null)}
-              className="px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-lg transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="px-6 py-2 bg-primary text-white text-[10px] font-black rounded-lg hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
-            >
-              Save Changes
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {categories.map((cat, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
-              <div className="flex justify-between items-start mb-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black border border-slate-200 group-hover:scale-110 transition-all shadow-sm overflow-hidden">
-                  {cat.banner && cat.banner !== 'Not Set' ? (
-                    <img src={cat.banner} className="w-full h-full object-cover" alt="" />
-                  ) : (
-                    cat.name[0]
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setEditingCategory(cat)}
-                    className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-                    title="Edit Category"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
-                  <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${cat.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                    {cat.status}
-                  </span>
-                </div>
-              </div>
-              <h3 className="text-sm font-black text-slate-900 tracking-tight uppercase">{cat.name}</h3>
-              <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-50">
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Partners</span>
-                  <span className="text-xs font-black text-primary tabular-nums">{cat.items}</span>
-                </div>
-                <div className="w-px h-6 bg-slate-100"></div>
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Type</span>
-                  <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{cat.type}</span>
-                </div>
+                {/* Children Cards */}
+                {categories.filter(c => c.parent_id === parent.id).map(child => (
+                  <CategoryCard key={child.id} cat={child} onEdit={setEditingCategory} />
+                ))}
               </div>
             </div>
           ))}
+
+          {/* Uncategorized / Lone categories */}
+          {categories.length > 0 && topLevelCategories.length === 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {categories.map(cat => (
+                <CategoryCard key={cat.id} cat={cat} onEdit={setEditingCategory} />
+              ))}
+            </div>
+          )}
+
           {categories.length === 0 && !categoryError && (
-            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-2xl border border-slate-200/60">
+            <div className="py-24 flex flex-col items-center opacity-30 bg-white rounded-2xl border border-slate-200/60">
               <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -1109,6 +1581,55 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function CategoryCard({ cat, onEdit, isParent }: { cat: Category, onEdit: (c: Category) => void, isParent?: boolean }) {
+  return (
+    <div className={`bg-white rounded-2xl border ${isParent ? 'border-primary/20 shadow-primary/5' : 'border-slate-200/60'} p-5 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group relative overflow-hidden`}>
+      {isParent && (
+        <div className="absolute top-0 right-0 px-3 py-1 bg-primary/10 rounded-bl-xl">
+          <span className="text-[7px] font-black text-primary uppercase tracking-widest">Parent</span>
+        </div>
+      )}
+      <div className="flex justify-between items-start mb-4">
+        <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black border border-slate-200 group-hover:scale-110 transition-all shadow-sm overflow-hidden">
+          {cat.symbol && cat.symbol !== 'Not Set' ? (
+            <img src={cat.symbol} className="max-w-[70%] max-h-[70%] object-contain" alt="" />
+          ) : cat.banner && cat.banner !== 'Not Set' ? (
+            <img src={cat.banner} className="w-full h-full object-cover" alt="" />
+          ) : (
+            cat.name[0]
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onEdit(cat)}
+            className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+            title="Edit Category"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${cat.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+            {cat.status}
+          </span>
+        </div>
+      </div>
+      <h3 className="text-sm font-black text-slate-900 tracking-tight uppercase">{cat.name}</h3>
+      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-50">
+        <div className="flex flex-col">
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Partners</span>
+          <span className="text-xs font-black text-primary tabular-nums">{cat.items}</span>
+        </div>
+        <div className="w-px h-6 bg-slate-100"></div>
+        <div className="flex flex-col">
+          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Type</span>
+          <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{cat.type}</span>
+        </div>
+      </div>
     </div>
   );
 }
