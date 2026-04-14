@@ -298,30 +298,47 @@ export default function Dashboard() {
 
   const handleUpdateCategory = async (catName: string, updates: Partial<Category>) => {
     const supabase = createClient();
+
+    // Defensive payload - only send columns that exist
+    const safeUpdate: any = {
+      banner: updates.banner,
+      parent_id: updates.parent_id,
+      position_1_business_id: updates.position_1_business_id,
+      position_2_business_id: updates.position_2_business_id,
+      position_3_business_id: updates.position_3_business_id,
+      position_4_business_id: updates.position_4_business_id,
+      position_5_business_id: updates.position_5_business_id,
+      status: updates.status,
+      type: updates.type,
+      fixed_slots: updates.fixedSlots,
+    };
+
+    // Only include symbol if it exists in update
+    if ('symbol' in updates && updates.symbol !== undefined) {
+      safeUpdate.symbol = updates.symbol;
+    }
+
     const { error } = await supabase
       .from('categories')
-      .update({
-        banner: updates.banner,
-        symbol: updates.symbol,
-        parent_id: updates.parent_id,
-        position_1_business_id: updates.position_1_business_id,
-        position_2_business_id: updates.position_2_business_id,
-        position_3_business_id: updates.position_3_business_id,
-        position_4_business_id: updates.position_4_business_id,
-        position_5_business_id: updates.position_5_business_id,
-        status: updates.status,
-        type: updates.type,
-        fixed_slots: updates.fixedSlots,
-      })
+      .update(safeUpdate)
       .eq('id', updates.id);
 
     if (error) {
-      alert("Error updating category: " + error.message);
+      // Schema cache error detection
+      const isSchemaError = error.message.includes("symbol") ||
+        error.message.includes("column") ||
+        error.code === "42703";
+
+      if (isSchemaError) {
+        alert(`Schema Error: ${error.message}\n\n🔧 Fix: Run "db/update_categories_schema.sql" in Supabase SQL Editor\n   → Forces cache refresh + verifies column exists`);
+      } else {
+        alert(`Update failed: ${error.message}`);
+      }
       return;
     }
 
     setCategories(prev => prev.map(c => c.id === updates.id ? { ...c, ...updates } : c));
-    alert(`Category ${updates.name} updated successfully!`);
+    alert(`✅ Category "${catName}" updated successfully!`);
   };
 
   const handleCreateCategory = async (category: Partial<Category>) => {
