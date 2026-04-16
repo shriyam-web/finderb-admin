@@ -88,6 +88,16 @@ interface Settings {
   [key: string]: boolean;
 }
 
+interface Movie {
+  id: string;
+  name: string;
+  description: string;
+  finderb_rating: number;
+  release_date: string;
+  poster_url: string;
+  created_at?: string;
+}
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -105,6 +115,7 @@ export default function Dashboard() {
   const [activeMerchants, setActiveMerchants] = useState<Merchant[]>([]);
   const [merchantRequests, setMerchantRequests] = useState<MerchantRequest[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [movies, setMovies] = useState<Movie[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -149,6 +160,16 @@ export default function Dashboard() {
             position_4_business_id: c.position_4_business_id,
             position_5_business_id: c.position_5_business_id
           })));
+        }
+
+        console.log("🚀 Fetching movies from Supabase...");
+        const { data: movieData, error: movieError } = await supabase.from('movies').select('*').order('created_at', { ascending: false });
+
+        if (movieError) {
+          console.error("❌ Movie fetch error:", movieError);
+        } else {
+          console.log("✅ Movies fetched:", movieData?.length || 0);
+          if (movieData) setMovies(movieData);
         }
 
         console.log("🚀 Fetching business data from Supabase...");
@@ -222,6 +243,13 @@ export default function Dashboard() {
       name: "Categories", icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+        </svg>
+      )
+    },
+    {
+      name: "Movies", icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
         </svg>
       )
     },
@@ -377,6 +405,71 @@ export default function Dashboard() {
       alert(`Category ${category.name} created successfully!`);
     }
   };
+  
+  const handleCreateMovie = async (movie: Partial<Movie>) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('movies')
+      .insert([{
+        name: movie.name,
+        description: movie.description,
+        finderb_rating: movie.finderb_rating,
+        release_date: movie.release_date,
+        poster_url: movie.poster_url,
+      }])
+      .select();
+
+    if (error) {
+      alert("Error creating movie: " + error.message);
+      return;
+    }
+
+    if (data) {
+      setMovies(prev => [data[0], ...prev]);
+      alert(`Movie ${movie.name} added successfully!`);
+    }
+  };
+
+  const handleUpdateMovie = async (movie: Partial<Movie>) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('movies')
+      .update({
+        name: movie.name,
+        description: movie.description,
+        finderb_rating: movie.finderb_rating,
+        release_date: movie.release_date,
+        poster_url: movie.poster_url,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', movie.id);
+
+    if (error) {
+      alert("Error updating movie: " + error.message);
+      return;
+    }
+
+    setMovies(prev => prev.map(m => m.id === movie.id ? { ...m, ...movie } : m));
+    alert(`Movie updated successfully!`);
+  };
+
+  const handleDeleteMovie = async (id: string) => {
+    if (confirm("Are you sure you want to remove this movie?")) {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('movies')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        alert("Error deleting movie: " + error.message);
+        return;
+      }
+
+      setMovies(prev => prev.filter(m => m.id !== id));
+      alert("Movie removed successfully!");
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -406,6 +499,14 @@ export default function Dashboard() {
           onUpdateCategory={handleUpdateCategory}
           onCreateCategory={handleCreateCategory}
           merchants={activeMerchants}
+        />;
+      case "Movies":
+        return <MoviesContent
+          movies={movies}
+          setMovies={setMovies}
+          onUpdateMovie={handleUpdateMovie}
+          onCreateMovie={handleCreateMovie}
+          onDeleteMovie={handleDeleteMovie}
         />;
       case "Payments & Subscriptions":
         return <PaymentsContent />;
