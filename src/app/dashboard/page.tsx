@@ -678,7 +678,7 @@ export default function Dashboard() {
                 setActiveTab(item.name);
                 setIsSidebarOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-[11px] font-bold rounded-xl transition-all duration-200 group relative ${activeTab === item.name
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-[11px] font-normal rounded-xl transition-all duration-200 group relative ${activeTab === item.name
                 ? "bg-primary text-white shadow-lg shadow-primary/25"
                 : "text-sidebar-foreground hover:bg-primary/5 hover:text-primary"
                 }`}
@@ -698,12 +698,12 @@ export default function Dashboard() {
         {/* User Profile */}
         <div className="p-4 border-t border-slate-100/50 bg-slate-50/30">
           <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 cursor-pointer group border border-transparent hover:border-slate-100">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-700 flex items-center justify-center text-white font-bold text-xs shadow-sm group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-700 flex items-center justify-center text-white font-normal text-xs shadow-sm group-hover:scale-105 transition-transform">
               AD
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-bold text-slate-900 truncate">Admin User</p>
-              <p className="text-[10px] text-slate-500 truncate font-semibold">admin@finderb.com</p>
+              <p className="text-[11px] font-normal text-slate-900 truncate">Admin User</p>
+              <p className="text-[10px] text-slate-500 truncate font-medium">admin@finderb.com</p>
             </div>
             <div className="relative">
               <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></div>
@@ -725,7 +725,7 @@ export default function Dashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h2 className="text-sm lg:text-base font-black text-primary tracking-tight truncate uppercase">{activeTab}</h2>
+            <h2 className="text-sm lg:text-base font-medium text-primary tracking-tight truncate uppercase">{activeTab}</h2>
           </div>
 
           <div className="flex items-center gap-4 shrink-0">
@@ -736,7 +736,7 @@ export default function Dashboard() {
               <span className="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full border-2 border-white"></span>
             </button>
             <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
-            <Link href="/" className="text-[11px] font-black text-slate-400 hover:text-rose-600 transition-all uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 hover:border-rose-100 hover:bg-rose-50/50">
+            <Link href="/" className="text-[11px] font-medium text-slate-400 hover:text-rose-600 transition-all uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 hover:border-rose-100 hover:bg-rose-50/50">
               Sign out
             </Link>
           </div>
@@ -749,8 +749,8 @@ export default function Dashboard() {
                 <svg className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <div className="text-[11px] font-semibold">
-                  <p className="font-bold text-rose-900">System Alert</p>
+                <div className="text-[11px] font-medium">
+                  <p className="font-normal text-rose-900">System Alert</p>
                   <p className="mt-0.5 text-rose-700">{fetchError}</p>
                 </div>
               </div>
@@ -786,8 +786,8 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1.5 px-1">
-        <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase">System Overview</h1>
-        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Real-time performance and partner engagement metrics.</p>
+        <h1 className="text-xl font-medium tracking-tight text-slate-900 uppercase">System Overview</h1>
+        <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Real-time performance and partner engagement metrics.</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -820,14 +820,14 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
                 {stat.icon}
               </div>
               <div className="flex flex-col items-end">
-                <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${stat.growth.startsWith('+') ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-50 text-slate-600 border border-slate-100'}`}>
+                <span className={`text-[9px] font-medium px-2 py-0.5 rounded-full uppercase tracking-tighter ${stat.growth.startsWith('+') ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-50 text-slate-600 border border-slate-100'}`}>
                   {stat.growth}
                 </span>
               </div>
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</p>
-              <h3 className="text-2xl font-black text-slate-900 mt-1 tabular-nums">{stat.value}</h3>
+              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">{stat.label}</p>
+              <h3 className="text-2xl font-medium text-slate-900 mt-1 tabular-nums">{stat.value}</h3>
             </div>
           </div>
         ))}
@@ -837,17 +837,17 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
         <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6">
           <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
             <div>
-              <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Engagement Metrics</h3>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1 opacity-60">Activity analysis for the current week.</p>
+              <h3 className="text-xs font-medium text-slate-900 uppercase tracking-widest">Engagement Metrics</h3>
+              <p className="text-[9px] text-slate-500 font-normal uppercase tracking-widest mt-1 opacity-60">Activity analysis for the current week.</p>
             </div>
             <div className="flex gap-6">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-primary rounded-full shadow-sm shadow-primary/20"></div>
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Users</span>
+                <span className="text-[9px] font-medium text-slate-500 uppercase tracking-widest">Users</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-secondary rounded-full shadow-sm shadow-secondary/20"></div>
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Merchants</span>
+                <span className="text-[9px] font-medium text-slate-500 uppercase tracking-widest">Merchants</span>
               </div>
             </div>
           </div>
@@ -865,7 +865,7 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
                     style={{ height: `${(d.merchants / maxVal) * 100}%` }}
                   ></div>
                 </div>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter transition-colors group-hover:text-primary">{d.label}</span>
+                <span className="text-[9px] font-medium text-slate-400 uppercase tracking-tighter transition-colors group-hover:text-primary">{d.label}</span>
               </div>
             ))}
           </div>
@@ -873,10 +873,10 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
 
         <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex flex-col overflow-hidden">
           <div className="p-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Pending Approvals</h3>
+            <h3 className="text-xs font-medium text-slate-900 uppercase tracking-widest">Pending Approvals</h3>
             <button
               onClick={() => setActiveTab("Merchants")}
-              className="text-[9px] font-black text-primary hover:text-primary-700 uppercase tracking-widest transition-all bg-white px-2 py-1 rounded-lg border border-slate-200 hover:border-primary/20 shadow-sm"
+              className="text-[9px] font-medium text-primary hover:text-primary-700 uppercase tracking-widest transition-all bg-white px-2 py-1 rounded-lg border border-slate-200 hover:border-primary/20 shadow-sm"
             >
               View Queue
             </button>
@@ -885,12 +885,12 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
             {merchantRequests.length > 0 ? merchantRequests.map((merchant) => (
               <div key={merchant.id} className="p-4 flex items-center justify-between hover:bg-primary/[0.02] transition-colors group">
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-primary font-black text-[10px] border border-slate-200 group-hover:from-primary/5 group-hover:to-primary/10 transition-all uppercase shrink-0 shadow-sm group-hover:scale-105">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-primary font-medium text-[10px] border border-slate-200 group-hover:from-primary/5 group-hover:to-primary/10 transition-all uppercase shrink-0 shadow-sm group-hover:scale-105">
                     {merchant.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-black text-slate-900 truncate tracking-tight">{merchant.name}</p>
-                    <p className="text-[9px] text-secondary font-black uppercase tracking-widest mt-0.5">{merchant.category}</p>
+                    <p className="text-[11px] font-medium text-slate-900 truncate tracking-tight">{merchant.name}</p>
+                    <p className="text-[9px] text-secondary font-medium uppercase tracking-widest mt-0.5">{merchant.category}</p>
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -921,7 +921,7 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Queue Empty</p>
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">Queue Empty</p>
               </div>
             )}
           </div>
@@ -930,8 +930,8 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
 
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-          <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Recent Activity</h3>
-          <button className="text-[9px] font-black text-primary hover:text-primary-700 uppercase tracking-widest transition-all bg-white px-2 py-1 rounded-lg border border-slate-200 hover:border-primary/20 shadow-sm" onClick={() => setActiveTab("Users")}>Full Log</button>
+          <h3 className="text-xs font-medium text-slate-900 uppercase tracking-widest">Recent Activity</h3>
+          <button className="text-[9px] font-medium text-primary hover:text-primary-700 uppercase tracking-widest transition-all bg-white px-2 py-1 rounded-lg border border-slate-200 hover:border-primary/20 shadow-sm" onClick={() => setActiveTab("Users")}>Full Log</button>
         </div>
         <div className="divide-y divide-slate-50/80">
           {[1, 2, 3, 4].map((i) => (
@@ -943,11 +943,11 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
                   </svg>
                 </div>
                 <div className="truncate">
-                  <p className="text-[11px] font-black text-slate-900 truncate tracking-tight">Onboarding: user_0{i}84</p>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 opacity-60">Verification completed successfully.</p>
+                  <p className="text-[11px] font-medium text-slate-900 truncate tracking-tight">Onboarding: user_0{i}84</p>
+                  <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest mt-0.5 opacity-60">Verification completed successfully.</p>
                 </div>
               </div>
-              <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100 tabular-nums">0{i}:24 PM</span>
+              <span className="text-[9px] font-medium text-slate-400 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100 tabular-nums">0{i}:24 PM</span>
             </div>
           ))}
         </div>
@@ -973,12 +973,12 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">User Management</h1>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">View and manage registered users on the platform.</p>
+          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">User Management</h1>
+          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">View and manage registered users on the platform.</p>
         </div>
         <button
           onClick={() => alert("Add User functionality coming soon!")}
-          className="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 transition-all active:scale-95 shadow-lg shadow-primary/20 uppercase tracking-widest"
+          className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-95 shadow-lg shadow-primary/20 uppercase tracking-widest"
         >
           Add New User
         </button>
@@ -989,10 +989,10 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">User Info</th>
-                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
-                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Joined Date</th>
-                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">User Info</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Joined Date</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50/80">
@@ -1000,17 +1000,17 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
                 <tr key={user.id} className="hover:bg-primary/[0.01] transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
                         {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
                       <div>
-                        <p className="text-[11px] font-black text-slate-900 tracking-tight">{user.name}</p>
-                        <p className="text-[10px] text-slate-500 font-bold opacity-60">{user.email}</p>
+                        <p className="text-[11px] font-medium text-slate-900 tracking-tight">{user.name}</p>
+                        <p className="text-[10px] text-slate-500 font-normal opacity-60">{user.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${user.status === "Active"
+                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest border ${user.status === "Active"
                       ? "bg-emerald-50 text-emerald-600 border-emerald-100"
                       : "bg-slate-50 text-slate-500 border-slate-100"
                       }`}>
@@ -1018,7 +1018,7 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-[10px] text-slate-600 font-bold tabular-nums opacity-80">{user.joined}</p>
+                    <p className="text-[10px] text-slate-600 font-normal tabular-nums opacity-80">{user.joined}</p>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -1053,7 +1053,7 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">No users found</p>
+                      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">No users found</p>
                     </div>
                   </td>
                 </tr>
@@ -1150,23 +1150,23 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Partner Management</h1>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage active partners and verify new requests.</p>
+          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Partner Management</h1>
+          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage active partners and verify new requests.</p>
         </div>
         <div className="flex p-1 bg-slate-100/50 border border-slate-200/60 rounded-xl shadow-inner">
           <button
             onClick={() => setMerchantTab("Active")}
-            className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all ${merchantTab === "Active" ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+            className={`px-5 py-2 text-[10px] font-medium uppercase tracking-widest rounded-lg transition-all ${merchantTab === "Active" ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
           >
             Active
           </button>
           <button
             onClick={() => setMerchantTab("Pending")}
-            className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg transition-all relative ${merchantTab === "Pending" ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+            className={`px-5 py-2 text-[10px] font-medium uppercase tracking-widest rounded-lg transition-all relative ${merchantTab === "Pending" ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
           >
             Pending
             {merchantRequests.length > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[8px] font-black text-white border-2 border-white shadow-sm shadow-secondary/20 animate-pulse">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[8px] font-medium text-white border-2 border-white shadow-sm shadow-secondary/20 animate-pulse">
                 {merchantRequests.length}
               </span>
             )}
@@ -1180,11 +1180,11 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50/50 border-b border-slate-100">
                 <tr>
-                  <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Business</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Category</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Sales</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Valid Until</th>
-                  <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
+                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Business</th>
+                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Category</th>
+                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Sales</th>
+                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Valid Until</th>
+                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50/80">
@@ -1192,19 +1192,19 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                   <tr key={merchant.id} className="hover:bg-primary/[0.01] transition-colors group">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
+                        <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
                           {merchant.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </div>
-                        <p className="text-[11px] font-black text-slate-900 tracking-tight">{merchant.name}</p>
+                        <p className="text-[11px] font-medium text-slate-900 tracking-tight">{merchant.name}</p>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-secondary font-black text-[9px] uppercase tracking-widest border border-slate-100">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-secondary font-medium text-[9px] uppercase tracking-widest border border-slate-100">
                         {merchant.category}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-[10px] font-bold tabular-nums text-slate-600 opacity-80">{merchant.sales}</td>
-                    <td className="px-6 py-4 text-[10px] font-bold tabular-nums text-slate-600 opacity-80">{merchant.validUntil}</td>
+                    <td className="px-6 py-4 text-[10px] font-normal tabular-nums text-slate-600 opacity-80">{merchant.sales}</td>
+                    <td className="px-6 py-4 text-[10px] font-normal tabular-nums text-slate-600 opacity-80">{merchant.validUntil}</td>
                     <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => handleViewMerchant(merchant.id)}
@@ -1228,7 +1228,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                           </svg>
                         </div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">No active merchants</p>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">No active merchants</p>
                       </div>
                     </td>
                   </tr>
@@ -1241,33 +1241,33 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
             {merchantRequests.map((req) => (
               <div key={req.id} className="p-5 flex items-center justify-between hover:bg-primary/[0.01] transition-all group">
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black border border-slate-200 group-hover:scale-105 transition-all uppercase shrink-0 shadow-sm">
+                  <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium border border-slate-200 group-hover:scale-105 transition-all uppercase shrink-0 shadow-sm">
                     {req.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                   </div>
                   <div>
-                    <p className="text-sm font-black text-slate-900 tracking-tight truncate">{req.name}</p>
+                    <p className="text-sm font-medium text-slate-900 tracking-tight truncate">{req.name}</p>
                     <div className="flex items-center gap-3 mt-1">
-                      <span className="text-[9px] font-black text-secondary uppercase tracking-widest bg-secondary/5 px-2 py-0.5 rounded-lg border border-secondary/10">{req.category}</span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Request: {req.date}</span>
+                      <span className="text-[9px] font-medium text-secondary uppercase tracking-widest bg-secondary/5 px-2 py-0.5 rounded-lg border border-secondary/10">{req.category}</span>
+                      <span className="text-[9px] font-normal text-slate-400 uppercase tracking-widest">Request: {req.date}</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex gap-3">
                   <button
                     onClick={() => handleViewMerchant(req.id)}
-                    className="px-4 py-2 text-[10px] font-black text-slate-600 hover:bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-xl transition-all uppercase tracking-widest"
+                    className="px-4 py-2 text-[10px] font-medium text-slate-600 hover:bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-xl transition-all uppercase tracking-widest"
                   >
                     View KYC
                   </button>
                   <button
                     onClick={() => handleReject(req.id)}
-                    className="px-4 py-2 text-[10px] font-black text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 rounded-xl transition-all uppercase tracking-widest"
+                    className="px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 rounded-xl transition-all uppercase tracking-widest"
                   >
                     Reject
                   </button>
                   <button
                     onClick={() => handleApprove(req)}
-                    className="px-4 py-2 text-[10px] font-black text-white bg-primary hover:bg-primary-700 rounded-xl shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+                    className="px-4 py-2 text-[10px] font-medium text-white bg-primary hover:bg-primary-700 rounded-xl shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
                   >
                     Approve Partner
                   </button>
@@ -1281,7 +1281,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Verification queue is empty</p>
+                <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">Verification queue is empty</p>
               </div>
             )}
           </div>
@@ -1294,8 +1294,8 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in duration-300">
             <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">{selectedBusiness.businessName || selectedBusiness.fullName}</h2>
-                <p className="text-[10px] text-secondary font-black uppercase tracking-widest mt-1">Merchant Verification Dossier</p>
+                <h2 className="text-xl font-medium text-slate-900 tracking-tight uppercase">{selectedBusiness.businessName || selectedBusiness.fullName}</h2>
+                <p className="text-[10px] text-secondary font-medium uppercase tracking-widest mt-1">Merchant Verification Dossier</p>
               </div>
               <button
                 onClick={() => setSelectedBusiness(null)}
@@ -1311,7 +1311,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Business Info */}
                 <div className="space-y-6">
-                  <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] border-b border-primary/10 pb-2">Primary Information</h3>
+                  <h3 className="text-[10px] font-medium text-primary uppercase tracking-[0.2em] border-b border-primary/10 pb-2">Primary Information</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {[
                       { label: "Full Name", value: selectedBusiness.fullName },
@@ -1323,20 +1323,20 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                       { label: "KYC Status", value: selectedBusiness.kycStatus },
                     ].map((info, i) => (
                       <div key={i} className="space-y-1">
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{info.label}</p>
-                        <p className="text-[11px] font-bold text-slate-900">{info.value || "N/A"}</p>
+                        <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">{info.label}</p>
+                        <p className="text-[11px] font-normal text-slate-900">{info.value || "N/A"}</p>
                       </div>
                     ))}
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Business Address</p>
-                    <p className="text-[11px] font-bold text-slate-900 leading-relaxed">{selectedBusiness.businessAddress}</p>
+                    <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">Business Address</p>
+                    <p className="text-[11px] font-normal text-slate-900 leading-relaxed">{selectedBusiness.businessAddress}</p>
                   </div>
                 </div>
 
                 {/* KYC Documents */}
                 <div className="space-y-6">
-                  <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] border-b border-primary/10 pb-2">Verification Documents</h3>
+                  <h3 className="text-[10px] font-medium text-primary uppercase tracking-[0.2em] border-b border-primary/10 pb-2">Verification Documents</h3>
                   <div className="space-y-5">
                     {[
                       { label: "PAN Card", field: "panUrl", number: selectedBusiness.panNumber },
@@ -1346,10 +1346,10 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                       <div key={i} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">{doc.label}</p>
-                            <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Ref: {doc.number || "Not Provided"}</p>
+                            <p className="text-[10px] font-medium text-slate-900 uppercase tracking-tight">{doc.label}</p>
+                            <p className="text-[9px] text-slate-500 font-normal uppercase tracking-widest mt-0.5">Ref: {doc.number || "Not Provided"}</p>
                           </div>
-                          <label className={`cursor-pointer px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[9px] font-black text-primary hover:border-primary/30 transition-all shadow-sm flex items-center gap-2 ${isUploading === doc.field ? "opacity-50 pointer-events-none" : ""}`}>
+                          <label className={`cursor-pointer px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[9px] font-medium text-primary hover:border-primary/30 transition-all shadow-sm flex items-center gap-2 ${isUploading === doc.field ? "opacity-50 pointer-events-none" : ""}`}>
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                             </svg>
@@ -1374,7 +1374,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                               href={(selectedBusiness as any)[doc.field]}
                               target="_blank"
                               rel="noreferrer"
-                              className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-black uppercase tracking-widest backdrop-blur-[2px]"
+                              className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-medium uppercase tracking-widest backdrop-blur-[2px]"
                             >
                               View Full Document
                             </a>
@@ -1384,7 +1384,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                             <svg className="w-8 h-8 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            <p className="text-[9px] font-black uppercase tracking-widest">Document Not Uploaded</p>
+                            <p className="text-[9px] font-medium uppercase tracking-widest">Document Not Uploaded</p>
                           </div>
                         )}
                       </div>
@@ -1397,7 +1397,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
             <div className="px-8 py-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
               <button
                 onClick={() => setSelectedBusiness(null)}
-                className="px-6 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-200"
+                className="px-6 py-2.5 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-200"
               >
                 Dismiss
               </button>
@@ -1405,7 +1405,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                 <>
                   <button
                     onClick={() => { handleReject(selectedBusiness.id); setSelectedBusiness(null); }}
-                    className="px-6 py-2.5 text-[10px] font-black text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all uppercase tracking-widest shadow-sm"
+                    className="px-6 py-2.5 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all uppercase tracking-widest shadow-sm"
                   >
                     Reject KYC
                   </button>
@@ -1414,7 +1414,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                       handleApprove({ id: selectedBusiness.id, name: selectedBusiness.businessName || selectedBusiness.fullName || '', category: selectedBusiness.category || '', date: '' });
                       setSelectedBusiness(null);
                     }}
-                    className="px-8 py-2.5 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest"
+                    className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest"
                   >
                     Approve Merchant
                   </button>
@@ -1514,7 +1514,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
   const renderCategoryForm = (cat: Partial<Category>, setCat: (c: any) => void, isEditing: boolean) => (
     <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xl space-y-6 animate-in fade-in zoom-in duration-200">
       <div className="flex items-center justify-between border-b border-slate-50 pb-4">
-        <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">
+        <h2 className="text-sm font-medium text-slate-900 uppercase tracking-tight">
           {isEditing ? `Editing: ${cat.name}` : "Add New Category"}
         </h2>
         <button onClick={() => isEditing ? setEditingCategory(null) : setIsAddingCategory(false)} className="text-slate-400 hover:text-slate-600">
@@ -1528,12 +1528,12 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
         <div className="space-y-4">
           {!isEditing && (
             <div>
-              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category Name</label>
+              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Category Name</label>
               <input
                 type="text"
                 value={cat.name || ""}
                 onChange={(e) => setCat({ ...cat, name: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
                 placeholder="Category Name"
               />
             </div>
@@ -1541,22 +1541,22 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Type</label>
+              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Type</label>
               <select
                 value={cat.type}
                 onChange={(e) => setCat({ ...cat, type: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="Merchant">Merchant</option>
                 <option value="Service">Service</option>
               </select>
             </div>
             <div>
-              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Status</label>
+              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Status</label>
               <select
                 value={cat.status}
                 onChange={(e) => setCat({ ...cat, status: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
@@ -1565,11 +1565,11 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           </div>
 
           <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Parent Category (Optional)</label>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Parent Category (Optional)</label>
             <select
               value={cat.parent_id || ""}
               onChange={(e) => setCat({ ...cat, parent_id: e.target.value || null })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="">None (Top Level)</option>
               {categories.filter(c => c.id !== cat.id && !c.parent_id).map(parent => (
@@ -1579,7 +1579,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           </div>
 
           <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category Banner</label>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Category Banner</label>
             <div className="flex gap-3 items-center">
               <div className="flex-1 relative">
                 <input
@@ -1591,7 +1591,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                 />
                 <label
                   htmlFor={`banner-upload-${isEditing ? 'edit' : 'new'}`}
-                  className={`flex flex-col items-center justify-center gap-2 w-full bg-slate-50 border-2 border-dashed rounded-lg px-3 py-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading === 'banner'
+                  className={`flex flex-col items-center justify-center gap-2 w-full bg-slate-50 border-2 border-dashed rounded-lg px-3 py-4 text-[10px] font-normal text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading === 'banner'
                     ? 'border-primary/30 bg-primary/5 cursor-not-allowed'
                     : 'border-slate-200 hover:border-primary/30'
                     }`}
@@ -1604,7 +1604,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                           style={{ width: `${uploadProgress.banner || 0}%` }}
                         />
                       </div>
-                      <div className="flex items-center gap-1 text-[9px] font-black text-primary uppercase tracking-wider">
+                      <div className="flex items-center gap-1 text-[9px] font-medium text-primary uppercase tracking-wider">
                         <div className="w-2 h-2 bg-primary rounded-full animate-ping"></div>
                         {uploadProgress.banner?.toFixed(0)}%
                       </div>
@@ -1628,7 +1628,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           </div>
 
           <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category Symbol (Icon)</label>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Category Symbol (Icon)</label>
             <div className="flex gap-3 items-center">
               <div className="flex-1 relative">
                 <input
@@ -1640,7 +1640,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                 />
                 <label
                   htmlFor={`symbol-upload-${isEditing ? 'edit' : 'new'}`}
-                  className={`flex flex-col items-center justify-center gap-2 w-full bg-slate-50 border-2 border-dashed rounded-lg px-3 py-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading === 'symbol'
+                  className={`flex flex-col items-center justify-center gap-2 w-full bg-slate-50 border-2 border-dashed rounded-lg px-3 py-4 text-[10px] font-normal text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading === 'symbol'
                       ? 'border-primary/30 bg-primary/5 cursor-not-allowed'
                       : 'border-slate-200 hover:border-primary/30'
                     }`}
@@ -1653,7 +1653,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                           style={{ width: `${uploadProgress.symbol || 0}%` }}
                         />
                       </div>
-                      <div className="flex items-center gap-1 text-[9px] font-black text-primary uppercase tracking-wider">
+                      <div className="flex items-center gap-1 text-[9px] font-medium text-primary uppercase tracking-wider">
                         <div className="w-2 h-2 bg-primary rounded-full animate-ping"></div>
                         {uploadProgress.symbol?.toFixed(0)}%
                       </div>
@@ -1678,7 +1678,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
         </div>
 
         <div className="space-y-4">
-          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Fixed Partner Spots (Top 5)</label>
+          <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Fixed Partner Spots (Top 5)</label>
           {[1, 2, 3, 4, 5].map((pos) => {
             const field = `position_${pos}_business_id` as keyof Category;
             const currentId = (cat as any)[field] || "";
@@ -1687,14 +1687,14 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
             return (
               <div key={pos} className="relative space-y-1">
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black text-primary w-4">#{pos}</span>
+                  <span className="text-[10px] font-medium text-primary w-4">#{pos}</span>
                   <div className="flex-1 flex gap-2">
                     <input
                       type="text"
                       value={merchantSearch[field] !== undefined ? merchantSearch[field] : (merchant ? merchant.name : currentId)}
                       onChange={(e) => setMerchantSearch({ ...merchantSearch, [field]: e.target.value })}
                       onFocus={() => setMerchantSearch({ ...merchantSearch, [field]: merchantSearch[field] || (merchant ? merchant.name : currentId) })}
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
                       placeholder="Search Merchant Name or ID"
                     />
                     {currentId && (
@@ -1730,7 +1730,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                             });
                           }, 100);
                         }}
-                        className="w-full text-left px-3 py-2 text-[10px] font-bold hover:bg-slate-50 flex flex-col border-b border-slate-50 last:border-0"
+                        className="w-full text-left px-3 py-2 text-[10px] font-normal hover:bg-slate-50 flex flex-col border-b border-slate-50 last:border-0"
                       >
                         <span className="text-slate-900">{m.name}</span>
                         <span className="text-slate-400 text-[8px] uppercase">{m.id} • {m.category}</span>
@@ -1742,7 +1742,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                   </div>
                 )}
                 {merchant && !merchantSearch[field] && (
-                  <div className="ml-7 text-[8px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+                  <div className="ml-7 text-[8px] font-medium text-emerald-600 uppercase tracking-widest flex items-center gap-1">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
@@ -1758,14 +1758,14 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
         <button
           onClick={() => isEditing ? setEditingCategory(null) : setIsAddingCategory(false)}
-          className="px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-lg transition-all"
+          className="px-4 py-2 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-lg transition-all"
         >
           Cancel
         </button>
         <button
           onClick={isEditing ? handleSave : handleCreate}
           disabled={!cat.name || !!uploading}
-          className="px-6 py-2 bg-primary text-white text-[10px] font-black rounded-lg hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
+          className="px-6 py-2 bg-primary text-white text-[10px] font-medium rounded-lg hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
         >
           {isEditing ? "Save Changes" : "Create Category"}
         </button>
@@ -1779,13 +1779,13 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Category Catalog</h1>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage platform categories and service types.</p>
+          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Category Catalog</h1>
+          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage platform categories and service types.</p>
         </div>
         {!isAddingCategory && !editingCategory && (
           <button
             onClick={() => setIsAddingCategory(true)}
-            className="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
           >
             Add New Category
           </button>
@@ -1797,7 +1797,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <p className="text-[10px] font-bold text-amber-800 uppercase tracking-widest">{categoryError}</p>
+          <p className="text-[10px] font-normal text-amber-800 uppercase tracking-widest">{categoryError}</p>
         </div>
       )}
 
@@ -1810,7 +1810,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
             <div key={parent.id} className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="h-px flex-1 bg-slate-200"></div>
-                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{parent.name} Group</h2>
+                <h2 className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.3em]">{parent.name} Group</h2>
                 <div className="h-px flex-1 bg-slate-200"></div>
               </div>
 
@@ -1842,7 +1842,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">No categories defined</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">No categories defined</p>
             </div>
           )}
         </div>
@@ -1856,11 +1856,11 @@ function CategoryCard({ cat, onEdit, isParent }: { cat: Category, onEdit: (c: Ca
     <div className={`bg-white rounded-2xl border ${isParent ? 'border-primary/20 shadow-primary/5' : 'border-slate-200/60'} p-5 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group relative overflow-hidden`}>
       {isParent && (
         <div className="absolute top-0 right-0 px-3 py-1 bg-primary/10 rounded-bl-xl">
-          <span className="text-[7px] font-black text-primary uppercase tracking-widest">Parent</span>
+          <span className="text-[7px] font-medium text-primary uppercase tracking-widest">Parent</span>
         </div>
       )}
       <div className="flex justify-between items-start mb-4">
-        <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black border border-slate-200 group-hover:scale-110 transition-all shadow-sm overflow-hidden">
+        <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium border border-slate-200 group-hover:scale-110 transition-all shadow-sm overflow-hidden">
           {cat.symbol && cat.symbol !== 'Not Set' ? (
             <img src={cat.symbol} className="max-w-[70%] max-h-[70%] object-contain" alt="" />
           ) : cat.banner && cat.banner !== 'Not Set' ? (
@@ -1879,21 +1879,21 @@ function CategoryCard({ cat, onEdit, isParent }: { cat: Category, onEdit: (c: Ca
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
             </svg>
           </button>
-          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest border ${cat.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+          <span className={`px-2 py-0.5 rounded-lg text-[8px] font-medium uppercase tracking-widest border ${cat.status === 'Active' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
             {cat.status}
           </span>
         </div>
       </div>
-      <h3 className="text-sm font-black text-slate-900 tracking-tight uppercase">{cat.name}</h3>
+      <h3 className="text-sm font-medium text-slate-900 tracking-tight uppercase">{cat.name}</h3>
       <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-50">
         <div className="flex flex-col">
-          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Partners</span>
-          <span className="text-xs font-black text-primary tabular-nums">{cat.items}</span>
+          <span className="text-[8px] font-medium text-slate-400 uppercase tracking-widest">Partners</span>
+          <span className="text-xs font-medium text-primary tabular-nums">{cat.items}</span>
         </div>
         <div className="w-px h-6 bg-slate-100"></div>
         <div className="flex flex-col">
-          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Type</span>
-          <span className="text-[10px] font-black text-secondary uppercase tracking-widest">{cat.type}</span>
+          <span className="text-[8px] font-medium text-slate-400 uppercase tracking-widest">Type</span>
+          <span className="text-[10px] font-medium text-secondary uppercase tracking-widest">{cat.type}</span>
         </div>
       </div>
     </div>
@@ -1963,7 +1963,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
   const renderMovieForm = (movie: Partial<Movie>, setMovie: Dispatch<SetStateAction<any>>, isEditing: boolean) => (
     <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-8 space-y-6 mb-8 animate-in slide-in-from-top-4 duration-300">
       <div className="flex items-center justify-between border-b border-slate-50 pb-5">
-        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-sm font-medium text-slate-900 uppercase tracking-widest flex items-center gap-2">
           <span className="w-2 h-2 bg-primary rounded-full"></span>
           {isEditing ? `Edit: ${movie.name}` : "Add New Movie"}
         </h3>
@@ -1980,29 +1980,29 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Movie Name</label>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Movie Name</label>
             <input
               type="text"
               value={movie.name}
               onChange={(e) => setMovie({ ...movie, name: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               placeholder="Enter movie name"
             />
           </div>
 
           <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
             <textarea
               value={movie.description}
               onChange={(e) => setMovie({ ...movie, description: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]"
               placeholder="Enter movie description"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">FinderB Rating</label>
+              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">FinderB Rating</label>
               <input
                 type="number"
                 step="0.1"
@@ -2010,16 +2010,16 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
                 max="10"
                 value={movie.finderb_rating}
                 onChange={(e) => setMovie({ ...movie, finderb_rating: parseFloat(e.target.value) })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
             <div>
-              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Release Date</label>
+              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Release Date</label>
               <input
                 type="date"
                 value={movie.release_date}
                 onChange={(e) => setMovie({ ...movie, release_date: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
           </div>
@@ -2027,7 +2027,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
 
         <div className="space-y-4">
           <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Movie Poster</label>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Movie Poster</label>
             <div className="flex gap-4 items-start">
               <div className="flex-1 relative">
                 <input
@@ -2039,7 +2039,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
                 />
                 <label
                   htmlFor={`poster-upload-${isEditing ? 'edit' : 'new'}`}
-                  className={`flex flex-col items-center justify-center gap-2 w-full aspect-[2/3] bg-slate-50 border-2 border-dashed rounded-2xl p-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading
+                  className={`flex flex-col items-center justify-center gap-2 w-full aspect-[2/3] bg-slate-50 border-2 border-dashed rounded-2xl p-4 text-[10px] font-normal text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading
                       ? 'border-primary/30 bg-primary/5 cursor-not-allowed'
                       : 'border-slate-200 hover:border-primary/30'
                     }`}
@@ -2052,7 +2052,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
                           style={{ width: `${uploadProgress}%` }}
                         />
                       </div>
-                      <span className="text-primary font-black uppercase tracking-widest">{uploadProgress}% Uploading...</span>
+                      <span className="text-primary font-medium uppercase tracking-widest">{uploadProgress}% Uploading...</span>
                     </div>
                   ) : movie.poster_url ? (
                     <img src={movie.poster_url} className="w-full h-full object-cover rounded-xl" alt="Poster Preview" />
@@ -2084,14 +2084,14 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
         <button
           onClick={() => isEditing ? setEditingMovie(null) : setIsAddingMovie(false)}
-          className="px-6 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all"
+          className="px-6 py-2.5 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all"
         >
           Cancel
         </button>
         <button
           onClick={isEditing ? handleSave : handleCreate}
           disabled={!movie.name || uploading}
-          className="px-8 py-2.5 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
+          className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
         >
           {isEditing ? "Save Changes" : "Save Movie"}
         </button>
@@ -2103,13 +2103,13 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Movie Library</h1>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage platform movies and ratings.</p>
+          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Movie Library</h1>
+          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage platform movies and ratings.</p>
         </div>
         {!isAddingMovie && !editingMovie && (
           <button
             onClick={() => setIsAddingMovie(true)}
-            className="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
           >
             Add New Movie
           </button>
@@ -2155,11 +2155,11 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
                   <svg className="w-2.5 h-2.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                   </svg>
-                  <span className="text-[9px] font-black">{movie.finderb_rating?.toFixed(1) || '0.0'}</span>
+                  <span className="text-[9px] font-medium">{movie.finderb_rating?.toFixed(1) || '0.0'}</span>
                 </div>
               </div>
-              <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate mb-1">{movie.name}</h3>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{new Date(movie.release_date).getFullYear() || 'TBA'}</p>
+              <h3 className="text-[11px] font-medium text-slate-900 uppercase tracking-tight truncate mb-1">{movie.name}</h3>
+              <p className="text-[9px] text-slate-500 font-normal uppercase tracking-widest">{new Date(movie.release_date).getFullYear() || 'TBA'}</p>
             </div>
           ))}
 
@@ -2170,7 +2170,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
                 </svg>
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">No movies found</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">No movies found</p>
             </div>
           )}
         </div>
@@ -2183,8 +2183,8 @@ function PaymentsContent() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1.5 px-1">
-        <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Financial Ledger</h1>
-        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Transaction history and subscription revenue logs.</p>
+        <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Financial Ledger</h1>
+        <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Transaction history and subscription revenue logs.</p>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-24 text-center">
@@ -2193,7 +2193,7 @@ function PaymentsContent() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
         </div>
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 animate-pulse">Transaction Engine Syncing...</p>
+        <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400 animate-pulse">Transaction Engine Syncing...</p>
       </div>
     </div>
   );
@@ -2208,17 +2208,17 @@ function BroadcastsContent({ message, setMessage, audience, setAudience }: {
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex flex-col gap-1.5 px-1">
-        <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Global Broadcast</h1>
-        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Push announcements and updates to platform users.</p>
+        <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Global Broadcast</h1>
+        <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Push announcements and updates to platform users.</p>
       </div>
 
       <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-8 space-y-6">
         <div>
-          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5">Recipient Audience</label>
+          <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-2.5">Recipient Audience</label>
           <select
             value={audience}
             onChange={(e) => setAudience(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-black uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none"
             style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2394a3b8\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1em' }}
           >
             <option>Everyone</option>
@@ -2228,17 +2228,17 @@ function BroadcastsContent({ message, setMessage, audience, setAudience }: {
           </select>
         </div>
         <div>
-          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2.5">Announcement Content</label>
+          <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-2.5">Announcement Content</label>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="TYPE YOUR MESSAGE HERE..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-black uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-h-[160px] placeholder:text-slate-300"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-h-[160px] placeholder:text-slate-300"
           />
         </div>
         <button
           onClick={() => { alert("Broadcast sent!"); setMessage(""); }}
-          className="w-full py-4 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-[0.2em]"
+          className="w-full py-4 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-[0.2em]"
         >
           Dispatch Announcement
         </button>
@@ -2255,16 +2255,16 @@ function SettingsContent({ settings, setSettings }: { settings: Settings, setSet
   return (
     <div className="space-y-6 max-w-xl">
       <div className="flex flex-col gap-1.5 px-1">
-        <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Control Center</h1>
-        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage platform configurations and global security.</p>
+        <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Control Center</h1>
+        <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage platform configurations and global security.</p>
       </div>
 
       <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm divide-y divide-slate-50/80 overflow-hidden">
         {Object.entries(settings).map(([key, val], i) => (
           <div key={i} className="p-5 flex items-center justify-between hover:bg-primary/[0.01] transition-colors">
             <div className="flex flex-col">
-              <span className="text-[11px] font-black text-slate-900 capitalize tracking-tight">{key.replace(/([A-Z])/g, ' $1')}</span>
-              <span className="text-[9px] text-secondary font-black uppercase tracking-widest mt-0.5">Global system flag</span>
+              <span className="text-[11px] font-medium text-slate-900 capitalize tracking-tight">{key.replace(/([A-Z])/g, ' $1')}</span>
+              <span className="text-[9px] text-secondary font-medium uppercase tracking-widest mt-0.5">Global system flag</span>
             </div>
             <button
               onClick={() => toggleSetting(key)}
@@ -2276,7 +2276,7 @@ function SettingsContent({ settings, setSettings }: { settings: Settings, setSet
         ))}
       </div>
 
-      <button className="w-full py-4 text-[10px] font-black text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all active:scale-[0.98] uppercase tracking-[0.2em]">
+      <button className="w-full py-4 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all active:scale-[0.98] uppercase tracking-[0.2em]">
         Reset All System Flags
       </button>
     </div>
@@ -2345,7 +2345,7 @@ function TouristPlacesContent({ places, setPlaces, onUpdatePlace, onCreatePlace,
   const renderPlaceForm = (place: Partial<TouristPlace>, setPlace: Dispatch<SetStateAction<any>>, isEditing: boolean) => (
     <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-8 space-y-6 mb-8 animate-in slide-in-from-top-4 duration-300">
       <div className="flex items-center justify-between border-b border-slate-50 pb-5">
-        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-sm font-medium text-slate-900 uppercase tracking-widest flex items-center gap-2">
           <span className="w-2 h-2 bg-primary rounded-full"></span>
           {isEditing ? `Edit: ${place.name}` : "Add New Tourist Place"}
         </h3>
@@ -2357,35 +2357,35 @@ function TouristPlacesContent({ places, setPlaces, onUpdatePlace, onCreatePlace,
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Place Name</label>
-            <input type="text" value={place.name} onChange={(e) => setPlace({ ...place, name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Enter place name" />
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Place Name</label>
+            <input type="text" value={place.name} onChange={(e) => setPlace({ ...place, name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Enter place name" />
           </div>
           <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Location (City, State)</label>
-            <input type="text" value={place.location} onChange={(e) => setPlace({ ...place, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Jaipur, Rajasthan" />
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Location (City, State)</label>
+            <input type="text" value={place.location} onChange={(e) => setPlace({ ...place, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Jaipur, Rajasthan" />
           </div>
           <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category</label>
-            <input type="text" value={place.category} onChange={(e) => setPlace({ ...place, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Historical, Nature" />
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Category</label>
+            <input type="text" value={place.category} onChange={(e) => setPlace({ ...place, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Historical, Nature" />
           </div>
           <div>
-            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
-            <textarea value={place.description} onChange={(e) => setPlace({ ...place, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]" placeholder="Enter description" />
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
+            <textarea value={place.description} onChange={(e) => setPlace({ ...place, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]" placeholder="Enter description" />
           </div>
         </div>
 
         <div className="space-y-4">
-          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Place Image</label>
+          <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Place Image</label>
           <div className="flex gap-4 items-start">
             <div className="flex-1 relative">
               <input type="file" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], isEditing)} className="hidden" id={`tp-upload-${isEditing ? 'edit' : 'new'}`} disabled={uploading} />
-              <label htmlFor={`tp-upload-${isEditing ? 'edit' : 'new'}`} className={`flex flex-col items-center justify-center gap-2 w-full aspect-video bg-slate-50 border-2 border-dashed rounded-2xl p-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading ? 'border-primary/30 bg-primary/5 cursor-not-allowed' : 'border-slate-200 hover:border-primary/30'}`}>
+              <label htmlFor={`tp-upload-${isEditing ? 'edit' : 'new'}`} className={`flex flex-col items-center justify-center gap-2 w-full aspect-video bg-slate-50 border-2 border-dashed rounded-2xl p-4 text-[10px] font-normal text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading ? 'border-primary/30 bg-primary/5 cursor-not-allowed' : 'border-slate-200 hover:border-primary/30'}`}>
                 {uploading ? (
                   <div className="flex flex-col items-center gap-3 w-full px-4">
                     <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                       <div className="bg-primary h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                     </div>
-                    <span className="text-primary font-black uppercase tracking-widest">{uploadProgress}% Uploading...</span>
+                    <span className="text-primary font-medium uppercase tracking-widest">{uploadProgress}% Uploading...</span>
                   </div>
                 ) : place.image_url ? (
                   <img src={place.image_url} className="w-full h-full object-cover rounded-xl" alt="Preview" />
@@ -2402,8 +2402,8 @@ function TouristPlacesContent({ places, setPlaces, onUpdatePlace, onCreatePlace,
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
-        <button onClick={() => isEditing ? setEditingPlace(null) : setIsAddingPlace(false)} className="px-6 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
-        <button onClick={isEditing ? handleSave : handleCreate} disabled={!place.name || uploading} className="px-8 py-2.5 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50">{isEditing ? "Save Changes" : "Save Place"}</button>
+        <button onClick={() => isEditing ? setEditingPlace(null) : setIsAddingPlace(false)} className="px-6 py-2.5 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
+        <button onClick={isEditing ? handleSave : handleCreate} disabled={!place.name || uploading} className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50">{isEditing ? "Save Changes" : "Save Place"}</button>
       </div>
     </div>
   );
@@ -2412,11 +2412,11 @@ function TouristPlacesContent({ places, setPlaces, onUpdatePlace, onCreatePlace,
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Tourist Places in India</h1>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage tourist attractions and locations.</p>
+          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Tourist Places in India</h1>
+          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage tourist attractions and locations.</p>
         </div>
         {!isAddingPlace && !editingPlace && (
-          <button onClick={() => setIsAddingPlace(true)} className="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest">Add New Place</button>
+          <button onClick={() => setIsAddingPlace(true)} className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest">Add New Place</button>
         )}
       </div>
 
@@ -2444,9 +2444,9 @@ function TouristPlacesContent({ places, setPlaces, onUpdatePlace, onCreatePlace,
                   </button>
                 </div>
               </div>
-              <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate mb-1">{place.name}</h3>
-              <p className="text-[9px] text-secondary font-black uppercase tracking-widest mb-1">{place.location}</p>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest line-clamp-2">{place.description}</p>
+              <h3 className="text-[11px] font-medium text-slate-900 uppercase tracking-tight truncate mb-1">{place.name}</h3>
+              <p className="text-[9px] text-secondary font-medium uppercase tracking-widest mb-1">{place.location}</p>
+              <p className="text-[9px] text-slate-400 font-normal uppercase tracking-widest line-clamp-2">{place.description}</p>
             </div>
           ))}
 
@@ -2455,7 +2455,7 @@ function TouristPlacesContent({ places, setPlaces, onUpdatePlace, onCreatePlace,
               <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               </div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">No tourist places found</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">No tourist places found</p>
             </div>
           )}
         </div>
