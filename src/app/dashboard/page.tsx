@@ -98,6 +98,16 @@ interface Movie {
   created_at?: string;
 }
 
+interface TouristPlace {
+  id: string;
+  name: string;
+  description: string;
+  location: string;
+  category: string;
+  image_url: string;
+  created_at?: string;
+}
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -116,6 +126,7 @@ export default function Dashboard() {
   const [merchantRequests, setMerchantRequests] = useState<MerchantRequest[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [touristPlaces, setTouristPlaces] = useState<TouristPlace[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -170,6 +181,16 @@ export default function Dashboard() {
         } else {
           console.log("✅ Movies fetched:", movieData?.length || 0);
           if (movieData) setMovies(movieData);
+        }
+
+        console.log("🚀 Fetching tourist places from Supabase...");
+        const { data: tpData, error: tpError } = await supabase.from('tourist_places').select('*').order('created_at', { ascending: false });
+
+        if (tpError) {
+          console.error("❌ Tourist places fetch error:", tpError);
+        } else {
+          console.log("✅ Tourist places fetched:", tpData?.length || 0);
+          if (tpData) setTouristPlaces(tpData);
         }
 
         console.log("🚀 Fetching business data from Supabase...");
@@ -250,6 +271,14 @@ export default function Dashboard() {
       name: "Movies", icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+        </svg>
+      )
+    },
+    {
+      name: "Tourist Places", icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       )
     },
@@ -471,6 +500,71 @@ export default function Dashboard() {
     }
   };
 
+  const handleCreateTouristPlace = async (tp: Partial<TouristPlace>) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('tourist_places')
+      .insert([{
+        name: tp.name,
+        description: tp.description,
+        location: tp.location,
+        category: tp.category,
+        image_url: tp.image_url,
+      }])
+      .select();
+
+    if (error) {
+      alert("Error creating tourist place: " + error.message);
+      return;
+    }
+
+    if (data) {
+      setTouristPlaces(prev => [data[0], ...prev]);
+      alert(`Tourist place ${tp.name} added successfully!`);
+    }
+  };
+
+  const handleUpdateTouristPlace = async (tp: Partial<TouristPlace>) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('tourist_places')
+      .update({
+        name: tp.name,
+        description: tp.description,
+        location: tp.location,
+        category: tp.category,
+        image_url: tp.image_url,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', tp.id);
+
+    if (error) {
+      alert("Error updating tourist place: " + error.message);
+      return;
+    }
+
+    setTouristPlaces(prev => prev.map(p => p.id === tp.id ? { ...p, ...tp } : p));
+    alert(`Tourist place updated successfully!`);
+  };
+
+  const handleDeleteTouristPlace = async (id: string) => {
+    if (confirm("Are you sure you want to remove this tourist place?")) {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('tourist_places')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        alert("Error deleting tourist place: " + error.message);
+        return;
+      }
+
+      setTouristPlaces(prev => prev.filter(p => p.id !== id));
+      alert("Tourist place removed successfully!");
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case "Dashboard":
@@ -507,6 +601,14 @@ export default function Dashboard() {
           onUpdateMovie={handleUpdateMovie}
           onCreateMovie={handleCreateMovie}
           onDeleteMovie={handleDeleteMovie}
+        />;
+      case "Tourist Places":
+        return <TouristPlacesContent
+          places={touristPlaces}
+          setPlaces={setTouristPlaces}
+          onUpdatePlace={handleUpdateTouristPlace}
+          onCreatePlace={handleCreateTouristPlace}
+          onDeletePlace={handleDeleteTouristPlace}
         />;
       case "Payments & Subscriptions":
         return <PaymentsContent />;
@@ -2177,6 +2279,187 @@ function SettingsContent({ settings, setSettings }: { settings: Settings, setSet
       <button className="w-full py-4 text-[10px] font-black text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all active:scale-[0.98] uppercase tracking-[0.2em]">
         Reset All System Flags
       </button>
+    </div>
+  );
+}
+
+function TouristPlacesContent({ places, setPlaces, onUpdatePlace, onCreatePlace, onDeletePlace }: {
+  places: TouristPlace[],
+  setPlaces: Dispatch<SetStateAction<TouristPlace[]>>,
+  onUpdatePlace: (place: Partial<TouristPlace>) => Promise<void>,
+  onCreatePlace: (place: Partial<TouristPlace>) => Promise<void>,
+  onDeletePlace: (id: string) => Promise<void>
+}) {
+  const [editingPlace, setEditingPlace] = useState<TouristPlace | null>(null);
+  const [isAddingPlace, setIsAddingPlace] = useState(false);
+  const [newPlace, setNewPlace] = useState<Partial<TouristPlace>>({
+    name: "",
+    description: "",
+    location: "",
+    category: "",
+    image_url: "",
+  });
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const handleSave = async () => {
+    if (editingPlace) {
+      await onUpdatePlace(editingPlace);
+      setEditingPlace(null);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (newPlace.name) {
+      await onCreatePlace(newPlace);
+      setIsAddingPlace(false);
+      setNewPlace({
+        name: "",
+        description: "",
+        location: "",
+        category: "",
+        image_url: "",
+      });
+    }
+  };
+
+  const handleImageUpload = async (file: File, isEditing: boolean) => {
+    try {
+      setUploading(true);
+      const url = await uploadToCloudinary(file, (progress) => {
+        setUploadProgress(progress);
+      });
+      if (isEditing && editingPlace) {
+        setEditingPlace({ ...editingPlace, image_url: url });
+      } else {
+        setNewPlace({ ...newPlace, image_url: url });
+      }
+    } catch (error) {
+      alert("Upload failed: " + (error instanceof Error ? error.message : "Unknown error"));
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const renderPlaceForm = (place: Partial<TouristPlace>, setPlace: Dispatch<SetStateAction<any>>, isEditing: boolean) => (
+    <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-8 space-y-6 mb-8 animate-in slide-in-from-top-4 duration-300">
+      <div className="flex items-center justify-between border-b border-slate-50 pb-5">
+        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+          <span className="w-2 h-2 bg-primary rounded-full"></span>
+          {isEditing ? `Edit: ${place.name}` : "Add New Tourist Place"}
+        </h3>
+        <button onClick={() => isEditing ? setEditingPlace(null) : setIsAddingPlace(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Place Name</label>
+            <input type="text" value={place.name} onChange={(e) => setPlace({ ...place, name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Enter place name" />
+          </div>
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Location (City, State)</label>
+            <input type="text" value={place.location} onChange={(e) => setPlace({ ...place, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Jaipur, Rajasthan" />
+          </div>
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Category</label>
+            <input type="text" value={place.category} onChange={(e) => setPlace({ ...place, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Historical, Nature" />
+          </div>
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
+            <textarea value={place.description} onChange={(e) => setPlace({ ...place, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]" placeholder="Enter description" />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Place Image</label>
+          <div className="flex gap-4 items-start">
+            <div className="flex-1 relative">
+              <input type="file" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], isEditing)} className="hidden" id={`tp-upload-${isEditing ? 'edit' : 'new'}`} disabled={uploading} />
+              <label htmlFor={`tp-upload-${isEditing ? 'edit' : 'new'}`} className={`flex flex-col items-center justify-center gap-2 w-full aspect-video bg-slate-50 border-2 border-dashed rounded-2xl p-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading ? 'border-primary/30 bg-primary/5 cursor-not-allowed' : 'border-slate-200 hover:border-primary/30'}`}>
+                {uploading ? (
+                  <div className="flex flex-col items-center gap-3 w-full px-4">
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div className="bg-primary h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                    <span className="text-primary font-black uppercase tracking-widest">{uploadProgress}% Uploading...</span>
+                  </div>
+                ) : place.image_url ? (
+                  <img src={place.image_url} className="w-full h-full object-cover rounded-xl" alt="Preview" />
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <svg className="w-8 h-8 text-slate-300 group-hover:scale-110 transition-transform mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    <span className="text-center">Click to Upload Image</span>
+                  </div>
+                )}
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+        <button onClick={() => isEditing ? setEditingPlace(null) : setIsAddingPlace(false)} className="px-6 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
+        <button onClick={isEditing ? handleSave : handleCreate} disabled={!place.name || uploading} className="px-8 py-2.5 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50">{isEditing ? "Save Changes" : "Save Place"}</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+        <div>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Tourist Places in India</h1>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage tourist attractions and locations.</p>
+        </div>
+        {!isAddingPlace && !editingPlace && (
+          <button onClick={() => setIsAddingPlace(true)} className="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest">Add New Place</button>
+        )}
+      </div>
+
+      {isAddingPlace && renderPlaceForm(newPlace, setNewPlace, false)}
+      {editingPlace && renderPlaceForm(editingPlace, setEditingPlace, true)}
+
+      {!isAddingPlace && !editingPlace && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {places.map((place) => (
+            <div key={place.id} className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
+              <div className="relative aspect-video rounded-xl overflow-hidden mb-4 bg-slate-100">
+                {place.image_url ? (
+                  <img src={place.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={place.name} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center opacity-20">
+                    <svg className="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  </div>
+                )}
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => setEditingPlace(place)} className="p-1.5 bg-white/90 backdrop-blur-sm text-slate-600 hover:text-primary rounded-lg shadow-lg transition-all">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  </button>
+                  <button onClick={() => onDeletePlace(place.id)} className="p-1.5 bg-white/90 backdrop-blur-sm text-slate-600 hover:text-rose-50 rounded-lg shadow-lg transition-all">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+              </div>
+              <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate mb-1">{place.name}</h3>
+              <p className="text-[9px] text-secondary font-black uppercase tracking-widest mb-1">{place.location}</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest line-clamp-2">{place.description}</p>
+            </div>
+          ))}
+
+          {places.length === 0 && (
+            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-2xl border border-slate-200/60">
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">No tourist places found</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
