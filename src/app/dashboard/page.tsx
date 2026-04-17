@@ -1798,6 +1798,285 @@ function CategoryCard({ cat, onEdit, isParent }: { cat: Category, onEdit: (c: Ca
   );
 }
 
+function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDeleteMovie }: {
+  movies: Movie[],
+  setMovies: Dispatch<SetStateAction<Movie[]>>,
+  onUpdateMovie: (movie: Partial<Movie>) => Promise<void>,
+  onCreateMovie: (movie: Partial<Movie>) => Promise<void>,
+  onDeleteMovie: (id: string) => Promise<void>
+}) {
+  const [editingMovie, setEditingMovie] = useState<Movie | null>(null);
+  const [isAddingMovie, setIsAddingMovie] = useState(false);
+  const [newMovie, setNewMovie] = useState<Partial<Movie>>({
+    name: "",
+    description: "",
+    finderb_rating: 0,
+    release_date: new Date().toISOString().split('T')[0],
+    poster_url: "",
+  });
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const handleSave = async () => {
+    if (editingMovie) {
+      await onUpdateMovie(editingMovie);
+      setEditingMovie(null);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (newMovie.name) {
+      await onCreateMovie(newMovie);
+      setIsAddingMovie(false);
+      setNewMovie({
+        name: "",
+        description: "",
+        finderb_rating: 0,
+        release_date: new Date().toISOString().split('T')[0],
+        poster_url: "",
+      });
+    }
+  };
+
+  const handleImageUpload = async (file: File, isEditing: boolean) => {
+    try {
+      setUploading(true);
+      const url = await uploadToCloudinary(file, (progress) => {
+        setUploadProgress(progress);
+      });
+      
+      if (isEditing && editingMovie) {
+        setEditingMovie({ ...editingMovie, poster_url: url });
+      } else {
+        setNewMovie({ ...newMovie, poster_url: url });
+      }
+    } catch (error) {
+      alert("Upload failed: " + (error instanceof Error ? error.message : "Unknown error"));
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const renderMovieForm = (movie: Partial<Movie>, setMovie: Dispatch<SetStateAction<any>>, isEditing: boolean) => (
+    <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-8 space-y-6 mb-8 animate-in slide-in-from-top-4 duration-300">
+      <div className="flex items-center justify-between border-b border-slate-50 pb-5">
+        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+          <span className="w-2 h-2 bg-primary rounded-full"></span>
+          {isEditing ? `Edit: ${movie.name}` : "Add New Movie"}
+        </h3>
+        <button 
+          onClick={() => isEditing ? setEditingMovie(null) : setIsAddingMovie(false)}
+          className="text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Movie Name</label>
+            <input
+              type="text"
+              value={movie.name}
+              onChange={(e) => setMovie({ ...movie, name: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              placeholder="Enter movie name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
+            <textarea
+              value={movie.description}
+              onChange={(e) => setMovie({ ...movie, description: e.target.value })}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]"
+              placeholder="Enter movie description"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">FinderB Rating</label>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                value={movie.finderb_rating}
+                onChange={(e) => setMovie({ ...movie, finderb_rating: parseFloat(e.target.value) })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Release Date</label>
+              <input
+                type="date"
+                value={movie.release_date}
+                onChange={(e) => setMovie({ ...movie, release_date: e.target.value })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Movie Poster</label>
+            <div className="flex gap-4 items-start">
+              <div className="flex-1 relative">
+                <input
+                  type="file"
+                  onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], isEditing)}
+                  className="hidden"
+                  id={`poster-upload-${isEditing ? 'edit' : 'new'}`}
+                  disabled={uploading}
+                />
+                <label
+                  htmlFor={`poster-upload-${isEditing ? 'edit' : 'new'}`}
+                  className={`flex flex-col items-center justify-center gap-2 w-full aspect-[2/3] bg-slate-50 border-2 border-dashed rounded-2xl p-4 text-[10px] font-bold text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading
+                      ? 'border-primary/30 bg-primary/5 cursor-not-allowed'
+                      : 'border-slate-200 hover:border-primary/30'
+                    }`}
+                >
+                  {uploading ? (
+                    <div className="flex flex-col items-center gap-3 w-full px-4">
+                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-primary h-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                      <span className="text-primary font-black uppercase tracking-widest">{uploadProgress}% Uploading...</span>
+                    </div>
+                  ) : movie.poster_url ? (
+                    <img src={movie.poster_url} className="w-full h-full object-cover rounded-xl" alt="Poster Preview" />
+                  ) : (
+                    <>
+                      <svg className="w-8 h-8 text-slate-300 group-hover:scale-110 transition-transform mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      <span className="text-center">Click to Upload Movie Poster</span>
+                    </>
+                  )}
+                </label>
+              </div>
+              {movie.poster_url && !uploading && (
+                <button 
+                  onClick={() => setMovie({ ...movie, poster_url: "" })}
+                  className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-transparent hover:border-rose-100"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+        <button
+          onClick={() => isEditing ? setEditingMovie(null) : setIsAddingMovie(false)}
+          className="px-6 py-2.5 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={isEditing ? handleSave : handleCreate}
+          disabled={!movie.name || uploading}
+          className="px-8 py-2.5 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
+        >
+          {isEditing ? "Save Changes" : "Save Movie"}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+        <div>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight uppercase">Movie Library</h1>
+          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Manage platform movies and ratings.</p>
+        </div>
+        {!isAddingMovie && !editingMovie && (
+          <button
+            onClick={() => setIsAddingMovie(true)}
+            className="px-4 py-2 bg-primary text-white text-[10px] font-black rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+          >
+            Add New Movie
+          </button>
+        )}
+      </div>
+
+      {isAddingMovie && renderMovieForm(newMovie, setNewMovie, false)}
+      {editingMovie && renderMovieForm(editingMovie, setEditingMovie, true)}
+
+      {!isAddingMovie && !editingMovie && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {movies.map((movie) => (
+            <div key={movie.id} className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
+              <div className="relative aspect-[2/3] rounded-xl overflow-hidden mb-4 bg-slate-100">
+                {movie.poster_url ? (
+                  <img src={movie.poster_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={movie.name} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center opacity-20">
+                    <svg className="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                    </svg>
+                  </div>
+                )}
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => setEditingMovie(movie)}
+                    className="p-1.5 bg-white/90 backdrop-blur-sm text-slate-600 hover:text-primary rounded-lg shadow-lg transition-all"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => onDeleteMovie(movie.id)}
+                    className="p-1.5 bg-white/90 backdrop-blur-sm text-slate-600 hover:text-rose-500 rounded-lg shadow-lg transition-all"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-sm text-white rounded-lg flex items-center gap-1.5">
+                  <svg className="w-2.5 h-2.5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                  </svg>
+                  <span className="text-[9px] font-black">{movie.finderb_rating?.toFixed(1) || '0.0'}</span>
+                </div>
+              </div>
+              <h3 className="text-[11px] font-black text-slate-900 uppercase tracking-tight truncate mb-1">{movie.name}</h3>
+              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">{new Date(movie.release_date).getFullYear() || 'TBA'}</p>
+            </div>
+          ))}
+
+          {movies.length === 0 && (
+            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-2xl border border-slate-200/60">
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+                </svg>
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">No movies found</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PaymentsContent() {
   return (
     <div className="space-y-6">
