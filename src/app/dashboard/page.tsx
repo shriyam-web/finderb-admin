@@ -106,6 +106,7 @@ interface TouristPlace {
   category: string;
   image_url: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export default function Dashboard() {
@@ -605,7 +606,6 @@ export default function Dashboard() {
       case "Tourist Places":
         return <TouristPlacesContent
           places={touristPlaces}
-          setPlaces={setTouristPlaces}
           onUpdatePlace={handleUpdateTouristPlace}
           onCreatePlace={handleCreateTouristPlace}
           onDeletePlace={handleDeleteTouristPlace}
@@ -2283,9 +2283,8 @@ function SettingsContent({ settings, setSettings }: { settings: Settings, setSet
   );
 }
 
-function TouristPlacesContent({ places, setPlaces, onUpdatePlace, onCreatePlace, onDeletePlace }: {
+function TouristPlacesContent({ places, onUpdatePlace, onCreatePlace, onDeletePlace }: {
   places: TouristPlace[],
-  setPlaces: Dispatch<SetStateAction<TouristPlace[]>>,
   onUpdatePlace: (place: Partial<TouristPlace>) => Promise<void>,
   onCreatePlace: (place: Partial<TouristPlace>) => Promise<void>,
   onDeletePlace: (id: string) => Promise<void>
@@ -2358,19 +2357,19 @@ function TouristPlacesContent({ places, setPlaces, onUpdatePlace, onCreatePlace,
         <div className="space-y-4">
           <div>
             <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Place Name</label>
-            <input type="text" value={place.name} onChange={(e) => setPlace({ ...place, name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Enter place name" />
+            <input type="text" value={place.name || ""} onChange={(e) => setPlace({ ...place, name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Enter place name" />
           </div>
           <div>
             <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Location (City, State)</label>
-            <input type="text" value={place.location} onChange={(e) => setPlace({ ...place, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Jaipur, Rajasthan" />
+            <input type="text" value={place.location || ""} onChange={(e) => setPlace({ ...place, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Jaipur, Rajasthan" />
           </div>
           <div>
             <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Category</label>
-            <input type="text" value={place.category} onChange={(e) => setPlace({ ...place, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Historical, Nature" />
+            <input type="text" value={place.category || ""} onChange={(e) => setPlace({ ...place, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Historical, Nature" />
           </div>
           <div>
             <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
-            <textarea value={place.description} onChange={(e) => setPlace({ ...place, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]" placeholder="Enter description" />
+            <textarea value={place.description || ""} onChange={(e) => setPlace({ ...place, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]" placeholder="Enter description" />
           </div>
         </div>
 
