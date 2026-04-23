@@ -109,6 +109,17 @@ interface TouristPlace {
   updated_at?: string;
 }
 
+interface News {
+  id: string;
+  title: string;
+  content: string;
+  author: string | null;
+  image_url: string | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -128,6 +139,7 @@ export default function Dashboard() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [movies, setMovies] = useState<Movie[]>([]);
   const [touristPlaces, setTouristPlaces] = useState<TouristPlace[]>([]);
+  const [news, setNews] = useState<News[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -192,6 +204,16 @@ export default function Dashboard() {
         } else {
           console.log("✅ Tourist places fetched:", tpData?.length || 0);
           if (tpData) setTouristPlaces(tpData);
+        }
+
+        console.log("🚀 Fetching news from Supabase...");
+        const { data: newsData, error: newsError } = await supabase.from('news').select('*').order('created_at', { ascending: false });
+
+        if (newsError) {
+          console.error("❌ News fetch error:", newsError);
+        } else {
+          console.log("✅ News fetched:", newsData?.length || 0);
+          if (newsData) setNews(newsData);
         }
 
         console.log("🚀 Fetching business data from Supabase...");
@@ -294,6 +316,13 @@ export default function Dashboard() {
       name: "Broadcasts", icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+        </svg>
+      )
+    },
+    {
+      name: "News", icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 12a2 2 0 002-2V9a2 2 0 00-2-2h-2.5" />
         </svg>
       )
     },
@@ -563,6 +592,71 @@ export default function Dashboard() {
 
       setTouristPlaces(prev => prev.filter(p => p.id !== id));
       alert("Tourist place removed successfully!");
+    }
+  };
+
+  const handleCreateNews = async (item: Partial<News>) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('news')
+      .insert([{
+        title: item.title,
+        content: item.content,
+        author: item.author,
+        image_url: item.image_url,
+        published_at: item.published_at || new Date().toISOString(),
+      }])
+      .select();
+
+    if (error) {
+      alert("Error creating news: " + error.message);
+      return;
+    }
+
+    if (data) {
+      setNews(prev => [data[0], ...prev]);
+      alert(`News "${item.title}" added successfully!`);
+    }
+  };
+
+  const handleUpdateNews = async (item: Partial<News>) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('news')
+      .update({
+        title: item.title,
+        content: item.content,
+        author: item.author,
+        image_url: item.image_url,
+        published_at: item.published_at,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', item.id);
+
+    if (error) {
+      alert("Error updating news: " + error.message);
+      return;
+    }
+
+    setNews(prev => prev.map(n => n.id === item.id ? { ...n, ...item } as News : n));
+    alert(`News updated successfully!`);
+  };
+
+  const handleDeleteNews = async (id: string) => {
+    if (confirm("Are you sure you want to delete this news item?")) {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('news')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        alert("Error deleting news: " + error.message);
+        return;
+      }
+
+      setNews(prev => prev.filter(n => n.id !== id));
+      alert("News item deleted successfully!");
     }
   };
 
@@ -2455,6 +2549,191 @@ function TouristPlacesContent({ places, onUpdatePlace, onCreatePlace, onDeletePl
                 <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               </div>
               <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">No tourist places found</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NewsContent({ news, onUpdateNews, onCreateNews, onDeleteNews }: {
+  news: News[],
+  onUpdateNews: (item: Partial<News>) => Promise<void>,
+  onCreateNews: (item: Partial<News>) => Promise<void>,
+  onDeleteNews: (id: string) => Promise<void>
+}) {
+  const [editingNews, setEditingNews] = useState<News | null>(null);
+  const [isAddingNews, setIsAddingNews] = useState(false);
+  const [newItem, setNewItem] = useState<Partial<News>>({
+    title: "",
+    content: "",
+    author: "",
+    image_url: "",
+    published_at: new Date().toISOString().split('T')[0],
+  });
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const handleSave = async () => {
+    if (editingNews) {
+      await onUpdateNews(editingNews);
+      setEditingNews(null);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (newItem.title && newItem.content) {
+      await onCreateNews(newItem);
+      setIsAddingNews(false);
+      setNewItem({
+        title: "",
+        content: "",
+        author: "",
+        image_url: "",
+        published_at: new Date().toISOString().split('T')[0],
+      });
+    }
+  };
+
+  const handleImageUpload = async (file: File, isEditing: boolean) => {
+    try {
+      setUploading(true);
+      const url = await uploadToCloudinary(file, (progress) => {
+        setUploadProgress(progress);
+      });
+      if (isEditing && editingNews) {
+        setEditingNews({ ...editingNews, image_url: url });
+      } else {
+        setNewItem({ ...newItem, image_url: url });
+      }
+    } catch (error) {
+      alert("Upload failed: " + (error instanceof Error ? error.message : "Unknown error"));
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const renderNewsForm = (item: Partial<News>, setItem: Dispatch<SetStateAction<any>>, isEditing: boolean) => (
+    <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-8 space-y-6 mb-8 animate-in slide-in-from-top-4 duration-300">
+      <div className="flex items-center justify-between border-b border-slate-50 pb-5">
+        <h3 className="text-sm font-medium text-slate-900 uppercase tracking-widest flex items-center gap-2">
+          <span className="w-2 h-2 bg-primary rounded-full"></span>
+          {isEditing ? `Edit: ${item.title}` : "Add New News Item"}
+        </h3>
+        <button onClick={() => isEditing ? setEditingNews(null) : setIsAddingNews(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Title</label>
+            <input type="text" value={item.title || ""} onChange={(e) => setItem({ ...item, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Enter news title" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Author</label>
+              <input type="text" value={item.author || ""} onChange={(e) => setItem({ ...item, author: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Author name" />
+            </div>
+            <div>
+              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Published Date</label>
+              <input type="date" value={item.published_at ? item.published_at.split('T')[0] : ""} onChange={(e) => setItem({ ...item, published_at: new Date(e.target.value).toISOString() })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Content</label>
+            <textarea value={item.content || ""} onChange={(e) => setItem({ ...item, content: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[200px]" placeholder="Enter news content" />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">News Image</label>
+          <div className="flex gap-4 items-start">
+            <div className="flex-1 relative">
+              <input type="file" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], isEditing)} className="hidden" id={`news-upload-${isEditing ? 'edit' : 'new'}`} disabled={uploading} />
+              <label htmlFor={`news-upload-${isEditing ? 'edit' : 'new'}`} className={`flex flex-col items-center justify-center gap-2 w-full aspect-video bg-slate-50 border-2 border-dashed rounded-2xl p-4 text-[10px] font-normal text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading ? 'border-primary/30 bg-primary/5 cursor-not-allowed' : 'border-slate-200 hover:border-primary/30'}`}>
+                {uploading ? (
+                  <div className="flex flex-col items-center gap-3 w-full px-4">
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div className="bg-primary h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                    <span className="text-primary font-medium uppercase tracking-widest">{uploadProgress}% Uploading...</span>
+                  </div>
+                ) : item.image_url ? (
+                  <img src={item.image_url} className="w-full h-full object-cover rounded-xl" alt="Preview" />
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <svg className="w-8 h-8 text-slate-300 group-hover:scale-110 transition-transform mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    <span className="text-center">Click to Upload Image</span>
+                  </div>
+                )}
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+        <button onClick={() => isEditing ? setEditingNews(null) : setIsAddingNews(false)} className="px-6 py-2.5 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
+        <button onClick={isEditing ? handleSave : handleCreate} disabled={!item.title || !item.content || uploading} className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50">{isEditing ? "Save Changes" : "Save News"}</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+        <div>
+          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">News Management</h1>
+          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage and publish news articles.</p>
+        </div>
+        {!isAddingNews && !editingNews && (
+          <button onClick={() => setIsAddingNews(true)} className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest">Add News Item</button>
+        )}
+      </div>
+
+      {isAddingNews && renderNewsForm(newItem, setNewItem, false)}
+      {editingNews && renderNewsForm(editingNews, setEditingNews, true)}
+
+      {!isAddingNews && !editingNews && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {news.map((item) => (
+            <div key={item.id} className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
+              <div className="relative aspect-video rounded-xl overflow-hidden mb-4 bg-slate-100">
+                {item.image_url ? (
+                  <img src={item.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={item.title} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center opacity-20">
+                    <svg className="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 12a2 2 0 002-2V9a2 2 0 00-2-2h-2.5" /></svg>
+                  </div>
+                )}
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => setEditingNews(item)} className="p-1.5 bg-white/90 backdrop-blur-sm text-slate-600 hover:text-primary rounded-lg shadow-lg transition-all">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                  </button>
+                  <button onClick={() => onDeleteNews(item.id)} className="p-1.5 bg-white/90 backdrop-blur-sm text-slate-600 hover:text-rose-500 rounded-lg shadow-lg transition-all">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+              </div>
+              <h3 className="text-[11px] font-medium text-slate-900 uppercase tracking-tight truncate mb-1">{item.title}</h3>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[9px] text-secondary font-medium uppercase tracking-widest">{item.author || 'FinderB'}</p>
+                <p className="text-[9px] text-slate-400 font-normal uppercase tracking-widest">{item.published_at ? new Date(item.published_at).toLocaleDateString() : 'Draft'}</p>
+              </div>
+              <p className="text-[9px] text-slate-500 font-normal uppercase tracking-widest line-clamp-3">{item.content}</p>
+            </div>
+          ))}
+
+          {news.length === 0 && (
+            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-2xl border border-slate-200/60">
+              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 12a2 2 0 002-2V9a2 2 0 00-2-2h-2.5" /></svg>
+              </div>
+              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">No news articles found</p>
             </div>
           )}
         </div>
