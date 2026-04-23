@@ -1,18 +1,3 @@
-add News tab in the admin panel sidebar to add our own news. 
-
-create table public.news (
-  id uuid not null default gen_random_uuid (),
-  title text not null,
-  content text not null,
-  author text null,
-  image_url text null,
-  published_at timestamp with time zone null default CURRENT_TIMESTAMP,
-  created_at timestamp with time zone null default CURRENT_TIMESTAMP,
-  updated_at timestamp with time zone null default CURRENT_TIMESTAMP,
-  constraint news_pkey primary key (id)
-) TABLESPACE pg_default; 
-
-
 
 2. Movies from the supabase table movies must be live on the FinderB homepage Latest Movies & Entertainment Near You section 
 

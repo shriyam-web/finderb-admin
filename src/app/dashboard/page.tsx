@@ -704,6 +704,13 @@ export default function Dashboard() {
           onCreatePlace={handleCreateTouristPlace}
           onDeletePlace={handleDeleteTouristPlace}
         />;
+      case "News":
+        return <NewsContent
+          news={news}
+          onUpdateNews={handleUpdateNews}
+          onCreateNews={handleCreateNews}
+          onDeleteNews={handleDeleteNews}
+        />;
       case "Payments & Subscriptions":
         return <PaymentsContent />;
       case "Broadcasts":
