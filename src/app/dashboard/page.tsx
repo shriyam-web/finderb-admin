@@ -362,7 +362,8 @@ export default function Dashboard() {
         category: req.category,
         rating: 0,
         sales: 0,
-        validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: "Active"
       }
     ]);
     setMerchantRequests((prev: MerchantRequest[]) => prev.filter(r => r.id !== req.id));
@@ -1237,7 +1238,8 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
       ...merchant,
       rating: 0,
       sales: 0,
-      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      status: "Active"
     }]);
     setMerchantRequests(merchantRequests.filter(m => m.id !== merchant.id));
   };
