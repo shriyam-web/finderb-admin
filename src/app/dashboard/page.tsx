@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, Dispatch, SetStateAction, useEffect, useCallback } from "react";
 import { createClient } from "../../../utils/supabase/client";
 import { uploadToCloudinary } from "../../utils/cloudinary";
@@ -122,7 +123,16 @@ interface News {
   updated_at: string;
 }
 
+interface AdminProfile {
+  id: string;
+  email: string;
+  role: string;
+  created_at: string;
+}
+
 export default function Dashboard() {
+  const router = useRouter();
+  const [adminSession, setAdminSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -142,9 +152,24 @@ export default function Dashboard() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [touristPlaces, setTouristPlaces] = useState<TouristPlace[]>([]);
   const [news, setNews] = useState<News[]>([]);
+  const [admins, setAdmins] = useState<AdminProfile[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const session = localStorage.getItem("admin_session");
+    if (!session) {
+      router.push("/");
+    } else {
+      setAdminSession(JSON.parse(session));
+    }
+  }, [router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("admin_session");
+    router.push("/");
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -261,6 +286,26 @@ export default function Dashboard() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const fetchAdmins = async () => {
+      if (activeTab === "Manage Admins") {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('admins')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error("Error fetching admins:", error);
+        } else {
+          setAdmins(data || []);
+        }
+      }
+    };
+
+    fetchAdmins();
+  }, [activeTab]);
+
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [broadcastAudience, setBroadcastAudience] = useState("Everyone");
 
@@ -337,6 +382,13 @@ export default function Dashboard() {
         </svg>
       )
     },
+    ...(adminSession?.role === 'super_admin' ? [{
+      name: "Manage Admins", icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+      )
+    }] : [])
   ];
 
   const handleDashboardApprove = async (req: MerchantRequest) => {
@@ -728,6 +780,8 @@ export default function Dashboard() {
         );
       case "Settings":
         return <SettingsContent settings={settings} setSettings={setSettings} />;
+      case "Manage Admins":
+        return <ManageAdminsContent admins={admins} setAdmins={setAdmins} />;
       default:
         return <DashboardContent
           setActiveTab={setActiveTab}
@@ -1171,6 +1225,182 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
   );
 }
 
+function ManageAdminsContent({ admins, setAdmins }: { admins: AdminProfile[], setAdmins: Dispatch<SetStateAction<AdminProfile[]>> }) {
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmail || !newPassword) return;
+
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('admins')
+        .insert([{
+          email: newEmail,
+          password: newPassword,
+          role: 'admin'
+        }])
+        .select();
+
+      if (error) {
+        alert("Error creating admin: " + error.message);
+      } else if (data) {
+        setAdmins([...admins, data[0]]);
+        setNewEmail("");
+        setNewPassword("");
+        setShowCreateForm(false);
+        alert("Admin created successfully!");
+      }
+    } catch (err) {
+      alert("An error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteAdmin = async (id: string, email: string) => {
+    if (email === 'admin@finderb.com') {
+      alert("Super admin cannot be deleted.");
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete admin ${email}?`)) {
+      try {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from('admins')
+          .delete()
+          .eq('id', id);
+
+        if (error) {
+          alert("Error deleting admin: " + error.message);
+        } else {
+          setAdmins(admins.filter(a => a.id !== id));
+          alert("Admin deleted successfully!");
+        }
+      } catch (err) {
+        alert("An error occurred.");
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+        <div>
+          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Admin Management</h1>
+          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage administrative profiles and permissions.</p>
+        </div>
+        <button
+          onClick={() => setShowCreateForm(!showCreateForm)}
+          className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-95 shadow-lg shadow-primary/20 uppercase tracking-widest"
+        >
+          {showCreateForm ? "Cancel" : "Add New Admin"}
+        </button>
+      </div>
+
+      {showCreateForm && (
+        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 max-w-md mx-auto">
+          <h2 className="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Create New Admin</h2>
+          <form onSubmit={handleCreateAdmin} className="space-y-4">
+            <div>
+              <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1">Email Address</label>
+              <input
+                type="email"
+                required
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                placeholder="admin@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1">Password</label>
+              <input
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                placeholder="••••••••"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50 uppercase tracking-widest"
+            >
+              {isLoading ? "Creating..." : "Create Admin Account"}
+            </button>
+          </form>
+        </div>
+      )}
+
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50/50 border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Admin Info</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Role</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Created At</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50/80">
+              {admins.map((admin) => (
+                <tr key={admin.id} className="hover:bg-primary/[0.01] transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
+                        {admin.email.substring(0, 2)}
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-medium text-slate-900 tracking-tight">{admin.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest border ${admin.role === "super_admin"
+                      ? "bg-purple-50 text-purple-600 border-purple-100"
+                      : "bg-blue-50 text-blue-600 border-blue-100"
+                      }`}>
+                      {admin.role.replace('_', ' ')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-[10px] text-slate-600 font-normal tabular-nums opacity-80">{new Date(admin.created_at).toLocaleDateString()}</p>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {admin.email !== 'admin@finderb.com' && (
+                        <button
+                          onClick={() => handleDeleteAdmin(admin.id, admin.email)}
+                          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 shadow-sm"
+                          title="Delete"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequests, setMerchantRequests }: {
   activeMerchants: Merchant[],
   setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>,
@@ -1381,9 +1611,16 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                           className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm"
                           title={merchant.status === "Active" ? "Deactivate" : "Activate"}
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
+                          {merchant.status === "Active" ? (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          )}
                         </button>
                         <button
                           onClick={() => handleDeleteMerchant(merchant.id)}
