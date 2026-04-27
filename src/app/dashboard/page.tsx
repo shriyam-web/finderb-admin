@@ -168,6 +168,7 @@ export default function Dashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("admin_session");
+    setAdminSession(null);
     router.push("/");
   };
 
@@ -895,9 +896,13 @@ export default function Dashboard() {
               <span className="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full border-2 border-white"></span>
             </button>
             <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
-            <Link href="/" className="text-[11px] font-medium text-slate-400 hover:text-rose-600 transition-all uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 hover:border-rose-100 hover:bg-rose-50/50">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-[11px] font-medium text-slate-400 hover:text-rose-600 transition-all uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 hover:border-rose-100 hover:bg-rose-50/50"
+            >
               Sign out
-            </Link>
+            </button>
           </div>
         </header>
 
