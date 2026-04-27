@@ -21,6 +21,7 @@ interface Merchant {
   rating: number;
   sales: number;
   validUntil: string;
+  status: string;
 }
 
 interface MerchantRequest {
@@ -60,6 +61,7 @@ interface BusinessData {
   email: string | null;
   password: string | null;
   state: string | null;
+  status: string;
 }
 
 interface Category {
@@ -233,7 +235,8 @@ export default function Dashboard() {
                 category: m.category || 'Other',
                 rating: 0,
                 sales: 0,
-                validUntil: new Date(m.updatedAt || m.createdAt || Date.now()).toISOString().split('T')[0]
+                validUntil: new Date(m.updatedAt || m.createdAt || Date.now()).toISOString().split('T')[0],
+                status: m.status || 'Active'
               })));
             setMerchantRequests(merchantData
               .filter((m: any) => m.kycStatus === 'pending')
@@ -1247,6 +1250,42 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
     }
   };
 
+  const toggleMerchantStatus = async (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('Business')
+      .update({ status: newStatus })
+      .eq('id', id);
+
+    if (error) {
+      alert("Error updating status: " + error.message);
+      return;
+    }
+
+    setActiveMerchants(activeMerchants.map(m =>
+      m.id === id ? { ...m, status: newStatus } : m
+    ));
+  };
+
+  const handleDeleteMerchant = async (id: string) => {
+    if (confirm("Are you sure you want to delete this merchant profile? This action cannot be undone.")) {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('Business')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        alert("Error deleting merchant: " + error.message);
+        return;
+      }
+
+      setActiveMerchants(activeMerchants.filter(m => m.id !== id));
+      setMerchantRequests(merchantRequests.filter(m => m.id !== id));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
@@ -1283,6 +1322,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                 <tr>
                   <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Business</th>
                   <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Category</th>
+                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Status</th>
                   <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Sales</th>
                   <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Valid Until</th>
                   <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
@@ -1304,25 +1344,53 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                         {merchant.category}
                       </span>
                     </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest border ${merchant.status === "Active"
+                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                        : "bg-slate-50 text-slate-500 border-slate-100"
+                        }`}>
+                        {merchant.status}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-[10px] font-normal tabular-nums text-slate-600 opacity-80">{merchant.sales}</td>
                     <td className="px-6 py-4 text-[10px] font-normal tabular-nums text-slate-600 opacity-80">{merchant.validUntil}</td>
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => handleViewMerchant(merchant.id)}
-                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm ml-auto"
-                        title="View KYC Details"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleViewMerchant(merchant.id)}
+                          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm"
+                          title="View KYC Details"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => toggleMerchantStatus(merchant.id, merchant.status)}
+                          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm"
+                          title={merchant.status === "Active" ? "Deactivate" : "Activate"}
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMerchant(merchant.id)}
+                          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 shadow-sm"
+                          title="Delete Profile"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
                 {activeMerchants.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center">
+                    <td colSpan={6} className="px-6 py-12 text-center">
                       <div className="flex flex-col items-center opacity-40">
                         <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
                           <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1365,6 +1433,13 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                     className="px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 rounded-xl transition-all uppercase tracking-widest"
                   >
                     Reject
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMerchant(req.id)}
+                    className="px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 rounded-xl transition-all uppercase tracking-widest"
+                    title="Delete Request"
+                  >
+                    Delete
                   </button>
                   <button
                     onClick={() => handleApprove(req)}
