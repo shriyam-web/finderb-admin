@@ -859,11 +859,11 @@ export default function Dashboard() {
         <div className="p-4 border-t border-slate-100/50 bg-slate-50/30">
           <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 cursor-pointer group border border-transparent hover:border-slate-100">
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-700 flex items-center justify-center text-white font-normal text-xs shadow-sm group-hover:scale-105 transition-transform">
-              AD
+              {adminSession?.email ? adminSession.email.charAt(0).toUpperCase() : "A"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-normal text-slate-900 truncate">Admin User</p>
-              <p className="text-[10px] text-slate-500 truncate font-medium">admin@finderb.com</p>
+              <p className="text-[11px] font-normal text-slate-900 truncate">{adminSession?.email ? adminSession.email.split('@')[0] : "Admin User"}</p>
+              <p className="text-[10px] text-slate-500 truncate font-medium">{adminSession?.email || "admin@finderb.com"}</p>
             </div>
             <div className="relative">
               <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></div>
