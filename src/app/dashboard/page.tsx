@@ -1266,6 +1266,10 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
     setActiveMerchants(activeMerchants.map(m =>
       m.id === id ? { ...m, status: newStatus } : m
     ));
+
+    if (selectedBusiness && selectedBusiness.id === id) {
+      setSelectedBusiness({ ...selectedBusiness, status: newStatus });
+    }
   };
 
   const handleDeleteMerchant = async (id: string) => {
@@ -1283,6 +1287,10 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
 
       setActiveMerchants(activeMerchants.filter(m => m.id !== id));
       setMerchantRequests(merchantRequests.filter(m => m.id !== id));
+
+      if (selectedBusiness && selectedBusiness.id === id) {
+        setSelectedBusiness(null);
+      }
     }
   };
 
@@ -1570,7 +1578,24 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
               </div>
             </div>
 
-            <div className="px-8 py-6 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3">
+            <div className="px-8 py-6 border-t border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-end gap-3">
+              <div className="flex items-center gap-3 mr-auto">
+                <button
+                  onClick={() => handleDeleteMerchant(selectedBusiness.id)}
+                  className="px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all uppercase tracking-widest shadow-sm"
+                >
+                  Delete Profile
+                </button>
+                <button
+                  onClick={() => toggleMerchantStatus(selectedBusiness.id, selectedBusiness.status)}
+                  className={`px-4 py-2 text-[10px] font-medium uppercase tracking-widest rounded-xl transition-all border shadow-sm ${selectedBusiness.status === "Active"
+                    ? "text-amber-600 hover:bg-amber-50 border-amber-100"
+                    : "text-emerald-600 hover:bg-emerald-50 border-emerald-100"
+                    }`}
+                >
+                  {selectedBusiness.status === "Active" ? "Deactivate Profile" : "Activate Profile"}
+                </button>
+              </div>
               <button
                 onClick={() => setSelectedBusiness(null)}
                 className="px-6 py-2.5 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-200"
