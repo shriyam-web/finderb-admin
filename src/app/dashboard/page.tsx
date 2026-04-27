@@ -782,7 +782,7 @@ export default function Dashboard() {
       case "Settings":
         return <SettingsContent settings={settings} setSettings={setSettings} />;
       case "Manage Admins":
-        return <ManageAdminsContent admins={admins} setAdmins={setAdmins} />;
+        return <ManageAdminsContent admins={admins} setAdmins={setAdmins} adminSession={adminSession} />;
       default:
         return <DashboardContent
           setActiveTab={setActiveTab}
@@ -1230,7 +1230,7 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
   );
 }
 
-function ManageAdminsContent({ admins, setAdmins }: { admins: AdminProfile[], setAdmins: Dispatch<SetStateAction<AdminProfile[]>> }) {
+function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: AdminProfile[], setAdmins: Dispatch<SetStateAction<AdminProfile[]>>, adminSession: any }) {
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -1268,8 +1268,30 @@ function ManageAdminsContent({ admins, setAdmins }: { admins: AdminProfile[], se
     }
   };
 
-  const handleDeleteAdmin = async (id: string, email: string) => {
-    if (email === 'admin@finderb.com') {
+  const handlePromoteToSuperAdmin = async (id: string, email: string) => {
+    if (confirm(`Promote ${email} to super admin?`)) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('admins')
+          .update({ role: 'super_admin' })
+          .eq('id', id)
+          .select();
+
+        if (error) {
+          alert("Error promoting admin: " + error.message);
+        } else if (data && data.length > 0) {
+          setAdmins(admins.map(a => a.id === id ? { ...a, role: 'super_admin' } : a));
+          alert(`${email} is now a super admin.`);
+        }
+      } catch (err) {
+        alert("An error occurred.");
+      }
+    }
+  };
+
+  const handleDeleteAdmin = async (id: string, email: string, role: string) => {
+    if (role === 'super_admin' || email === 'admin@finderb.com') {
       alert("Super admin cannot be deleted.");
       return;
     }
@@ -1383,9 +1405,19 @@ function ManageAdminsContent({ admins, setAdmins }: { admins: AdminProfile[], se
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {admin.email !== 'admin@finderb.com' && (
+                      {admin.role !== 'super_admin' && adminSession?.role === 'super_admin' && (
                         <button
-                          onClick={() => handleDeleteAdmin(admin.id, admin.email)}
+                          type="button"
+                          onClick={() => handlePromoteToSuperAdmin(admin.id, admin.email)}
+                          className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all"
+                          title="Promote to Super Admin"
+                        >
+                          Promote
+                        </button>
+                      )}
+                      {admin.role !== 'super_admin' && admin.email !== 'admin@finderb.com' && (
+                        <button
+                          onClick={() => handleDeleteAdmin(admin.id, admin.email, admin.role)}
                           className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 shadow-sm"
                           title="Delete"
                         >
