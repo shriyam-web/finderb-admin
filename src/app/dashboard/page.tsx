@@ -128,6 +128,7 @@ interface News {
 interface AdminProfile {
   id: string;
   email: string;
+  password?: string;
   role: string;
   is_disabled: boolean;
   allowed_tabs: string[] | null;
@@ -1284,6 +1285,7 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [openTabsId, setOpenTabsId] = useState<string | null>(null);
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1514,6 +1516,9 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
               <tr>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Admin Info</th>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Role</th>
+                {adminSession?.role === 'controller' && (
+                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Password</th>
+                )}
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
                 {adminSession?.role === 'controller' && (
                   <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Allowed Tabs</th>
@@ -1555,6 +1560,30 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
                       )}
                     </div>
                   </td>
+                  {adminSession?.role === 'controller' && (
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-medium text-slate-600 tabular-nums bg-slate-50 px-2 py-1 rounded-md border border-slate-100 min-w-[80px]">
+                          {visiblePasswords[admin.id] ? admin.password : "••••••••"}
+                        </span>
+                        <button
+                          onClick={() => setVisiblePasswords(prev => ({ ...prev, [admin.id]: !prev[admin.id] }))}
+                          className="text-slate-400 hover:text-primary transition-all p-1 hover:bg-primary/5 rounded-lg"
+                        >
+                          {visiblePasswords[admin.id] ? (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${admin.is_disabled ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
