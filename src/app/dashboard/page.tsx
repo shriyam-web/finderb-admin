@@ -63,6 +63,8 @@ interface BusinessData {
   password: string | null;
   state: string | null;
   status: string;
+  images: string[] | null;
+  profilePictureUrl: string | null;
 }
 
 interface Category {
@@ -1281,6 +1283,17 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
   const [newPassword, setNewPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [openTabsId, setOpenTabsId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openTabsId && !(event.target as Element).closest('.tabs-dropdown')) {
+        setOpenTabsId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openTabsId]);
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1292,7 +1305,7 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
       const { data, error } = await supabase
         .from('admins')
         .insert([{
-          email: newEmail,
+          email: newEmail.toLowerCase(),
           password: newPassword,
           role: 'admin'
         }])
@@ -1563,14 +1576,17 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
                       {admin.role === 'controller' ? (
                         <span className="text-[9px] text-slate-400 uppercase">All Access</span>
                       ) : (
-                        <div className="relative group/tabs">
-                          <button className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[9px] font-medium uppercase tracking-wider flex items-center gap-2">
+                        <div className="relative tabs-dropdown">
+                          <button
+                            onClick={() => setOpenTabsId(openTabsId === admin.id ? null : admin.id)}
+                            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[9px] font-medium uppercase tracking-wider flex items-center gap-2"
+                          >
                             {admin.allowed_tabs?.length || 0} Tabs
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className={`w-3 h-3 transition-transform ${openTabsId === admin.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                             </svg>
                           </button>
-                          <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-30 hidden group-hover/tabs:block max-h-60 overflow-y-auto p-2">
+                          <div className={`absolute left-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-30 ${openTabsId === admin.id ? 'block' : 'hidden'} max-h-60 overflow-y-auto p-2`}>
                             {ALL_MENU_ITEMS.filter(item => item.name !== 'Manage Admins').map(item => (
                               <label key={item.name} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
                                 <input
@@ -1669,6 +1685,82 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
       alert("Upload failed: " + error.message);
     } finally {
       setIsUploading(null);
+    }
+  };
+
+  const handleBusinessImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedBusiness) return;
+
+    const currentImages = selectedBusiness.images || [];
+    if (currentImages.length >= 5) {
+      alert("Maximum 5 images allowed.");
+      return;
+    }
+
+    try {
+      setIsUploading('businessImages');
+      const url = await uploadToCloudinary(file);
+
+      const supabase = createClient();
+      const newImages = [...currentImages, url];
+
+      const { error } = await supabase
+        .from('Business')
+        .update({ images: newImages })
+        .eq('id', selectedBusiness.id);
+
+      if (error) throw error;
+
+      setSelectedBusiness({ ...selectedBusiness, images: newImages });
+      alert("Image uploaded successfully!");
+    } catch (error: any) {
+      alert("Upload failed: " + error.message);
+    } finally {
+      setIsUploading(null);
+    }
+  };
+
+  const handleDeleteBusinessImage = async (urlToDelete: string) => {
+    if (!selectedBusiness || !confirm("Delete this image?")) return;
+
+    try {
+      const currentImages = selectedBusiness.images || [];
+      const newImages = currentImages.filter(url => url !== urlToDelete);
+
+      // If deleted image was profile picture, clear it
+      const newProfilePic = selectedBusiness.profilePictureUrl === urlToDelete ? null : selectedBusiness.profilePictureUrl;
+
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('Business')
+        .update({ images: newImages, profilePictureUrl: newProfilePic })
+        .eq('id', selectedBusiness.id);
+
+      if (error) throw error;
+
+      setSelectedBusiness({ ...selectedBusiness, images: newImages, profilePictureUrl: newProfilePic });
+    } catch (error: any) {
+      alert("Delete failed: " + error.message);
+    }
+  };
+
+  const handleSetProfilePicture = async (url: string) => {
+    if (!selectedBusiness) return;
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('Business')
+        .update({ profilePictureUrl: url })
+        .eq('id', selectedBusiness.id);
+
+      if (error) throw error;
+
+      setSelectedBusiness({ ...selectedBusiness, profilePictureUrl: url });
+      alert("Profile picture updated!");
+    } catch (error: any) {
+      alert("Failed to set profile picture: " + error.message);
     }
   };
 
@@ -2034,6 +2126,65 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                     ))}
                   </div>
                 </div>
+              </div>
+
+              {/* Merchant Gallery */}
+              <div className="mt-8 space-y-6">
+                <div className="flex items-center justify-between border-b border-primary/10 pb-2">
+                  <h3 className="text-[10px] font-medium text-primary uppercase tracking-[0.2em]">Merchant Gallery ({selectedBusiness.images?.length || 0}/5)</h3>
+                  {(selectedBusiness.images?.length || 0) < 5 && (
+                    <label className={`cursor-pointer px-3 py-1.5 bg-primary text-white rounded-lg text-[9px] font-medium hover:bg-primary/90 transition-all shadow-sm flex items-center gap-2 ${isUploading === 'businessImages' ? "opacity-50 pointer-events-none" : ""}`}>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+                      </svg>
+                      {isUploading === 'businessImages' ? "Uploading..." : "Add Image"}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleBusinessImageUpload}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {selectedBusiness.images && selectedBusiness.images.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {selectedBusiness.images.map((url, index) => (
+                      <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                        <img src={url} alt={`Merchant ${index + 1}`} className="w-full h-full object-cover" />
+
+                        {selectedBusiness.profilePictureUrl === url && (
+                          <div className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold uppercase rounded-full shadow-lg z-10">
+                            Profile
+                          </div>
+                        )}
+
+                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleSetProfilePicture(url)}
+                            className="px-2 py-1 bg-white text-slate-900 text-[8px] font-bold uppercase rounded-lg hover:bg-slate-100 transition-colors"
+                          >
+                            Set Profile
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBusinessImage(url)}
+                            className="px-2 py-1 bg-rose-500 text-white text-[8px] font-bold uppercase rounded-lg hover:bg-rose-600 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-12 border-2 border-dashed border-slate-100 rounded-2xl flex flex-col items-center justify-center text-slate-400">
+                    <svg className="w-8 h-8 mb-2 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-[10px] font-medium uppercase tracking-widest">No images uploaded yet</p>
+                  </div>
+                )}
               </div>
             </div>
 

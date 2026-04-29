@@ -31,7 +31,7 @@ export default function Home() {
       const { data, error: fetchError } = await supabase
         .from('admins')
         .select('*')
-        .eq('email', username)
+        .ilike('email', username)
         .eq('password', password)
         .single();
 
@@ -137,7 +137,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-[#9ca3af] hover:text-[#4b5563] transition-colors rounded-md hover:bg-[#f3f4f6]"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 text-[#9ca3af] hover:text-[#4b5563] transition-colors rounded-md hover:bg-[#f3f4f6] z-10"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
