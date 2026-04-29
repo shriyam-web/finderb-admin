@@ -438,7 +438,7 @@ export default function Dashboard() {
     if (adminSession?.allowed_tabs && adminSession.allowed_tabs.length > 0) {
       return adminSession.allowed_tabs.includes(item.name);
     }
-    return true; 
+    return false; 
   });
 
   const handleDashboardApprove = async (req: MerchantRequest) => {
@@ -767,6 +767,22 @@ export default function Dashboard() {
   };
 
   const renderContent = () => {
+    if (adminSession?.role !== 'controller' && menuItems.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-white rounded-2xl border border-slate-200/60 shadow-sm">
+          <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mb-6">
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0-6V9m0-6H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V7l-5-5z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-slate-900 mb-2 uppercase tracking-tight">Access Restricted</h3>
+          <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+            No permission is granted to you by the FinderB controller. Please contact developer for access to data.
+          </p>
+        </div>
+      );
+    }
+
     switch (activeTab) {
       case "Dashboard":
         return <DashboardContent
