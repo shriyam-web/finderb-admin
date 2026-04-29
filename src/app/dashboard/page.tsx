@@ -127,8 +127,92 @@ interface AdminProfile {
   id: string;
   email: string;
   role: string;
+  is_disabled: boolean;
+  allowed_tabs: string[] | null;
   created_at: string;
 }
+
+const ALL_MENU_ITEMS = [
+  {
+    name: "Dashboard", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    )
+  },
+  {
+    name: "Users", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    )
+  },
+  {
+    name: "Merchants", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+    )
+  },
+  {
+    name: "Categories", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+      </svg>
+    )
+  },
+  {
+    name: "Movies", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+      </svg>
+    )
+  },
+  {
+    name: "Tourist Places", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    )
+  },
+  {
+    name: "Payments & Subscriptions", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+      </svg>
+    )
+  },
+  {
+    name: "Broadcasts", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+      </svg>
+    )
+  },
+  {
+    name: "News", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 12a2 2 0 002-2V9a2 2 0 00-2-2h-2.5" />
+      </svg>
+    )
+  },
+  {
+    name: "Settings", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.543-.426-1.543-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    )
+  },
+  {
+    name: "Manage Admins", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    )
+  }
+];
 
 export default function Dashboard() {
   const router = useRouter();
@@ -158,12 +242,43 @@ export default function Dashboard() {
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
-    const session = localStorage.getItem("admin_session");
-    if (!session) {
-      router.push("/");
-    } else {
-      setAdminSession(JSON.parse(session));
-    }
+    const validateSession = async () => {
+      const sessionStr = localStorage.getItem("admin_session");
+      if (!sessionStr) {
+        router.push("/");
+        return;
+      }
+
+      const session = JSON.parse(sessionStr);
+      const supabase = createClient();
+      
+      const { data, error } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('id', session.id)
+        .single();
+
+      if (error || !data || data.is_disabled) {
+        localStorage.removeItem("admin_session");
+        router.push("/");
+        return;
+      }
+
+      // Update session if role or allowed_tabs changed
+      if (data.role !== session.role || JSON.stringify(data.allowed_tabs) !== JSON.stringify(session.allowed_tabs)) {
+        const updatedSession = {
+          ...session,
+          role: data.role,
+          allowed_tabs: data.allowed_tabs
+        };
+        localStorage.setItem("admin_session", JSON.stringify(updatedSession));
+        setAdminSession(updatedSession);
+      } else {
+        setAdminSession(session);
+      }
+    };
+
+    validateSession();
   }, [router]);
 
   const handleLogout = () => {
@@ -310,87 +425,18 @@ export default function Dashboard() {
   const [broadcastMessage, setBroadcastMessage] = useState("");
   const [broadcastAudience, setBroadcastAudience] = useState("Everyone");
 
-  const menuItems = [
-    {
-      name: "Dashboard", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-        </svg>
-      )
-    },
-    {
-      name: "Users", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      )
-    },
-    {
-      name: "Merchants", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-      )
-    },
-    {
-      name: "Categories", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-        </svg>
-      )
-    },
-    {
-      name: "Movies", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-        </svg>
-      )
-    },
-    {
-      name: "Tourist Places", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      )
-    },
-    {
-      name: "Payments & Subscriptions", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-        </svg>
-      )
-    },
-    {
-      name: "Broadcasts", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
-        </svg>
-      )
-    },
-    {
-      name: "News", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 12a2 2 0 002-2V9a2 2 0 00-2-2h-2.5" />
-        </svg>
-      )
-    },
-    {
-      name: "Settings", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      )
-    },
-    ...(adminSession?.role === 'super_admin' ? [{
-      name: "Manage Admins", icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      )
-    }] : [])
-  ];
+  const menuItems = ALL_MENU_ITEMS.filter(item => {
+    if (adminSession?.role === 'controller') {
+      return true;
+    }
+    if (item.name === 'Manage Admins') {
+      return false;
+    }
+    if (adminSession?.allowed_tabs && adminSession.allowed_tabs.length > 0) {
+      return adminSession.allowed_tabs.includes(item.name);
+    }
+    return true; 
+  });
 
   const handleDashboardApprove = async (req: MerchantRequest) => {
     const supabase = createClient();
@@ -1269,6 +1315,10 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
   };
 
   const handlePromoteToSuperAdmin = async (id: string, email: string) => {
+    if (adminSession?.role !== 'controller') {
+      alert("Only Controller can perform this action.");
+      return;
+    }
     if (confirm(`Promote ${email} to super admin?`)) {
       try {
         const supabase = createClient();
@@ -1287,6 +1337,82 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
       } catch (err) {
         alert("An error occurred.");
       }
+    }
+  };
+
+  const handleDemoteToAdmin = async (id: string, email: string) => {
+    if (adminSession?.role !== 'controller') {
+      alert("Only Controller can perform this action.");
+      return;
+    }
+    if (confirm(`Demote ${email} to admin?`)) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('admins')
+          .update({ role: 'admin' })
+          .eq('id', id)
+          .select();
+
+        if (error) {
+          alert("Error demoting admin: " + error.message);
+        } else if (data && data.length > 0) {
+          setAdmins(admins.map(a => a.id === id ? { ...a, role: 'admin' } : a));
+          alert(`${email} is now an admin.`);
+        }
+      } catch (err) {
+        alert("An error occurred.");
+      }
+    }
+  };
+
+  const handleToggleDisable = async (id: string, email: string, currentStatus: boolean) => {
+    if (adminSession?.role !== 'controller') {
+      alert("Only Controller can perform this action.");
+      return;
+    }
+    const action = currentStatus ? "enable" : "disable";
+    if (confirm(`Are you sure you want to ${action} ${email}?`)) {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('admins')
+          .update({ is_disabled: !currentStatus })
+          .eq('id', id)
+          .select();
+
+        if (error) {
+          alert(`Error ${action}ing admin: ` + error.message);
+        } else if (data && data.length > 0) {
+          setAdmins(admins.map(a => a.id === id ? { ...a, is_disabled: !currentStatus } : a));
+          alert(`${email} has been ${action}d.`);
+        }
+      } catch (err) {
+        alert("An error occurred.");
+      }
+    }
+  };
+
+  const handleUpdateTabs = async (id: string, tabs: string[]) => {
+    if (adminSession?.role !== 'controller') {
+      alert("Only Controller can perform this action.");
+      return;
+    }
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('admins')
+        .update({ allowed_tabs: tabs })
+        .eq('id', id)
+        .select();
+
+      if (error) {
+        alert("Error updating tabs: " + error.message);
+      } else if (data && data.length > 0) {
+        setAdmins(admins.map(a => a.id === id ? { ...a, allowed_tabs: tabs } : a));
+      }
+    } catch (err) {
+      alert("An error occurred.");
     }
   };
 
@@ -1375,6 +1501,10 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
               <tr>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Admin Info</th>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Role</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
+                {adminSession?.role === 'controller' && (
+                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Allowed Tabs</th>
+                )}
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Created At</th>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
               </tr>
@@ -1393,29 +1523,82 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest border ${admin.role === "super_admin"
-                      ? "bg-purple-50 text-purple-600 border-purple-100"
-                      : "bg-blue-50 text-blue-600 border-blue-100"
-                      }`}>
-                      {admin.role.replace('_', ' ')}
-                    </span>
+                    <div className="flex flex-col gap-2">
+                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest border text-center ${admin.role === "super_admin"
+                        ? "bg-purple-50 text-purple-600 border-purple-100"
+                        : admin.role === "controller"
+                          ? "bg-amber-50 text-amber-600 border-amber-100"
+                          : "bg-blue-50 text-blue-600 border-blue-100"
+                        }`}>
+                        {admin.role.replace('_', ' ')}
+                      </span>
+                      {adminSession?.role === 'controller' && admin.role !== 'controller' && (
+                        <button
+                          onClick={() => admin.role === 'super_admin' ? handleDemoteToAdmin(admin.id, admin.email) : handlePromoteToSuperAdmin(admin.id, admin.email)}
+                          className="text-[8px] font-bold text-primary hover:underline uppercase"
+                        >
+                          {admin.role === 'super_admin' ? 'Demote to Admin' : 'Promote to Super Admin'}
+                        </button>
+                      )}
+                    </div>
                   </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${admin.is_disabled ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
+                      <span className="text-[10px] font-medium uppercase tracking-tighter">
+                        {admin.is_disabled ? 'Disabled' : 'Active'}
+                      </span>
+                      {adminSession?.role === 'controller' && admin.role !== 'controller' && (
+                        <button
+                          onClick={() => handleToggleDisable(admin.id, admin.email, admin.is_disabled)}
+                          className="ml-2 text-[8px] font-bold text-slate-400 hover:text-primary uppercase"
+                        >
+                          {admin.is_disabled ? 'Enable' : 'Disable'}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  {adminSession?.role === 'controller' && (
+                    <td className="px-6 py-4">
+                      {admin.role === 'controller' ? (
+                        <span className="text-[9px] text-slate-400 uppercase">All Access</span>
+                      ) : (
+                        <div className="relative group/tabs">
+                          <button className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[9px] font-medium uppercase tracking-wider flex items-center gap-2">
+                            {admin.allowed_tabs?.length || 0} Tabs
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          <div className="absolute left-0 top-full mt-1 w-48 bg-white border border-slate-200 rounded-xl shadow-xl z-30 hidden group-hover/tabs:block max-h-60 overflow-y-auto p-2">
+                            {ALL_MENU_ITEMS.filter(item => item.name !== 'Manage Admins').map(item => (
+                              <label key={item.name} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={admin.allowed_tabs?.includes(item.name) || false}
+                                  onChange={(e) => {
+                                    const currentTabs = admin.allowed_tabs || [];
+                                    const nextTabs = e.target.checked
+                                      ? [...currentTabs, item.name]
+                                      : currentTabs.filter(t => t !== item.name);
+                                    handleUpdateTabs(admin.id, nextTabs);
+                                  }}
+                                  className="w-3 h-3 rounded text-primary focus:ring-primary/20"
+                                />
+                                <span className="text-[10px] text-slate-600 font-medium">{item.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <p className="text-[10px] text-slate-600 font-normal tabular-nums opacity-80">{new Date(admin.created_at).toLocaleDateString()}</p>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {admin.role !== 'super_admin' && adminSession?.role === 'super_admin' && (
-                        <button
-                          type="button"
-                          onClick={() => handlePromoteToSuperAdmin(admin.id, admin.email)}
-                          className="px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-blue-600 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-all"
-                          title="Promote to Super Admin"
-                        >
-                          Promote
-                        </button>
-                      )}
-                      {admin.role !== 'super_admin' && admin.email !== 'admin@finderb.com' && (
+                      {admin.role !== 'controller' && admin.email !== 'admin@finderb.com' && (
                         <button
                           onClick={() => handleDeleteAdmin(admin.id, admin.email, admin.role)}
                           className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 shadow-sm"

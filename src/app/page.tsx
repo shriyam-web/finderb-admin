@@ -41,11 +41,18 @@ export default function Home() {
         return;
       }
 
+      if (data.is_disabled) {
+        setError("Your account has been disabled. Please contact the Controller.");
+        setIsLoading(false);
+        return;
+      }
+
       // Store basic info in localStorage for "session" persistence
       localStorage.setItem("admin_session", JSON.stringify({
         email: data.email,
         role: data.role,
-        id: data.id
+        id: data.id,
+        allowed_tabs: data.allowed_tabs
       }));
 
       router.push("/dashboard");
