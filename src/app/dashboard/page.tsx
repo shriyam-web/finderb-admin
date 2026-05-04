@@ -8,11 +8,10 @@ import { createClient } from "../../../utils/supabase/client";
 import { uploadToCloudinary } from "../../utils/cloudinary";
 
 interface User {
-  id: number;
-  name: string;
+  id: string;
+  fullName: string;
   email: string;
-  status: string;
-  joined: string;
+  createdAt: string;
 }
 
 interface Merchant {
@@ -422,7 +421,24 @@ export default function Dashboard() {
       }
     };
 
+    const fetchUsers = async () => {
+      if (activeTab === "Users") {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('User')
+          .select('*')
+          .order('createdAt', { ascending: false });
+
+        if (error) {
+          console.error("Error fetching users:", error);
+        } else {
+          setUsers(data || []);
+        }
+      }
+    };
+
     fetchAdmins();
+    fetchUsers();
   }, [activeTab]);
 
   const [broadcastMessage, setBroadcastMessage] = useState("");
@@ -1186,17 +1202,31 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
 }
 
 function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<SetStateAction<User[]>> }) {
-  const handleDeleteUser = (id: number) => {
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleDeleteUser = async (id: string) => {
     if (confirm("Are you sure you want to delete this user?")) {
-      setUsers(users.filter(u => u.id !== id));
+      try {
+        const supabase = createClient();
+        const { error } = await supabase
+          .from('User')
+          .delete()
+          .eq('id', id);
+
+        if (error) {
+          alert("Error deleting user: " + error.message);
+        } else {
+          setUsers(users.filter(u => u.id !== id));
+        }
+      } catch (err) {
+        alert("An error occurred.");
+      }
     }
   };
 
-  const toggleUserStatus = (id: number) => {
-    setUsers(users.map(u =>
-      u.id === id ? { ...u, status: u.status === "Active" ? "Inactive" : "Active" } : u
-    ));
-  };
+  const filteredUsers = users.filter(user => 
+    user.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -1205,12 +1235,26 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
           <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">User Management</h1>
           <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">View and manage registered users on the platform.</p>
         </div>
-        <button
-          onClick={() => alert("Add User functionality coming soon!")}
-          className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-95 shadow-lg shadow-primary/20 uppercase tracking-widest"
-        >
-          Add New User
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="SEARCH BY USER ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all w-64 uppercase tracking-widest"
+            />
+            <svg className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <button
+            onClick={() => alert("Add User functionality coming soon!")}
+            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-95 shadow-lg shadow-primary/20 uppercase tracking-widest"
+          >
+            Add New User
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
@@ -1218,48 +1262,34 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">User ID</th>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">User Info</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Joined Date</th>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50/80">
-              {users.map((user) => (
+              {filteredUsers.map((user) => (
                 <tr key={user.id} className="hover:bg-primary/[0.01] transition-colors group">
+                  <td className="px-6 py-4">
+                    <p className="text-[10px] font-mono text-slate-500">{user.id}</p>
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
                       <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
-                        {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        {user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
                       <div>
-                        <p className="text-[11px] font-medium text-slate-900 tracking-tight">{user.name}</p>
+                        <p className="text-[11px] font-medium text-slate-900 tracking-tight">{user.fullName}</p>
                         <p className="text-[10px] text-slate-500 font-normal opacity-60">{user.email}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest border ${user.status === "Active"
-                      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                      : "bg-slate-50 text-slate-500 border-slate-100"
-                      }`}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-[10px] text-slate-600 font-normal tabular-nums opacity-80">{user.joined}</p>
+                    <p className="text-[10px] text-slate-600 font-normal tabular-nums opacity-80">{new Date(user.createdAt).toLocaleDateString()}</p>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => toggleUserStatus(user.id)}
-                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm"
-                        title={user.status === "Active" ? "Suspend" : "Activate"}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                      </button>
                       <button
                         onClick={() => handleDeleteUser(user.id)}
                         className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 shadow-sm"
@@ -1273,7 +1303,7 @@ function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<S
                   </td>
                 </tr>
               ))}
-              {users.length === 0 && (
+              {filteredUsers.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center opacity-40">
