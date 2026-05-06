@@ -64,6 +64,7 @@ interface BusinessData {
   status: string;
   images: string[] | null;
   profilePictureUrl: string | null;
+  isFinderBVerified: boolean;
 }
 
 interface Category {
@@ -1891,6 +1892,24 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
     }
   };
 
+  const toggleFinderBVerified = async (id: string, currentStatus: boolean) => {
+    const newStatus = !currentStatus;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('Business')
+      .update({ isFinderBVerified: newStatus })
+      .eq('id', id);
+
+    if (error) {
+      alert("Error updating verification status: " + error.message);
+      return;
+    }
+
+    if (selectedBusiness && selectedBusiness.id === id) {
+      setSelectedBusiness({ ...selectedBusiness, isFinderBVerified: newStatus });
+    }
+  };
+
   const handleDeleteMerchant = async (id: string) => {
     if (confirm("Are you sure you want to delete this merchant profile? This action cannot be undone.")) {
       const supabase = createClient();
@@ -2270,6 +2289,15 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                   className="px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all uppercase tracking-widest shadow-sm"
                 >
                   Delete Profile
+                </button>
+                <button
+                  onClick={() => toggleFinderBVerified(selectedBusiness.id, selectedBusiness.isFinderBVerified)}
+                  className={`px-4 py-2 text-[10px] font-medium uppercase tracking-widest rounded-xl transition-all border shadow-sm ${selectedBusiness.isFinderBVerified
+                    ? "text-emerald-600 hover:bg-emerald-50 border-emerald-100"
+                    : "text-slate-600 hover:bg-slate-50 border-slate-100"
+                    }`}
+                >
+                  {selectedBusiness.isFinderBVerified ? "Remove Verified Badge" : "Give Verified Badge"}
                 </button>
                 <button
                   onClick={() => toggleMerchantStatus(selectedBusiness.id, selectedBusiness.status)}
