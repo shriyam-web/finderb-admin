@@ -95,6 +95,7 @@ interface Category {
   position_3_business_id?: string | null;
   position_4_business_id?: string | null;
   position_5_business_id?: string | null;
+  position?: number;
 }
 
 interface Settings {
@@ -145,6 +146,14 @@ interface AdminProfile {
   role: string;
   is_disabled: boolean;
   allowed_tabs: string[] | null;
+  created_at: string;
+}
+
+interface Broadcast {
+  id: string;
+  title: string;
+  message: string;
+  target_audience: string[];
   created_at: string;
 }
 
@@ -320,7 +329,10 @@ export default function Dashboard() {
         const supabase = createClient();
 
         console.log("🚀 Fetching categories from Supabase...");
-        const { data: catData, error: catError } = await supabase.from('categories').select('*');
+        const { data: catData, error: catError } = await supabase
+          .from('categories')
+          .select('*')
+          .order('position', { ascending: true });
 
         if (catError) {
           console.error("❌ Category fetch error:", catError);
@@ -349,7 +361,8 @@ export default function Dashboard() {
             position_2_business_id: c.position_2_business_id,
             position_3_business_id: c.position_3_business_id,
             position_4_business_id: c.position_4_business_id,
-            position_5_business_id: c.position_5_business_id
+            position_5_business_id: c.position_5_business_id,
+            position: c.position || 0
           })));
         }
 
@@ -391,6 +404,15 @@ export default function Dashboard() {
         } else {
           console.log("✅ Leads fetched:", leadData?.length || 0);
           if (leadData) setLeads(leadData);
+        }
+
+        console.log("🚀 Fetching users from Supabase...");
+        const { data: userData, error: userError } = await supabase.from('User').select('*').order('createdAt', { ascending: false });
+        if (userError) {
+          console.error("❌ User fetch error:", userError);
+        } else {
+          console.log("✅ Users fetched:", userData?.length || 0);
+          if (userData) setUsers(userData);
         }
 
         console.log("🚀 Fetching business data from Supabase...");
@@ -473,8 +495,9 @@ export default function Dashboard() {
     fetchUsers();
   }, [activeTab]);
 
+  const [broadcastTitle, setBroadcastTitle] = useState("");
   const [broadcastMessage, setBroadcastMessage] = useState("");
-  const [broadcastAudience, setBroadcastAudience] = useState("Everyone");
+  const [broadcastAudiences, setBroadcastAudiences] = useState<string[]>(["Users", "Merchants"]);
 
   const menuItems = ALL_MENU_ITEMS.filter(item => {
     if (adminSession?.role === 'controller') {
@@ -552,6 +575,7 @@ export default function Dashboard() {
       status: updates.status,
       type: updates.type,
       fixed_slots: updates.fixedSlots,
+      position: updates.position,
     };
 
     // Only include symbol if it exists in update
@@ -578,7 +602,10 @@ export default function Dashboard() {
       return;
     }
 
-    setCategories(prev => prev.map(c => c.id === updates.id ? { ...c, ...updates } : c));
+    setCategories(prev => {
+      const updated = prev.map(c => c.id === updates.id ? { ...c, ...updates } : c);
+      return [...updated].sort((a, b) => (a.position || 0) - (b.position || 0));
+    });
     alert(`✅ Category "${catName}" updated successfully!`);
   };
 
@@ -594,6 +621,7 @@ export default function Dashboard() {
         symbol: category.symbol || 'Not Set',
         parent_id: category.parent_id || null,
         fixed_slots: category.fixedSlots || 0,
+        position: category.position || 0,
       }])
       .select();
 
@@ -604,17 +632,21 @@ export default function Dashboard() {
 
     if (data) {
       const newCat = data[0];
-      setCategories(prev => [...prev, {
-        id: newCat.id,
-        name: newCat.name,
-        items: newCat.items_count || 0,
-        status: newCat.status || 'Active',
-        banner: newCat.banner || 'Not Set',
-        symbol: newCat.symbol || 'Not Set',
-        parent_id: newCat.parent_id,
-        fixedSlots: newCat.fixed_slots || 0,
-        type: newCat.type || 'Merchant',
-      }]);
+      setCategories(prev => {
+        const updated = [...prev, {
+          id: newCat.id,
+          name: newCat.name,
+          items: newCat.items_count || 0,
+          status: newCat.status || 'Active',
+          banner: newCat.banner || 'Not Set',
+          symbol: newCat.symbol || 'Not Set',
+          parent_id: newCat.parent_id,
+          fixedSlots: newCat.fixed_slots || 0,
+          type: newCat.type || 'Merchant',
+          position: newCat.position || 0,
+        }];
+        return updated.sort((a, b) => (a.position || 0) - (b.position || 0));
+      });
       alert(`Category ${category.name} created successfully!`);
     }
   };
@@ -838,6 +870,8 @@ export default function Dashboard() {
           merchantRequests={merchantRequests}
           handleApprove={handleDashboardApprove}
           handleReject={handleDashboardReject}
+          totalUsers={users.length}
+          totalMerchants={activeMerchants.length}
         />;
       case "Users":
         return <UsersContent users={users} setUsers={setUsers} />;
@@ -886,10 +920,12 @@ export default function Dashboard() {
       case "Broadcasts":
         return (
           <BroadcastsContent
+            title={broadcastTitle}
+            setTitle={setBroadcastTitle}
             message={broadcastMessage}
             setMessage={setBroadcastMessage}
-            audience={broadcastAudience}
-            setAudience={setBroadcastAudience}
+            audiences={broadcastAudiences}
+            setAudiences={setBroadcastAudiences}
           />
         );
       case "Settings":
@@ -902,6 +938,8 @@ export default function Dashboard() {
           merchantRequests={merchantRequests}
           handleApprove={handleDashboardApprove}
           handleReject={handleDashboardReject}
+          totalUsers={users.length}
+          totalMerchants={activeMerchants.length}
         />;
     }
   };
@@ -1042,11 +1080,13 @@ export default function Dashboard() {
 
 // --- Content Components ---
 
-function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handleReject }: {
+function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handleReject, totalUsers, totalMerchants }: {
   setActiveTab: (tab: string) => void;
   merchantRequests: MerchantRequest[];
   handleApprove: (req: MerchantRequest) => void;
   handleReject: (req: MerchantRequest) => void;
+  totalUsers: number;
+  totalMerchants: number;
 }) {
   const chartData = [
     { label: "Mon", users: 120, merchants: 45 },
@@ -1070,14 +1110,14 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {[
           {
-            label: "Total Users", value: "12,842", growth: "+12%", color: "bg-primary", icon: (
+            label: "Total Users", value: totalUsers.toLocaleString(), growth: "+12%", color: "bg-primary", icon: (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
             )
           },
           {
-            label: "Active Merchants", value: "573", growth: "+8", color: "bg-secondary", icon: (
+            label: "Active Merchants", value: totalMerchants.toLocaleString(), growth: "+8", color: "bg-secondary", icon: (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
@@ -2509,6 +2549,29 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Position (Sorting)</label>
+              <input
+                type="number"
+                value={cat.position || 0}
+                onChange={(e) => setCat({ ...cat, position: parseInt(e.target.value) || 0 })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Fixed Slots</label>
+              <input
+                type="number"
+                value={cat.fixedSlots || 0}
+                onChange={(e) => setCat({ ...cat, fixedSlots: parseInt(e.target.value) || 0 })}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
+                placeholder="0"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Parent Category (Optional)</label>
             <select
@@ -2840,6 +2903,11 @@ function CategoryCard({ cat, onEdit, isParent }: { cat: Category, onEdit: (c: Ca
           <span className="text-[8px] font-medium text-slate-400 uppercase tracking-widest">Type</span>
           <span className="text-[10px] font-medium text-secondary uppercase tracking-widest">{cat.type}</span>
         </div>
+        <div className="w-px h-6 bg-slate-100"></div>
+        <div className="flex flex-col">
+          <span className="text-[8px] font-medium text-slate-400 uppercase tracking-widest">Pos</span>
+          <span className="text-[10px] font-medium text-slate-600 tabular-nums">#{cat.position || 0}</span>
+        </div>
       </div>
     </div>
   );
@@ -3144,49 +3212,161 @@ function PaymentsContent() {
   );
 }
 
-function BroadcastsContent({ message, setMessage, audience, setAudience }: {
+function BroadcastsContent({ 
+  title, setTitle, 
+  message, setMessage, 
+  audiences, setAudiences 
+}: {
+  title: string,
+  setTitle: (t: string) => void,
   message: string,
   setMessage: (m: string) => void,
-  audience: string,
-  setAudience: (a: string) => void
+  audiences: string[],
+  setAudiences: (a: string[]) => void
 }) {
+  const [isSending, setIsSending] = useState(false);
+  const [pastBroadcasts, setPastBroadcasts] = useState<any[]>([]);
+  const AUDIENCE_OPTIONS = ["Users", "Merchants", "Service Providers"];
+
+  useEffect(() => {
+    fetchPastBroadcasts();
+  }, []);
+
+  const fetchPastBroadcasts = async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('broadcasts')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (!error && data) setPastBroadcasts(data);
+  };
+
+  const toggleAudience = (opt: string) => {
+    if (audiences.includes(opt)) {
+      setAudiences(audiences.filter(a => a !== opt));
+    } else {
+      setAudiences([...audiences, opt]);
+    }
+  };
+
+  const handleDispatch = async () => {
+    if (!title.trim() || !message.trim() || audiences.length === 0) {
+      alert("Please fill in all fields and select at least one audience.");
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('broadcasts')
+        .insert({
+          title,
+          message,
+          target_audience: audiences
+        });
+
+      if (error) throw error;
+
+      alert("Broadcast dispatched successfully!");
+      setTitle("");
+      setMessage("");
+      fetchPastBroadcasts();
+    } catch (err: any) {
+      alert("Error dispatching broadcast: " + err.message);
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="flex flex-col gap-1.5 px-1">
-        <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Global Broadcast</h1>
-        <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Push announcements and updates to platform users.</p>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="space-y-6">
+        <div className="flex flex-col gap-1.5 px-1">
+          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Global Broadcast</h1>
+          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Push announcements and updates to platform users.</p>
+        </div>
+
+        <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-8 space-y-6">
+          <div>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-2.5">Broadcast Title</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="ENTER TITLE..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-300"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-2.5">Target Audience</label>
+            <div className="flex flex-wrap gap-3">
+              {AUDIENCE_OPTIONS.map(opt => (
+                <label key={opt} className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-primary/30 transition-all">
+                  <input
+                    type="checkbox"
+                    checked={audiences.includes(opt)}
+                    onChange={() => toggleAudience(opt)}
+                    className="w-4 h-4 rounded text-primary focus:ring-primary/20"
+                  />
+                  <span className="text-[10px] font-medium uppercase tracking-widest text-slate-600">{opt}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-2.5">Announcement Content</label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="TYPE YOUR MESSAGE HERE..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-h-[160px] placeholder:text-slate-300"
+            />
+          </div>
+
+          <button
+            onClick={handleDispatch}
+            disabled={isSending}
+            className="w-full py-4 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-[0.2em] disabled:opacity-50"
+          >
+            {isSending ? "Dispatching..." : "Dispatch Announcement"}
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-8 space-y-6">
-        <div>
-          <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-2.5">Recipient Audience</label>
-          <select
-            value={audience}
-            onChange={(e) => setAudience(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all appearance-none"
-            style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2394a3b8\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1em' }}
-          >
-            <option>Everyone</option>
-            <option>Merchants Only</option>
-            <option>Service Providers</option>
-            <option>New Users</option>
-          </select>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-1.5 px-1">
+          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Recent History</h1>
+          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">View previously dispatched announcements.</p>
         </div>
-        <div>
-          <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-2.5">Announcement Content</label>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="TYPE YOUR MESSAGE HERE..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-h-[160px] placeholder:text-slate-300"
-          />
+
+        <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
+          <div className="divide-y divide-slate-50">
+            {pastBroadcasts.length > 0 ? (
+              pastBroadcasts.map((b) => (
+                <div key={b.id} className="p-6 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                      {b.target_audience?.join(" & ")}
+                    </span>
+                    <span className="text-[9px] text-slate-400 font-medium tabular-nums">
+                      {new Date(b.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <h3 className="text-[11px] font-semibold text-slate-900 uppercase tracking-tight mb-1">{b.title}</h3>
+                  <p className="text-[10px] text-slate-600 line-clamp-2 leading-relaxed">{b.message}</p>
+                </div>
+              ))
+            ) : (
+              <div className="p-12 text-center">
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest">No broadcast history found</p>
+              </div>
+            )}
+          </div>
         </div>
-        <button
-          onClick={() => { alert("Broadcast sent!"); setMessage(""); }}
-          className="w-full py-4 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-[0.2em]"
-        >
-          Dispatch Announcement
-        </button>
       </div>
     </div>
   );
