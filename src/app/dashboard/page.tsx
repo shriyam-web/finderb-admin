@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, Dispatch, SetStateAction, useEffect, useCallback } from "react";
 import { createClient } from "../../../utils/supabase/client";
 import { uploadToCloudinary } from "../../utils/cloudinary";
+import { Blog, BlogContent } from "../../components/BlogContent";
 
 interface User {
   id: string;
@@ -230,6 +231,13 @@ const ALL_MENU_ITEMS = [
     )
   },
   {
+    name: "Blogs", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+      </svg>
+    )
+  },
+  {
     name: "Settings", icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.543-.426-1.543-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -268,6 +276,7 @@ export default function Dashboard() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [touristPlaces, setTouristPlaces] = useState<TouristPlace[]>([]);
   const [news, setNews] = useState<News[]>([]);
+  const [blogs, setBlogs] = useState<Blog[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [admins, setAdmins] = useState<AdminProfile[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
@@ -388,12 +397,20 @@ export default function Dashboard() {
 
         console.log("🚀 Fetching news from Supabase...");
         const { data: newsData, error: newsError } = await supabase.from('news').select('*').order('created_at', { ascending: false });
+        const { data: blogData, error: blogError } = await supabase.from('blogs').select('*').order('created_at', { ascending: false });
 
         if (newsError) {
           console.error("❌ News fetch error:", newsError);
         } else {
           console.log("✅ News fetched:", newsData?.length || 0);
           if (newsData) setNews(newsData);
+        }
+
+        if (blogError) {
+          console.error("❌ Blogs fetch error:", blogError);
+        } else {
+          console.log("✅ Blogs fetched:", blogData?.length || 0);
+          if (blogData) setBlogs(blogData);
         }
 
         console.log("🚀 Fetching leads from Supabase...");
@@ -846,6 +863,87 @@ export default function Dashboard() {
     }
   };
 
+  const handleCreateBlog = async (item: Partial<Blog>) => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('blogs')
+      .insert([{
+        title: item.title,
+        slug: item.slug,
+        content: item.content,
+        excerpt: item.excerpt,
+        author: item.author,
+        category: item.category,
+        tags: item.tags,
+        image_url: item.image_url,
+        status: item.status,
+        published_at: item.status === 'published' ? new Date().toISOString() : null,
+      }])
+      .select();
+
+    if (error) {
+      alert("Error creating blog: " + error.message);
+      return;
+    }
+
+    if (data) {
+      setBlogs(prev => [data[0], ...prev]);
+      alert(`Article "${item.title}" published successfully!`);
+    }
+  };
+
+  const handleUpdateBlog = async (item: Partial<Blog>) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('blogs')
+      .update({
+        title: item.title,
+        slug: item.slug,
+        content: item.content,
+        excerpt: item.excerpt,
+        author: item.author,
+        category: item.category,
+        tags: item.tags,
+        image_url: item.image_url,
+        status: item.status,
+        published_at: item.status === 'published' && !item.published_at ? new Date().toISOString() : item.published_at,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', item.id);
+
+    if (error) {
+      alert("Error updating blog: " + error.message);
+      return;
+    }
+
+    setBlogs(prev => prev.map(b => b.id === item.id ? { ...b, ...item } as Blog : b));
+    alert(`Article updated successfully!`);
+  };
+
+  const handleDeleteBlog = async (id: string) => {
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('blogs')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      alert("Error deleting blog: " + error.message);
+      return;
+    }
+
+    setBlogs(prev => prev.filter(b => b.id !== id));
+    alert("Article deleted successfully!");
+  };
+
+  const handleBlogImageUpload = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      uploadToCloudinary(file, (progress) => {
+        console.log(`Upload progress: ${progress}%`);
+      }).then(resolve).catch(reject);
+    });
+  };
+
   const renderContent = () => {
     if (adminSession?.role !== 'controller' && menuItems.length === 0) {
       return (
@@ -914,6 +1012,14 @@ export default function Dashboard() {
           onUpdateNews={handleUpdateNews}
           onCreateNews={handleCreateNews}
           onDeleteNews={handleDeleteNews}
+        />;
+      case "Blogs":
+        return <BlogContent
+          blogs={blogs}
+          onUpdateBlog={handleUpdateBlog}
+          onCreateBlog={handleCreateBlog}
+          onDeleteBlog={handleDeleteBlog}
+          onUploadImage={handleBlogImageUpload}
         />;
       case "Payments & Subscriptions":
         return <PaymentsContent />;
