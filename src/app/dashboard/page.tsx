@@ -982,6 +982,12 @@ export default function Dashboard() {
             setMerchantRequests={setMerchantRequests}
           />
         );
+      case "Leads":
+        return <LeadsContent 
+          leads={leads} 
+          categories={categories} 
+          merchants={activeMerchants} 
+        />;
       case "Categories":
         return <CategoriesContent
           categories={categories}
@@ -1373,6 +1379,223 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
               <span className="text-[9px] font-medium text-slate-400 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100 tabular-nums">0{i}:24 PM</span>
             </div>
           ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LeadsContent({ leads, categories, merchants }: { 
+  leads: Lead[], 
+  categories: Category[], 
+  merchants: Merchant[] 
+}) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All Categories");
+  const [statusFilter, setStatusFilter] = useState("All Status");
+
+  // Sample data for demonstration if leads are empty
+  const displayLeads = leads.length > 0 ? leads : [
+    {
+      id: "lead-1",
+      name: "Rahul Sharma",
+      email: "rahul@example.com",
+      phone: "+91 98765 43210",
+      category: "Plumbing",
+      business_id: null,
+      message: "Need help with a leaking pipe in the kitchen.",
+      status: "New",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: "lead-2",
+      name: "Priya Patel",
+      email: "priya@example.com",
+      phone: "+91 91234 56789",
+      category: "Electrician",
+      business_id: null,
+      message: "Short circuit in the main switch board.",
+      status: "Contacted",
+      created_at: new Date(Date.now() - 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      id: "lead-3",
+      name: "Amit Kumar",
+      email: "amit@example.com",
+      phone: "+91 88888 77777",
+      category: "Home Cleaning",
+      business_id: null,
+      message: "Full house deep cleaning required.",
+      status: "New",
+      created_at: new Date(Date.now() - 172800000).toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+  ];
+
+  const filteredLeads = displayLeads.filter(lead => {
+    const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (lead.email && lead.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          (lead.phone && lead.phone.includes(searchTerm));
+    const matchesCategory = categoryFilter === "All Categories" || lead.category === categoryFilter;
+    const matchesStatus = statusFilter === "All Status" || lead.status === statusFilter;
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  const stats = {
+    today: displayLeads.filter(l => new Date(l.created_at).toDateString() === new Date().toDateString()).length,
+    weekly: displayLeads.filter(l => {
+      const date = new Date(l.created_at);
+      const now = new Date();
+      const diff = now.getTime() - date.getTime();
+      return diff < 7 * 24 * 60 * 60 * 1000;
+    }).length,
+    monthly: displayLeads.filter(l => {
+      const date = new Date(l.created_at);
+      const now = new Date();
+      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    }).length
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+        <div>
+          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Leads Management</h1>
+          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Track and manage customer inquiries and service requests.</p>
+        </div>
+      </div>
+
+      {/* Stats Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        {[
+          { label: "Today's Leads", value: stats.today, color: "bg-primary", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
+          { label: "Weekly Leads", value: stats.weekly, color: "bg-secondary", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
+          { label: "Monthly Leads", value: stats.monthly, color: "bg-slate-900", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-all duration-300 group">
+            <div className="flex items-center gap-4">
+              <div className={`p-2.5 rounded-xl ${stat.color} text-white shadow-lg group-hover:scale-110 transition-all duration-300`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={stat.icon} />
+                </svg>
+              </div>
+              <div>
+                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                <h3 className="text-2xl font-medium text-slate-900 mt-1 tabular-nums">{stat.value}</h3>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters Section */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm flex flex-wrap items-center gap-4">
+        <div className="relative flex-1 min-w-[240px]">
+          <input
+            type="text"
+            placeholder="SEARCH LEADS..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest"
+          />
+          <svg className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest min-w-[160px]"
+        >
+          <option>All Categories</option>
+          {categories.map(cat => (
+            <option key={cat.id} value={cat.name}>{cat.name}</option>
+          ))}
+        </select>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest min-w-[140px]"
+        >
+          <option>All Status</option>
+          <option>New</option>
+          <option>Contacted</option>
+          <option>Closed</option>
+        </select>
+      </div>
+
+      {/* Leads Table */}
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-slate-50/50 border-b border-slate-100">
+              <tr>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Customer</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Category</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Eligible Merchants</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Date</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50/80">
+              {filteredLeads.map((lead) => {
+                const eligibleMerchants = merchants.filter(m => m.category === lead.category);
+                return (
+                  <tr key={lead.id} className="hover:bg-primary/[0.01] transition-colors group">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="text-[11px] font-medium text-slate-900 tracking-tight">{lead.name}</p>
+                        <p className="text-[9px] text-slate-500 mt-0.5">{lead.phone || lead.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100 text-[9px] font-medium uppercase tracking-widest">
+                        {lead.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest border ${
+                        lead.status === 'New' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                        lead.status === 'Contacted' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                        'bg-slate-50 text-slate-600 border-slate-100'
+                      }`}>
+                        {lead.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex -space-x-2 overflow-hidden">
+                        {eligibleMerchants.length > 0 ? (
+                          eligibleMerchants.slice(0, 3).map((m, idx) => (
+                            <div key={m.id} className="inline-block h-6 w-6 rounded-full ring-2 ring-white bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-400 border border-slate-200" title={m.name}>
+                              {m.name[0]}
+                            </div>
+                          ))
+                        ) : (
+                          <span className="text-[9px] text-slate-400 italic">No matching merchants</span>
+                        )}
+                        {eligibleMerchants.length > 3 && (
+                          <div className="inline-block h-6 w-6 rounded-full ring-2 ring-white bg-slate-50 flex items-center justify-center text-[8px] font-bold text-slate-400 border border-slate-200">
+                            +{eligibleMerchants.length - 3}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-[10px] text-slate-600 tabular-nums opacity-80">{new Date(lead.created_at).toLocaleDateString()}</p>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="text-[9px] font-bold text-primary hover:underline uppercase tracking-widest">View Details</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
