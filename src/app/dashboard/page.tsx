@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, Dispatch, SetStateAction, useEffect, useCallback } from "react";
+import { useState, Dispatch, SetStateAction, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "../../../utils/supabase/client";
 import { uploadToCloudinary } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
@@ -158,6 +158,14 @@ interface Broadcast {
   created_at: string;
 }
 
+interface Activity {
+  id: string;
+  type: 'user' | 'merchant' | 'lead';
+  title: string;
+  description: string;
+  timestamp: string;
+}
+
 const ALL_MENU_ITEMS = [
   {
     name: "Dashboard", icon: (
@@ -272,6 +280,7 @@ export default function Dashboard() {
   const [users, setUsers] = useState<User[]>([]);
   const [activeMerchants, setActiveMerchants] = useState<Merchant[]>([]);
   const [merchantRequests, setMerchantRequests] = useState<MerchantRequest[]>([]);
+  const [allBusinessData, setAllBusinessData] = useState<BusinessData[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [movies, setMovies] = useState<Movie[]>([]);
   const [touristPlaces, setTouristPlaces] = useState<TouristPlace[]>([]);
@@ -441,6 +450,7 @@ export default function Dashboard() {
         } else {
           console.log("✅ Business data fetched:", merchantData?.length || 0);
           if (merchantData && merchantData.length > 0) {
+            setAllBusinessData(merchantData);
             setActiveMerchants(merchantData
               .filter((m: any) => m.kycStatus !== 'pending' && m.kycStatus !== 'rejected')
               .map((m: any) => ({
@@ -576,6 +586,75 @@ export default function Dashboard() {
       alert(`${req.name} request has been rejected.`);
     }
   };
+
+  const chartData = useMemo(() => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const now = new Date();
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(now.getDate() - (6 - i));
+      return {
+        label: days[d.getDay()],
+        date: d.toDateString(),
+        users: 0,
+        merchants: 0
+      };
+    });
+
+    users.forEach(u => {
+      if (!u.createdAt) return;
+      const d = new Date(u.createdAt).toDateString();
+      const day = last7Days.find(ld => ld.date === d);
+      if (day) day.users++;
+    });
+
+    allBusinessData.forEach(m => {
+      if (!m.createdAt) return;
+      const d = new Date(m.createdAt).toDateString();
+      const day = last7Days.find(ld => ld.date === d);
+      if (day) day.merchants++;
+    });
+
+    return last7Days;
+  }, [users, allBusinessData]);
+
+  const recentActivities = useMemo(() => {
+    const activities: Activity[] = [];
+    
+    users.forEach(u => {
+      activities.push({
+        id: u.id,
+        type: 'user',
+        title: `New User Joined`,
+        description: `${u.fullName} (${u.email})`,
+        timestamp: u.createdAt
+      });
+    });
+
+    allBusinessData.forEach(m => {
+      activities.push({
+        id: m.id,
+        type: 'merchant',
+        title: `New Merchant Registration`,
+        description: `${m.businessName} - ${m.kycStatus}`,
+        timestamp: m.createdAt
+      });
+    });
+
+    leads.forEach(l => {
+      activities.push({
+        id: l.id,
+        type: 'lead',
+        title: `New Lead Generated`,
+        description: `Lead from ${l.name} for ${l.category}`,
+        timestamp: l.created_at
+      });
+    });
+
+    return activities
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 10);
+  }, [users, allBusinessData, leads]);
 
   const handleUpdateCategory = async (catName: string, updates: Partial<Category>) => {
     const supabase = createClient();
@@ -970,6 +1049,8 @@ export default function Dashboard() {
           handleReject={handleDashboardReject}
           totalUsers={users.length}
           totalMerchants={activeMerchants.length}
+          chartData={chartData}
+          recentActivities={recentActivities}
         />;
       case "Users":
         return <UsersContent users={users} setUsers={setUsers} />;
@@ -1052,6 +1133,8 @@ export default function Dashboard() {
           handleReject={handleDashboardReject}
           totalUsers={users.length}
           totalMerchants={activeMerchants.length}
+          chartData={chartData}
+          recentActivities={recentActivities}
         />;
     }
   };
@@ -1192,25 +1275,27 @@ export default function Dashboard() {
 
 // --- Content Components ---
 
-function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handleReject, totalUsers, totalMerchants }: {
+function DashboardContent({ 
+  setActiveTab, 
+  merchantRequests, 
+  handleApprove, 
+  handleReject, 
+  totalUsers, 
+  totalMerchants,
+  chartData,
+  recentActivities
+}: {
   setActiveTab: (tab: string) => void;
   merchantRequests: MerchantRequest[];
   handleApprove: (req: MerchantRequest) => void;
   handleReject: (req: MerchantRequest) => void;
   totalUsers: number;
   totalMerchants: number;
+  chartData: any[];
+  recentActivities: Activity[];
 }) {
-  const chartData = [
-    { label: "Mon", users: 120, merchants: 45 },
-    { label: "Tue", users: 190, merchants: 52 },
-    { label: "Wed", users: 300, merchants: 48 },
-    { label: "Thu", users: 250, merchants: 61 },
-    { label: "Fri", users: 320, merchants: 55 },
-    { label: "Sat", users: 440, merchants: 67 },
-    { label: "Sun", users: 380, merchants: 70 },
-  ];
 
-  const maxVal = Math.max(...chartData.map(d => d.users));
+  const maxVal = Math.max(...chartData.map(d => d.users + d.merchants), 10);
 
   return (
     <div className="space-y-6">
@@ -1363,22 +1448,41 @@ function DashboardContent({ setActiveTab, merchantRequests, handleApprove, handl
           <button className="text-[9px] font-medium text-primary hover:text-primary-700 uppercase tracking-widest transition-all bg-white px-2 py-1 rounded-lg border border-slate-200 hover:border-primary/20 shadow-sm" onClick={() => setActiveTab("Users")}>Full Log</button>
         </div>
         <div className="divide-y divide-slate-50/80">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="p-4 flex items-center justify-between hover:bg-primary/[0.01] transition-colors group">
+          {recentActivities.length > 0 ? recentActivities.map((activity) => (
+            <div key={activity.id} className="p-4 flex items-center justify-between hover:bg-primary/[0.01] transition-colors group">
               <div className="flex items-center gap-4 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 text-slate-400 group-hover:text-primary group-hover:bg-primary/5 transition-all group-hover:scale-105 shadow-sm">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-slate-100 transition-all group-hover:scale-105 shadow-sm ${
+                  activity.type === 'user' ? 'bg-blue-50 text-blue-500' : 
+                  activity.type === 'merchant' ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'
+                }`}>
+                  {activity.type === 'user' ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  ) : activity.type === 'merchant' ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                  )}
                 </div>
                 <div className="truncate">
-                  <p className="text-[11px] font-medium text-slate-900 truncate tracking-tight">Onboarding: user_0{i}84</p>
-                  <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest mt-0.5 opacity-60">Verification completed successfully.</p>
+                  <p className="text-[11px] font-medium text-slate-900 truncate tracking-tight">{activity.title}</p>
+                  <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest mt-0.5 opacity-60">{activity.description}</p>
                 </div>
               </div>
-              <span className="text-[9px] font-medium text-slate-400 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100 tabular-nums">0{i}:24 PM</span>
+              <span className="text-[9px] font-medium text-slate-400 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100 tabular-nums">
+                {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
             </div>
-          ))}
+          )) : (
+            <div className="p-12 text-center opacity-40">
+              <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">No Recent Activity</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
