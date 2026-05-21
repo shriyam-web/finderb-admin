@@ -1134,8 +1134,12 @@ export default function Dashboard() {
           />
         );
       case "Settings":
-        return <SettingsContent settings={settings} setSettings={setSettings} loginLogs={loginLogs} />;
-      case "Manage Admins":
+  return (
+    <SettingsContent
+      settings={settings}
+      setSettings={setSettings}
+    />
+  );case "Manage Admins":
         return <ManageAdminsContent admins={admins} setAdmins={setAdmins} adminSession={adminSession} />;
       default:
         return <DashboardContent
