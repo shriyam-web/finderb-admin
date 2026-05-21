@@ -7,6 +7,7 @@ import { useState, Dispatch, SetStateAction, useEffect, useCallback, useMemo } f
 import { createClient } from "../../../utils/supabase/client";
 import { uploadToCloudinary } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
+import SettingsContent, { Settings } from "../../components/SettingsContent";
 
 interface User {
   id: string;
@@ -99,14 +100,6 @@ interface Category {
   position?: number;
 }
 
-interface Settings {
-  maintenance: boolean;
-  expressApproval: boolean;
-  notifications: boolean;
-  twoFactor: boolean;
-  publicProfile: boolean;
-  [key: string]: boolean;
-}
 
 interface Movie {
   id: string;
@@ -164,6 +157,13 @@ interface Activity {
   title: string;
   description: string;
   timestamp: string;
+}
+
+export interface LoginLog {
+  id: string;
+  admin_id: string;
+  admin_email: string;
+  login_time: string;
 }
 
 const ALL_MENU_ITEMS = [
@@ -271,10 +271,7 @@ export default function Dashboard() {
   // --- Global State for Functionalities ---
   const [settings, setSettings] = useState<Settings>({
     maintenance: false,
-    expressApproval: true,
-    notifications: true,
-    twoFactor: false,
-    publicProfile: true,
+    imageCompression: false,
   });
 
   const [users, setUsers] = useState<User[]>([]);
@@ -288,6 +285,7 @@ export default function Dashboard() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [admins, setAdmins] = useState<AdminProfile[]>([]);
+  const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -430,6 +428,20 @@ export default function Dashboard() {
         } else {
           console.log("✅ Leads fetched:", leadData?.length || 0);
           if (leadData) setLeads(leadData);
+        }
+
+        console.log("🚀 Fetching login logs from Supabase...");
+        const { data: logData, error: logError } = await supabase
+          .from('admin_login_logs')
+          .select('*')
+          .order('login_time', { ascending: false })
+          .limit(50);
+
+        if (logError) {
+          console.error("❌ Login logs fetch error:", logError);
+        } else {
+          console.log("✅ Login logs fetched:", logData?.length || 0);
+          if (logData) setLoginLogs(logData);
         }
 
         console.log("🚀 Fetching users from Supabase...");
@@ -1122,7 +1134,7 @@ export default function Dashboard() {
           />
         );
       case "Settings":
-        return <SettingsContent settings={settings} setSettings={setSettings} />;
+        return <SettingsContent settings={settings} setSettings={setSettings} loginLogs={loginLogs} />;
       case "Manage Admins":
         return <ManageAdminsContent admins={admins} setAdmins={setAdmins} adminSession={adminSession} />;
       default:
@@ -3805,41 +3817,6 @@ function BroadcastsContent({
   );
 }
 
-function SettingsContent({ settings, setSettings }: { settings: Settings, setSettings: Dispatch<SetStateAction<Settings>> }) {
-  const toggleSetting = (key: string) => {
-    setSettings({ ...settings, [key]: !settings[key] });
-  };
-
-  return (
-    <div className="space-y-6 max-w-xl">
-      <div className="flex flex-col gap-1.5 px-1">
-        <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Control Center</h1>
-        <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage platform configurations and global security.</p>
-      </div>
-
-      <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm divide-y divide-slate-50/80 overflow-hidden">
-        {Object.entries(settings).map(([key, val], i) => (
-          <div key={i} className="p-5 flex items-center justify-between hover:bg-primary/[0.01] transition-colors">
-            <div className="flex flex-col">
-              <span className="text-[11px] font-medium text-slate-900 capitalize tracking-tight">{key.replace(/([A-Z])/g, ' $1')}</span>
-              <span className="text-[9px] text-secondary font-medium uppercase tracking-widest mt-0.5">Global system flag</span>
-            </div>
-            <button
-              onClick={() => toggleSetting(key)}
-              className={`w-11 h-6 rounded-full relative transition-all duration-300 ${val ? 'bg-primary shadow-lg shadow-primary/20' : 'bg-slate-200'}`}
-            >
-              <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${val ? 'translate-x-5' : 'translate-x-0'}`} />
-            </button>
-          </div>
-        ))}
-      </div>
-
-      <button className="w-full py-4 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all active:scale-[0.98] uppercase tracking-[0.2em]">
-        Reset All System Flags
-      </button>
-    </div>
-  );
-}
 
 function TouristPlacesContent({ places, onUpdatePlace, onCreatePlace, onDeletePlace }: {
   places: TouristPlace[],

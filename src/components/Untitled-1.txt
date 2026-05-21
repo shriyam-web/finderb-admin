@@ -1,0 +1,1 @@
+Maintenance mode/ Normal mode toggle on hai ya off yeh mujhe database mein store krana hai, give me the sql query to create the table for it and ensure the true/false is updated in database through the toggle, i'll create the table with given query

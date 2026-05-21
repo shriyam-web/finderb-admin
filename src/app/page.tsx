@@ -55,6 +55,12 @@ export default function Home() {
         allowed_tabs: data.allowed_tabs
       }));
 
+      // Log the login event
+      await supabase.from('admin_login_logs').insert([{
+        admin_id: data.id,
+        admin_email: data.email
+      }]);
+
       router.push("/dashboard");
     } catch (err) {
       setError("An error occurred during login.");
