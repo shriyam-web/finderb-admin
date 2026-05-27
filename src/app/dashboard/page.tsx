@@ -7,6 +7,7 @@ import { useState, Dispatch, SetStateAction, useEffect, useCallback, useMemo } f
 import { createClient } from "../../../utils/supabase/client";
 import { uploadToCloudinary } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
+import FinderBJobsContent, { FinderBJob } from "../../components/FinderBJobsContent";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
 
 interface User {
@@ -246,6 +247,14 @@ const ALL_MENU_ITEMS = [
     )
   },
   {
+    name: "FinderB Jobs", icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 13h8M8 17h5" />
+      </svg>
+    )
+  },
+  {
     name: "Settings", icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.543-.426-1.543-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -283,6 +292,7 @@ export default function Dashboard() {
   const [touristPlaces, setTouristPlaces] = useState<TouristPlace[]>([]);
   const [news, setNews] = useState<News[]>([]);
   const [blogs, setBlogs] = useState<Blog[]>([]);
+  const [finderBJobs, setFinderBJobs] = useState<FinderBJob[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [admins, setAdmins] = useState<AdminProfile[]>([]);
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
@@ -418,6 +428,45 @@ export default function Dashboard() {
         } else {
           console.log("✅ Blogs fetched:", blogData?.length || 0);
           if (blogData) setBlogs(blogData);
+        }
+
+        console.log("🚀 Fetching finderb jobs from Supabase...");
+        const { data: jobData, error: jobError } = await supabase
+          .from('jobs')
+          .select(`
+            id,
+            title,
+            type,
+            location,
+            salary,
+            description,
+            department,
+            status,
+            business_id,
+            created_at,
+            updated_at,
+            approval_status,
+            approved_at,
+            approved_by,
+            rejection_reason,
+            reviewed_at,
+            reviewed_by,
+            Business:business_id (
+              businessName
+            )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (jobError) {
+          console.error("❌ FinderB jobs fetch error:", jobError);
+        } else {
+          console.log("✅ FinderB jobs fetched:", jobData?.length || 0);
+          if (jobData) {
+            setFinderBJobs(jobData.map((job: any) => ({
+              ...job,
+              business_name: job.Business?.businessName || null,
+            })));
+          }
         }
 
         console.log("🚀 Fetching leads from Supabase...");
@@ -1120,6 +1169,8 @@ export default function Dashboard() {
           onDeleteBlog={handleDeleteBlog}
           onUploadImage={handleBlogImageUpload}
         />;
+      case "FinderB Jobs":
+        return <FinderBJobsContent jobs={finderBJobs} setJobs={setFinderBJobs} />;
       case "Payments & Subscriptions":
         return <PaymentsContent />;
       case "Broadcasts":
