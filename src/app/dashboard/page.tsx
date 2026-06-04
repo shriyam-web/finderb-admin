@@ -9,6 +9,14 @@ import { uploadToCloudinary } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
 import FinderBJobsContent, { FinderBJob } from "../../components/FinderBJobsContent";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
+import {
+  CATEGORY_LEAD_BADGE,
+  PROFILE_LEAD_BADGE,
+  isCategoryLeadSource,
+  isLegacyLeadSource,
+  isProfileLeadSource,
+  leadBadgeClassName,
+} from "../../lib/leadBadges";
 
 interface User {
   id: string;
@@ -45,6 +53,7 @@ interface Lead {
   status: string;
   created_at: string;
   updated_at: string;
+  merchant_name?: string | null;
 }
 
 interface BusinessData {
@@ -470,13 +479,32 @@ export default function Dashboard() {
         }
 
         console.log("🚀 Fetching leads from Supabase...");
-        const { data: leadData, error: leadError } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+        const { data: leadData, error: leadError } = await supabase
+          .from('leads')
+          .select(`
+            *,
+            Business:business_id (
+              id,
+              businessName,
+              category,
+              city,
+              location
+            )
+          `)
+          .order('created_at', { ascending: false });
 
         if (leadError) {
           console.error("❌ Lead fetch error:", leadError);
         } else {
           console.log("✅ Leads fetched:", leadData?.length || 0);
-          if (leadData) setLeads(leadData);
+          if (leadData) {
+            setLeads(
+              leadData.map((row: any) => ({
+                ...row,
+                merchant_name: row.Business?.businessName ?? null,
+              }))
+            );
+          }
         }
 
         console.log("🚀 Fetching login logs from Supabase...");
@@ -703,11 +731,17 @@ export default function Dashboard() {
     });
 
     leads.forEach(l => {
+      const source =
+        isProfileLeadSource(l.status)
+          ? 'profile'
+          : isCategoryLeadSource(l.status)
+            ? 'category circulation'
+            : l.status;
       activities.push({
         id: l.id,
         type: 'lead',
-        title: `New Lead Generated`,
-        description: `Lead from ${l.name} for ${l.category}`,
+        title: `New Lead — ${source}`,
+        description: `${l.name} · ${l.category}${l.merchant_name ? ` → ${l.merchant_name}` : ''}`,
         timestamp: l.created_at
       });
     });
@@ -1563,70 +1597,69 @@ function LeadsContent({ leads, categories, merchants }: {
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
-  const [statusFilter, setStatusFilter] = useState("All Status");
+  const [sourceFilter, setSourceFilter] = useState("All Sources");
+  const [merchantFilter, setMerchantFilter] = useState("All Merchants");
 
-  // Sample data for demonstration if leads are empty
-  const displayLeads = leads.length > 0 ? leads : [
-    {
-      id: "lead-1",
-      name: "Rahul Sharma",
-      email: "rahul@example.com",
-      phone: "+91 98765 43210",
-      category: "Plumbing",
-      business_id: null,
-      message: "Need help with a leaking pipe in the kitchen.",
-      status: "New",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "lead-2",
-      name: "Priya Patel",
-      email: "priya@example.com",
-      phone: "+91 91234 56789",
-      category: "Electrician",
-      business_id: null,
-      message: "Short circuit in the main switch board.",
-      status: "Contacted",
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "lead-3",
-      name: "Amit Kumar",
-      email: "amit@example.com",
-      phone: "+91 88888 77777",
-      category: "Home Cleaning",
-      business_id: null,
-      message: "Full house deep cleaning required.",
-      status: "New",
-      created_at: new Date(Date.now() - 172800000).toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-  ];
+  const categoryOptions = useMemo(() => {
+    const names = new Set<string>();
+    categories.forEach((c) => names.add(c.name));
+    leads.forEach((l) => {
+      if (l.category) names.add(l.category);
+    });
+    return ["All Categories", ...Array.from(names).sort()];
+  }, [categories, leads]);
 
-  const filteredLeads = displayLeads.filter(lead => {
-    const matchesSearch = lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (lead.email && lead.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                          (lead.phone && lead.phone.includes(searchTerm));
-    const matchesCategory = categoryFilter === "All Categories" || lead.category === categoryFilter;
-    const matchesStatus = statusFilter === "All Status" || lead.status === statusFilter;
-    return matchesSearch && matchesCategory && matchesStatus;
+  const merchantOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    merchants.forEach((m) => map.set(m.id, m.name));
+    leads.forEach((l) => {
+      if (l.business_id) {
+        map.set(l.business_id, l.merchant_name || l.business_id);
+      }
+    });
+    return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [merchants, leads]);
+
+  const filteredLeads = leads.filter((lead) => {
+    const q = searchTerm.toLowerCase();
+    const matchesSearch =
+      !q ||
+      lead.name.toLowerCase().includes(q) ||
+      (lead.email && lead.email.toLowerCase().includes(q)) ||
+      (lead.phone && lead.phone.includes(searchTerm)) ||
+      (lead.message && lead.message.toLowerCase().includes(q)) ||
+      (lead.merchant_name && lead.merchant_name.toLowerCase().includes(q));
+
+    const matchesCategory =
+      categoryFilter === "All Categories" || lead.category === categoryFilter;
+
+    const matchesMerchant =
+      merchantFilter === "All Merchants" || lead.business_id === merchantFilter;
+
+    const matchesSource =
+      sourceFilter === "All Sources" ||
+      (sourceFilter === "Generated on profile" && isProfileLeadSource(lead.status)) ||
+      (sourceFilter === "Circulated in category" && isCategoryLeadSource(lead.status)) ||
+      (sourceFilter === "Other" && isLegacyLeadSource(lead.status));
+
+    return matchesSearch && matchesCategory && matchesMerchant && matchesSource;
   });
 
   const stats = {
-    today: displayLeads.filter(l => new Date(l.created_at).toDateString() === new Date().toDateString()).length,
-    weekly: displayLeads.filter(l => {
-      const date = new Date(l.created_at);
-      const now = new Date();
-      const diff = now.getTime() - date.getTime();
+    today: leads.filter(
+      (l) => new Date(l.created_at).toDateString() === new Date().toDateString()
+    ).length,
+    weekly: leads.filter((l) => {
+      const diff = Date.now() - new Date(l.created_at).getTime();
       return diff < 7 * 24 * 60 * 60 * 1000;
     }).length,
-    monthly: displayLeads.filter(l => {
+    monthly: leads.filter((l) => {
       const date = new Date(l.created_at);
       const now = new Date();
       return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    }).length
+    }).length,
+    profile: leads.filter((l) => isProfileLeadSource(l.status)).length,
+    circulated: leads.filter((l) => isCategoryLeadSource(l.status)).length,
   };
 
   return (
@@ -1639,11 +1672,13 @@ function LeadsContent({ leads, categories, merchants }: {
       </div>
 
       {/* Stats Section */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: "Today's Leads", value: stats.today, color: "bg-primary", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
           { label: "Weekly Leads", value: stats.weekly, color: "bg-secondary", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
           { label: "Monthly Leads", value: stats.monthly, color: "bg-slate-900", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
+          { label: "On profile", value: stats.profile, color: "bg-blue-600", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+          { label: "Circulated", value: stats.circulated, color: "bg-violet-600", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-all duration-300 group">
             <div className="flex items-center gap-4">
@@ -1681,23 +1716,44 @@ function LeadsContent({ leads, categories, merchants }: {
           onChange={(e) => setCategoryFilter(e.target.value)}
           className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest min-w-[160px]"
         >
-          <option>All Categories</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.name}>{cat.name}</option>
+          {categoryOptions.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
           ))}
         </select>
 
         <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest min-w-[140px]"
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest min-w-[180px]"
         >
-          <option>All Status</option>
-          <option>New</option>
-          <option>Contacted</option>
-          <option>Closed</option>
+          <option>All Sources</option>
+          <option>Generated on profile</option>
+          <option>Circulated in category</option>
+          <option>Other</option>
+        </select>
+
+        <select
+          value={merchantFilter}
+          onChange={(e) => setMerchantFilter(e.target.value)}
+          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest min-w-[180px]"
+        >
+          <option>All Merchants</option>
+          {merchantOptions.map(([id, name]) => (
+            <option key={id} value={id}>
+              {name}
+            </option>
+          ))}
         </select>
       </div>
+
+      <p className="text-[10px] text-slate-500 px-1">
+        Showing {filteredLeads.length} of {leads.length} lead record
+        {leads.length === 1 ? '' : 's'}
+        {sourceFilter === 'Generated on profile' ? ` · ${PROFILE_LEAD_BADGE}` : ''}
+        {sourceFilter === 'Circulated in category' ? ` · ${CATEGORY_LEAD_BADGE}` : ''}
+      </p>
 
       {/* Leads Table */}
       <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
@@ -1706,23 +1762,39 @@ function LeadsContent({ leads, categories, merchants }: {
             <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Customer</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap min-w-[200px]">Looking for</th>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Category</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Eligible Merchants</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Source</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Assigned merchant</th>
                 <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Date</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50/80">
-              {filteredLeads.map((lead) => {
-                const eligibleMerchants = merchants.filter(m => m.category === lead.category);
-                return (
+              {filteredLeads.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-16 text-center">
+                    <p className="text-[11px] font-medium text-slate-500 uppercase tracking-widest">
+                      {leads.length === 0
+                        ? 'No leads in database yet'
+                        : 'No leads match the current filters'}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredLeads.map((lead) => (
                   <tr key={lead.id} className="hover:bg-primary/[0.01] transition-colors group">
                     <td className="px-6 py-4">
                       <div>
                         <p className="text-[11px] font-medium text-slate-900 tracking-tight">{lead.name}</p>
-                        <p className="text-[9px] text-slate-500 mt-0.5">{lead.phone || lead.email}</p>
+                        <p className="text-[9px] text-slate-500 mt-0.5">
+                          {[lead.phone, lead.email].filter(Boolean).join(' · ')}
+                        </p>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 max-w-xs">
+                      <p className="text-[10px] text-slate-600 line-clamp-2" title={lead.message || ''}>
+                        {lead.message || '—'}
+                      </p>
                     </td>
                     <td className="px-6 py-4">
                       <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100 text-[9px] font-medium uppercase tracking-widest">
@@ -1730,41 +1802,33 @@ function LeadsContent({ leads, categories, merchants }: {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest border ${
-                        lead.status === 'New' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                        lead.status === 'Contacted' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                        'bg-slate-50 text-slate-600 border-slate-100'
-                      }`}>
-                        {lead.status}
+                      <span
+                        className={`inline-block px-2.5 py-1 rounded-lg text-[9px] font-medium border max-w-[140px] ${leadBadgeClassName(lead.status)}`}
+                      >
+                        {isProfileLeadSource(lead.status)
+                          ? PROFILE_LEAD_BADGE
+                          : isCategoryLeadSource(lead.status)
+                            ? CATEGORY_LEAD_BADGE
+                            : lead.status}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex -space-x-2 overflow-hidden">
-                        {eligibleMerchants.length > 0 ? (
-                          eligibleMerchants.slice(0, 3).map((m, idx) => (
-                            <div key={m.id} className="inline-block h-6 w-6 rounded-full ring-2 ring-white bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-400 border border-slate-200" title={m.name}>
-                              {m.name[0]}
-                            </div>
-                          ))
-                        ) : (
-                          <span className="text-[9px] text-slate-400 italic">No matching merchants</span>
-                        )}
-                        {eligibleMerchants.length > 3 && (
-                          <div className="inline-block h-6 w-6 rounded-full ring-2 ring-white bg-slate-50 flex items-center justify-center text-[8px] font-bold text-slate-400 border border-slate-200">
-                            +{eligibleMerchants.length - 3}
-                          </div>
-                        )}
-                      </div>
+                      {lead.merchant_name ? (
+                        <p className="text-[10px] font-medium text-slate-800">{lead.merchant_name}</p>
+                      ) : lead.business_id ? (
+                        <p className="text-[10px] text-slate-500 font-mono">{lead.business_id.slice(0, 8)}…</p>
+                      ) : (
+                        <span className="text-[9px] text-slate-400 italic">Unassigned</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-[10px] text-slate-600 tabular-nums opacity-80">{new Date(lead.created_at).toLocaleDateString()}</p>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="text-[9px] font-bold text-primary hover:underline uppercase tracking-widest">View Details</button>
+                      <p className="text-[10px] text-slate-600 tabular-nums opacity-80">
+                        {new Date(lead.created_at).toLocaleString()}
+                      </p>
                     </td>
                   </tr>
-                );
-              })}
+                ))
+              )}
             </tbody>
           </table>
         </div>
