@@ -305,16 +305,16 @@ export function BlogContent({
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg text-slate-500">
                 <Tag size={14} />
-                <span className="text-[11px] font-medium uppercase tracking-wider">{item.category}</span>
+                <span className="text-[11px] font-medium tracking-wider">{item.category}</span>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg text-slate-500">
                 <User size={14} />
-                <span className="text-[11px] font-medium uppercase tracking-wider">{item.author}</span>
+                <span className="text-[11px] font-medium tracking-wider">{item.author}</span>
               </div>
             </div>
 
             <div className="pt-4">
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Content Editor</label>
+              <label className="block text-[10px] font-bold text-slate-400 tracking-[0.2em] mb-4">Content Editor</label>
               <Tiptap content={item.content || ""} onChange={(content) => setItem({ ...item, content })} />
             </div>
           </div>
@@ -322,12 +322,12 @@ export function BlogContent({
 
         <div className="space-y-6">
           <div className="bg-white rounded-3xl border border-slate-200/60 p-8 shadow-sm space-y-6">
-            <h4 className="text-[11px] font-bold text-slate-900 uppercase tracking-widest border-b border-slate-50 pb-4">Article Settings</h4>
+            <h4 className="text-[11px] font-bold text-slate-900 border-b border-slate-50 pb-4">Article Settings</h4>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Featured Image</label>
-                <div className="relative group aspect-[16/10] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden hover:border-primary/50 transition-all">
+                <label className="block text-[9px] font-bold text-slate-400 mb-2">Featured Image</label>
+                <div className="relative group aspect-[16/10] bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl overflow-hidden hover:border-primary/50 transition-all">
                   {uploading ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
                       <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -355,7 +355,7 @@ export function BlogContent({
               </div>
 
               <div>
-                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Excerpt (Short Summary)</label>
+                <label className="block text-[9px] font-bold text-slate-400 mb-2">Excerpt (Short Summary)</label>
                 <textarea 
                   value={item.excerpt || ""} 
                   onChange={(e) => setItem({ ...item, excerpt: e.target.value })}
@@ -365,7 +365,7 @@ export function BlogContent({
               </div>
 
               <div>
-                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Category</label>
+                <label className="block text-[9px] font-bold text-slate-400 mb-2">Category</label>
                 <select 
                   value={item.category || ""} 
                   onChange={(e) => setItem({ ...item, category: e.target.value })}
@@ -380,7 +380,7 @@ export function BlogContent({
               </div>
 
               <div>
-                <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Publishing Status</label>
+                <label className="block text-[9px] font-bold text-slate-400 mb-2">Publishing Status</label>
                 <div className="flex p-1 bg-slate-50 rounded-xl border border-slate-200">
                   <button 
                     onClick={() => setItem({ ...item, status: 'draft' })}
@@ -408,11 +408,11 @@ export function BlogContent({
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-1">
               <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Blog Articles</h1>
-              <p className="text-[12px] text-slate-500 font-medium uppercase tracking-[0.2em]">Manage and curate your professional content.</p>
+              <p className="text-[12px] text-slate-500 font-medium tracking-[0.2em]">Manage and curate your professional content.</p>
             </div>
             <button 
               onClick={() => setIsAddingBlog(true)}
-              className="px-6 py-3 bg-slate-900 text-white text-[11px] font-bold rounded-full hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 uppercase tracking-widest flex items-center gap-2"
+              className="px-6 py-3 bg-slate-900 text-white text-[11px] font-bold rounded-full hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 flex items-center gap-2"
             >
               <FileText size={16} />
               Write New Article
@@ -425,7 +425,7 @@ export function BlogContent({
                 <div key={blog.id} className="group bg-white rounded-[32px] border border-slate-200/60 overflow-hidden hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 flex flex-col">
                   <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
                     {blog.image_url ? (
-                      <img src={blog.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={blog.title} />
+                      <img src={blog.image_url} className="w-full h-full object-cover transition-transform duration-700" alt={blog.title} />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <FileText size={48} className="text-slate-200" />
@@ -457,7 +457,7 @@ export function BlogContent({
                   </div>
                   
                   <div className="p-8 flex-1 flex flex-col">
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 mb-3">
                       <span>{blog.category}</span>
                       <span className="w-1 h-1 bg-slate-300 rounded-full" />
                       <span>{new Date(blog.created_at).toLocaleDateString()}</span>
@@ -474,7 +474,7 @@ export function BlogContent({
                       </div>
                       <button 
                         onClick={() => setEditingBlog(blog)}
-                        className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline"
+                        className="text-[10px] font-bold text-primary hover:underline"
                       >
                         Edit Article
                       </button>
@@ -492,7 +492,7 @@ export function BlogContent({
               <p className="text-slate-500 text-sm mb-8">Start sharing your thoughts with the world.</p>
               <button 
                 onClick={() => setIsAddingBlog(true)}
-                className="px-8 py-3 bg-slate-900 text-white text-[11px] font-bold rounded-full hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 uppercase tracking-widest"
+                className="px-8 py-3 bg-slate-900 text-white text-[11px] font-bold rounded-full hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
               >
                 Create First Article
               </button>

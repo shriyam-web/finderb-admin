@@ -1,6 +1,6 @@
 "use client";
 
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { Dispatch, SetStateAction } from "react";
 import { createClient } from "../../utils/supabase/client";
 
 export interface Settings {
@@ -9,50 +9,30 @@ export interface Settings {
   [key: string]: boolean;
 }
 
-interface LoginLog {
+export interface LoginLog {
   id: string;
   admin_email: string;
   login_time: string;
 }
 
-export default function SettingsContent({ settings, setSettings }: { 
-  settings: Settings, 
-  setSettings: Dispatch<SetStateAction<Settings>> 
+export default function SettingsContent({
+  settings,
+  setSettings,
+  loginLogs,
+}: {
+  settings: Settings;
+  setSettings: Dispatch<SetStateAction<Settings>>;
+  loginLogs: LoginLog[];
 }) {
-  const [logs, setLogs] = useState<LoginLog[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchLogs();
-  }, []);
-
-  const fetchLogs = async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('admin_login_logs')
-        .select('*')
-        .order('login_time', { ascending: false });
-
-      if (error) throw error;
-      setLogs(data || []);
-    } catch (error) {
-      console.error('Error fetching logs:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const toggleSetting = async (key: string) => {
     if (key === 'imageCompression' && !settings.imageCompression) {
       alert("Kindly switch to ImageKit CDN storage first to enable the image compression.");
       return;
     }
-    
+
     const newValue = !settings[key];
     const oldSettings = { ...settings };
-    
-    // Optimistic update
+
     setSettings({ ...settings, [key]: newValue });
 
     try {
@@ -62,10 +42,10 @@ export default function SettingsContent({ settings, setSettings }: {
         .upsert({ key, value: newValue, updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
       if (error) throw error;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error";
       console.error('Error updating setting:', error);
-      alert("Failed to update setting in database: " + error.message);
-      // Rollback on error
+      alert("Failed to update setting in database: " + message);
       setSettings(oldSettings);
     }
   };
@@ -73,27 +53,25 @@ export default function SettingsContent({ settings, setSettings }: {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex flex-col gap-1.5 px-1">
-        <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Control Center</h1>
-        <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage platform configurations and global system settings.</p>
+        <h1 className="admin-page-title">Control Center</h1>
+        <p className="admin-page-subtitle">Manage platform configurations and global system settings.</p>
       </div>
 
-      <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm divide-y divide-slate-50/80 overflow-hidden max-w-xl">
+      <div className="admin-card divide-y divide-slate-100 overflow-hidden max-w-xl">
         {[
           { key: 'maintenance', label: 'Maintenance Mode', desc: 'Enable maintenance mode to restrict access to the platform.' },
           { key: 'imageCompression', label: 'Image Compression', desc: 'Turning this on will store compressed images to ImageKit' },
         ].map((item) => (
-          <div key={item.key} className="p-5 flex items-center justify-between hover:bg-primary/[0.01] transition-colors">
+          <div key={item.key} className="p-5 flex items-center justify-between hover:bg-slate-50/80 transition-colors">
             <div className="flex flex-col">
-              <span className="text-[11px] font-medium text-slate-900 capitalize tracking-tight">{item.label}</span>
-              <span className="text-[9px] text-secondary font-medium uppercase tracking-widest mt-0.5">
-                {item.desc}
-              </span>
+              <span className="text-sm font-medium text-slate-900">{item.label}</span>
+              <span className="text-xs text-slate-500 mt-0.5">{item.desc}</span>
             </div>
             <button
               onClick={() => toggleSetting(item.key)}
-              className={`w-11 h-6 rounded-full relative transition-all duration-300 ${settings[item.key] ? 'bg-primary shadow-lg shadow-primary/20' : 'bg-slate-200'}`}
+              className={`w-11 h-6 rounded-full relative transition-colors ${settings[item.key] ? 'bg-primary' : 'bg-slate-200'}`}
             >
-              <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all duration-300 shadow-sm ${settings[item.key] ? 'translate-x-5' : 'translate-x-0'}`} />
+              <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${settings[item.key] ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
         ))}
@@ -101,65 +79,45 @@ export default function SettingsContent({ settings, setSettings }: {
 
       <div className="space-y-4">
         <div className="flex flex-col gap-1.5 px-1">
-          <h2 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Login Activity</h2>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Recent administrator login history and system access logs.</p>
+          <h2 className="text-lg font-semibold text-slate-900">Login Activity</h2>
+          <p className="admin-page-subtitle">Recent administrator login history and system access logs.</p>
         </div>
 
-        <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50/50 border-b border-slate-100">
+        <div className="admin-card">
+          <table className="admin-table">
+            <thead>
               <tr>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Admin Email</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Login Time</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
+                <th>Admin email</th>
+                <th>Login time</th>
+                <th>Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50/80">
-              {loading ? (
+            <tbody>
+              {loginLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={3} className="px-6 py-8 text-center text-[11px] text-slate-400 uppercase tracking-widest animate-pulse">
-                    Loading access logs...
-                  </td>
-                </tr>
-              ) : logs.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="px-6 py-8 text-center text-[11px] text-slate-400 uppercase tracking-widest">
-                    No login logs found
+                  <td colSpan={3} className="admin-empty !py-10">
+                    No login logs found. Sign out and sign in again — if logs still don&apos;t appear, run <code className="admin-mono">db/update_admin_login_logs_rls.sql</code> in Supabase.
                   </td>
                 </tr>
               ) : (
-                logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-primary/[0.01] transition-colors group">
-                    <td className="px-6 py-4">
+                loginLogs.map((log) => (
+                  <tr key={log.id}>
+                    <td>
                       <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 border border-slate-200 group-hover:border-primary/20 group-hover:bg-primary/5 group-hover:text-primary transition-all uppercase">
-                          {log.admin_email[0]}
-                        </div>
-                        <span className="text-[11px] font-medium text-slate-900 tracking-tight">{log.admin_email}</span>
+                        <div className="admin-avatar">{log.admin_email[0]?.toUpperCase()}</div>
+                        <span className="text-sm font-medium text-slate-900">{log.admin_email}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-slate-600 tabular-nums">
-                          {new Date(log.login_time).toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric', 
-                            year: 'numeric' 
-                          })}
-                        </span>
-                        <span className="text-[9px] text-slate-400 tabular-nums mt-0.5 uppercase">
-                          {new Date(log.login_time).toLocaleTimeString('en-US', { 
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: true 
-                          })}
-                        </span>
-                      </div>
+                    <td>
+                      <p className="text-sm text-slate-600 tabular-nums">
+                        {new Date(log.login_time).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                      <p className="text-xs text-slate-400 tabular-nums mt-0.5">
+                        {new Date(log.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 text-[9px] font-medium uppercase tracking-widest">
-                        Successful
-                      </span>
+                    <td>
+                      <span className="admin-badge bg-emerald-50 text-emerald-700 border-emerald-200">Successful</span>
                     </td>
                   </tr>
                 ))

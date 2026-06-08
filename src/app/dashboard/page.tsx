@@ -23,11 +23,13 @@ interface User {
   fullName: string;
   email: string;
   createdAt: string;
+  password?: string | null;
 }
 
 interface Merchant {
   id: string;
   name: string;
+  email: string;
   category: string;
   rating: number;
   sales: number;
@@ -38,8 +40,16 @@ interface Merchant {
 interface MerchantRequest {
   id: string;
   name: string;
+  email: string;
   category: string;
   date: string;
+}
+
+interface AdminSession {
+  id: string;
+  email: string;
+  role: string;
+  allowed_tabs?: string[];
 }
 
 interface Lead {
@@ -280,11 +290,24 @@ const ALL_MENU_ITEMS = [
   }
 ];
 
+const NAV_GROUPS = [
+  { label: "Overview", items: ["Dashboard"] },
+  { label: "Operations", items: ["Users", "Merchants", "Leads"] },
+  { label: "Content & Media", items: ["Categories", "Movies", "Tourist Places", "News", "Blogs", "FinderB Jobs"] },
+  { label: "Platform", items: ["Payments & Subscriptions", "Broadcasts", "Settings", "Manage Admins"] },
+];
+
 export default function Dashboard() {
   const router = useRouter();
   const [adminSession, setAdminSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [platformTime, setPlatformTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setPlatformTime(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   // --- Global State for Functionalities ---
   const [settings, setSettings] = useState<Settings>({
@@ -545,6 +568,7 @@ export default function Dashboard() {
               .map((m: any) => ({
                 id: m.id,
                 name: m.businessName || m.fullName || 'Unknown Merchant',
+                email: m.workEmail || m.email || '',
                 category: m.category || 'Other',
                 rating: 0,
                 sales: 0,
@@ -556,6 +580,7 @@ export default function Dashboard() {
               .map((m: any) => ({
                 id: m.id,
                 name: m.businessName || m.fullName || 'Unknown Merchant',
+                email: m.workEmail || m.email || '',
                 category: m.category || 'Other',
                 date: new Date(m.createdAt || Date.now()).toLocaleDateString()
               })));
@@ -607,8 +632,26 @@ export default function Dashboard() {
       }
     };
 
+    const fetchLoginLogs = async () => {
+      if (activeTab === "Settings") {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('admin_login_logs')
+          .select('*')
+          .order('login_time', { ascending: false })
+          .limit(100);
+
+        if (error) {
+          console.error("Error fetching login logs:", error);
+        } else {
+          setLoginLogs(data || []);
+        }
+      }
+    };
+
     fetchAdmins();
     fetchUsers();
+    fetchLoginLogs();
   }, [activeTab]);
 
   const [broadcastTitle, setBroadcastTitle] = useState("");
@@ -648,6 +691,7 @@ export default function Dashboard() {
       {
         id: req.id,
         name: req.name,
+        email: req.email,
         category: req.category,
         rating: 0,
         sales: 0,
@@ -1121,13 +1165,13 @@ export default function Dashboard() {
   const renderContent = () => {
     if (adminSession?.role !== 'controller' && menuItems.length === 0) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 bg-white rounded-2xl border border-slate-200/60 shadow-sm">
-          <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500 mb-6">
+        <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 admin-card">
+          <div className="w-16 h-16 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500 mb-6">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m0-6V9m0-6H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V7l-5-5z" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-slate-900 mb-2 uppercase tracking-tight">Access Restricted</h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-2 tracking-tight">Access Restricted</h3>
           <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
             No permission is granted to you by the FinderB controller. Please contact developer for access to data.
           </p>
@@ -1148,7 +1192,7 @@ export default function Dashboard() {
           recentActivities={recentActivities}
         />;
       case "Users":
-        return <UsersContent users={users} setUsers={setUsers} />;
+        return <UsersContent users={users} setUsers={setUsers} adminSession={adminSession} />;
       case "Merchants":
         return (
           <MerchantsContent
@@ -1156,6 +1200,7 @@ export default function Dashboard() {
             setActiveMerchants={setActiveMerchants}
             merchantRequests={merchantRequests}
             setMerchantRequests={setMerchantRequests}
+            adminSession={adminSession}
           />
         );
       case "Leads":
@@ -1219,12 +1264,14 @@ export default function Dashboard() {
           />
         );
       case "Settings":
-  return (
-    <SettingsContent
-      settings={settings}
-      setSettings={setSettings}
-    />
-  );case "Manage Admins":
+        return (
+          <SettingsContent
+            settings={settings}
+            setSettings={setSettings}
+            loginLogs={loginLogs}
+          />
+        );
+      case "Manage Admins":
         return <ManageAdminsContent admins={admins} setAdmins={setAdmins} adminSession={adminSession} />;
       default:
         return <DashboardContent
@@ -1241,130 +1288,104 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F8FAFC] font-sans text-slate-900">
-      {/* Mobile Sidebar Overlay */}
+    <div className="admin-shell flex min-h-screen">
       {isSidebarOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
-          onClick={() => setIsSidebarOpen(false)}
-        ></div>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <aside className={`w-64 bg-sidebar-background border-r border-slate-200 flex flex-col fixed inset-y-0 z-50 transition-all duration-300 ease-in-out transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"} lg:shadow-none`}>
-        {/* Header */}
-        <div className="h-16 flex items-center px-6 gap-3 border-b border-slate-100/50">
-          <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0">
-            <Image
-              src="/logo1.png"
-              alt="FinderB Logo"
-              width={140}
-              height={40}
-              className="object-contain"
-              priority
-            />
+      <aside className={`admin-sidebar transition-transform duration-300 ease-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
+        <div className="admin-sidebar-header">
+          <Link href="/dashboard" className="flex items-center min-w-0">
+            <Image src="/logo1.png" alt="FinderB" width={128} height={34} className="object-contain brightness-0 invert opacity-95" priority />
           </Link>
-
-          {/* Close Button for Mobile */}
-          <button
-            onClick={() => setIsSidebarOpen(false)}
-            className="ml-auto p-1.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-md transition-all lg:hidden"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <p className="admin-sidebar-brand">CONTROL CENTER</p>
+          <button onClick={() => setIsSidebarOpen(false)} className="absolute top-5 right-4 p-1.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-md lg:hidden">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 mt-6 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
-          {menuItems.map((item) => (
-            <button
-              key={item.name}
-              onClick={() => {
-                setActiveTab(item.name);
-                setIsSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-[11px] font-normal rounded-xl transition-all duration-200 group relative ${activeTab === item.name
-                ? "bg-primary text-white shadow-lg shadow-primary/25"
-                : "text-sidebar-foreground hover:bg-primary/5 hover:text-primary"
-                }`}
-            >
-              {activeTab === item.name && (
-                <div className="absolute left-0 w-1 h-4 bg-secondary rounded-r-full"></div>
-              )}
-              <span className={`shrink-0 transition-all duration-200 ${activeTab === item.name ? "text-secondary scale-110" : "text-slate-400 group-hover:text-primary group-hover:scale-110"
-                }`}>
-                {item.icon}
-              </span>
-              <span className="tracking-tight">{item.name}</span>
-            </button>
-          ))}
+        <div className="mx-4 mt-4 mb-2 px-3 py-2.5 rounded-md border border-white/[0.08] bg-white/[0.03]">
+          <div className="flex items-center justify-between gap-2">
+            <span className={`admin-status-pill ${settings.maintenance ? "admin-status-warn" : "admin-status-live"} !text-[10px] !py-0.5`}>
+              {!settings.maintenance && <span className="admin-status-dot" />}
+              {settings.maintenance ? "Maintenance" : "Operational"}
+            </span>
+            <span className="text-[10px] text-slate-500 tabular-nums">
+              {platformTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          </div>
+        </div>
+
+        <nav className="flex-1 px-3 py-2 overflow-y-auto sidebar-scrollbar">
+          {NAV_GROUPS.map((group) => {
+            const groupItems = menuItems.filter((item) => group.items.includes(item.name));
+            if (groupItems.length === 0) return null;
+            return (
+              <div key={group.label} className="admin-nav-group">
+                <p className="admin-nav-group-label">{group.label}</p>
+                <div className="space-y-0.5">
+                  {groupItems.map((item) => (
+                    <button
+                      key={item.name}
+                      onClick={() => { setActiveTab(item.name); setIsSidebarOpen(false); }}
+                      className={`admin-nav-item ${activeTab === item.name ? "admin-nav-item-active" : "admin-nav-item-idle"}`}
+                    >
+                      <span className={`shrink-0 ${activeTab === item.name ? "text-primary-300" : "text-slate-500"}`}>{item.icon}</span>
+                      <span className="truncate">{item.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </nav>
 
-        {/* User Profile */}
-        <div className="p-4 border-t border-slate-100/50 bg-slate-50/30">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white hover:shadow-sm transition-all duration-200 cursor-pointer group border border-transparent hover:border-slate-100">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-700 flex items-center justify-center text-white font-normal text-xs shadow-sm group-hover:scale-105 transition-transform">
-              {adminSession?.email ? adminSession.email.charAt(0).toUpperCase() : "A"}
-            </div>
+        <div className="p-4 border-t border-white/[0.07]">
+          <div className="flex items-center gap-3 px-2 py-2">
+            <div className="admin-avatar-dark">{adminSession?.email?.charAt(0).toUpperCase() || "A"}</div>
             <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-normal text-slate-900 truncate">{adminSession?.email ? adminSession.email.split('@')[0] : "Admin User"}</p>
-              <p className="text-[10px] text-slate-500 truncate font-medium">{adminSession?.email || "admin@finderb.com"}</p>
-            </div>
-            <div className="relative">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-200"></div>
-              <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 animate-ping opacity-25"></div>
+              <p className="text-sm font-medium text-slate-200 truncate">{adminSession?.email?.split("@")[0] || "Admin"}</p>
+              <p className="text-[11px] text-slate-500 truncate capitalize">{adminSession?.role?.replace("_", " ") || "Administrator"}</p>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
-        <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-4 lg:px-8 sticky top-0 z-20">
+      <div className="admin-content-area flex-1 lg:ml-[280px] flex flex-col min-w-0">
+        <header className="admin-topbar">
           <div className="flex items-center gap-3 min-w-0">
-            <button
-              className="p-2 text-slate-500 lg:hidden hover:bg-primary/5 hover:text-primary rounded-xl transition-all"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+            <button className="admin-btn-ghost lg:hidden" onClick={() => setIsSidebarOpen(true)}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
-            <h2 className="text-sm lg:text-base font-medium text-primary tracking-tight truncate uppercase">{activeTab}</h2>
+            <div className="admin-breadcrumb hidden sm:flex">
+              <span>FinderB</span>
+              <span className="text-slate-300">/</span>
+              <span className="admin-breadcrumb-current">{activeTab}</span>
+            </div>
           </div>
-
-          <div className="flex items-center gap-4 shrink-0">
-            <button className="p-2 text-slate-400 hover:text-primary transition-all rounded-xl hover:bg-primary/5 relative">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <span className="absolute top-2 right-2 w-2 h-2 bg-secondary rounded-full border-2 border-white"></span>
-            </button>
-            <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="text-[11px] font-medium text-slate-400 hover:text-rose-600 transition-all uppercase tracking-widest bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 hover:border-rose-100 hover:bg-rose-50/50"
-            >
-              Sign out
-            </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="hidden md:inline admin-badge bg-primary-50 text-primary border-primary/20 capitalize">{adminSession?.role?.replace("_", " ") || "Admin"}</span>
+            <button type="button" onClick={handleLogout} className="admin-btn-secondary text-xs py-1.5 px-3">Sign out</button>
           </div>
         </header>
 
-        <main className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto w-full space-y-6">
+        <div className="admin-command-bar">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="admin-metric-chip">Users <strong>{users.length.toLocaleString()}</strong></span>
+            <span className="admin-metric-chip">Partners <strong>{activeMerchants.length.toLocaleString()}</strong></span>
+            <span className="admin-metric-chip">Pending KYC <strong>{merchantRequests.length}</strong></span>
+            <span className="admin-metric-chip">Leads <strong>{leads.length.toLocaleString()}</strong></span>
+          </div>
+          <p className="text-xs text-slate-400 tabular-nums hidden sm:block">
+            {platformTime.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+          </p>
+        </div>
+
+        <main className="admin-main space-y-6">
           {fetchError && (
-            <div className="rounded-xl bg-rose-50 border border-rose-100 p-4 text-rose-800 shadow-sm ring-1 ring-rose-200/20">
-              <div className="flex items-start gap-3">
-                <svg className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div className="text-[11px] font-medium">
-                  <p className="font-normal text-rose-900">System Alert</p>
-                  <p className="mt-0.5 text-rose-700">{fetchError}</p>
-                </div>
-              </div>
+            <div className="admin-alert-error">
+              <p className="font-medium text-rose-900">System alert</p>
+              <p className="mt-0.5 text-rose-700">{fetchError}</p>
             </div>
           )}
           {renderContent()}
@@ -1397,192 +1418,134 @@ function DashboardContent({
 }) {
 
   const maxVal = Math.max(...chartData.map(d => d.users + d.merchants), 10);
+  const weekTotal = chartData.reduce((sum, d) => sum + d.users + d.merchants, 0);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-1.5 px-1">
-        <h1 className="text-xl font-medium tracking-tight text-slate-900 uppercase">System Overview</h1>
-        <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Real-time performance and partner engagement metrics.</p>
+      <div className="admin-platform-hero">
+        <div className="admin-platform-hero-grid" />
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.16em] text-primary-200/90">FINDERB PLATFORM</p>
+            <h1 className="text-2xl lg:text-3xl font-semibold text-white mt-2 tracking-tight">Mission control</h1>
+            <p className="text-sm text-slate-300 mt-2 max-w-xl leading-relaxed">
+              Central operations hub for users, partners, content, and platform health across the entire FinderB ecosystem.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button onClick={() => setActiveTab("Users")} className="admin-btn-secondary !bg-white/10 !border-white/20 !text-white hover:!bg-white/15 text-xs">Manage users</button>
+            <button onClick={() => setActiveTab("Merchants")} className="admin-btn-primary text-xs">Partner queue ({merchantRequests.length})</button>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {[
-          {
-            label: "Total Users", value: totalUsers.toLocaleString(), growth: "+12%", color: "bg-primary", icon: (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            )
-          },
-          {
-            label: "Active Merchants", value: totalMerchants.toLocaleString(), growth: "+8", color: "bg-secondary", icon: (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            )
-          },
-          {
-            label: "Monthly Revenue", value: "₹4.3L", growth: "85%", color: "bg-slate-900", icon: (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )
-          },
-        ].map((stat, i) => (
-          <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`p-2.5 rounded-xl ${stat.color} text-white shadow-lg ${stat.color === 'bg-primary' ? 'shadow-primary/30' : stat.color === 'bg-secondary' ? 'shadow-secondary/30' : 'shadow-slate-200'} group-hover:scale-110 transition-all duration-300`}>
-                {stat.icon}
-              </div>
-              <div className="flex flex-col items-end">
-                <span className={`text-[9px] font-medium px-2 py-0.5 rounded-full uppercase tracking-tighter ${stat.growth.startsWith('+') ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-50 text-slate-600 border border-slate-100'}`}>
-                  {stat.growth}
-                </span>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">{stat.label}</p>
-              <h3 className="text-2xl font-medium text-slate-900 mt-1 tabular-nums">{stat.value}</h3>
-            </div>
-          </div>
-        ))}
+      <div className="admin-kpi-grid">
+        <div className="admin-kpi admin-kpi-primary">
+          <p className="admin-kpi-label">Registered users</p>
+          <p className="admin-kpi-value">{totalUsers.toLocaleString()}</p>
+          <p className="admin-kpi-meta">End-user accounts on platform</p>
+        </div>
+        <div className="admin-kpi admin-kpi-secondary">
+          <p className="admin-kpi-label">Active partners</p>
+          <p className="admin-kpi-value">{totalMerchants.toLocaleString()}</p>
+          <p className="admin-kpi-meta">Verified merchant profiles</p>
+        </div>
+        <div className="admin-kpi admin-kpi-success">
+          <p className="admin-kpi-label">Pending verification</p>
+          <p className="admin-kpi-value">{merchantRequests.length}</p>
+          <p className="admin-kpi-meta">KYC awaiting review</p>
+        </div>
+        <div className="admin-kpi admin-kpi-neutral">
+          <p className="admin-kpi-label">Weekly sign-ups</p>
+          <p className="admin-kpi-value">{weekTotal.toLocaleString()}</p>
+          <p className="admin-kpi-meta">Users + partners (7 days)</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-50">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div className="xl:col-span-7 admin-card p-6">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xs font-medium text-slate-900 uppercase tracking-widest">Engagement Metrics</h3>
-              <p className="text-[9px] text-slate-500 font-normal uppercase tracking-widest mt-1 opacity-60">Activity analysis for the current week.</p>
+              <h3 className="admin-card-title">Growth trajectory</h3>
+              <p className="admin-card-description">New registrations over the last 7 days</p>
             </div>
-            <div className="flex gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-primary rounded-full shadow-sm shadow-primary/20"></div>
-                <span className="text-[9px] font-medium text-slate-500 uppercase tracking-widest">Users</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-secondary rounded-full shadow-sm shadow-secondary/20"></div>
-                <span className="text-[9px] font-medium text-slate-500 uppercase tracking-widest">Merchants</span>
-              </div>
+            <div className="flex gap-4 text-xs text-slate-500">
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-primary" />Users</span>
+              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-secondary" />Partners</span>
             </div>
           </div>
-
-          <div className="h-56 flex items-end justify-between gap-3 px-2">
+          <div className="h-64 flex items-end justify-between gap-2 px-1 border-b border-slate-100 pb-2">
             {chartData.map((d, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-3 h-full justify-end group relative">
-                <div className="w-full flex flex-col items-center gap-1 h-full justify-end max-w-[28px]">
-                  <div
-                    className="w-full bg-primary/90 rounded-t-lg transition-all duration-300 hover:bg-primary cursor-pointer shadow-sm group-hover:scale-x-105"
-                    style={{ height: `${(d.users / maxVal) * 100}%` }}
-                  ></div>
-                  <div
-                    className="w-full bg-secondary/90 rounded-t-lg transition-all duration-300 hover:bg-secondary cursor-pointer shadow-sm group-hover:scale-x-105"
-                    style={{ height: `${(d.merchants / maxVal) * 100}%` }}
-                  ></div>
+              <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end max-w-[48px] group">
+                <div className="w-full flex flex-col items-center gap-0.5 h-full justify-end">
+                  <div className="admin-chart-bar bg-primary/85 hover:bg-primary w-full max-w-[20px]" style={{ height: `${Math.max((d.users / maxVal) * 100, 2)}%` }} title={`${d.users} users`} />
+                  <div className="admin-chart-bar bg-secondary/85 hover:bg-secondary w-full max-w-[20px]" style={{ height: `${Math.max((d.merchants / maxVal) * 100, 2)}%` }} title={`${d.merchants} partners`} />
                 </div>
-                <span className="text-[9px] font-medium text-slate-400 uppercase tracking-tighter transition-colors group-hover:text-primary">{d.label}</span>
+                <span className="text-[11px] font-medium text-slate-400 group-hover:text-primary transition-colors">{d.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/60 shadow-sm flex flex-col overflow-hidden">
-          <div className="p-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-            <h3 className="text-xs font-medium text-slate-900 uppercase tracking-widest">Pending Approvals</h3>
-            <button
-              onClick={() => setActiveTab("Merchants")}
-              className="text-[9px] font-medium text-primary hover:text-primary-700 uppercase tracking-widest transition-all bg-white px-2 py-1 rounded-lg border border-slate-200 hover:border-primary/20 shadow-sm"
-            >
-              View Queue
-            </button>
+        <div className="xl:col-span-5 admin-card flex flex-col min-h-[360px]">
+          <div className="admin-card-header">
+            <div>
+              <h3 className="admin-card-title">Verification queue</h3>
+              <p className="admin-card-description">{merchantRequests.length} partner{merchantRequests.length !== 1 ? "s" : ""} awaiting action</p>
+            </div>
+            <button onClick={() => setActiveTab("Merchants")} className="admin-link">Open queue</button>
           </div>
-          <div className="flex-1 divide-y divide-slate-50/80 overflow-y-auto max-h-[340px] custom-scrollbar">
-            {merchantRequests.length > 0 ? merchantRequests.map((merchant) => (
-              <div key={merchant.id} className="p-4 flex items-center justify-between hover:bg-primary/[0.02] transition-colors group">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-primary font-medium text-[10px] border border-slate-200 group-hover:from-primary/5 group-hover:to-primary/10 transition-all uppercase shrink-0 shadow-sm group-hover:scale-105">
-                    {merchant.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                  </div>
+          <div className="flex-1 divide-y divide-slate-100 overflow-y-auto max-h-[320px] custom-scrollbar">
+            {merchantRequests.length > 0 ? merchantRequests.slice(0, 8).map((merchant) => (
+              <div key={merchant.id} className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="admin-avatar">{merchant.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</div>
                   <div className="min-w-0">
-                    <p className="text-[11px] font-medium text-slate-900 truncate tracking-tight">{merchant.name}</p>
-                    <p className="text-[9px] text-secondary font-medium uppercase tracking-widest mt-0.5">{merchant.category}</p>
+                    <p className="text-sm font-medium text-slate-900 truncate">{merchant.name}</p>
+                    <p className="text-xs text-slate-500 truncate">{merchant.category}{merchant.email ? ` · ${merchant.email}` : ""}</p>
                   </div>
                 </div>
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => handleApprove(merchant)}
-                    className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all border border-slate-100 hover:border-emerald-200 shadow-sm"
-                    title="Approve"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                    </svg>
+                <div className="flex gap-1.5 shrink-0">
+                  <button onClick={() => handleApprove(merchant)} className="admin-icon-btn !text-emerald-600 hover:!bg-emerald-50" title="Approve">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
                   </button>
-                  <button
-                    onClick={() => handleReject(merchant)}
-                    className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-slate-100 hover:border-rose-200 shadow-sm"
-                    title="Reject"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                  <button onClick={() => handleReject(merchant)} className="admin-icon-btn-danger" title="Reject">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
               </div>
             )) : (
-              <div className="h-full flex flex-col items-center justify-center p-12 opacity-40">
-                <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
-                  <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">Queue Empty</p>
-              </div>
+              <div className="admin-empty">No partners in the verification queue</div>
             )}
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-          <h3 className="text-xs font-medium text-slate-900 uppercase tracking-widest">Recent Activity</h3>
-          <button className="text-[9px] font-medium text-primary hover:text-primary-700 uppercase tracking-widest transition-all bg-white px-2 py-1 rounded-lg border border-slate-200 hover:border-primary/20 shadow-sm" onClick={() => setActiveTab("Users")}>Full Log</button>
+      <div className="admin-card">
+        <div className="admin-card-header">
+          <div>
+            <h3 className="admin-card-title">Activity stream</h3>
+            <p className="admin-card-description">Latest platform events across users, partners, and leads</p>
+          </div>
+          <button className="admin-link" onClick={() => setActiveTab("Users")}>View all</button>
         </div>
-        <div className="divide-y divide-slate-50/80">
-          {recentActivities.length > 0 ? recentActivities.map((activity) => (
-            <div key={activity.id} className="p-4 flex items-center justify-between hover:bg-primary/[0.01] transition-colors group">
-              <div className="flex items-center gap-4 min-w-0">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border border-slate-100 transition-all group-hover:scale-105 shadow-sm ${
-                  activity.type === 'user' ? 'bg-blue-50 text-blue-500' : 
-                  activity.type === 'merchant' ? 'bg-emerald-50 text-emerald-500' : 'bg-amber-50 text-amber-500'
-                }`}>
-                  {activity.type === 'user' ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  ) : activity.type === 'merchant' ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                  )}
-                </div>
-                <div className="truncate">
-                  <p className="text-[11px] font-medium text-slate-900 truncate tracking-tight">{activity.title}</p>
-                  <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest mt-0.5 opacity-60">{activity.description}</p>
-                </div>
+        <div className="divide-y divide-slate-100">
+          {recentActivities.length > 0 ? recentActivities.slice(0, 12).map((activity) => (
+            <div key={activity.id} className="admin-timeline-item">
+              <div className={`admin-avatar shrink-0 ${activity.type === "user" ? "!bg-blue-50 !text-blue-600 !border-blue-100" : activity.type === "merchant" ? "!bg-emerald-50 !text-emerald-600 !border-emerald-100" : "!bg-amber-50 !text-amber-600 !border-amber-100"}`}>
+                {activity.type === "user" ? "U" : activity.type === "merchant" ? "M" : "L"}
               </div>
-              <span className="text-[9px] font-medium text-slate-400 bg-slate-50 px-3 py-1 rounded-lg border border-slate-100 tabular-nums">
-                {new Date(activity.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-slate-900">{activity.title}</p>
+                <p className="text-xs text-slate-500 mt-0.5 truncate">{activity.description}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-xs text-slate-600 tabular-nums">{new Date(activity.timestamp).toLocaleDateString([], { month: "short", day: "numeric" })}</p>
+                <p className="text-[11px] text-slate-400 tabular-nums mt-0.5">{new Date(activity.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+              </div>
             </div>
           )) : (
-            <div className="p-12 text-center opacity-40">
-              <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">No Recent Activity</p>
-            </div>
+            <div className="admin-empty">No recent activity recorded</div>
           )}
         </div>
       </div>
@@ -1666,8 +1629,8 @@ function LeadsContent({ leads, categories, merchants }: {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Leads Management</h1>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Track and manage customer inquiries and service requests.</p>
+          <h1 className="admin-page-title">Leads Management</h1>
+          <p className="admin-page-subtitle">Track and manage customer inquiries and service requests.</p>
         </div>
       </div>
 
@@ -1680,7 +1643,7 @@ function LeadsContent({ leads, categories, merchants }: {
           { label: "On profile", value: stats.profile, color: "bg-blue-600", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
           { label: "Circulated", value: stats.circulated, color: "bg-violet-600", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" },
         ].map((stat, i) => (
-          <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-all duration-300 group">
+          <div key={i} className="bg-white p-5 rounded-xl border border-slate-200/60 shadow-sm hover:shadow-xl transition-all duration-300 group">
             <div className="flex items-center gap-4">
               <div className={`p-2.5 rounded-xl ${stat.color} text-white shadow-lg group-hover:scale-110 transition-all duration-300`}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1688,7 +1651,7 @@ function LeadsContent({ leads, categories, merchants }: {
                 </svg>
               </div>
               <div>
-                <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">{stat.label}</p>
+                <p className="text-[10px] font-medium text-slate-400">{stat.label}</p>
                 <h3 className="text-2xl font-medium text-slate-900 mt-1 tabular-nums">{stat.value}</h3>
               </div>
             </div>
@@ -1697,14 +1660,14 @@ function LeadsContent({ leads, categories, merchants }: {
       </div>
 
       {/* Filters Section */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm flex flex-wrap items-center gap-4">
+      <div className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[240px]">
           <input
             type="text"
             placeholder="SEARCH LEADS..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest"
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
           />
           <svg className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -1714,7 +1677,7 @@ function LeadsContent({ leads, categories, merchants }: {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest min-w-[160px]"
+          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-w-[160px]"
         >
           {categoryOptions.map((name) => (
             <option key={name} value={name}>
@@ -1726,7 +1689,7 @@ function LeadsContent({ leads, categories, merchants }: {
         <select
           value={sourceFilter}
           onChange={(e) => setSourceFilter(e.target.value)}
-          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest min-w-[180px]"
+          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-w-[180px]"
         >
           <option>All Sources</option>
           <option>Generated on profile</option>
@@ -1737,7 +1700,7 @@ function LeadsContent({ leads, categories, merchants }: {
         <select
           value={merchantFilter}
           onChange={(e) => setMerchantFilter(e.target.value)}
-          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all uppercase tracking-widest min-w-[180px]"
+          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-w-[180px]"
         >
           <option>All Merchants</option>
           {merchantOptions.map(([id, name]) => (
@@ -1756,24 +1719,24 @@ function LeadsContent({ leads, categories, merchants }: {
       </p>
 
       {/* Leads Table */}
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+      <div className="admin-card">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Customer</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap min-w-[200px]">Looking for</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Category</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Source</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Assigned merchant</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Date</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Customer</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap min-w-[200px]">Looking for</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Category</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Source</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Assigned merchant</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50/80">
               {filteredLeads.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-16 text-center">
-                    <p className="text-[11px] font-medium text-slate-500 uppercase tracking-widest">
+                    <p className="text-[11px] font-medium text-slate-500">
                       {leads.length === 0
                         ? 'No leads in database yet'
                         : 'No leads match the current filters'}
@@ -1797,7 +1760,7 @@ function LeadsContent({ leads, categories, merchants }: {
                       </p>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100 text-[9px] font-medium uppercase tracking-widest">
+                      <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100 text-[9px] font-medium">
                         {lead.category}
                       </span>
                     </td>
@@ -1837,126 +1800,213 @@ function LeadsContent({ leads, categories, merchants }: {
   );
 }
 
-function UsersContent({ users, setUsers }: { users: User[], setUsers: Dispatch<SetStateAction<User[]>> }) {
+function matchesSearchTerm(searchTerm: string, ...fields: (string | null | undefined)[]): boolean {
+  const query = searchTerm.trim().toLowerCase();
+  if (!query) return true;
+  return fields.some((field) => (field ?? "").toLowerCase().includes(query));
+}
+
+function ControllerPasswordModal({
+  isOpen,
+  onClose,
+  title,
+  adminSession,
+  onFetchPassword,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  adminSession: AdminSession;
+  onFetchPassword: () => Promise<string | null>;
+  onSuccess: (password: string) => void;
+}) {
+  const [adminPassword, setAdminPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setAdminPassword("");
+      setError("");
+      setLoading(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const supabase = createClient();
+      const { data, error: verifyError } = await supabase
+        .from("admins")
+        .select("password")
+        .eq("id", adminSession.id)
+        .single();
+      if (verifyError || !data || data.password !== adminPassword) {
+        setError("Incorrect admin password.");
+        return;
+      }
+      const targetPassword = await onFetchPassword();
+      if (!targetPassword) {
+        setError("No password found for this account.");
+        return;
+      }
+      onSuccess(targetPassword);
+      onClose();
+    } catch {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="admin-modal-overlay">
+      <div className="admin-modal">
+        <div className="admin-card-header">
+          <div>
+            <h3 className="admin-card-title">Verify controller access</h3>
+            <p className="admin-card-description">{title}</p>
+          </div>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div>
+            <label className="admin-label block mb-2">Enter your admin password</label>
+            <input type="password" autoFocus required value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} className="admin-input" placeholder="••••••••" />
+          </div>
+          {error && <p className="text-xs font-medium text-rose-600">{error}</p>}
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose} className="admin-btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={loading} className="admin-btn-primary flex-1">{loading ? "Verifying..." : "Reveal password"}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function PasswordRevealCell({
+  id,
+  visiblePasswords,
+  onToggleVisibility,
+  onRequestReveal,
+}: {
+  id: string;
+  visiblePasswords: Record<string, string>;
+  onToggleVisibility: (id: string) => void;
+  onRequestReveal: (id: string) => void;
+}) {
+  const isVisible = Boolean(visiblePasswords[id]);
+  return (
+    <td className="px-5 py-4">
+      <div className="flex items-center gap-2">
+        <span className="admin-mono bg-slate-50 px-2 py-1 rounded-md border border-slate-100 min-w-[80px]">
+          {isVisible ? visiblePasswords[id] : "••••••••"}
+        </span>
+        <button onClick={() => (isVisible ? onToggleVisibility(id) : onRequestReveal(id))} className="admin-btn-ghost !p-1.5" title={isVisible ? "Hide password" : "Reveal password"}>
+          {isVisible ? (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" /></svg>
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+          )}
+        </button>
+      </div>
+    </td>
+  );
+}
+
+function UsersContent({ users, setUsers, adminSession }: { users: User[], setUsers: Dispatch<SetStateAction<User[]>>, adminSession: AdminSession | null }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, string>>({});
+  const [passwordModalTarget, setPasswordModalTarget] = useState<{ id: string; label: string } | null>(null);
+  const isController = adminSession?.role === "controller";
 
   const handleDeleteUser = async (id: string) => {
     if (confirm("Are you sure you want to delete this user?")) {
       try {
         const supabase = createClient();
-        const { error } = await supabase
-          .from('User')
-          .delete()
-          .eq('id', id);
-
-        if (error) {
-          alert("Error deleting user: " + error.message);
-        } else {
-          setUsers(users.filter(u => u.id !== id));
-        }
-      } catch (err) {
+        const { error } = await supabase.from('User').delete().eq('id', id);
+        if (error) alert("Error deleting user: " + error.message);
+        else setUsers(users.filter(u => u.id !== id));
+      } catch {
         alert("An error occurred.");
       }
     }
   };
 
-  const filteredUsers = users.filter(user => 
-    user.id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter((user) => matchesSearchTerm(searchTerm, user.id, user.fullName, user.email));
+
+  const fetchUserPassword = async (userId: string) => {
+    const { data } = await createClient().from("User").select("password").eq("id", userId).single();
+    return data?.password ?? null;
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">User Management</h1>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">View and manage registered users on the platform.</p>
+          <h1 className="admin-page-title">User management</h1>
+          <p className="admin-page-subtitle">View and manage registered users on the platform.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <input
-              type="text"
-              placeholder="SEARCH BY USER ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all w-64 uppercase tracking-widest"
-            />
-            <svg className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            <input type="text" placeholder="Search by name, email, or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="admin-search w-72" />
+            <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           </div>
-          <button
-            onClick={() => alert("Add User functionality coming soon!")}
-            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-95 shadow-lg shadow-primary/20 uppercase tracking-widest"
-          >
-            Add New User
-          </button>
+          <button onClick={() => alert("Add User functionality coming soon!")} className="admin-btn-primary">Add user</button>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50/50 border-b border-slate-100">
+      <div className="admin-card">
+        <div className="admin-table-wrap">
+          <table className="admin-table">
+            <thead>
               <tr>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">User ID</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">User Info</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Joined Date</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
+                <th>User ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Joined</th>
+                {isController && <th>Password</th>}
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50/80">
+            <tbody>
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-primary/[0.01] transition-colors group">
-                  <td className="px-6 py-4">
-                    <p className="text-[10px] font-mono text-slate-500">{user.id}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
-                        {user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-medium text-slate-900 tracking-tight">{user.fullName}</p>
-                        <p className="text-[10px] text-slate-500 font-normal opacity-60">{user.email}</p>
-                      </div>
+                <tr key={user.id}>
+                  <td><p className="admin-mono">{user.id}</p></td>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <div className="admin-avatar">{user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
+                      <p className="text-sm font-medium text-slate-900">{user.fullName}</p>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <p className="text-[10px] text-slate-600 font-normal tabular-nums opacity-80">{new Date(user.createdAt).toLocaleDateString()}</p>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 shadow-sm"
-                        title="Delete"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
+                  <td><p className="text-sm text-slate-600">{user.email || "—"}</p></td>
+                  <td><p className="text-sm text-slate-600 tabular-nums">{new Date(user.createdAt).toLocaleDateString()}</p></td>
+                  {isController && (
+                    <PasswordRevealCell id={user.id} visiblePasswords={visiblePasswords} onToggleVisibility={(id) => setVisiblePasswords((p) => { const n = { ...p }; delete n[id]; return n; })} onRequestReveal={(id) => setPasswordModalTarget({ id, label: `Enter your admin password to view the password for ${users.find(u => u.id === id)?.fullName || "this user"}.` })} />
+                  )}
+                  <td className="text-right">
+                    <button onClick={() => handleDeleteUser(user.id)} className="admin-icon-btn-danger" title="Delete">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
                   </td>
                 </tr>
               ))}
               {filteredUsers.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center opacity-40">
-                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
-                        <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                      </div>
-                      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">No users found</p>
-                    </div>
-                  </td>
-                </tr>
+                <tr><td colSpan={isController ? 6 : 5} className="admin-empty">{users.length === 0 ? "No users found" : "No users match your search"}</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {passwordModalTarget && adminSession && (
+        <ControllerPasswordModal isOpen={Boolean(passwordModalTarget)} onClose={() => setPasswordModalTarget(null)} title={passwordModalTarget.label} adminSession={adminSession} onFetchPassword={() => fetchUserPassword(passwordModalTarget.id)} onSuccess={(password) => setVisiblePasswords((p) => ({ ...p, [passwordModalTarget.id]: password }))} />
+      )}
     </div>
   );
 }
@@ -2143,23 +2193,23 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Admin Management</h1>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage administrative profiles and permissions.</p>
+          <h1 className="admin-page-title">Admin Management</h1>
+          <p className="admin-page-subtitle">Manage administrative profiles and permissions.</p>
         </div>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-95 shadow-lg shadow-primary/20 uppercase tracking-widest"
+          className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-95"
         >
           {showCreateForm ? "Cancel" : "Add New Admin"}
         </button>
       </div>
 
       {showCreateForm && (
-        <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6 max-w-md mx-auto">
-          <h2 className="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wider">Create New Admin</h2>
+        <div className="admin-card p-6 max-w-md mx-auto">
+          <h2 className="text-sm font-semibold text-slate-900 mb-4 tracking-wider">Create New Admin</h2>
           <form onSubmit={handleCreateAdmin} className="space-y-4">
             <div>
-              <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1">Email Address</label>
+              <label className="block text-[10px] font-medium text-slate-500 mb-1">Email Address</label>
               <input
                 type="email"
                 required
@@ -2170,7 +2220,7 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
               />
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-slate-500 uppercase tracking-widest mb-1">Password</label>
+              <label className="block text-[10px] font-medium text-slate-500 mb-1">Password</label>
               <input
                 type="password"
                 required
@@ -2183,7 +2233,7 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50 uppercase tracking-widest"
+              className="w-full py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50"
             >
               {isLoading ? "Creating..." : "Create Admin Account"}
             </button>
@@ -2191,22 +2241,22 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
         </div>
       )}
 
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+      <div className="admin-card">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Admin Info</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Role</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Admin Info</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Role</th>
                 {adminSession?.role === 'controller' && (
-                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Password</th>
+                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Password</th>
                 )}
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Status</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Status</th>
                 {adminSession?.role === 'controller' && (
-                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Allowed Tabs</th>
+                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Allowed Tabs</th>
                 )}
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] whitespace-nowrap">Created At</th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">Created At</th>
+                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50/80">
@@ -2214,7 +2264,7 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
                 <tr key={admin.id} className="hover:bg-primary/[0.01] transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
+                      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium text-[10px] border border-slate-200 transition-transform shadow-sm">
                         {admin.email.substring(0, 2)}
                       </div>
                       <div>
@@ -2235,7 +2285,7 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
                       {adminSession?.role === 'controller' && admin.role !== 'controller' && (
                         <button
                           onClick={() => admin.role === 'super_admin' ? handleDemoteToAdmin(admin.id, admin.email) : handlePromoteToSuperAdmin(admin.id, admin.email)}
-                          className="text-[8px] font-bold text-primary hover:underline uppercase"
+                          className="text-[8px] font-bold text-primary hover:underline"
                         >
                           {admin.role === 'super_admin' ? 'Demote to Admin' : 'Promote to Super Admin'}
                         </button>
@@ -2269,13 +2319,13 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${admin.is_disabled ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
-                      <span className="text-[10px] font-medium uppercase tracking-tighter">
+                      <span className="text-[10px] font-medium">
                         {admin.is_disabled ? 'Disabled' : 'Active'}
                       </span>
                       {adminSession?.role === 'controller' && admin.role !== 'controller' && (
                         <button
                           onClick={() => handleToggleDisable(admin.id, admin.email, admin.is_disabled)}
-                          className="ml-2 text-[8px] font-bold text-slate-400 hover:text-primary uppercase"
+                          className="ml-2 text-[8px] font-bold text-slate-400 hover:text-primary"
                         >
                           {admin.is_disabled ? 'Enable' : 'Disable'}
                         </button>
@@ -2285,12 +2335,12 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
                   {adminSession?.role === 'controller' && (
                     <td className="px-6 py-4">
                       {admin.role === 'controller' ? (
-                        <span className="text-[9px] text-slate-400 uppercase">All Access</span>
+                        <span className="text-[9px] text-slate-400">All Access</span>
                       ) : (
                         <div className="relative tabs-dropdown">
                           <button
                             onClick={() => setOpenTabsId(openTabsId === admin.id ? null : admin.id)}
-                            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[9px] font-medium uppercase tracking-wider flex items-center gap-2"
+                            className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[9px] font-medium tracking-wider flex items-center gap-2"
                           >
                             {admin.allowed_tabs?.length || 0} Tabs
                             <svg className={`w-3 h-3 transition-transform ${openTabsId === admin.id ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2348,15 +2398,28 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
   );
 }
 
-function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequests, setMerchantRequests }: {
+function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequests, setMerchantRequests, adminSession }: {
   activeMerchants: Merchant[],
   setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>,
   merchantRequests: MerchantRequest[],
-  setMerchantRequests: Dispatch<SetStateAction<MerchantRequest[]>>
+  setMerchantRequests: Dispatch<SetStateAction<MerchantRequest[]>>,
+  adminSession: AdminSession | null
 }) {
   const [merchantTab, setMerchantTab] = useState<"Active" | "Pending">("Active");
   const [selectedBusiness, setSelectedBusiness] = useState<BusinessData | null>(null);
   const [isUploading, setIsUploading] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<string, string>>({});
+  const [passwordModalTarget, setPasswordModalTarget] = useState<{ id: string; label: string } | null>(null);
+  const isController = adminSession?.role === "controller";
+
+  const filteredActiveMerchants = activeMerchants.filter((m) => matchesSearchTerm(searchTerm, m.id, m.name, m.email));
+  const filteredMerchantRequests = merchantRequests.filter((m) => matchesSearchTerm(searchTerm, m.id, m.name, m.email));
+
+  const fetchMerchantPassword = async (merchantId: string) => {
+    const { data } = await createClient().from("Business").select("password").eq("id", merchantId).single();
+    return data?.password ?? null;
+  };
 
   const handleViewMerchant = async (id: string) => {
     const supabase = createClient();
@@ -2569,188 +2632,132 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Partner Management</h1>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage active partners and verify new requests.</p>
+          <h1 className="admin-page-title">Partner management</h1>
+          <p className="admin-page-subtitle">Manage active partners and verify new requests.</p>
         </div>
-        <div className="flex p-1 bg-slate-100/50 border border-slate-200/60 rounded-xl shadow-inner">
-          <button
-            onClick={() => setMerchantTab("Active")}
-            className={`px-5 py-2 text-[10px] font-medium uppercase tracking-widest rounded-lg transition-all ${merchantTab === "Active" ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
-          >
-            Active
-          </button>
-          <button
-            onClick={() => setMerchantTab("Pending")}
-            className={`px-5 py-2 text-[10px] font-medium uppercase tracking-widest rounded-lg transition-all relative ${merchantTab === "Pending" ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
-          >
-            Pending
-            {merchantRequests.length > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[8px] font-medium text-white border-2 border-white shadow-sm shadow-secondary/20 animate-pulse">
-                {merchantRequests.length}
-              </span>
-            )}
-          </button>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative">
+            <input type="text" placeholder="Search by name, email, or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="admin-search w-72" />
+            <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          </div>
+          <div className="admin-segmented">
+            <button onClick={() => setMerchantTab("Active")} className={`admin-segmented-btn ${merchantTab === "Active" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}>Active</button>
+            <button onClick={() => setMerchantTab("Pending")} className={`admin-segmented-btn relative ${merchantTab === "Pending" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}>
+              Pending
+              {merchantRequests.length > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[10px] font-semibold text-white border-2 border-white">{merchantRequests.length}</span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden min-h-[400px]">
+      <div className="admin-card min-h-[400px]">
         {merchantTab === "Active" ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-slate-50/50 border-b border-slate-100">
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Business</th>
-                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Category</th>
-                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Status</th>
-                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Sales</th>
-                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em]">Valid Until</th>
-                  <th className="px-6 py-4 text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] text-right">Actions</th>
+                  <th>Business</th>
+                  <th>Email</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>Sales</th>
+                  <th>Valid until</th>
+                  {isController && <th>Password</th>}
+                  <th className="text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50/80">
-                {activeMerchants.map((merchant) => (
-                  <tr key={merchant.id} className="hover:bg-primary/[0.01] transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium text-[10px] border border-slate-200 uppercase group-hover:scale-110 transition-transform shadow-sm">
-                          {merchant.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+              <tbody>
+                {filteredActiveMerchants.map((merchant) => (
+                  <tr key={merchant.id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="admin-avatar">{merchant.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">{merchant.name}</p>
+                          <p className="admin-mono mt-0.5">{merchant.id}</p>
                         </div>
-                        <p className="text-[11px] font-medium text-slate-900 tracking-tight">{merchant.name}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-secondary font-medium text-[9px] uppercase tracking-widest border border-slate-100">
-                        {merchant.category}
-                      </span>
+                    <td><p className="text-sm text-slate-600">{merchant.email || "—"}</p></td>
+                    <td><span className="admin-badge bg-slate-50 text-secondary border-slate-200">{merchant.category}</span></td>
+                    <td>
+                      <span className={`admin-badge ${merchant.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-600 border-slate-200"}`}>{merchant.status}</span>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest border ${merchant.status === "Active"
-                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                        : "bg-slate-50 text-slate-500 border-slate-100"
-                        }`}>
-                        {merchant.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-[10px] font-normal tabular-nums text-slate-600 opacity-80">{merchant.sales}</td>
-                    <td className="px-6 py-4 text-[10px] font-normal tabular-nums text-slate-600 opacity-80">{merchant.validUntil}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="tabular-nums">{merchant.sales}</td>
+                    <td className="tabular-nums">{merchant.validUntil}</td>
+                    {isController && (
+                      <PasswordRevealCell id={merchant.id} visiblePasswords={visiblePasswords} onToggleVisibility={(id) => setVisiblePasswords((p) => { const n = { ...p }; delete n[id]; return n; })} onRequestReveal={(id) => setPasswordModalTarget({ id, label: `Enter your admin password to view the password for ${[...activeMerchants, ...merchantRequests].find(m => m.id === id)?.name || "this merchant"}.` })} />
+                    )}
+                    <td className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleViewMerchant(merchant.id)}
-                          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm"
-                          title="View KYC Details"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
+                        <button onClick={() => handleViewMerchant(merchant.id)} className="admin-icon-btn" title="View KYC Details">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                         </button>
-                        <button
-                          onClick={() => toggleMerchantStatus(merchant.id, merchant.status)}
-                          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm"
-                          title={merchant.status === "Active" ? "Deactivate" : "Activate"}
-                        >
+                        <button onClick={() => toggleMerchantStatus(merchant.id, merchant.status)} className="admin-icon-btn" title={merchant.status === "Active" ? "Deactivate" : "Activate"}>
                           {merchant.status === "Active" ? (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                           ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                           )}
                         </button>
-                        <button
-                          onClick={() => handleDeleteMerchant(merchant.id)}
-                          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 rounded-xl transition-all border border-slate-100 shadow-sm"
-                          title="Delete Profile"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                        <button onClick={() => handleDeleteMerchant(merchant.id)} className="admin-icon-btn-danger" title="Delete Profile">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                       </div>
                     </td>
                   </tr>
                 ))}
-                {activeMerchants.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center">
-                      <div className="flex flex-col items-center opacity-40">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center mb-3">
-                          <svg className="w-6 h-6 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                          </svg>
-                        </div>
-                        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-slate-400">No active merchants</p>
-                      </div>
-                    </td>
-                  </tr>
+                {filteredActiveMerchants.length === 0 && (
+                  <tr><td colSpan={isController ? 8 : 7} className="admin-empty">{activeMerchants.length === 0 ? "No active merchants" : "No merchants match your search"}</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="divide-y divide-slate-50/80">
-            {merchantRequests.map((req) => (
-              <div key={req.id} className="p-5 flex items-center justify-between hover:bg-primary/[0.01] transition-all group">
+          <div className="divide-y divide-slate-100">
+            {filteredMerchantRequests.map((req) => (
+              <div key={req.id} className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
                 <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium border border-slate-200 group-hover:scale-105 transition-all uppercase shrink-0 shadow-sm">
-                    {req.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-900 tracking-tight truncate">{req.name}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-[9px] font-medium text-secondary uppercase tracking-widest bg-secondary/5 px-2 py-0.5 rounded-lg border border-secondary/10">{req.category}</span>
-                      <span className="text-[9px] font-normal text-slate-400 uppercase tracking-widest">Request: {req.date}</span>
+                  <div className="admin-avatar !w-11 !h-11">{req.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate">{req.name}</p>
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      <span className="admin-badge bg-secondary/5 text-secondary border-secondary/20">{req.category}</span>
+                      <span className="text-xs text-slate-500">{req.email || "—"}</span>
+                      <span className="text-xs text-slate-400">Requested {req.date}</span>
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleViewMerchant(req.id)}
-                    className="px-4 py-2 text-[10px] font-medium text-slate-600 hover:bg-slate-50 border border-slate-100 hover:border-slate-200 rounded-xl transition-all uppercase tracking-widest"
-                  >
-                    View KYC
-                  </button>
-                  <button
-                    onClick={() => handleReject(req.id)}
-                    className="px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 rounded-xl transition-all uppercase tracking-widest"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => handleDeleteMerchant(req.id)}
-                    className="px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-slate-100 hover:border-rose-200 rounded-xl transition-all uppercase tracking-widest"
-                    title="Delete Request"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    onClick={() => handleApprove(req)}
-                    className="px-4 py-2 text-[10px] font-medium text-white bg-primary hover:bg-primary-700 rounded-xl shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
-                  >
-                    Approve Partner
-                  </button>
+                <div className="flex flex-wrap gap-2 items-center">
+                  {isController && (
+                    <div className="flex items-center gap-2 mr-2">
+                      <span className="admin-mono bg-slate-50 px-2 py-1 rounded-md border border-slate-100 min-w-[80px]">{visiblePasswords[req.id] || "••••••••"}</span>
+                      <button onClick={() => (visiblePasswords[req.id] ? setVisiblePasswords((p) => { const n = { ...p }; delete n[req.id]; return n; }) : setPasswordModalTarget({ id: req.id, label: `Enter your admin password to view the password for ${req.name}.` }))} className="admin-btn-ghost !p-1.5" title="Reveal password">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      </button>
+                    </div>
+                  )}
+                  <button onClick={() => handleViewMerchant(req.id)} className="admin-btn-secondary text-xs py-2">View KYC</button>
+                  <button onClick={() => handleReject(req.id)} className="admin-btn-danger text-xs py-2">Reject</button>
+                  <button onClick={() => handleDeleteMerchant(req.id)} className="admin-btn-danger text-xs py-2">Delete</button>
+                  <button onClick={() => handleApprove(req)} className="admin-btn-primary text-xs py-2">Approve</button>
                 </div>
               </div>
             ))}
-            {merchantRequests.length === 0 && (
-              <div className="py-24 flex flex-col items-center opacity-30">
-                <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
-                  <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">Verification queue is empty</p>
-              </div>
+            {filteredMerchantRequests.length === 0 && (
+              <div className="admin-empty py-24">{merchantRequests.length === 0 ? "Verification queue is empty" : "No pending merchants match your search"}</div>
             )}
           </div>
         )}
       </div>
+
+      {passwordModalTarget && adminSession && (
+        <ControllerPasswordModal isOpen={Boolean(passwordModalTarget)} onClose={() => setPasswordModalTarget(null)} title={passwordModalTarget.label} adminSession={adminSession} onFetchPassword={() => fetchMerchantPassword(passwordModalTarget.id)} onSuccess={(password) => setVisiblePasswords((p) => ({ ...p, [passwordModalTarget.id]: password }))} />
+      )}
 
       {/* KYC Details Modal */}
       {selectedBusiness && (
@@ -2758,8 +2765,8 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in duration-300">
             <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h2 className="text-xl font-medium text-slate-900 tracking-tight uppercase">{selectedBusiness.businessName || selectedBusiness.fullName}</h2>
-                <p className="text-[10px] text-secondary font-medium uppercase tracking-widest mt-1">Merchant Verification Dossier</p>
+                <h2 className="admin-page-title">{selectedBusiness.businessName || selectedBusiness.fullName}</h2>
+                <p className="text-[10px] text-secondary font-medium mt-1">Merchant Verification Dossier</p>
               </div>
               <button
                 onClick={() => setSelectedBusiness(null)}
@@ -2775,7 +2782,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Business Info */}
                 <div className="space-y-6">
-                  <h3 className="text-[10px] font-medium text-primary uppercase tracking-[0.2em] border-b border-primary/10 pb-2">Primary Information</h3>
+                  <h3 className="text-[10px] font-medium text-primary tracking-[0.2em] border-b border-primary/10 pb-2">Primary Information</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {[
                       { label: "Full Name", value: selectedBusiness.fullName },
@@ -2787,31 +2794,31 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                       { label: "KYC Status", value: selectedBusiness.kycStatus },
                     ].map((info, i) => (
                       <div key={i} className="space-y-1">
-                        <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">{info.label}</p>
+                        <p className="text-[9px] font-medium text-slate-400">{info.label}</p>
                         <p className="text-[11px] font-normal text-slate-900">{info.value || "N/A"}</p>
                       </div>
                     ))}
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">Business Address</p>
+                    <p className="text-[9px] font-medium text-slate-400">Business Address</p>
                     <p className="text-[11px] font-normal text-slate-900 leading-relaxed">{selectedBusiness.businessAddress}</p>
                   </div>
                 </div>
 
                 {/* KYC Documents */}
                 <div className="space-y-6">
-                  <h3 className="text-[10px] font-medium text-primary uppercase tracking-[0.2em] border-b border-primary/10 pb-2">Verification Documents</h3>
+                  <h3 className="text-[10px] font-medium text-primary tracking-[0.2em] border-b border-primary/10 pb-2">Verification Documents</h3>
                   <div className="space-y-5">
                     {[
                       { label: "PAN Card", field: "panUrl", number: selectedBusiness.panNumber },
                       { label: "Aadhar Card", field: "aadharUrl", number: selectedBusiness.aadharNumber },
                       { label: "MSME / GST Certificate", field: "msmeGstUrl", number: selectedBusiness.registrationNumber },
                     ].map((doc, i) => (
-                      <div key={i} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                      <div key={i} className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-[10px] font-medium text-slate-900 uppercase tracking-tight">{doc.label}</p>
-                            <p className="text-[9px] text-slate-500 font-normal uppercase tracking-widest mt-0.5">Ref: {doc.number || "Not Provided"}</p>
+                            <p className="text-[10px] font-medium text-slate-900 tracking-tight">{doc.label}</p>
+                            <p className="text-[9px] text-slate-500 font-normal mt-0.5">Ref: {doc.number || "Not Provided"}</p>
                           </div>
                           <label className={`cursor-pointer px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[9px] font-medium text-primary hover:border-primary/30 transition-all shadow-sm flex items-center gap-2 ${isUploading === doc.field ? "opacity-50 pointer-events-none" : ""}`}>
                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2838,7 +2845,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                               href={(selectedBusiness as any)[doc.field]}
                               target="_blank"
                               rel="noreferrer"
-                              className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-medium uppercase tracking-widest backdrop-blur-[2px]"
+                              className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-medium backdrop-blur-[2px]"
                             >
                               View Full Document
                             </a>
@@ -2848,7 +2855,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                             <svg className="w-8 h-8 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            <p className="text-[9px] font-medium uppercase tracking-widest">Document Not Uploaded</p>
+                            <p className="text-[9px] font-medium">Document Not Uploaded</p>
                           </div>
                         )}
                       </div>
@@ -2860,7 +2867,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
               {/* Merchant Gallery */}
               <div className="mt-8 space-y-6">
                 <div className="flex items-center justify-between border-b border-primary/10 pb-2">
-                  <h3 className="text-[10px] font-medium text-primary uppercase tracking-[0.2em]">Merchant Gallery ({selectedBusiness.images?.length || 0}/5)</h3>
+                  <h3 className="text-[10px] font-medium text-primary tracking-[0.2em]">Merchant Gallery ({selectedBusiness.images?.length || 0}/5)</h3>
                   {(selectedBusiness.images?.length || 0) < 5 && (
                     <label className={`cursor-pointer px-3 py-1.5 bg-primary text-white rounded-lg text-[9px] font-medium hover:bg-primary/90 transition-all shadow-sm flex items-center gap-2 ${isUploading === 'businessImages' ? "opacity-50 pointer-events-none" : ""}`}>
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2884,7 +2891,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                         <img src={url} alt={`Merchant ${index + 1}`} className="w-full h-full object-cover" />
 
                         {selectedBusiness.profilePictureUrl === url && (
-                          <div className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold uppercase rounded-full shadow-lg z-10">
+                          <div className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold rounded-full shadow-lg z-10">
                             Profile
                           </div>
                         )}
@@ -2892,13 +2899,13 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                         <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
                           <button
                             onClick={() => handleSetProfilePicture(url)}
-                            className="px-2 py-1 bg-white text-slate-900 text-[8px] font-bold uppercase rounded-lg hover:bg-slate-100 transition-colors"
+                            className="px-2 py-1 bg-white text-slate-900 text-[8px] font-bold rounded-lg hover:bg-slate-100 transition-colors"
                           >
                             Set Profile
                           </button>
                           <button
                             onClick={() => handleDeleteBusinessImage(url)}
-                            className="px-2 py-1 bg-rose-500 text-white text-[8px] font-bold uppercase rounded-lg hover:bg-rose-600 transition-colors"
+                            className="px-2 py-1 bg-rose-500 text-white text-[8px] font-bold rounded-lg hover:bg-rose-600 transition-colors"
                           >
                             Delete
                           </button>
@@ -2907,11 +2914,11 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                     ))}
                   </div>
                 ) : (
-                  <div className="py-12 border-2 border-dashed border-slate-100 rounded-2xl flex flex-col items-center justify-center text-slate-400">
+                  <div className="py-12 border-2 border-dashed border-slate-100 rounded-xl flex flex-col items-center justify-center text-slate-400">
                     <svg className="w-8 h-8 mb-2 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <p className="text-[10px] font-medium uppercase tracking-widest">No images uploaded yet</p>
+                    <p className="text-[10px] font-medium">No images uploaded yet</p>
                   </div>
                 )}
               </div>
@@ -2921,7 +2928,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
               <div className="flex items-center gap-3 mr-auto">
                 <button
                   onClick={() => handleDeleteMerchant(selectedBusiness.id)}
-                  className="px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all uppercase tracking-widest shadow-sm"
+                  className="px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all shadow-sm"
                 >
                   Delete Profile
                 </button>
@@ -2946,7 +2953,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
               </div>
               <button
                 onClick={() => setSelectedBusiness(null)}
-                className="px-6 py-2.5 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-200"
+                className="px-6 py-2.5 text-[10px] font-medium text-slate-500 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-200"
               >
                 Dismiss
               </button>
@@ -2954,16 +2961,16 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                 <>
                   <button
                     onClick={() => { handleReject(selectedBusiness.id); setSelectedBusiness(null); }}
-                    className="px-6 py-2.5 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all uppercase tracking-widest shadow-sm"
+                    className="px-6 py-2.5 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all shadow-sm"
                   >
                     Reject KYC
                   </button>
                   <button
                     onClick={() => {
-                      handleApprove({ id: selectedBusiness.id, name: selectedBusiness.businessName || selectedBusiness.fullName || '', category: selectedBusiness.category || '', date: '' });
+                      handleApprove({ id: selectedBusiness.id, name: selectedBusiness.businessName || selectedBusiness.fullName || '', email: selectedBusiness.workEmail || selectedBusiness.email || '', category: selectedBusiness.category || '', date: '' });
                       setSelectedBusiness(null);
                     }}
-                    className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-widest"
+                    className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
                   >
                     Approve Merchant
                   </button>
@@ -3061,9 +3068,9 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
   };
 
   const renderCategoryForm = (cat: Partial<Category>, setCat: (c: any) => void, isEditing: boolean) => (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xl space-y-6 animate-in fade-in zoom-in duration-200">
+    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xl space-y-6 animate-in fade-in zoom-in duration-200">
       <div className="flex items-center justify-between border-b border-slate-50 pb-4">
-        <h2 className="text-sm font-medium text-slate-900 uppercase tracking-tight">
+        <h2 className="text-sm font-medium text-slate-900 tracking-tight">
           {isEditing ? `Editing: ${cat.name}` : "Add New Category"}
         </h2>
         <button onClick={() => isEditing ? setEditingCategory(null) : setIsAddingCategory(false)} className="text-slate-400 hover:text-slate-600">
@@ -3077,7 +3084,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
         <div className="space-y-4">
           {!isEditing && (
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Category Name</label>
+              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Category Name</label>
               <input
                 type="text"
                 value={cat.name || ""}
@@ -3090,7 +3097,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Type</label>
+              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Type</label>
               <select
                 value={cat.type}
                 onChange={(e) => setCat({ ...cat, type: e.target.value })}
@@ -3101,7 +3108,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
               </select>
             </div>
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Status</label>
+              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Status</label>
               <select
                 value={cat.status}
                 onChange={(e) => setCat({ ...cat, status: e.target.value })}
@@ -3115,7 +3122,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Position (Sorting)</label>
+              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Position (Sorting)</label>
               <input
                 type="number"
                 value={cat.position || 0}
@@ -3125,7 +3132,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
               />
             </div>
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Fixed Slots</label>
+              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Fixed Slots</label>
               <input
                 type="number"
                 value={cat.fixedSlots || 0}
@@ -3137,7 +3144,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           </div>
 
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Parent Category (Optional)</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Parent Category (Optional)</label>
             <select
               value={cat.parent_id || ""}
               onChange={(e) => setCat({ ...cat, parent_id: e.target.value || null })}
@@ -3151,7 +3158,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           </div>
 
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Category Banner</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Category Banner</label>
             <div className="flex gap-3 items-center">
               <div className="flex-1 relative">
                 <input
@@ -3176,14 +3183,14 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                           style={{ width: `${uploadProgress.banner || 0}%` }}
                         />
                       </div>
-                      <div className="flex items-center gap-1 text-[9px] font-medium text-primary uppercase tracking-wider">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-ping"></div>
+                      <div className="flex items-center gap-1 text-[9px] font-medium text-primary tracking-wider">
+                        <div className="w-2 h-2 bg-primary rounded-full"></div>
                         {uploadProgress.banner?.toFixed(0)}%
                       </div>
                     </>
                   ) : (
                     <>
-                      <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
                       <span>{cat.banner && cat.banner !== 'Not Set' ? 'Change' : 'Upload'} Banner</span>
@@ -3200,7 +3207,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           </div>
 
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Category Symbol (Icon)</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Category Symbol (Icon)</label>
             <div className="flex gap-3 items-center">
               <div className="flex-1 relative">
                 <input
@@ -3225,14 +3232,14 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                           style={{ width: `${uploadProgress.symbol || 0}%` }}
                         />
                       </div>
-                      <div className="flex items-center gap-1 text-[9px] font-medium text-primary uppercase tracking-wider">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-ping"></div>
+                      <div className="flex items-center gap-1 text-[9px] font-medium text-primary tracking-wider">
+                        <div className="w-2 h-2 bg-primary rounded-full"></div>
                         {uploadProgress.symbol?.toFixed(0)}%
                       </div>
                     </>
                   ) : (
                     <>
-                      <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
                       <span>{cat.symbol && cat.symbol !== 'Not Set' ? 'Change' : 'Upload'} Symbol</span>
@@ -3250,7 +3257,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
         </div>
 
         <div className="space-y-4">
-          <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Fixed Partner Spots (Top 5)</label>
+          <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Fixed Partner Spots (Top 5)</label>
           {[1, 2, 3, 4, 5].map((pos) => {
             const field = `position_${pos}_business_id` as keyof Category;
             const currentId = (cat as any)[field] || "";
@@ -3305,7 +3312,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                         className="w-full text-left px-3 py-2 text-[10px] font-normal hover:bg-slate-50 flex flex-col border-b border-slate-50 last:border-0"
                       >
                         <span className="text-slate-900">{m.name}</span>
-                        <span className="text-slate-400 text-[8px] uppercase">{m.id} • {m.category}</span>
+                        <span className="text-slate-400 text-[8px]">{m.id} • {m.category}</span>
                       </button>
                     ))}
                     {getFilteredMerchants(merchantSearch[field]).length === 0 && (
@@ -3314,7 +3321,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
                   </div>
                 )}
                 {merchant && !merchantSearch[field] && (
-                  <div className="ml-7 text-[8px] font-medium text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+                  <div className="ml-7 text-[8px] font-medium text-emerald-600 flex items-center gap-1">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
@@ -3330,14 +3337,14 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
         <button
           onClick={() => isEditing ? setEditingCategory(null) : setIsAddingCategory(false)}
-          className="px-4 py-2 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-lg transition-all"
+          className="px-4 py-2 text-[10px] font-medium text-slate-500 hover:bg-slate-50 rounded-lg transition-all"
         >
           Cancel
         </button>
         <button
           onClick={isEditing ? handleSave : handleCreate}
           disabled={!cat.name || !!uploading}
-          className="px-6 py-2 bg-primary text-white text-[10px] font-medium rounded-lg hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
+          className="px-6 py-2 bg-primary text-white text-[10px] font-medium rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50"
         >
           {isEditing ? "Save Changes" : "Create Category"}
         </button>
@@ -3351,13 +3358,13 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Category Catalog</h1>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage platform categories and service types.</p>
+          <h1 className="admin-page-title">Category Catalog</h1>
+          <p className="admin-page-subtitle">Manage platform categories and service types.</p>
         </div>
         {!isAddingCategory && !editingCategory && (
           <button
             onClick={() => setIsAddingCategory(true)}
-            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all"
           >
             Add New Category
           </button>
@@ -3369,7 +3376,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <p className="text-[10px] font-normal text-amber-800 uppercase tracking-widest">{categoryError}</p>
+          <p className="text-[10px] font-normal text-amber-800">{categoryError}</p>
         </div>
       )}
 
@@ -3382,7 +3389,7 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
             <div key={parent.id} className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="h-px flex-1 bg-slate-200"></div>
-                <h2 className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.3em]">{parent.name} Group</h2>
+                <h2 className="text-[10px] font-medium text-slate-400 tracking-[0.3em]">{parent.name} Group</h2>
                 <div className="h-px flex-1 bg-slate-200"></div>
               </div>
 
@@ -3408,13 +3415,13 @@ function CategoriesContent({ categories, setCategories, categoryError, onUpdateC
           )}
 
           {categories.length === 0 && !categoryError && (
-            <div className="py-24 flex flex-col items-center opacity-30 bg-white rounded-2xl border border-slate-200/60">
-              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+            <div className="py-24 flex flex-col items-center opacity-30 bg-white rounded-xl border border-slate-200/60">
+              <div className="w-16 h-16 rounded-xl bg-slate-50 flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                 </svg>
               </div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">No categories defined</p>
+              <p className="text-[10px] font-medium tracking-[0.3em] text-slate-400">No categories defined</p>
             </div>
           )}
         </div>
@@ -3428,11 +3435,11 @@ function CategoryCard({ cat, onEdit, isParent }: { cat: Category, onEdit: (c: Ca
     <div className={`bg-white rounded-2xl border ${isParent ? 'border-primary/20 shadow-primary/5' : 'border-slate-200/60'} p-5 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group relative overflow-hidden`}>
       {isParent && (
         <div className="absolute top-0 right-0 px-3 py-1 bg-primary/10 rounded-bl-xl">
-          <span className="text-[7px] font-medium text-primary uppercase tracking-widest">Parent</span>
+          <span className="text-[7px] font-medium text-primary">Parent</span>
         </div>
       )}
       <div className="flex justify-between items-start mb-4">
-        <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium border border-slate-200 group-hover:scale-110 transition-all shadow-sm overflow-hidden">
+        <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium border border-slate-200 transition-all shadow-sm overflow-hidden">
           {cat.symbol && cat.symbol !== 'Not Set' ? (
             <img src={cat.symbol} className="max-w-[70%] max-h-[70%] object-contain" alt="" />
           ) : cat.banner && cat.banner !== 'Not Set' ? (
@@ -3456,20 +3463,20 @@ function CategoryCard({ cat, onEdit, isParent }: { cat: Category, onEdit: (c: Ca
           </span>
         </div>
       </div>
-      <h3 className="text-sm font-medium text-slate-900 tracking-tight uppercase">{cat.name}</h3>
+      <h3 className="text-sm font-medium text-slate-900 tracking-tight">{cat.name}</h3>
       <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-50">
         <div className="flex flex-col">
-          <span className="text-[8px] font-medium text-slate-400 uppercase tracking-widest">Partners</span>
+          <span className="text-[8px] font-medium text-slate-400">Partners</span>
           <span className="text-xs font-medium text-primary tabular-nums">{cat.items}</span>
         </div>
         <div className="w-px h-6 bg-slate-100"></div>
         <div className="flex flex-col">
-          <span className="text-[8px] font-medium text-slate-400 uppercase tracking-widest">Type</span>
-          <span className="text-[10px] font-medium text-secondary uppercase tracking-widest">{cat.type}</span>
+          <span className="text-[8px] font-medium text-slate-400">Type</span>
+          <span className="text-[10px] font-medium text-secondary">{cat.type}</span>
         </div>
         <div className="w-px h-6 bg-slate-100"></div>
         <div className="flex flex-col">
-          <span className="text-[8px] font-medium text-slate-400 uppercase tracking-widest">Pos</span>
+          <span className="text-[8px] font-medium text-slate-400">Pos</span>
           <span className="text-[10px] font-medium text-slate-600 tabular-nums">#{cat.position || 0}</span>
         </div>
       </div>
@@ -3540,7 +3547,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
   const renderMovieForm = (movie: Partial<Movie>, setMovie: Dispatch<SetStateAction<any>>, isEditing: boolean) => (
     <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-8 space-y-6 mb-8 animate-in slide-in-from-top-4 duration-300">
       <div className="flex items-center justify-between border-b border-slate-50 pb-5">
-        <h3 className="text-sm font-medium text-slate-900 uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
           <span className="w-2 h-2 bg-primary rounded-full"></span>
           {isEditing ? `Edit: ${movie.name}` : "Add New Movie"}
         </h3>
@@ -3557,7 +3564,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Movie Name</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Movie Name</label>
             <input
               type="text"
               value={movie.name}
@@ -3568,7 +3575,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
           </div>
 
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Description</label>
             <textarea
               value={movie.description}
               onChange={(e) => setMovie({ ...movie, description: e.target.value })}
@@ -3579,7 +3586,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">FinderB Rating</label>
+              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">FinderB Rating</label>
               <input
                 type="number"
                 step="0.1"
@@ -3591,7 +3598,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
               />
             </div>
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Release Date</label>
+              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Release Date</label>
               <input
                 type="date"
                 value={movie.release_date}
@@ -3604,7 +3611,7 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
 
         <div className="space-y-4">
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Movie Poster</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Movie Poster</label>
             <div className="flex gap-4 items-start">
               <div className="flex-1 relative">
                 <input
@@ -3629,13 +3636,13 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
                           style={{ width: `${uploadProgress}%` }}
                         />
                       </div>
-                      <span className="text-primary font-medium uppercase tracking-widest">{uploadProgress}% Uploading...</span>
+                      <span className="text-primary font-medium">{uploadProgress}% Uploading...</span>
                     </div>
                   ) : movie.poster_url ? (
                     <img src={movie.poster_url} className="w-full h-full object-cover rounded-xl" alt="Poster Preview" />
                   ) : (
                     <>
-                      <svg className="w-8 h-8 text-slate-300 group-hover:scale-110 transition-transform mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-8 h-8 text-slate-300 transition-transform mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                       </svg>
                       <span className="text-center">Click to Upload Movie Poster</span>
@@ -3661,14 +3668,14 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
         <button
           onClick={() => isEditing ? setEditingMovie(null) : setIsAddingMovie(false)}
-          className="px-6 py-2.5 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all"
+          className="px-6 py-2.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50 rounded-xl transition-all"
         >
           Cancel
         </button>
         <button
           onClick={isEditing ? handleSave : handleCreate}
           disabled={!movie.name || uploading}
-          className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50"
+          className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all disabled:opacity-50"
         >
           {isEditing ? "Save Changes" : "Save Movie"}
         </button>
@@ -3680,13 +3687,13 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Movie Library</h1>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage platform movies and ratings.</p>
+          <h1 className="admin-page-title">Movie Library</h1>
+          <p className="admin-page-subtitle">Manage platform movies and ratings.</p>
         </div>
         {!isAddingMovie && !editingMovie && (
           <button
             onClick={() => setIsAddingMovie(true)}
-            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest"
+            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all"
           >
             Add New Movie
           </button>
@@ -3699,10 +3706,10 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
       {!isAddingMovie && !editingMovie && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {movies.map((movie) => (
-            <div key={movie.id} className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
+            <div key={movie.id} className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-sm transition-all duration-300 group">
               <div className="relative aspect-[2/3] rounded-xl overflow-hidden mb-4 bg-slate-100">
                 {movie.poster_url ? (
-                  <img src={movie.poster_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={movie.name} />
+                  <img src={movie.poster_url} className="w-full h-full object-cover transition-transform duration-500" alt={movie.name} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center opacity-20">
                     <svg className="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3735,19 +3742,19 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
                   <span className="text-[9px] font-medium">{movie.finderb_rating?.toFixed(1) || '0.0'}</span>
                 </div>
               </div>
-              <h3 className="text-[11px] font-medium text-slate-900 uppercase tracking-tight truncate mb-1">{movie.name}</h3>
-              <p className="text-[9px] text-slate-500 font-normal uppercase tracking-widest">{new Date(movie.release_date).getFullYear() || 'TBA'}</p>
+              <h3 className="text-[11px] font-medium text-slate-900 tracking-tight truncate mb-1">{movie.name}</h3>
+              <p className="text-[9px] text-slate-500 font-normal">{new Date(movie.release_date).getFullYear() || 'TBA'}</p>
             </div>
           ))}
 
           {movies.length === 0 && (
-            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-2xl border border-slate-200/60">
-              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-xl border border-slate-200/60">
+              <div className="w-16 h-16 rounded-xl bg-slate-50 flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
                 </svg>
               </div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">No movies found</p>
+              <p className="text-[10px] font-medium tracking-[0.3em] text-slate-400">No movies found</p>
             </div>
           )}
         </div>
@@ -3760,17 +3767,17 @@ function PaymentsContent() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1.5 px-1">
-        <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Financial Ledger</h1>
-        <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Transaction history and subscription revenue logs.</p>
+        <h1 className="admin-page-title">Financial Ledger</h1>
+        <p className="admin-page-subtitle">Transaction history and subscription revenue logs.</p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-24 text-center">
+      <div className="admin-card p-24 text-center">
         <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center mx-auto mb-6 border border-primary/10">
           <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
         </div>
-        <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400 animate-pulse">Transaction Engine Syncing...</p>
+        <p className="text-[10px] font-medium tracking-[0.3em] text-slate-400">Transaction Engine Syncing...</p>
       </div>
     </div>
   );
@@ -3848,24 +3855,24 @@ function BroadcastsContent({
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       <div className="space-y-6">
         <div className="flex flex-col gap-1.5 px-1">
-          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Global Broadcast</h1>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Push announcements and updates to platform users.</p>
+          <h1 className="admin-page-title">Global Broadcast</h1>
+          <p className="admin-page-subtitle">Push announcements and updates to platform users.</p>
         </div>
 
-        <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-8 space-y-6">
+        <div className="bg-white border border-slate-200/60 rounded-xl shadow-sm p-8 space-y-6">
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-2.5">Broadcast Title</label>
+            <label className="block text-[9px] font-medium text-slate-400 tracking-[0.2em] mb-2.5">Broadcast Title</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="ENTER TITLE..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-300"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-300"
             />
           </div>
 
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-2.5">Target Audience</label>
+            <label className="block text-[9px] font-medium text-slate-400 tracking-[0.2em] mb-2.5">Target Audience</label>
             <div className="flex flex-wrap gap-3">
               {AUDIENCE_OPTIONS.map(opt => (
                 <label key={opt} className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-primary/30 transition-all">
@@ -3875,26 +3882,26 @@ function BroadcastsContent({
                     onChange={() => toggleAudience(opt)}
                     className="w-4 h-4 rounded text-primary focus:ring-primary/20"
                   />
-                  <span className="text-[10px] font-medium uppercase tracking-widest text-slate-600">{opt}</span>
+                  <span className="text-[10px] font-medium text-slate-600">{opt}</span>
                 </label>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-[0.2em] mb-2.5">Announcement Content</label>
+            <label className="block text-[9px] font-medium text-slate-400 tracking-[0.2em] mb-2.5">Announcement Content</label>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="TYPE YOUR MESSAGE HERE..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium uppercase tracking-widest text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-h-[160px] placeholder:text-slate-300"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-h-[160px] placeholder:text-slate-300"
             />
           </div>
 
           <button
             onClick={handleDispatch}
             disabled={isSending}
-            className="w-full py-4 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] uppercase tracking-[0.2em] disabled:opacity-50"
+            className="w-full py-4 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-[0.98] tracking-[0.2em] disabled:opacity-50"
           >
             {isSending ? "Dispatching..." : "Dispatch Announcement"}
           </button>
@@ -3903,30 +3910,30 @@ function BroadcastsContent({
 
       <div className="space-y-6">
         <div className="flex flex-col gap-1.5 px-1">
-          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Recent History</h1>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">View previously dispatched announcements.</p>
+          <h1 className="admin-page-title">Recent History</h1>
+          <p className="admin-page-subtitle">View previously dispatched announcements.</p>
         </div>
 
-        <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-slate-200/60 rounded-xl shadow-sm overflow-hidden">
           <div className="divide-y divide-slate-50">
             {pastBroadcasts.length > 0 ? (
               pastBroadcasts.map((b) => (
                 <div key={b.id} className="p-6 hover:bg-slate-50 transition-colors">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                    <span className="text-[10px] font-bold text-primary">
                       {b.target_audience?.join(" & ")}
                     </span>
                     <span className="text-[9px] text-slate-400 font-medium tabular-nums">
                       {new Date(b.created_at).toLocaleString()}
                     </span>
                   </div>
-                  <h3 className="text-[11px] font-semibold text-slate-900 uppercase tracking-tight mb-1">{b.title}</h3>
+                  <h3 className="text-[11px] font-semibold text-slate-900 tracking-tight mb-1">{b.title}</h3>
                   <p className="text-[10px] text-slate-600 line-clamp-2 leading-relaxed">{b.message}</p>
                 </div>
               ))
             ) : (
               <div className="p-12 text-center">
-                <p className="text-[10px] text-slate-400 uppercase tracking-widest">No broadcast history found</p>
+                <p className="text-[10px] text-slate-400">No broadcast history found</p>
               </div>
             )}
           </div>
@@ -3998,7 +4005,7 @@ function TouristPlacesContent({ places, onUpdatePlace, onCreatePlace, onDeletePl
   const renderPlaceForm = (place: Partial<TouristPlace>, setPlace: Dispatch<SetStateAction<any>>, isEditing: boolean) => (
     <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-8 space-y-6 mb-8 animate-in slide-in-from-top-4 duration-300">
       <div className="flex items-center justify-between border-b border-slate-50 pb-5">
-        <h3 className="text-sm font-medium text-slate-900 uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
           <span className="w-2 h-2 bg-primary rounded-full"></span>
           {isEditing ? `Edit: ${place.name}` : "Add New Tourist Place"}
         </h3>
@@ -4010,25 +4017,25 @@ function TouristPlacesContent({ places, onUpdatePlace, onCreatePlace, onDeletePl
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Place Name</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Place Name</label>
             <input type="text" value={place.name || ""} onChange={(e) => setPlace({ ...place, name: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Enter place name" />
           </div>
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Location (City, State)</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Location (City, State)</label>
             <input type="text" value={place.location || ""} onChange={(e) => setPlace({ ...place, location: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Jaipur, Rajasthan" />
           </div>
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Category</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Category</label>
             <input type="text" value={place.category || ""} onChange={(e) => setPlace({ ...place, category: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="e.g. Historical, Nature" />
           </div>
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Description</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Description</label>
             <textarea value={place.description || ""} onChange={(e) => setPlace({ ...place, description: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]" placeholder="Enter description" />
           </div>
         </div>
 
         <div className="space-y-4">
-          <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Place Image</label>
+          <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Place Image</label>
           <div className="flex gap-4 items-start">
             <div className="flex-1 relative">
               <input type="file" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], isEditing)} className="hidden" id={`tp-upload-${isEditing ? 'edit' : 'new'}`} disabled={uploading} />
@@ -4038,13 +4045,13 @@ function TouristPlacesContent({ places, onUpdatePlace, onCreatePlace, onDeletePl
                     <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                       <div className="bg-primary h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                     </div>
-                    <span className="text-primary font-medium uppercase tracking-widest">{uploadProgress}% Uploading...</span>
+                    <span className="text-primary font-medium">{uploadProgress}% Uploading...</span>
                   </div>
                 ) : place.image_url ? (
                   <img src={place.image_url} className="w-full h-full object-cover rounded-xl" alt="Preview" />
                 ) : (
                   <div className="flex flex-col items-center">
-                    <svg className="w-8 h-8 text-slate-300 group-hover:scale-110 transition-transform mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    <svg className="w-8 h-8 text-slate-300 transition-transform mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     <span className="text-center">Click to Upload Image</span>
                   </div>
                 )}
@@ -4055,8 +4062,8 @@ function TouristPlacesContent({ places, onUpdatePlace, onCreatePlace, onDeletePl
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
-        <button onClick={() => isEditing ? setEditingPlace(null) : setIsAddingPlace(false)} className="px-6 py-2.5 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
-        <button onClick={isEditing ? handleSave : handleCreate} disabled={!place.name || uploading} className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50">{isEditing ? "Save Changes" : "Save Place"}</button>
+        <button onClick={() => isEditing ? setEditingPlace(null) : setIsAddingPlace(false)} className="px-6 py-2.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
+        <button onClick={isEditing ? handleSave : handleCreate} disabled={!place.name || uploading} className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all disabled:opacity-50">{isEditing ? "Save Changes" : "Save Place"}</button>
       </div>
     </div>
   );
@@ -4065,11 +4072,11 @@ function TouristPlacesContent({ places, onUpdatePlace, onCreatePlace, onDeletePl
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">Tourist Places in India</h1>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage tourist attractions and locations.</p>
+          <h1 className="admin-page-title">Tourist Places in India</h1>
+          <p className="admin-page-subtitle">Manage tourist attractions and locations.</p>
         </div>
         {!isAddingPlace && !editingPlace && (
-          <button onClick={() => setIsAddingPlace(true)} className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest">Add New Place</button>
+          <button onClick={() => setIsAddingPlace(true)} className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all">Add New Place</button>
         )}
       </div>
 
@@ -4079,10 +4086,10 @@ function TouristPlacesContent({ places, onUpdatePlace, onCreatePlace, onDeletePl
       {!isAddingPlace && !editingPlace && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {places.map((place) => (
-            <div key={place.id} className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
+            <div key={place.id} className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-sm transition-all duration-300 group">
               <div className="relative aspect-video rounded-xl overflow-hidden mb-4 bg-slate-100">
                 {place.image_url ? (
-                  <img src={place.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={place.name} />
+                  <img src={place.image_url} className="w-full h-full object-cover transition-transform duration-500" alt={place.name} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center opacity-20">
                     <svg className="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -4097,18 +4104,18 @@ function TouristPlacesContent({ places, onUpdatePlace, onCreatePlace, onDeletePl
                   </button>
                 </div>
               </div>
-              <h3 className="text-[11px] font-medium text-slate-900 uppercase tracking-tight truncate mb-1">{place.name}</h3>
-              <p className="text-[9px] text-secondary font-medium uppercase tracking-widest mb-1">{place.location}</p>
-              <p className="text-[9px] text-slate-400 font-normal uppercase tracking-widest line-clamp-2">{place.description}</p>
+              <h3 className="text-[11px] font-medium text-slate-900 tracking-tight truncate mb-1">{place.name}</h3>
+              <p className="text-[9px] text-secondary font-medium mb-1">{place.location}</p>
+              <p className="text-[9px] text-slate-400 font-normal line-clamp-2">{place.description}</p>
             </div>
           ))}
 
           {places.length === 0 && (
-            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-2xl border border-slate-200/60">
-              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-xl border border-slate-200/60">
+              <div className="w-16 h-16 rounded-xl bg-slate-50 flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               </div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">No tourist places found</p>
+              <p className="text-[10px] font-medium tracking-[0.3em] text-slate-400">No tourist places found</p>
             </div>
           )}
         </div>
@@ -4178,7 +4185,7 @@ function NewsContent({ news, onUpdateNews, onCreateNews, onDeleteNews }: {
   const renderNewsForm = (item: Partial<News>, setItem: Dispatch<SetStateAction<any>>, isEditing: boolean) => (
     <div className="bg-white rounded-3xl border border-slate-200/60 shadow-sm p-8 space-y-6 mb-8 animate-in slide-in-from-top-4 duration-300">
       <div className="flex items-center justify-between border-b border-slate-50 pb-5">
-        <h3 className="text-sm font-medium text-slate-900 uppercase tracking-widest flex items-center gap-2">
+        <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
           <span className="w-2 h-2 bg-primary rounded-full"></span>
           {isEditing ? `Edit: ${item.title}` : "Add New News Item"}
         </h3>
@@ -4190,27 +4197,27 @@ function NewsContent({ news, onUpdateNews, onCreateNews, onDeleteNews }: {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Title</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Title</label>
             <input type="text" value={item.title || ""} onChange={(e) => setItem({ ...item, title: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Enter news title" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Author</label>
+              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Author</label>
               <input type="text" value={item.author || ""} onChange={(e) => setItem({ ...item, author: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Author name" />
             </div>
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Published Date</label>
+              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Published Date</label>
               <input type="date" value={item.published_at ? item.published_at.split('T')[0] : ""} onChange={(e) => setItem({ ...item, published_at: new Date(e.target.value).toISOString() })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" />
             </div>
           </div>
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">Content</label>
+            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">Content</label>
             <textarea value={item.content || ""} onChange={(e) => setItem({ ...item, content: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[200px]" placeholder="Enter news content" />
           </div>
         </div>
 
         <div className="space-y-4">
-          <label className="block text-[9px] font-medium text-slate-400 uppercase tracking-widest mb-1.5">News Image</label>
+          <label className="block text-[9px] font-medium text-slate-400 mb-1.5">News Image</label>
           <div className="flex gap-4 items-start">
             <div className="flex-1 relative">
               <input type="file" onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0], isEditing)} className="hidden" id={`news-upload-${isEditing ? 'edit' : 'new'}`} disabled={uploading} />
@@ -4220,13 +4227,13 @@ function NewsContent({ news, onUpdateNews, onCreateNews, onDeleteNews }: {
                     <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
                       <div className="bg-primary h-full transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                     </div>
-                    <span className="text-primary font-medium uppercase tracking-widest">{uploadProgress}% Uploading...</span>
+                    <span className="text-primary font-medium">{uploadProgress}% Uploading...</span>
                   </div>
                 ) : item.image_url ? (
                   <img src={item.image_url} className="w-full h-full object-cover rounded-xl" alt="Preview" />
                 ) : (
                   <div className="flex flex-col items-center">
-                    <svg className="w-8 h-8 text-slate-300 group-hover:scale-110 transition-transform mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                    <svg className="w-8 h-8 text-slate-300 transition-transform mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
                     <span className="text-center">Click to Upload Image</span>
                   </div>
                 )}
@@ -4237,8 +4244,8 @@ function NewsContent({ news, onUpdateNews, onCreateNews, onDeleteNews }: {
       </div>
 
       <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
-        <button onClick={() => isEditing ? setEditingNews(null) : setIsAddingNews(false)} className="px-6 py-2.5 text-[10px] font-medium text-slate-500 uppercase tracking-widest hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
-        <button onClick={isEditing ? handleSave : handleCreate} disabled={!item.title || !item.content || uploading} className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all uppercase tracking-widest disabled:opacity-50">{isEditing ? "Save Changes" : "Save News"}</button>
+        <button onClick={() => isEditing ? setEditingNews(null) : setIsAddingNews(false)} className="px-6 py-2.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50 rounded-xl transition-all">Cancel</button>
+        <button onClick={isEditing ? handleSave : handleCreate} disabled={!item.title || !item.content || uploading} className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all disabled:opacity-50">{isEditing ? "Save Changes" : "Save News"}</button>
       </div>
     </div>
   );
@@ -4247,11 +4254,11 @@ function NewsContent({ news, onUpdateNews, onCreateNews, onDeleteNews }: {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
         <div>
-          <h1 className="text-xl font-medium text-slate-900 tracking-tight uppercase">News Management</h1>
-          <p className="text-[10px] text-slate-500 font-normal uppercase tracking-widest opacity-70">Manage and publish news articles.</p>
+          <h1 className="admin-page-title">News Management</h1>
+          <p className="admin-page-subtitle">Manage and publish news articles.</p>
         </div>
         {!isAddingNews && !editingNews && (
-          <button onClick={() => setIsAddingNews(true)} className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-lg shadow-primary/20 transition-all uppercase tracking-widest">Add News Item</button>
+          <button onClick={() => setIsAddingNews(true)} className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all">Add News Item</button>
         )}
       </div>
 
@@ -4261,10 +4268,10 @@ function NewsContent({ news, onUpdateNews, onCreateNews, onDeleteNews }: {
       {!isAddingNews && !editingNews && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {news.map((item) => (
-            <div key={item.id} className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-sm hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 group">
+            <div key={item.id} className="bg-white rounded-xl border border-slate-200/60 p-4 shadow-sm transition-all duration-300 group">
               <div className="relative aspect-video rounded-xl overflow-hidden mb-4 bg-slate-100">
                 {item.image_url ? (
-                  <img src={item.image_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={item.title} />
+                  <img src={item.image_url} className="w-full h-full object-cover transition-transform duration-500" alt={item.title} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center opacity-20">
                     <svg className="w-12 h-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 12a2 2 0 002-2V9a2 2 0 00-2-2h-2.5" /></svg>
@@ -4279,21 +4286,21 @@ function NewsContent({ news, onUpdateNews, onCreateNews, onDeleteNews }: {
                   </button>
                 </div>
               </div>
-              <h3 className="text-[11px] font-medium text-slate-900 uppercase tracking-tight truncate mb-1">{item.title}</h3>
+              <h3 className="text-[11px] font-medium text-slate-900 tracking-tight truncate mb-1">{item.title}</h3>
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[9px] text-secondary font-medium uppercase tracking-widest">{item.author || 'FinderB'}</p>
-                <p className="text-[9px] text-slate-400 font-normal uppercase tracking-widest">{item.published_at ? new Date(item.published_at).toLocaleDateString() : 'Draft'}</p>
+                <p className="text-[9px] text-secondary font-medium">{item.author || 'FinderB'}</p>
+                <p className="text-[9px] text-slate-400 font-normal">{item.published_at ? new Date(item.published_at).toLocaleDateString() : 'Draft'}</p>
               </div>
-              <p className="text-[9px] text-slate-500 font-normal uppercase tracking-widest line-clamp-3">{item.content}</p>
+              <p className="text-[9px] text-slate-500 font-normal line-clamp-3">{item.content}</p>
             </div>
           ))}
 
           {news.length === 0 && (
-            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-2xl border border-slate-200/60">
-              <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mb-4">
+            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-xl border border-slate-200/60">
+              <div className="w-16 h-16 rounded-xl bg-slate-50 flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 12a2 2 0 002-2V9a2 2 0 00-2-2h-2.5" /></svg>
               </div>
-              <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">No news articles found</p>
+              <p className="text-[10px] font-medium tracking-[0.3em] text-slate-400">No news articles found</p>
             </div>
           )}
         </div>
