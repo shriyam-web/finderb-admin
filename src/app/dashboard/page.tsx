@@ -8,6 +8,7 @@ import { createClient } from "../../../utils/supabase/client";
 import { uploadToCloudinary } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
 import FinderBJobsContent, { FinderBJob } from "../../components/FinderBJobsContent";
+import PaymentsContent from "../../components/PaymentsContent";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
 import {
   CATEGORY_LEAD_BADGE,
@@ -17,6 +18,8 @@ import {
   isProfileLeadSource,
   leadBadgeClassName,
 } from "../../lib/leadBadges";
+import { formatActivityDate, formatActivityTime, parseFinderbTimestamp } from "../../lib/formatDateTime";
+import { formatAmountInr, mergePaymentHistory } from "../../lib/paymentUtils";
 
 interface User {
   id: string;
@@ -35,6 +38,12 @@ interface Merchant {
   sales: number;
   validUntil: string;
   status: string;
+  isFinderBVerified: boolean;
+  registrationNumber: string | null;
+  paymentStatus: string;
+  selectedPlan: string;
+  billingCycle: string;
+  planExpiresAt: string | null;
 }
 
 interface MerchantRequest {
@@ -90,6 +99,12 @@ interface BusinessData {
   paymentStatus: string;
   paymentId: string | null;
   orderId: string | null;
+  planStartedAt: string | null;
+  planExpiresAt: string | null;
+  razorpaySubscriptionId: string | null;
+  subscriptionStatus: string | null;
+  autoRenewEnabled: boolean;
+  mandateStatus: string | null;
   createdAt: string;
   updatedAt: string;
   city: string | null;
@@ -185,6 +200,8 @@ export interface LoginLog {
   admin_email: string;
   login_time: string;
 }
+
+const DISABLED_TABS = new Set(["News"]);
 
 const ALL_MENU_ITEMS = [
   {
@@ -293,8 +310,9 @@ const ALL_MENU_ITEMS = [
 const NAV_GROUPS = [
   { label: "Overview", items: ["Dashboard"] },
   { label: "Operations", items: ["Users", "Merchants", "Leads"] },
-  { label: "Content & Media", items: ["Categories", "Movies", "Tourist Places", "News", "Blogs", "FinderB Jobs"] },
+  { label: "Content & Media", items: ["Categories", "Movies", "Tourist Places", "Blogs", "FinderB Jobs"] },
   { label: "Platform", items: ["Payments & Subscriptions", "Broadcasts", "Settings", "Manage Admins"] },
+  { label: "Unavailable", items: ["News"] },
 ];
 
 export default function Dashboard() {
@@ -302,10 +320,21 @@ export default function Dashboard() {
   const [adminSession, setAdminSession] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [platformTime, setPlatformTime] = useState(new Date());
+  const [platformTimeLabel, setPlatformTimeLabel] = useState("");
+  const [platformDateLabel, setPlatformDateLabel] = useState("");
 
   useEffect(() => {
-    const timer = setInterval(() => setPlatformTime(new Date()), 60_000);
+    const formatClock = () => {
+      const now = new Date();
+      setPlatformTimeLabel(
+        now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: true }),
+      );
+      setPlatformDateLabel(
+        now.toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
+      );
+    };
+    formatClock();
+    const timer = setInterval(formatClock, 60_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -328,9 +357,16 @@ export default function Dashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [admins, setAdmins] = useState<AdminProfile[]>([]);
   const [loginLogs, setLoginLogs] = useState<LoginLog[]>([]);
+  const [merchantPaymentRows, setMerchantPaymentRows] = useState<Record<string, unknown>[]>([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (DISABLED_TABS.has(activeTab)) {
+      setActiveTab("Dashboard");
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const validateSession = async () => {
@@ -572,8 +608,16 @@ export default function Dashboard() {
                 category: m.category || 'Other',
                 rating: 0,
                 sales: 0,
-                validUntil: new Date(m.updatedAt || m.createdAt || Date.now()).toISOString().split('T')[0],
-                status: m.status || 'Active'
+                validUntil: m.planExpiresAt
+                  ? new Date(m.planExpiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                  : '—',
+                status: m.status || 'Active',
+                isFinderBVerified: Boolean(m.isFinderBVerified),
+                registrationNumber: m.registrationNumber || null,
+                paymentStatus: m.paymentStatus || 'pending',
+                selectedPlan: m.selectedPlan || 'free',
+                billingCycle: m.billingCycle || 'monthly',
+                planExpiresAt: m.planExpiresAt || null,
               })));
             setMerchantRequests(merchantData
               .filter((m: any) => m.kycStatus === 'pending')
@@ -587,6 +631,18 @@ export default function Dashboard() {
           } else {
             console.warn("⚠️ No business data returned from Supabase");
           }
+        }
+
+        console.log("🚀 Fetching merchant payments from Supabase...");
+        const { data: paymentData, error: paymentError } = await supabase
+          .from("merchant_payments")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (paymentError) {
+          console.error("❌ Merchant payments fetch error:", paymentError);
+        } else {
+          setMerchantPaymentRows(paymentData ?? []);
         }
       } catch (error: any) {
         console.error("❌ Unexpected error during fetch:", error);
@@ -695,8 +751,14 @@ export default function Dashboard() {
         category: req.category,
         rating: 0,
         sales: 0,
-        validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        status: "Active"
+        validUntil: "—",
+        status: "Active",
+        isFinderBVerified: false,
+        registrationNumber: null,
+        paymentStatus: "pending",
+        selectedPlan: "free",
+        billingCycle: "monthly",
+        planExpiresAt: null,
       }
     ]);
     setMerchantRequests((prev: MerchantRequest[]) => prev.filter(r => r.id !== req.id));
@@ -791,9 +853,32 @@ export default function Dashboard() {
     });
 
     return activities
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort((a, b) => {
+        const aTime = parseFinderbTimestamp(a.timestamp)?.getTime() ?? 0;
+        const bTime = parseFinderbTimestamp(b.timestamp)?.getTime() ?? 0;
+        return bTime - aTime;
+      })
       .slice(0, 10);
   }, [users, allBusinessData, leads]);
+
+  const revenueStats = useMemo(() => {
+    const payments = mergePaymentHistory(
+      merchantPaymentRows as Parameters<typeof mergePaymentHistory>[0],
+      allBusinessData as Parameters<typeof mergePaymentHistory>[1],
+    );
+    const completed = payments.filter((p) => p.status === "completed");
+    const pending = payments.filter((p) => p.status === "pending");
+    const failed = payments.filter((p) => p.status === "failed");
+    const totalRevenuePaise = completed.reduce((sum, p) => sum + p.amountPaise, 0);
+
+    return {
+      totalRevenueDisplay: formatAmountInr(totalRevenuePaise),
+      completed: completed.length,
+      pending: pending.length,
+      failed: failed.length,
+      totalRecords: payments.length,
+    };
+  }, [merchantPaymentRows, allBusinessData]);
 
   const handleUpdateCategory = async (catName: string, updates: Partial<Category>) => {
     const supabase = createClient();
@@ -1190,6 +1275,7 @@ export default function Dashboard() {
           totalMerchants={activeMerchants.length}
           chartData={chartData}
           recentActivities={recentActivities}
+          revenueStats={revenueStats}
         />;
       case "Users":
         return <UsersContent users={users} setUsers={setUsers} adminSession={adminSession} />;
@@ -1234,12 +1320,7 @@ export default function Dashboard() {
           onDeletePlace={handleDeleteTouristPlace}
         />;
       case "News":
-        return <NewsContent
-          news={news}
-          onUpdateNews={handleUpdateNews}
-          onCreateNews={handleCreateNews}
-          onDeleteNews={handleDeleteNews}
-        />;
+        return <DisabledTabContent tabName="News" />;
       case "Blogs":
         return <BlogContent
           blogs={blogs}
@@ -1251,7 +1332,7 @@ export default function Dashboard() {
       case "FinderB Jobs":
         return <FinderBJobsContent jobs={finderBJobs} setJobs={setFinderBJobs} />;
       case "Payments & Subscriptions":
-        return <PaymentsContent />;
+        return <PaymentsContent businesses={allBusinessData} />;
       case "Broadcasts":
         return (
           <BroadcastsContent
@@ -1283,6 +1364,7 @@ export default function Dashboard() {
           totalMerchants={activeMerchants.length}
           chartData={chartData}
           recentActivities={recentActivities}
+          revenueStats={revenueStats}
         />;
     }
   };
@@ -1311,7 +1393,7 @@ export default function Dashboard() {
               {settings.maintenance ? "Maintenance" : "Operational"}
             </span>
             <span className="text-[10px] text-slate-500 tabular-nums">
-              {platformTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {platformTimeLabel || "—"}
             </span>
           </div>
         </div>
@@ -1324,16 +1406,35 @@ export default function Dashboard() {
               <div key={group.label} className="admin-nav-group">
                 <p className="admin-nav-group-label">{group.label}</p>
                 <div className="space-y-0.5">
-                  {groupItems.map((item) => (
-                    <button
-                      key={item.name}
-                      onClick={() => { setActiveTab(item.name); setIsSidebarOpen(false); }}
-                      className={`admin-nav-item ${activeTab === item.name ? "admin-nav-item-active" : "admin-nav-item-idle"}`}
-                    >
-                      <span className={`shrink-0 ${activeTab === item.name ? "text-primary-300" : "text-slate-500"}`}>{item.icon}</span>
-                      <span className="truncate">{item.name}</span>
-                    </button>
-                  ))}
+                  {groupItems.map((item) => {
+                    const isDisabled = DISABLED_TABS.has(item.name);
+                    return (
+                      <button
+                        key={item.name}
+                        type="button"
+                        disabled={isDisabled}
+                        onClick={() => {
+                          if (isDisabled) return;
+                          setActiveTab(item.name);
+                          setIsSidebarOpen(false);
+                        }}
+                        className={`admin-nav-item w-full ${
+                          isDisabled
+                            ? "admin-nav-item-idle opacity-40 cursor-not-allowed"
+                            : activeTab === item.name
+                              ? "admin-nav-item-active"
+                              : "admin-nav-item-idle"
+                        }`}
+                        title={isDisabled ? "This tab is disabled. Contact the developer." : undefined}
+                      >
+                        <span className={`shrink-0 ${activeTab === item.name && !isDisabled ? "text-primary-300" : "text-slate-500"}`}>{item.icon}</span>
+                        <span className="truncate">{item.name}</span>
+                        {isDisabled && (
+                          <span className="ml-auto text-[8px] uppercase tracking-wider text-slate-600">Off</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -1377,7 +1478,7 @@ export default function Dashboard() {
             <span className="admin-metric-chip">Leads <strong>{leads.length.toLocaleString()}</strong></span>
           </div>
           <p className="text-xs text-slate-400 tabular-nums hidden sm:block">
-            {platformTime.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", year: "numeric" })}
+            {platformDateLabel || "—"}
           </p>
         </div>
 
@@ -1405,7 +1506,8 @@ function DashboardContent({
   totalUsers, 
   totalMerchants,
   chartData,
-  recentActivities
+  recentActivities,
+  revenueStats,
 }: {
   setActiveTab: (tab: string) => void;
   merchantRequests: MerchantRequest[];
@@ -1415,7 +1517,15 @@ function DashboardContent({
   totalMerchants: number;
   chartData: any[];
   recentActivities: Activity[];
+  revenueStats: {
+    totalRevenueDisplay: string;
+    completed: number;
+    pending: number;
+    failed: number;
+    totalRecords: number;
+  };
 }) {
+  const [showRevenue, setShowRevenue] = useState(false);
 
   const maxVal = Math.max(...chartData.map(d => d.users + d.merchants), 10);
   const weekTotal = chartData.reduce((sum, d) => sum + d.users + d.merchants, 0);
@@ -1460,6 +1570,55 @@ function DashboardContent({
           <p className="admin-kpi-value">{weekTotal.toLocaleString()}</p>
           <p className="admin-kpi-meta">Users + partners (7 days)</p>
         </div>
+      </div>
+
+      <div className="admin-card overflow-hidden">
+        <div className="admin-card-header">
+          <div>
+            <h3 className="admin-card-title">Platform revenue</h3>
+            <p className="admin-card-description">Merchant subscription payments and transaction totals</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowRevenue((v) => !v)}
+            className="admin-btn-secondary text-xs py-1.5 px-3"
+          >
+            {showRevenue ? "Hide revenue" : "Show revenue"}
+          </button>
+        </div>
+        {showRevenue ? (
+          <div className="px-6 pb-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide">Total revenue</p>
+                <p className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">{revenueStats.totalRevenueDisplay}</p>
+                <p className="text-[10px] text-slate-400 mt-1">Completed payments only</p>
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                <p className="text-[10px] font-medium text-emerald-700 uppercase tracking-wide">Completed</p>
+                <p className="text-2xl font-semibold text-emerald-800 mt-1 tabular-nums">{revenueStats.completed}</p>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
+                <p className="text-[10px] font-medium text-amber-800 uppercase tracking-wide">Pending</p>
+                <p className="text-2xl font-semibold text-amber-900 mt-1 tabular-nums">{revenueStats.pending}</p>
+              </div>
+              <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-4">
+                <p className="text-[10px] font-medium text-rose-700 uppercase tracking-wide">Failed</p>
+                <p className="text-2xl font-semibold text-rose-800 mt-1 tabular-nums">{revenueStats.failed}</p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <p className="text-xs text-slate-500">{revenueStats.totalRecords} payment record{revenueStats.totalRecords === 1 ? "" : "s"} on file</p>
+              <button type="button" onClick={() => setActiveTab("Payments & Subscriptions")} className="admin-link text-xs">
+                Open financial ledger →
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="px-6 pb-6">
+            <p className="text-sm text-slate-500">Revenue figures are hidden. Use &quot;Show revenue&quot; to view payment totals.</p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
@@ -1540,8 +1699,8 @@ function DashboardContent({
                 <p className="text-xs text-slate-500 mt-0.5 truncate">{activity.description}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-xs text-slate-600 tabular-nums">{new Date(activity.timestamp).toLocaleDateString([], { month: "short", day: "numeric" })}</p>
-                <p className="text-[11px] text-slate-400 tabular-nums mt-0.5">{new Date(activity.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                <p className="text-xs text-slate-600 tabular-nums">{formatActivityDate(activity.timestamp)}</p>
+                <p className="text-[11px] text-slate-400 tabular-nums mt-0.5">{formatActivityTime(activity.timestamp)}</p>
               </div>
             </div>
           )) : (
@@ -2398,6 +2557,31 @@ function ManageAdminsContent({ admins, setAdmins, adminSession }: { admins: Admi
   );
 }
 
+function DisabledTabContent({ tabName }: { tabName: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[420px] text-center p-10 admin-card">
+      <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 mb-6 border border-amber-100">
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4c-.77-1.33-2.69-1.33-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z" />
+        </svg>
+      </div>
+      <h3 className="text-lg font-semibold text-slate-900 mb-2 tracking-tight">{tabName} is disabled</h3>
+      <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+        This section is not available in the control panel. Contact the developer if you need access.
+      </p>
+    </div>
+  );
+}
+
+function planLabel(plan: string, billingCycle: string) {
+  const normalized = plan.toLowerCase();
+  if (normalized === "free" || normalized === "starter") return "Starter";
+  if (normalized === "growth") return "Growth";
+  if (billingCycle === "annual") return "Pro (Annual)";
+  if (normalized === "pro") return "Growth Pro";
+  return plan;
+}
+
 function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequests, setMerchantRequests, adminSession }: {
   activeMerchants: Merchant[],
   setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>,
@@ -2435,31 +2619,6 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
     }
 
     setSelectedBusiness(data);
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'panUrl' | 'aadharUrl' | 'msmeGstUrl') => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedBusiness) return;
-
-    try {
-      setIsUploading(field);
-      const url = await uploadToCloudinary(file);
-
-      const supabase = createClient();
-      const { error } = await supabase
-        .from('Business')
-        .update({ [field]: url })
-        .eq('id', selectedBusiness.id);
-
-      if (error) throw error;
-
-      setSelectedBusiness({ ...selectedBusiness, [field]: url });
-      alert(`${field} updated successfully!`);
-    } catch (error: any) {
-      alert("Upload failed: " + error.message);
-    } finally {
-      setIsUploading(null);
-    }
   };
 
   const handleBusinessImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -2554,8 +2713,14 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
       ...merchant,
       rating: 0,
       sales: 0,
-      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      status: "Active"
+      validUntil: "—",
+      status: "Active",
+      isFinderBVerified: false,
+      registrationNumber: null,
+      paymentStatus: "pending",
+      selectedPlan: "free",
+      billingCycle: "monthly",
+      planExpiresAt: null,
     }]);
     setMerchantRequests(merchantRequests.filter(m => m.id !== merchant.id));
   };
@@ -2606,6 +2771,10 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
     if (selectedBusiness && selectedBusiness.id === id) {
       setSelectedBusiness({ ...selectedBusiness, isFinderBVerified: newStatus });
     }
+
+    setActiveMerchants(activeMerchants.map((m) =>
+      m.id === id ? { ...m, isFinderBVerified: newStatus } : m
+    ));
   };
 
   const handleDeleteMerchant = async (id: string) => {
@@ -2630,20 +2799,25 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
     }
   };
 
+  const verifiedCount = activeMerchants.filter((m) => m.isFinderBVerified).length;
+  const paidCount = activeMerchants.filter((m) => m.paymentStatus === "completed").length;
+
   return (
     <div className="space-y-6">
       <div className="admin-page-header">
         <div>
           <h1 className="admin-page-title">Partner management</h1>
-          <p className="admin-page-subtitle">Manage active partners and verify new requests.</p>
+          <p className="admin-page-subtitle">Manage merchant profiles, listing status, and FinderB verification badges.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative">
-            <input type="text" placeholder="Search by name, email, or ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="admin-search w-72" />
+            <input type="text" placeholder="Search partners…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="admin-search w-72" />
             <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           </div>
           <div className="admin-segmented">
-            <button onClick={() => setMerchantTab("Active")} className={`admin-segmented-btn ${merchantTab === "Active" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}>Active</button>
+            <button onClick={() => setMerchantTab("Active")} className={`admin-segmented-btn ${merchantTab === "Active" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}>
+              Active ({filteredActiveMerchants.length})
+            </button>
             <button onClick={() => setMerchantTab("Pending")} className={`admin-segmented-btn relative ${merchantTab === "Pending" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}>
               Pending
               {merchantRequests.length > 0 && (
@@ -2654,328 +2828,319 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
         </div>
       </div>
 
-      <div className="admin-card min-h-[400px]">
-        {merchantTab === "Active" ? (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Business</th>
-                  <th>Email</th>
-                  <th>Category</th>
-                  <th>Status</th>
-                  <th>Sales</th>
-                  <th>Valid until</th>
-                  {isController && <th>Password</th>}
-                  <th className="text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredActiveMerchants.map((merchant) => (
-                  <tr key={merchant.id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className="admin-avatar">{merchant.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-900">{merchant.name}</p>
-                          <p className="admin-mono mt-0.5">{merchant.id}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td><p className="text-sm text-slate-600">{merchant.email || "—"}</p></td>
-                    <td><span className="admin-badge bg-slate-50 text-secondary border-slate-200">{merchant.category}</span></td>
-                    <td>
-                      <span className={`admin-badge ${merchant.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-600 border-slate-200"}`}>{merchant.status}</span>
-                    </td>
-                    <td className="tabular-nums">{merchant.sales}</td>
-                    <td className="tabular-nums">{merchant.validUntil}</td>
-                    {isController && (
-                      <PasswordRevealCell id={merchant.id} visiblePasswords={visiblePasswords} onToggleVisibility={(id) => setVisiblePasswords((p) => { const n = { ...p }; delete n[id]; return n; })} onRequestReveal={(id) => setPasswordModalTarget({ id, label: `Enter your admin password to view the password for ${[...activeMerchants, ...merchantRequests].find(m => m.id === id)?.name || "this merchant"}.` })} />
+      <div className="admin-kpi-grid">
+        <div className="admin-kpi admin-kpi-primary">
+          <p className="admin-kpi-label">Active partners</p>
+          <p className="admin-kpi-value">{activeMerchants.length}</p>
+          <p className="admin-kpi-meta">Live merchant profiles</p>
+        </div>
+        <div className="admin-kpi admin-kpi-success">
+          <p className="admin-kpi-label">FinderB verified</p>
+          <p className="admin-kpi-value">{verifiedCount}</p>
+          <p className="admin-kpi-meta">Green badge on listing</p>
+        </div>
+        <div className="admin-kpi admin-kpi-secondary">
+          <p className="admin-kpi-label">Paid plans</p>
+          <p className="admin-kpi-value">{paidCount}</p>
+          <p className="admin-kpi-meta">Completed subscription payment</p>
+        </div>
+        <div className="admin-kpi admin-kpi-neutral">
+          <p className="admin-kpi-label">Awaiting review</p>
+          <p className="admin-kpi-value">{merchantRequests.length}</p>
+          <p className="admin-kpi-meta">New partner requests</p>
+        </div>
+      </div>
+
+      {merchantTab === "Active" ? (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {filteredActiveMerchants.map((merchant) => (
+            <div key={merchant.id} className="admin-card p-5 hover:shadow-lg transition-all duration-300 group">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4 min-w-0">
+                  <div className="relative shrink-0">
+                    <div className="admin-avatar !w-12 !h-12 text-sm">{merchant.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}</div>
+                    {merchant.isFinderBVerified && (
+                      <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center" title="FinderB Verified">
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      </span>
                     )}
-                    <td className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => handleViewMerchant(merchant.id)} className="admin-icon-btn" title="View KYC Details">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                        </button>
-                        <button onClick={() => toggleMerchantStatus(merchant.id, merchant.status)} className="admin-icon-btn" title={merchant.status === "Active" ? "Deactivate" : "Activate"}>
-                          {merchant.status === "Active" ? (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                          ) : (
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                          )}
-                        </button>
-                        <button onClick={() => handleDeleteMerchant(merchant.id)} className="admin-icon-btn-danger" title="Delete Profile">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filteredActiveMerchants.length === 0 && (
-                  <tr><td colSpan={isController ? 8 : 7} className="admin-empty">{activeMerchants.length === 0 ? "No active merchants" : "No merchants match your search"}</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {filteredMerchantRequests.map((req) => (
-              <div key={req.id} className="p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="admin-avatar !w-11 !h-11">{req.name.split(' ').map(n => n[0]).join('').slice(0, 2)}</div>
+                  </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{req.name}</p>
-                    <div className="flex items-center gap-3 mt-1 flex-wrap">
-                      <span className="admin-badge bg-secondary/5 text-secondary border-secondary/20">{req.category}</span>
-                      <span className="text-xs text-slate-500">{req.email || "—"}</span>
-                      <span className="text-xs text-slate-400">Requested {req.date}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-sm font-semibold text-slate-900 truncate">{merchant.name}</h3>
+                      {merchant.isFinderBVerified && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-semibold uppercase tracking-wide">
+                          FinderB Verified
+                        </span>
+                      )}
                     </div>
+                    {merchant.registrationNumber && (
+                      <p className="admin-mono mt-0.5 text-[10px]">{merchant.registrationNumber}</p>
+                    )}
+                    <p className="text-xs text-slate-500 mt-1 truncate">{merchant.email || "—"}</p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 items-center">
-                  {isController && (
-                    <div className="flex items-center gap-2 mr-2">
-                      <span className="admin-mono bg-slate-50 px-2 py-1 rounded-md border border-slate-100 min-w-[80px]">{visiblePasswords[req.id] || "••••••••"}</span>
-                      <button onClick={() => (visiblePasswords[req.id] ? setVisiblePasswords((p) => { const n = { ...p }; delete n[req.id]; return n; }) : setPasswordModalTarget({ id: req.id, label: `Enter your admin password to view the password for ${req.name}.` }))} className="admin-btn-ghost !p-1.5" title="Reveal password">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                      </button>
-                    </div>
-                  )}
-                  <button onClick={() => handleViewMerchant(req.id)} className="admin-btn-secondary text-xs py-2">View KYC</button>
-                  <button onClick={() => handleReject(req.id)} className="admin-btn-danger text-xs py-2">Reject</button>
-                  <button onClick={() => handleDeleteMerchant(req.id)} className="admin-btn-danger text-xs py-2">Delete</button>
-                  <button onClick={() => handleApprove(req)} className="admin-btn-primary text-xs py-2">Approve</button>
+                <span className={`admin-badge shrink-0 ${merchant.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-600 border-slate-200"}`}>
+                  {merchant.status}
+                </span>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
+                  <p className="text-[9px] text-slate-400 uppercase tracking-wide">Category</p>
+                  <p className="text-[11px] font-medium text-slate-800 mt-0.5 truncate">{merchant.category}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
+                  <p className="text-[9px] text-slate-400 uppercase tracking-wide">Plan</p>
+                  <p className="text-[11px] font-medium text-slate-800 mt-0.5">{planLabel(merchant.selectedPlan, merchant.billingCycle)}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 col-span-2 sm:col-span-1">
+                  <p className="text-[9px] text-slate-400 uppercase tracking-wide">Plan valid until</p>
+                  <p className="text-[11px] font-medium text-slate-800 mt-0.5">{merchant.validUntil}</p>
                 </div>
               </div>
-            ))}
-            {filteredMerchantRequests.length === 0 && (
-              <div className="admin-empty py-24">{merchantRequests.length === 0 ? "Verification queue is empty" : "No pending merchants match your search"}</div>
-            )}
-          </div>
-        )}
-      </div>
+
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleFinderBVerified(merchant.id, merchant.isFinderBVerified)}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${merchant.isFinderBVerified ? "bg-emerald-500" : "bg-slate-200"}`}
+                    title="Toggle FinderB Verified badge (independent of KYC)"
+                  >
+                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition ${merchant.isFinderBVerified ? "translate-x-5" : "translate-x-0"}`} />
+                  </button>
+                  <span className="text-[10px] text-slate-500">FinderB badge</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => handleViewMerchant(merchant.id)} className="admin-btn-secondary text-[10px] py-1.5 px-3">Details</button>
+                  <button onClick={() => toggleMerchantStatus(merchant.id, merchant.status)} className="admin-icon-btn" title={merchant.status === "Active" ? "Deactivate" : "Activate"}>
+                    {merchant.status === "Active" ? (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    )}
+                  </button>
+                  {isController && (
+                    <button onClick={() => setPasswordModalTarget({ id: merchant.id, label: `Enter your admin password to view the password for ${merchant.name}.` })} className="admin-icon-btn" title="View password">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 11-12 0 6 6 0 0112 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14v.01" /></svg>
+                    </button>
+                  )}
+                  <button onClick={() => handleDeleteMerchant(merchant.id)} className="admin-icon-btn-danger" title="Delete">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          {filteredActiveMerchants.length === 0 && (
+            <div className="admin-card admin-empty col-span-full py-24">
+              {activeMerchants.length === 0 ? "No active partners yet" : "No partners match your search"}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredMerchantRequests.map((req) => (
+            <div key={req.id} className="admin-card p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="admin-avatar !w-12 !h-12">{req.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}</div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 truncate">{req.name}</p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="admin-badge bg-secondary/5 text-secondary border-secondary/20">{req.category}</span>
+                    <span className="text-xs text-slate-500">{req.email || "—"}</span>
+                    <span className="text-xs text-slate-400">Requested {req.date}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 items-center">
+                <button onClick={() => handleViewMerchant(req.id)} className="admin-btn-secondary text-xs py-2">View details</button>
+                <button onClick={() => handleReject(req.id)} className="admin-btn-danger text-xs py-2">Reject</button>
+                <button onClick={() => handleDeleteMerchant(req.id)} className="admin-btn-danger text-xs py-2">Delete</button>
+                <button onClick={() => handleApprove(req)} className="admin-btn-primary text-xs py-2">Approve</button>
+              </div>
+            </div>
+          ))}
+          {filteredMerchantRequests.length === 0 && (
+            <div className="admin-card admin-empty py-24">{merchantRequests.length === 0 ? "No pending requests" : "No pending partners match your search"}</div>
+          )}
+        </div>
+      )}
 
       {passwordModalTarget && adminSession && (
         <ControllerPasswordModal isOpen={Boolean(passwordModalTarget)} onClose={() => setPasswordModalTarget(null)} title={passwordModalTarget.label} adminSession={adminSession} onFetchPassword={() => fetchMerchantPassword(passwordModalTarget.id)} onSuccess={(password) => setVisiblePasswords((p) => ({ ...p, [passwordModalTarget.id]: password }))} />
       )}
 
-      {/* KYC Details Modal */}
       {selectedBusiness && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in duration-300">
-            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div>
-                <h2 className="admin-page-title">{selectedBusiness.businessName || selectedBusiness.fullName}</h2>
-                <p className="text-[10px] text-secondary font-medium mt-1">Merchant Verification Dossier</p>
-              </div>
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col">
+            <div className="relative px-8 pt-8 pb-6 bg-gradient-to-br from-slate-900 via-slate-800 to-primary/90 text-white">
               <button
+                type="button"
                 onClick={() => setSelectedBusiness(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100 shadow-sm"
+                className="absolute top-4 right-4 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
+              <div className="flex items-start gap-5">
+                <div className="relative shrink-0">
+                  {selectedBusiness.profilePictureUrl ? (
+                    <img src={selectedBusiness.profilePictureUrl} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-white/20" />
+                  ) : (
+                    <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-xl font-semibold">
+                      {(selectedBusiness.businessName || selectedBusiness.fullName || "?").charAt(0)}
+                    </div>
+                  )}
+                  {selectedBusiness.isFinderBVerified && (
+                    <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-2 border-slate-900 flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl font-semibold tracking-tight truncate">{selectedBusiness.businessName || selectedBusiness.fullName}</h2>
+                  <p className="text-sm text-white/70 mt-1">{selectedBusiness.registrationNumber || selectedBusiness.id}</p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide ${selectedBusiness.status === "Active" ? "bg-emerald-500/20 text-emerald-100" : "bg-white/10 text-white/80"}`}>
+                      {selectedBusiness.status || "Inactive"}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide bg-white/10 text-white/80">
+                      KYC: {selectedBusiness.kycStatus || "—"}
+                    </span>
+                    {selectedBusiness.isFinderBVerified && (
+                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/25 text-emerald-100">
+                        FinderB Verified
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Business Info */}
-                <div className="space-y-6">
-                  <h3 className="text-[10px] font-medium text-primary tracking-[0.2em] border-b border-primary/10 pb-2">Primary Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
+            <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+              <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">FinderB Verified badge</p>
+                    <p className="text-xs text-amber-800/80 mt-0.5">Shows the green badge on the public listing. This is separate from KYC, which is handled by a third-party provider.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleFinderBVerified(selectedBusiness.id, selectedBusiness.isFinderBVerified)}
+                    className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${selectedBusiness.isFinderBVerified ? "bg-emerald-500" : "bg-slate-300"}`}
+                  >
+                    <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${selectedBusiness.isFinderBVerified ? "translate-x-5" : "translate-x-0"}`} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Contact & profile</h3>
+                  <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
                     {[
-                      { label: "Full Name", value: selectedBusiness.fullName },
-                      { label: "Work Email", value: selectedBusiness.workEmail },
+                      { label: "Owner", value: selectedBusiness.fullName },
+                      { label: "Work email", value: selectedBusiness.workEmail },
+                      { label: "Login email", value: selectedBusiness.email },
                       { label: "Mobile", value: selectedBusiness.mobile },
+                      { label: "Public phone", value: selectedBusiness.publicPhone },
                       { label: "Category", value: selectedBusiness.category },
-                      { label: "City", value: selectedBusiness.city },
-                      { label: "State", value: selectedBusiness.state },
-                      { label: "KYC Status", value: selectedBusiness.kycStatus },
-                    ].map((info, i) => (
-                      <div key={i} className="space-y-1">
-                        <p className="text-[9px] font-medium text-slate-400">{info.label}</p>
-                        <p className="text-[11px] font-normal text-slate-900">{info.value || "N/A"}</p>
+                    ].map((row) => (
+                      <div key={row.label} className="flex justify-between gap-4 px-4 py-3">
+                        <span className="text-xs text-slate-500">{row.label}</span>
+                        <span className="text-xs font-medium text-slate-900 text-right">{row.value || "—"}</span>
                       </div>
                     ))}
                   </div>
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-medium text-slate-400">Business Address</p>
-                    <p className="text-[11px] font-normal text-slate-900 leading-relaxed">{selectedBusiness.businessAddress}</p>
-                  </div>
                 </div>
 
-                {/* KYC Documents */}
-                <div className="space-y-6">
-                  <h3 className="text-[10px] font-medium text-primary tracking-[0.2em] border-b border-primary/10 pb-2">Verification Documents</h3>
-                  <div className="space-y-5">
+                <div className="space-y-4">
+                  <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Location & subscription</h3>
+                  <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
                     {[
-                      { label: "PAN Card", field: "panUrl", number: selectedBusiness.panNumber },
-                      { label: "Aadhar Card", field: "aadharUrl", number: selectedBusiness.aadharNumber },
-                      { label: "MSME / GST Certificate", field: "msmeGstUrl", number: selectedBusiness.registrationNumber },
-                    ].map((doc, i) => (
-                      <div key={i} className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-[10px] font-medium text-slate-900 tracking-tight">{doc.label}</p>
-                            <p className="text-[9px] text-slate-500 font-normal mt-0.5">Ref: {doc.number || "Not Provided"}</p>
-                          </div>
-                          <label className={`cursor-pointer px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[9px] font-medium text-primary hover:border-primary/30 transition-all shadow-sm flex items-center gap-2 ${isUploading === doc.field ? "opacity-50 pointer-events-none" : ""}`}>
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
-                            {isUploading === doc.field ? "Uploading..." : "Upload Photo"}
-                            <input
-                              type="file"
-                              className="hidden"
-                              accept="image/*"
-                              onChange={(e) => handleFileUpload(e, doc.field as any)}
-                            />
-                          </label>
-                        </div>
-
-                        {(selectedBusiness as any)[doc.field] ? (
-                          <div className="relative aspect-video rounded-xl overflow-hidden border border-slate-200 bg-white group">
-                            <img
-                              src={(selectedBusiness as any)[doc.field]}
-                              className="w-full h-full object-contain"
-                              alt={doc.label}
-                            />
-                            <a
-                              href={(selectedBusiness as any)[doc.field]}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-medium backdrop-blur-[2px]"
-                            >
-                              View Full Document
-                            </a>
-                          </div>
-                        ) : (
-                          <div className="aspect-video rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 flex flex-col items-center justify-center opacity-40">
-                            <svg className="w-8 h-8 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <p className="text-[9px] font-medium">Document Not Uploaded</p>
-                          </div>
-                        )}
+                      { label: "City", value: selectedBusiness.city },
+                      { label: "State", value: selectedBusiness.state },
+                      { label: "Address", value: selectedBusiness.businessAddress },
+                      { label: "Plan", value: planLabel(selectedBusiness.selectedPlan, selectedBusiness.billingCycle) },
+                      { label: "Payment", value: selectedBusiness.paymentStatus },
+                      { label: "Plan expires", value: selectedBusiness.planExpiresAt ? new Date(selectedBusiness.planExpiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—" },
+                      { label: "Auto-debit", value: selectedBusiness.autoRenewEnabled ? "Enabled" : "Off" },
+                    ].map((row) => (
+                      <div key={row.label} className="flex justify-between gap-4 px-4 py-3">
+                        <span className="text-xs text-slate-500">{row.label}</span>
+                        <span className="text-xs font-medium text-slate-900 text-right capitalize">{row.value || "—"}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               </div>
 
-              {/* Merchant Gallery */}
-              <div className="mt-8 space-y-6">
-                <div className="flex items-center justify-between border-b border-primary/10 pb-2">
-                  <h3 className="text-[10px] font-medium text-primary tracking-[0.2em]">Merchant Gallery ({selectedBusiness.images?.length || 0}/5)</h3>
+              {(selectedBusiness.paymentId || selectedBusiness.orderId || selectedBusiness.razorpaySubscriptionId) && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Payment references</h3>
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 grid gap-2">
+                    {selectedBusiness.paymentId && <p className="text-[11px] font-mono text-slate-700 break-all"><span className="text-slate-400">Payment ID:</span> {selectedBusiness.paymentId}</p>}
+                    {selectedBusiness.orderId && <p className="text-[11px] font-mono text-slate-700 break-all"><span className="text-slate-400">Order ID:</span> {selectedBusiness.orderId}</p>}
+                    {selectedBusiness.razorpaySubscriptionId && <p className="text-[11px] font-mono text-slate-700 break-all"><span className="text-slate-400">Subscription ID:</span> {selectedBusiness.razorpaySubscriptionId}</p>}
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Gallery ({selectedBusiness.images?.length || 0}/5)</h3>
                   {(selectedBusiness.images?.length || 0) < 5 && (
-                    <label className={`cursor-pointer px-3 py-1.5 bg-primary text-white rounded-lg text-[9px] font-medium hover:bg-primary/90 transition-all shadow-sm flex items-center gap-2 ${isUploading === 'businessImages' ? "opacity-50 pointer-events-none" : ""}`}>
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
-                      </svg>
-                      {isUploading === 'businessImages' ? "Uploading..." : "Add Image"}
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleBusinessImageUpload}
-                      />
+                    <label className={`cursor-pointer px-3 py-1.5 bg-primary text-white rounded-lg text-[10px] font-medium hover:bg-primary/90 transition-all flex items-center gap-2 ${isUploading === "businessImages" ? "opacity-50 pointer-events-none" : ""}`}>
+                      {isUploading === "businessImages" ? "Uploading…" : "Add image"}
+                      <input type="file" className="hidden" accept="image/*" onChange={handleBusinessImageUpload} />
                     </label>
                   )}
                 </div>
-
                 {selectedBusiness.images && selectedBusiness.images.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {selectedBusiness.images.map((url, index) => (
                       <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                        <img src={url} alt={`Merchant ${index + 1}`} className="w-full h-full object-cover" />
-
+                        <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
                         {selectedBusiness.profilePictureUrl === url && (
-                          <div className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold rounded-full shadow-lg z-10">
-                            Profile
-                          </div>
+                          <span className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold rounded-full">Profile</span>
                         )}
-
                         <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                          <button
-                            onClick={() => handleSetProfilePicture(url)}
-                            className="px-2 py-1 bg-white text-slate-900 text-[8px] font-bold rounded-lg hover:bg-slate-100 transition-colors"
-                          >
-                            Set Profile
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBusinessImage(url)}
-                            className="px-2 py-1 bg-rose-500 text-white text-[8px] font-bold rounded-lg hover:bg-rose-600 transition-colors"
-                          >
-                            Delete
-                          </button>
+                          <button type="button" onClick={() => handleSetProfilePicture(url)} className="px-2 py-1 bg-white text-slate-900 text-[9px] font-semibold rounded-lg">Set profile</button>
+                          <button type="button" onClick={() => handleDeleteBusinessImage(url)} className="px-2 py-1 bg-rose-500 text-white text-[9px] font-semibold rounded-lg">Delete</button>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="py-12 border-2 border-dashed border-slate-100 rounded-xl flex flex-col items-center justify-center text-slate-400">
-                    <svg className="w-8 h-8 mb-2 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <p className="text-[10px] font-medium">No images uploaded yet</p>
-                  </div>
+                  <div className="py-10 border-2 border-dashed border-slate-100 rounded-xl text-center text-slate-400 text-xs">No gallery images</div>
                 )}
               </div>
             </div>
 
-            <div className="px-8 py-6 border-t border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-end gap-3">
-              <div className="flex items-center gap-3 mr-auto">
-                <button
-                  onClick={() => handleDeleteMerchant(selectedBusiness.id)}
-                  className="px-4 py-2 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all shadow-sm"
-                >
-                  Delete Profile
+            <div className="px-8 py-5 border-t border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
+              <button type="button" onClick={() => handleDeleteMerchant(selectedBusiness.id)} className="admin-btn-danger text-xs">Delete profile</button>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => setSelectedBusiness(null)} className="admin-btn-secondary text-xs">Close</button>
+                <button type="button" onClick={() => toggleMerchantStatus(selectedBusiness.id, selectedBusiness.status)} className="admin-btn-secondary text-xs">
+                  {selectedBusiness.status === "Active" ? "Deactivate listing" : "Activate listing"}
                 </button>
-                <button
-                  onClick={() => toggleFinderBVerified(selectedBusiness.id, selectedBusiness.isFinderBVerified)}
-                  className={`px-4 py-2 text-[10px] font-medium uppercase tracking-widest rounded-xl transition-all border shadow-sm ${selectedBusiness.isFinderBVerified
-                    ? "text-emerald-600 hover:bg-emerald-50 border-emerald-100"
-                    : "text-slate-600 hover:bg-slate-50 border-slate-100"
-                    }`}
-                >
-                  {selectedBusiness.isFinderBVerified ? "Remove Verified Badge" : "Give Verified Badge"}
-                </button>
-                <button
-                  onClick={() => toggleMerchantStatus(selectedBusiness.id, selectedBusiness.status)}
-                  className={`px-4 py-2 text-[10px] font-medium uppercase tracking-widest rounded-xl transition-all border shadow-sm ${selectedBusiness.status === "Active"
-                    ? "text-amber-600 hover:bg-amber-50 border-amber-100"
-                    : "text-emerald-600 hover:bg-emerald-50 border-emerald-100"
-                    }`}
-                >
-                  {selectedBusiness.status === "Active" ? "Deactivate Profile" : "Activate Profile"}
-                </button>
+                {selectedBusiness.kycStatus === "pending" && (
+                  <>
+                    <button type="button" onClick={() => { handleReject(selectedBusiness.id); setSelectedBusiness(null); }} className="admin-btn-danger text-xs">Reject</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleApprove({ id: selectedBusiness.id, name: selectedBusiness.businessName || selectedBusiness.fullName || "", email: selectedBusiness.workEmail || selectedBusiness.email || "", category: selectedBusiness.category || "", date: "" });
+                        setSelectedBusiness(null);
+                      }}
+                      className="admin-btn-primary text-xs"
+                    >
+                      Approve partner
+                    </button>
+                  </>
+                )}
               </div>
-              <button
-                onClick={() => setSelectedBusiness(null)}
-                className="px-6 py-2.5 text-[10px] font-medium text-slate-500 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-200"
-              >
-                Dismiss
-              </button>
-              {selectedBusiness.kycStatus === 'pending' && (
-                <>
-                  <button
-                    onClick={() => { handleReject(selectedBusiness.id); setSelectedBusiness(null); }}
-                    className="px-6 py-2.5 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all shadow-sm"
-                  >
-                    Reject KYC
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleApprove({ id: selectedBusiness.id, name: selectedBusiness.businessName || selectedBusiness.fullName || '', email: selectedBusiness.workEmail || selectedBusiness.email || '', category: selectedBusiness.category || '', date: '' });
-                      setSelectedBusiness(null);
-                    }}
-                    className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all active:scale-[0.98]"
-                  >
-                    Approve Merchant
-                  </button>
-                </>
-              )}
             </div>
           </div>
         </div>
@@ -3759,26 +3924,6 @@ function MoviesContent({ movies, setMovies, onUpdateMovie, onCreateMovie, onDele
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function PaymentsContent() {
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-1.5 px-1">
-        <h1 className="admin-page-title">Financial Ledger</h1>
-        <p className="admin-page-subtitle">Transaction history and subscription revenue logs.</p>
-      </div>
-
-      <div className="admin-card p-24 text-center">
-        <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center mx-auto mb-6 border border-primary/10">
-          <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-          </svg>
-        </div>
-        <p className="text-[10px] font-medium tracking-[0.3em] text-slate-400">Transaction Engine Syncing...</p>
-      </div>
     </div>
   );
 }

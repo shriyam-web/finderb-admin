@@ -1,0 +1,285 @@
+import { formatDateTimeInr, parseFinderbTimestamp } from "./formatDateTime";
+
+export type PaymentRecord = {
+  id: string;
+  businessId: string;
+  businessName: string;
+  merchantEmail: string;
+  merchantMobile: string;
+  registrationNumber: string | null;
+  plan: string;
+  planName: string;
+  billingCycle: string;
+  amountPaise: number;
+  amountDisplay: string;
+  status: string;
+  paymentType: string;
+  orderId: string | null;
+  paymentId: string | null;
+  subscriptionId: string | null;
+  source: string | null;
+  planStartedAt: string | null;
+  planExpiresAt: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type SubscriptionRecord = {
+  businessId: string;
+  businessName: string;
+  merchantEmail: string;
+  merchantMobile: string;
+  registrationNumber: string | null;
+  plan: string;
+  planName: string;
+  billingCycle: string;
+  paymentStatus: string;
+  paymentId: string | null;
+  orderId: string | null;
+  subscriptionId: string | null;
+  subscriptionStatus: string | null;
+  autoRenewEnabled: boolean;
+  mandateStatus: string;
+  planStartedAt: string | null;
+  planExpiresAt: string | null;
+  updatedAt: string | null;
+};
+
+const PLAN_NAMES: Record<string, string> = {
+  free: "Starter",
+  starter: "Starter",
+  growth: "Growth",
+  pro: "Pro",
+};
+
+export function getPlanDisplayName(planId?: string | null, billingCycle?: string | null): string {
+  const normalized = String(planId || "free").toLowerCase();
+  const cycle = billingCycle?.toLowerCase();
+
+  if (normalized === "free" || normalized === "starter") return PLAN_NAMES.starter;
+  if (normalized === "growth") return PLAN_NAMES.growth;
+  if (normalized === "pro") {
+    if (cycle === "monthly") return PLAN_NAMES.growth;
+    return PLAN_NAMES.pro;
+  }
+  if (cycle === "monthly") return PLAN_NAMES.growth;
+  if (cycle === "annual") return PLAN_NAMES.pro;
+  return PLAN_NAMES.starter;
+}
+
+export function formatAmountInr(amountPaise: number): string {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(amountPaise / 100);
+}
+
+function planAmountPaise(plan: string, billingCycle: string): number {
+  if (billingCycle === "annual") return 358800;
+  return 49900;
+}
+
+export function paymentTypeLabel(type: string): string {
+  if (type === "subscription_auth") return "Monthly auto-debit";
+  if (type === "subscription_renewal") return "Monthly renewal";
+  return "One-time";
+}
+
+type BusinessPaymentRow = {
+  id?: string;
+  businessName?: string | null;
+  workEmail?: string | null;
+  email?: string | null;
+  mobile?: string | null;
+  registrationNumber?: string | null;
+  paymentStatus?: string | null;
+  paymentId?: string | null;
+  orderId?: string | null;
+  selectedPlan?: string | null;
+  billingCycle?: string | null;
+  planStartedAt?: string | null;
+  planExpiresAt?: string | null;
+  razorpaySubscriptionId?: string | null;
+  subscriptionStatus?: string | null;
+  autoRenewEnabled?: boolean | null;
+  mandateStatus?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+};
+
+type MerchantPaymentRow = {
+  id: string;
+  business_id: string;
+  plan: string;
+  billing_cycle: string;
+  amount_paise: number;
+  currency?: string | null;
+  status: string;
+  payment_type?: string | null;
+  order_id?: string | null;
+  payment_id?: string | null;
+  razorpay_subscription_id?: string | null;
+  source?: string | null;
+  plan_started_at?: string | null;
+  plan_expires_at?: string | null;
+  created_at: string;
+  updated_at?: string | null;
+  Business?: BusinessPaymentRow | BusinessPaymentRow[] | null;
+};
+
+function resolveBusiness(row: MerchantPaymentRow): BusinessPaymentRow | null {
+  if (!row.Business) return null;
+  return Array.isArray(row.Business) ? row.Business[0] ?? null : row.Business;
+}
+
+export function mapMerchantPaymentRow(row: MerchantPaymentRow): PaymentRecord {
+  const business = resolveBusiness(row);
+  const plan = String(row.plan);
+  const billingCycle = String(row.billing_cycle);
+
+  return {
+    id: String(row.id),
+    businessId: String(row.business_id),
+    businessName: String(business?.businessName ?? "—"),
+    merchantEmail: String(business?.email || business?.workEmail || "—"),
+    merchantMobile: String(business?.mobile ?? "—"),
+    registrationNumber: business?.registrationNumber ? String(business.registrationNumber) : null,
+    plan,
+    planName: getPlanDisplayName(plan, billingCycle),
+    billingCycle,
+    amountPaise: Number(row.amount_paise),
+    amountDisplay: formatAmountInr(Number(row.amount_paise)),
+    status: String(row.status),
+    paymentType: String(row.payment_type || "one_time"),
+    orderId: row.order_id ? String(row.order_id) : null,
+    paymentId: row.payment_id ? String(row.payment_id) : null,
+    subscriptionId: row.razorpay_subscription_id ? String(row.razorpay_subscription_id) : null,
+    source: row.source ? String(row.source) : null,
+    planStartedAt: row.plan_started_at ? String(row.plan_started_at) : null,
+    planExpiresAt: row.plan_expires_at ? String(row.plan_expires_at) : null,
+    createdAt: String(row.created_at),
+    updatedAt: row.updated_at ? String(row.updated_at) : null,
+  };
+}
+
+export function buildLegacyPaymentFromBusiness(business: BusinessPaymentRow): PaymentRecord | null {
+  if (!business.id) return null;
+
+  const paymentId = business.paymentId ? String(business.paymentId) : null;
+  const orderId = business.orderId ? String(business.orderId) : null;
+  const subscriptionId = business.razorpaySubscriptionId
+    ? String(business.razorpaySubscriptionId)
+    : null;
+
+  if (business.paymentStatus !== "completed" && !paymentId && !orderId && !subscriptionId) {
+    return null;
+  }
+
+  const plan = String(business.selectedPlan || "pro");
+  const billingCycle = String(business.billingCycle || "monthly");
+  const amountPaise = planAmountPaise(plan, billingCycle);
+  const createdAt = String(business.updatedAt || business.createdAt || new Date().toISOString());
+  const status =
+    business.paymentStatus === "completed"
+      ? "completed"
+      : business.paymentStatus === "failed"
+        ? "failed"
+        : "pending";
+
+  return {
+    id: `legacy-${String(business.id ?? "unknown")}`,
+    businessId: String(business.id ?? ""),
+    businessName: String(business.businessName ?? "—"),
+    merchantEmail: String(business.email || business.workEmail || "—"),
+    merchantMobile: String(business.mobile ?? "—"),
+    registrationNumber: business.registrationNumber ? String(business.registrationNumber) : null,
+    plan,
+    planName: getPlanDisplayName(plan, billingCycle),
+    billingCycle,
+    amountPaise,
+    amountDisplay: formatAmountInr(amountPaise),
+    status,
+    paymentType: subscriptionId ? "subscription_auth" : "one_time",
+    orderId,
+    paymentId,
+    subscriptionId,
+    source: "legacy",
+    planStartedAt: business.planStartedAt ? String(business.planStartedAt) : null,
+    planExpiresAt: business.planExpiresAt ? String(business.planExpiresAt) : null,
+    createdAt,
+    updatedAt: business.updatedAt ? String(business.updatedAt) : null,
+  };
+}
+
+export function buildSubscriptionFromBusiness(business: BusinessPaymentRow): SubscriptionRecord | null {
+  if (!business.id) return null;
+
+  const hasPaymentActivity =
+    business.paymentStatus === "completed" ||
+    business.paymentStatus === "pending" ||
+    Boolean(business.paymentId) ||
+    Boolean(business.orderId) ||
+    Boolean(business.razorpaySubscriptionId);
+
+  if (!hasPaymentActivity) return null;
+
+  const plan = String(business.selectedPlan || "free");
+  const billingCycle = String(business.billingCycle || "monthly");
+
+  return {
+    businessId: String(business.id ?? ""),
+    businessName: String(business.businessName ?? "—"),
+    merchantEmail: String(business.email || business.workEmail || "—"),
+    merchantMobile: String(business.mobile ?? "—"),
+    registrationNumber: business.registrationNumber ? String(business.registrationNumber) : null,
+    plan,
+    planName: getPlanDisplayName(plan, billingCycle),
+    billingCycle,
+    paymentStatus: String(business.paymentStatus || "pending"),
+    paymentId: business.paymentId ? String(business.paymentId) : null,
+    orderId: business.orderId ? String(business.orderId) : null,
+    subscriptionId: business.razorpaySubscriptionId ? String(business.razorpaySubscriptionId) : null,
+    subscriptionStatus: business.subscriptionStatus ? String(business.subscriptionStatus) : null,
+    autoRenewEnabled: Boolean(business.autoRenewEnabled),
+    mandateStatus: business.mandateStatus ? String(business.mandateStatus) : "none",
+    planStartedAt: business.planStartedAt ? String(business.planStartedAt) : null,
+    planExpiresAt: business.planExpiresAt ? String(business.planExpiresAt) : null,
+    updatedAt: business.updatedAt ? String(business.updatedAt) : null,
+  };
+}
+
+export function mergePaymentHistory(
+  rows: MerchantPaymentRow[],
+  businesses: BusinessPaymentRow[],
+): PaymentRecord[] {
+  const history = rows.map(mapMerchantPaymentRow);
+  const legacyItems = businesses
+    .map(buildLegacyPaymentFromBusiness)
+    .filter((item): item is PaymentRecord => Boolean(item));
+
+  const merged = [...history];
+
+  for (const legacy of legacyItems) {
+    const alreadyRecorded = merged.some(
+      (item) =>
+        (legacy.paymentId && item.paymentId === legacy.paymentId) ||
+        (legacy.orderId && item.orderId === legacy.orderId) ||
+        (legacy.subscriptionId && item.subscriptionId === legacy.subscriptionId),
+    );
+    if (!alreadyRecorded) merged.push(legacy);
+  }
+
+  return merged.sort(
+    (a, b) => {
+      const aTime = parseFinderbTimestamp(a.createdAt)?.getTime() ?? 0;
+      const bTime = parseFinderbTimestamp(b.createdAt)?.getTime() ?? 0;
+      return bTime - aTime;
+    },
+  );
+}
+
+export function formatDateTime(value: string | null): string {
+  if (!value) return "—";
+  return formatDateTimeInr(value);
+}
