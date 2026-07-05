@@ -9,7 +9,11 @@ import { uploadToCloudinary } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
 import FinderBJobsContent, { FinderBJob } from "../../components/FinderBJobsContent";
 import PaymentsContent from "../../components/PaymentsContent";
+import MerchantDetailModal from "../../components/MerchantDetailModal";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
+import { planLabel } from "../../lib/merchantPlanAdmin";
+import { classifyStoredPassword, formatRevealedPassword } from "../../lib/passwordDisplay";
+import { getBusinessProfileUrl } from "../../lib/site";
 import {
   CATEGORY_LEAD_BADGE,
   PROFILE_LEAD_BADGE,
@@ -44,6 +48,8 @@ interface Merchant {
   selectedPlan: string;
   billingCycle: string;
   planExpiresAt: string | null;
+  slug: string | null;
+  city: string | null;
 }
 
 interface MerchantRequest {
@@ -108,6 +114,7 @@ interface BusinessData {
   createdAt: string;
   updatedAt: string;
   city: string | null;
+  slug: string | null;
   email: string | null;
   password: string | null;
   state: string | null;
@@ -618,6 +625,8 @@ export default function Dashboard() {
                 selectedPlan: m.selectedPlan || 'free',
                 billingCycle: m.billingCycle || 'monthly',
                 planExpiresAt: m.planExpiresAt || null,
+                slug: m.slug || null,
+                city: m.city || null,
               })));
             setMerchantRequests(merchantData
               .filter((m: any) => m.kycStatus === 'pending')
@@ -759,6 +768,8 @@ export default function Dashboard() {
         selectedPlan: "free",
         billingCycle: "monthly",
         planExpiresAt: null,
+        slug: null,
+        city: null,
       }
     ]);
     setMerchantRequests((prev: MerchantRequest[]) => prev.filter(r => r.id !== req.id));
@@ -1287,6 +1298,7 @@ export default function Dashboard() {
             merchantRequests={merchantRequests}
             setMerchantRequests={setMerchantRequests}
             adminSession={adminSession}
+            categories={categories}
           />
         );
       case "Leads":
@@ -2064,7 +2076,7 @@ function PasswordRevealCell({
     <td className="px-5 py-4">
       <div className="flex items-center gap-2">
         <span className="admin-mono bg-slate-50 px-2 py-1 rounded-md border border-slate-100 min-w-[80px]">
-          {isVisible ? visiblePasswords[id] : "••••••••"}
+          {isVisible ? formatRevealedPassword(visiblePasswords[id]) : "••••••••"}
         </span>
         <button onClick={() => (isVisible ? onToggleVisibility(id) : onRequestReveal(id))} className="admin-btn-ghost !p-1.5" title={isVisible ? "Hide password" : "Reveal password"}>
           {isVisible ? (
@@ -2101,7 +2113,7 @@ function UsersContent({ users, setUsers, adminSession }: { users: User[], setUse
 
   const fetchUserPassword = async (userId: string) => {
     const { data } = await createClient().from("User").select("password").eq("id", userId).single();
-    return data?.password ?? null;
+    return classifyStoredPassword(data?.password);
   };
 
   return (
@@ -2573,21 +2585,13 @@ function DisabledTabContent({ tabName }: { tabName: string }) {
   );
 }
 
-function planLabel(plan: string, billingCycle: string) {
-  const normalized = plan.toLowerCase();
-  if (normalized === "free" || normalized === "starter") return "Starter";
-  if (normalized === "growth") return "Growth";
-  if (billingCycle === "annual") return "Pro (Annual)";
-  if (normalized === "pro") return "Growth Pro";
-  return plan;
-}
-
-function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequests, setMerchantRequests, adminSession }: {
+function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequests, setMerchantRequests, adminSession, categories }: {
   activeMerchants: Merchant[],
   setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>,
   merchantRequests: MerchantRequest[],
   setMerchantRequests: Dispatch<SetStateAction<MerchantRequest[]>>,
-  adminSession: AdminSession | null
+  adminSession: AdminSession | null,
+  categories: Category[],
 }) {
   const [merchantTab, setMerchantTab] = useState<"Active" | "Pending">("Active");
   const [selectedBusiness, setSelectedBusiness] = useState<BusinessData | null>(null);
@@ -2602,7 +2606,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
 
   const fetchMerchantPassword = async (merchantId: string) => {
     const { data } = await createClient().from("Business").select("password").eq("id", merchantId).single();
-    return data?.password ?? null;
+    return classifyStoredPassword(data?.password);
   };
 
   const handleViewMerchant = async (id: string) => {
@@ -2721,6 +2725,8 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
       selectedPlan: "free",
       billingCycle: "monthly",
       planExpiresAt: null,
+      slug: null,
+      city: null,
     }]);
     setMerchantRequests(merchantRequests.filter(m => m.id !== merchant.id));
   };
@@ -2734,6 +2740,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
   };
 
   const toggleMerchantStatus = async (id: string, currentStatus: string) => {
+    if (!isController) return;
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
     const supabase = createClient();
     const { error } = await supabase
@@ -2756,6 +2763,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
   };
 
   const toggleFinderBVerified = async (id: string, currentStatus: boolean) => {
+    if (!isController) return;
     const newStatus = !currentStatus;
     const supabase = createClient();
     const { error } = await supabase
@@ -2778,6 +2786,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
   };
 
   const handleDeleteMerchant = async (id: string) => {
+    if (!isController) return;
     if (confirm("Are you sure you want to delete this merchant profile? This action cannot be undone.")) {
       const supabase = createClient();
       const { error } = await supabase
@@ -2797,6 +2806,90 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
         setSelectedBusiness(null);
       }
     }
+  };
+
+  const syncMerchantListEntry = (id: string, updates: Partial<BusinessData>) => {
+    setActiveMerchants((prev) =>
+      prev.map((m) => {
+        if (m.id !== id) return m;
+        return {
+          ...m,
+          name: updates.businessName || updates.fullName || m.name,
+          email: updates.workEmail || updates.email || m.email,
+          category: updates.category || m.category,
+          status: updates.status || m.status,
+          isFinderBVerified: updates.isFinderBVerified ?? m.isFinderBVerified,
+          planExpiresAt: updates.planExpiresAt !== undefined ? updates.planExpiresAt : m.planExpiresAt,
+          validUntil: updates.planExpiresAt
+            ? new Date(updates.planExpiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+            : m.validUntil,
+        };
+      }),
+    );
+  };
+
+  const handleSaveMerchant = async (updates: Partial<BusinessData>) => {
+    if (!isController || !selectedBusiness) return;
+
+    const supabase = createClient();
+    const payload = {
+      fullName: updates.fullName,
+      businessName: updates.businessName,
+      workEmail: updates.workEmail,
+      email: updates.email,
+      mobile: updates.mobile,
+      publicPhone: updates.publicPhone,
+      category: updates.category,
+      city: updates.city,
+      state: updates.state,
+      location: updates.location,
+      businessAddress: updates.businessAddress,
+      status: updates.status,
+      kycStatus: updates.kycStatus,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase
+      .from("Business")
+      .update(payload)
+      .eq("id", selectedBusiness.id)
+      .select("*")
+      .single();
+
+    if (error) {
+      alert("Error saving merchant: " + error.message);
+      return;
+    }
+
+    setSelectedBusiness(data);
+    syncMerchantListEntry(selectedBusiness.id, data);
+
+    if (data.kycStatus === "approved") {
+      setMerchantRequests((prev) => prev.filter((m) => m.id !== data.id));
+    }
+  };
+
+  const handleAdjustPlanExpiry = async (planExpiresAt: string | null) => {
+    if (!isController || !selectedBusiness) return;
+
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("Business")
+      .update({
+        planExpiresAt,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", selectedBusiness.id)
+      .select("*")
+      .single();
+
+    if (error) {
+      alert("Error updating subscription validity: " + error.message);
+      return;
+    }
+
+    setSelectedBusiness(data);
+    syncMerchantListEntry(selectedBusiness.id, data);
   };
 
   const verifiedCount = activeMerchants.filter((m) => m.isFinderBVerified).length;
@@ -2878,6 +2971,22 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                       <p className="admin-mono mt-0.5 text-[10px]">{merchant.registrationNumber}</p>
                     )}
                     <p className="text-xs text-slate-500 mt-1 truncate">{merchant.email || "—"}</p>
+                    <a
+                      href={getBusinessProfileUrl({
+                        id: merchant.id,
+                        businessName: merchant.name,
+                        slug: merchant.slug,
+                        city: merchant.city,
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline mt-1.5"
+                    >
+                      View public profile
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
                   </div>
                 </div>
                 <span className={`admin-badge shrink-0 ${merchant.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-600 border-slate-200"}`}>
@@ -2900,35 +3009,69 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+              {isController && (
+                <div className="mt-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
+                  <span className="text-[9px] text-slate-400 uppercase tracking-wide shrink-0">Login password</span>
+                  <span className="admin-mono text-[11px] text-slate-800 flex-1 truncate">
+                    {visiblePasswords[merchant.id]
+                      ? formatRevealedPassword(visiblePasswords[merchant.id])
+                      : "••••••••"}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => toggleFinderBVerified(merchant.id, merchant.isFinderBVerified)}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${merchant.isFinderBVerified ? "bg-emerald-500" : "bg-slate-200"}`}
-                    title="Toggle FinderB Verified badge (independent of KYC)"
+                    onClick={() => {
+                      if (visiblePasswords[merchant.id]) {
+                        setVisiblePasswords((p) => {
+                          const next = { ...p };
+                          delete next[merchant.id];
+                          return next;
+                        });
+                      } else {
+                        setPasswordModalTarget({
+                          id: merchant.id,
+                          label: `Enter your admin password to reveal the login password for ${merchant.name}.`,
+                        });
+                      }
+                    }}
+                    className="admin-btn-ghost text-[10px] py-1 px-2 shrink-0"
                   >
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition ${merchant.isFinderBVerified ? "translate-x-5" : "translate-x-0"}`} />
+                    {visiblePasswords[merchant.id] ? "Hide" : "Reveal"}
                   </button>
-                  <span className="text-[10px] text-slate-500">FinderB badge</span>
+                </div>
+              )}
+
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {isController && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => toggleFinderBVerified(merchant.id, merchant.isFinderBVerified)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${merchant.isFinderBVerified ? "bg-emerald-500" : "bg-slate-200"}`}
+                        title="Toggle FinderB Verified badge (controller only)"
+                      >
+                        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition ${merchant.isFinderBVerified ? "translate-x-5" : "translate-x-0"}`} />
+                      </button>
+                      <span className="text-[10px] text-slate-500">FinderB badge</span>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button onClick={() => handleViewMerchant(merchant.id)} className="admin-btn-secondary text-[10px] py-1.5 px-3">Details</button>
-                  <button onClick={() => toggleMerchantStatus(merchant.id, merchant.status)} className="admin-icon-btn" title={merchant.status === "Active" ? "Deactivate" : "Activate"}>
-                    {merchant.status === "Active" ? (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    ) : (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    )}
-                  </button>
                   {isController && (
-                    <button onClick={() => setPasswordModalTarget({ id: merchant.id, label: `Enter your admin password to view the password for ${merchant.name}.` })} className="admin-icon-btn" title="View password">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 11-12 0 6 6 0 0112 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 14v.01" /></svg>
-                    </button>
+                    <>
+                      <button onClick={() => toggleMerchantStatus(merchant.id, merchant.status)} className="admin-icon-btn" title={merchant.status === "Active" ? "Deactivate" : "Activate"}>
+                        {merchant.status === "Active" ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        )}
+                      </button>
+                      <button onClick={() => handleDeleteMerchant(merchant.id)} className="admin-icon-btn-danger" title="Delete">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </>
                   )}
-                  <button onClick={() => handleDeleteMerchant(merchant.id)} className="admin-icon-btn-danger" title="Delete">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
                 </div>
               </div>
             </div>
@@ -2952,13 +3095,28 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
                     <span className="text-xs text-slate-500">{req.email || "—"}</span>
                     <span className="text-xs text-slate-400">Requested {req.date}</span>
                   </div>
+                  <a
+                    href={getBusinessProfileUrl({ id: req.id, businessName: req.name })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline mt-1.5"
+                  >
+                    View public profile
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 items-center">
                 <button onClick={() => handleViewMerchant(req.id)} className="admin-btn-secondary text-xs py-2">View details</button>
-                <button onClick={() => handleReject(req.id)} className="admin-btn-danger text-xs py-2">Reject</button>
-                <button onClick={() => handleDeleteMerchant(req.id)} className="admin-btn-danger text-xs py-2">Delete</button>
-                <button onClick={() => handleApprove(req)} className="admin-btn-primary text-xs py-2">Approve</button>
+                {isController && (
+                  <>
+                    <button onClick={() => handleReject(req.id)} className="admin-btn-danger text-xs py-2">Reject</button>
+                    <button onClick={() => handleDeleteMerchant(req.id)} className="admin-btn-danger text-xs py-2">Delete</button>
+                    <button onClick={() => handleApprove(req)} className="admin-btn-primary text-xs py-2">Approve</button>
+                  </>
+                )}
               </div>
             </div>
           ))}
@@ -2973,177 +3131,39 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
       )}
 
       {selectedBusiness && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col">
-            <div className="relative px-8 pt-8 pb-6 bg-gradient-to-br from-slate-900 via-slate-800 to-primary/90 text-white">
-              <button
-                type="button"
-                onClick={() => setSelectedBusiness(null)}
-                className="absolute top-4 right-4 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-              <div className="flex items-start gap-5">
-                <div className="relative shrink-0">
-                  {selectedBusiness.profilePictureUrl ? (
-                    <img src={selectedBusiness.profilePictureUrl} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-white/20" />
-                  ) : (
-                    <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-xl font-semibold">
-                      {(selectedBusiness.businessName || selectedBusiness.fullName || "?").charAt(0)}
-                    </div>
-                  )}
-                  {selectedBusiness.isFinderBVerified && (
-                    <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-2 border-slate-900 flex items-center justify-center">
-                      <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                    </span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-xl font-semibold tracking-tight truncate">{selectedBusiness.businessName || selectedBusiness.fullName}</h2>
-                  <p className="text-sm text-white/70 mt-1">{selectedBusiness.registrationNumber || selectedBusiness.id}</p>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide ${selectedBusiness.status === "Active" ? "bg-emerald-500/20 text-emerald-100" : "bg-white/10 text-white/80"}`}>
-                      {selectedBusiness.status || "Inactive"}
-                    </span>
-                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide bg-white/10 text-white/80">
-                      KYC: {selectedBusiness.kycStatus || "—"}
-                    </span>
-                    {selectedBusiness.isFinderBVerified && (
-                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide bg-emerald-500/25 text-emerald-100">
-                        FinderB Verified
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
-              <div className="rounded-xl border border-amber-100 bg-amber-50/80 px-4 py-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-amber-900">FinderB Verified badge</p>
-                    <p className="text-xs text-amber-800/80 mt-0.5">Shows the green badge on the public listing. This is separate from KYC, which is handled by a third-party provider.</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleFinderBVerified(selectedBusiness.id, selectedBusiness.isFinderBVerified)}
-                    className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${selectedBusiness.isFinderBVerified ? "bg-emerald-500" : "bg-slate-300"}`}
-                  >
-                    <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${selectedBusiness.isFinderBVerified ? "translate-x-5" : "translate-x-0"}`} />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Contact & profile</h3>
-                  <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
-                    {[
-                      { label: "Owner", value: selectedBusiness.fullName },
-                      { label: "Work email", value: selectedBusiness.workEmail },
-                      { label: "Login email", value: selectedBusiness.email },
-                      { label: "Mobile", value: selectedBusiness.mobile },
-                      { label: "Public phone", value: selectedBusiness.publicPhone },
-                      { label: "Category", value: selectedBusiness.category },
-                    ].map((row) => (
-                      <div key={row.label} className="flex justify-between gap-4 px-4 py-3">
-                        <span className="text-xs text-slate-500">{row.label}</span>
-                        <span className="text-xs font-medium text-slate-900 text-right">{row.value || "—"}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Location & subscription</h3>
-                  <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
-                    {[
-                      { label: "City", value: selectedBusiness.city },
-                      { label: "State", value: selectedBusiness.state },
-                      { label: "Address", value: selectedBusiness.businessAddress },
-                      { label: "Plan", value: planLabel(selectedBusiness.selectedPlan, selectedBusiness.billingCycle) },
-                      { label: "Payment", value: selectedBusiness.paymentStatus },
-                      { label: "Plan expires", value: selectedBusiness.planExpiresAt ? new Date(selectedBusiness.planExpiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—" },
-                      { label: "Auto-debit", value: selectedBusiness.autoRenewEnabled ? "Enabled" : "Off" },
-                    ].map((row) => (
-                      <div key={row.label} className="flex justify-between gap-4 px-4 py-3">
-                        <span className="text-xs text-slate-500">{row.label}</span>
-                        <span className="text-xs font-medium text-slate-900 text-right capitalize">{row.value || "—"}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {(selectedBusiness.paymentId || selectedBusiness.orderId || selectedBusiness.razorpaySubscriptionId) && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Payment references</h3>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 grid gap-2">
-                    {selectedBusiness.paymentId && <p className="text-[11px] font-mono text-slate-700 break-all"><span className="text-slate-400">Payment ID:</span> {selectedBusiness.paymentId}</p>}
-                    {selectedBusiness.orderId && <p className="text-[11px] font-mono text-slate-700 break-all"><span className="text-slate-400">Order ID:</span> {selectedBusiness.orderId}</p>}
-                    {selectedBusiness.razorpaySubscriptionId && <p className="text-[11px] font-mono text-slate-700 break-all"><span className="text-slate-400">Subscription ID:</span> {selectedBusiness.razorpaySubscriptionId}</p>}
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Gallery ({selectedBusiness.images?.length || 0}/5)</h3>
-                  {(selectedBusiness.images?.length || 0) < 5 && (
-                    <label className={`cursor-pointer px-3 py-1.5 bg-primary text-white rounded-lg text-[10px] font-medium hover:bg-primary/90 transition-all flex items-center gap-2 ${isUploading === "businessImages" ? "opacity-50 pointer-events-none" : ""}`}>
-                      {isUploading === "businessImages" ? "Uploading…" : "Add image"}
-                      <input type="file" className="hidden" accept="image/*" onChange={handleBusinessImageUpload} />
-                    </label>
-                  )}
-                </div>
-                {selectedBusiness.images && selectedBusiness.images.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {selectedBusiness.images.map((url, index) => (
-                      <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
-                        <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
-                        {selectedBusiness.profilePictureUrl === url && (
-                          <span className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold rounded-full">Profile</span>
-                        )}
-                        <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                          <button type="button" onClick={() => handleSetProfilePicture(url)} className="px-2 py-1 bg-white text-slate-900 text-[9px] font-semibold rounded-lg">Set profile</button>
-                          <button type="button" onClick={() => handleDeleteBusinessImage(url)} className="px-2 py-1 bg-rose-500 text-white text-[9px] font-semibold rounded-lg">Delete</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="py-10 border-2 border-dashed border-slate-100 rounded-xl text-center text-slate-400 text-xs">No gallery images</div>
-                )}
-              </div>
-            </div>
-
-            <div className="px-8 py-5 border-t border-slate-100 bg-slate-50 flex flex-wrap items-center justify-between gap-3">
-              <button type="button" onClick={() => handleDeleteMerchant(selectedBusiness.id)} className="admin-btn-danger text-xs">Delete profile</button>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setSelectedBusiness(null)} className="admin-btn-secondary text-xs">Close</button>
-                <button type="button" onClick={() => toggleMerchantStatus(selectedBusiness.id, selectedBusiness.status)} className="admin-btn-secondary text-xs">
-                  {selectedBusiness.status === "Active" ? "Deactivate listing" : "Activate listing"}
-                </button>
-                {selectedBusiness.kycStatus === "pending" && (
-                  <>
-                    <button type="button" onClick={() => { handleReject(selectedBusiness.id); setSelectedBusiness(null); }} className="admin-btn-danger text-xs">Reject</button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleApprove({ id: selectedBusiness.id, name: selectedBusiness.businessName || selectedBusiness.fullName || "", email: selectedBusiness.workEmail || selectedBusiness.email || "", category: selectedBusiness.category || "", date: "" });
-                        setSelectedBusiness(null);
-                      }}
-                      className="admin-btn-primary text-xs"
-                    >
-                      Approve partner
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <MerchantDetailModal
+          business={selectedBusiness}
+          categories={categories.map((c) => c.name)}
+          isController={isController}
+          isUploading={isUploading}
+          setIsUploading={setIsUploading}
+          onClose={() => setSelectedBusiness(null)}
+          onSave={handleSaveMerchant}
+          onAdjustExpiry={handleAdjustPlanExpiry}
+          onDelete={() => handleDeleteMerchant(selectedBusiness.id)}
+          onApprove={() => {
+            handleApprove({
+              id: selectedBusiness.id,
+              name: selectedBusiness.businessName || selectedBusiness.fullName || "",
+              email: selectedBusiness.workEmail || selectedBusiness.email || "",
+              category: selectedBusiness.category || "",
+              date: "",
+            });
+            setSelectedBusiness(null);
+          }}
+          onReject={() => {
+            handleReject(selectedBusiness.id);
+            setSelectedBusiness(null);
+          }}
+          onToggleStatus={() => toggleMerchantStatus(selectedBusiness.id, selectedBusiness.status)}
+          onToggleFinderBVerified={() => toggleFinderBVerified(selectedBusiness.id, selectedBusiness.isFinderBVerified)}
+          onImageUpload={async (file) => {
+            const fakeEvent = { target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>;
+            await handleBusinessImageUpload(fakeEvent);
+          }}
+          onDeleteImage={handleDeleteBusinessImage}
+          onSetProfilePicture={handleSetProfilePicture}
+        />
       )}
     </div>
   );

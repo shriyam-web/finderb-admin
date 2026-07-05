@@ -45,26 +45,13 @@ export type SubscriptionRecord = {
   updatedAt: string | null;
 };
 
-const PLAN_NAMES: Record<string, string> = {
-  free: "Starter",
-  starter: "Starter",
-  growth: "Growth",
-  pro: "Pro",
-};
-
 export function getPlanDisplayName(planId?: string | null, billingCycle?: string | null): string {
   const normalized = String(planId || "free").toLowerCase();
   const cycle = billingCycle?.toLowerCase();
 
-  if (normalized === "free" || normalized === "starter") return PLAN_NAMES.starter;
-  if (normalized === "growth") return PLAN_NAMES.growth;
-  if (normalized === "pro") {
-    if (cycle === "monthly") return PLAN_NAMES.growth;
-    return PLAN_NAMES.pro;
-  }
-  if (cycle === "monthly") return PLAN_NAMES.growth;
-  if (cycle === "annual") return PLAN_NAMES.pro;
-  return PLAN_NAMES.starter;
+  if (normalized === "free" || normalized === "starter") return "Starter";
+  if (cycle === "annual") return "Pro — Annual";
+  return "Growth — Monthly";
 }
 
 export function formatAmountInr(amountPaise: number): string {
