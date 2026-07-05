@@ -9,6 +9,7 @@ import { uploadToCloudinary } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
 import FinderBJobsContent, { FinderBJob } from "../../components/FinderBJobsContent";
 import PaymentsContent from "../../components/PaymentsContent";
+import DashboardContent from "../../components/DashboardContent";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
 import { planLabel } from "../../lib/merchantPlanAdmin";
@@ -23,7 +24,8 @@ import {
   leadBadgeClassName,
 } from "../../lib/leadBadges";
 import { formatActivityDate, formatActivityTime, parseFinderbTimestamp } from "../../lib/formatDateTime";
-import { formatAmountInr, mergePaymentHistory } from "../../lib/paymentUtils";
+import { mergePaymentHistory } from "../../lib/paymentUtils";
+import { computeDashboardStats } from "../../lib/dashboardStats";
 
 interface User {
   id: string;
@@ -872,24 +874,21 @@ export default function Dashboard() {
       .slice(0, 10);
   }, [users, allBusinessData, leads]);
 
-  const revenueStats = useMemo(() => {
-    const payments = mergePaymentHistory(
-      merchantPaymentRows as Parameters<typeof mergePaymentHistory>[0],
-      allBusinessData as Parameters<typeof mergePaymentHistory>[1],
-    );
-    const completed = payments.filter((p) => p.status === "completed");
-    const pending = payments.filter((p) => p.status === "pending");
-    const failed = payments.filter((p) => p.status === "failed");
-    const totalRevenuePaise = completed.reduce((sum, p) => sum + p.amountPaise, 0);
-
-    return {
-      totalRevenueDisplay: formatAmountInr(totalRevenuePaise),
-      completed: completed.length,
-      pending: pending.length,
-      failed: failed.length,
-      totalRecords: payments.length,
-    };
-  }, [merchantPaymentRows, allBusinessData]);
+  const dashboardStats = useMemo(
+    () =>
+      computeDashboardStats({
+        users,
+        activeMerchants,
+        merchantRequests,
+        leads,
+        allBusinessData,
+        merchantPaymentRows: merchantPaymentRows as Parameters<typeof mergePaymentHistory>[0],
+        categoriesCount: categories.length,
+        blogsCount: blogs.length,
+        jobsCount: finderBJobs.length,
+      }),
+    [users, activeMerchants, merchantRequests, leads, allBusinessData, merchantPaymentRows, categories, blogs, finderBJobs],
+  );
 
   const handleUpdateCategory = async (catName: string, updates: Partial<Category>) => {
     const supabase = createClient();
@@ -1277,17 +1276,21 @@ export default function Dashboard() {
 
     switch (activeTab) {
       case "Dashboard":
-        return <DashboardContent
-          setActiveTab={setActiveTab}
-          merchantRequests={merchantRequests}
-          handleApprove={handleDashboardApprove}
-          handleReject={handleDashboardReject}
-          totalUsers={users.length}
-          totalMerchants={activeMerchants.length}
-          chartData={chartData}
-          recentActivities={recentActivities}
-          revenueStats={revenueStats}
-        />;
+        return (
+          <DashboardContent
+            setActiveTab={setActiveTab}
+            merchantRequests={merchantRequests}
+            handleApprove={handleDashboardApprove}
+            handleReject={handleDashboardReject}
+            chartData={chartData}
+            recentActivities={recentActivities}
+            stats={dashboardStats}
+            platformDateLabel={platformDateLabel}
+            platformTimeLabel={platformTimeLabel}
+            loginLogs={loginLogs}
+            maintenanceMode={settings.maintenance}
+          />
+        );
       case "Users":
         return <UsersContent users={users} setUsers={setUsers} adminSession={adminSession} />;
       case "Merchants":
@@ -1367,17 +1370,21 @@ export default function Dashboard() {
       case "Manage Admins":
         return <ManageAdminsContent admins={admins} setAdmins={setAdmins} adminSession={adminSession} />;
       default:
-        return <DashboardContent
-          setActiveTab={setActiveTab}
-          merchantRequests={merchantRequests}
-          handleApprove={handleDashboardApprove}
-          handleReject={handleDashboardReject}
-          totalUsers={users.length}
-          totalMerchants={activeMerchants.length}
-          chartData={chartData}
-          recentActivities={recentActivities}
-          revenueStats={revenueStats}
-        />;
+        return (
+          <DashboardContent
+            setActiveTab={setActiveTab}
+            merchantRequests={merchantRequests}
+            handleApprove={handleDashboardApprove}
+            handleReject={handleDashboardReject}
+            chartData={chartData}
+            recentActivities={recentActivities}
+            stats={dashboardStats}
+            platformDateLabel={platformDateLabel}
+            platformTimeLabel={platformTimeLabel}
+            loginLogs={loginLogs}
+            maintenanceMode={settings.maintenance}
+          />
+        );
     }
   };
 
@@ -1509,220 +1516,6 @@ export default function Dashboard() {
 }
 
 // --- Content Components ---
-
-function DashboardContent({ 
-  setActiveTab, 
-  merchantRequests, 
-  handleApprove, 
-  handleReject, 
-  totalUsers, 
-  totalMerchants,
-  chartData,
-  recentActivities,
-  revenueStats,
-}: {
-  setActiveTab: (tab: string) => void;
-  merchantRequests: MerchantRequest[];
-  handleApprove: (req: MerchantRequest) => void;
-  handleReject: (req: MerchantRequest) => void;
-  totalUsers: number;
-  totalMerchants: number;
-  chartData: any[];
-  recentActivities: Activity[];
-  revenueStats: {
-    totalRevenueDisplay: string;
-    completed: number;
-    pending: number;
-    failed: number;
-    totalRecords: number;
-  };
-}) {
-  const [showRevenue, setShowRevenue] = useState(false);
-
-  const maxVal = Math.max(...chartData.map(d => d.users + d.merchants), 10);
-  const weekTotal = chartData.reduce((sum, d) => sum + d.users + d.merchants, 0);
-
-  return (
-    <div className="space-y-6">
-      <div className="admin-platform-hero">
-        <div className="admin-platform-hero-grid" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-          <div>
-            <p className="text-xs font-semibold tracking-[0.16em] text-primary-200/90">FINDERB PLATFORM</p>
-            <h1 className="text-2xl lg:text-3xl font-semibold text-white mt-2 tracking-tight">Mission control</h1>
-            <p className="text-sm text-slate-300 mt-2 max-w-xl leading-relaxed">
-              Central operations hub for users, partners, content, and platform health across the entire FinderB ecosystem.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <button onClick={() => setActiveTab("Users")} className="admin-btn-secondary !bg-white/10 !border-white/20 !text-white hover:!bg-white/15 text-xs">Manage users</button>
-            <button onClick={() => setActiveTab("Merchants")} className="admin-btn-primary text-xs">Partner queue ({merchantRequests.length})</button>
-          </div>
-        </div>
-      </div>
-
-      <div className="admin-kpi-grid">
-        <div className="admin-kpi admin-kpi-primary">
-          <p className="admin-kpi-label">Registered users</p>
-          <p className="admin-kpi-value">{totalUsers.toLocaleString()}</p>
-          <p className="admin-kpi-meta">End-user accounts on platform</p>
-        </div>
-        <div className="admin-kpi admin-kpi-secondary">
-          <p className="admin-kpi-label">Active partners</p>
-          <p className="admin-kpi-value">{totalMerchants.toLocaleString()}</p>
-          <p className="admin-kpi-meta">Verified merchant profiles</p>
-        </div>
-        <div className="admin-kpi admin-kpi-success">
-          <p className="admin-kpi-label">Pending verification</p>
-          <p className="admin-kpi-value">{merchantRequests.length}</p>
-          <p className="admin-kpi-meta">KYC awaiting review</p>
-        </div>
-        <div className="admin-kpi admin-kpi-neutral">
-          <p className="admin-kpi-label">Weekly sign-ups</p>
-          <p className="admin-kpi-value">{weekTotal.toLocaleString()}</p>
-          <p className="admin-kpi-meta">Users + partners (7 days)</p>
-        </div>
-      </div>
-
-      <div className="admin-card overflow-hidden">
-        <div className="admin-card-header">
-          <div>
-            <h3 className="admin-card-title">Platform revenue</h3>
-            <p className="admin-card-description">Merchant subscription payments and transaction totals</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowRevenue((v) => !v)}
-            className="admin-btn-secondary text-xs py-1.5 px-3"
-          >
-            {showRevenue ? "Hide revenue" : "Show revenue"}
-          </button>
-        </div>
-        {showRevenue ? (
-          <div className="px-6 pb-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wide">Total revenue</p>
-                <p className="text-2xl font-semibold text-slate-900 mt-1 tabular-nums">{revenueStats.totalRevenueDisplay}</p>
-                <p className="text-[10px] text-slate-400 mt-1">Completed payments only</p>
-              </div>
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
-                <p className="text-[10px] font-medium text-emerald-700 uppercase tracking-wide">Completed</p>
-                <p className="text-2xl font-semibold text-emerald-800 mt-1 tabular-nums">{revenueStats.completed}</p>
-              </div>
-              <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4">
-                <p className="text-[10px] font-medium text-amber-800 uppercase tracking-wide">Pending</p>
-                <p className="text-2xl font-semibold text-amber-900 mt-1 tabular-nums">{revenueStats.pending}</p>
-              </div>
-              <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-4">
-                <p className="text-[10px] font-medium text-rose-700 uppercase tracking-wide">Failed</p>
-                <p className="text-2xl font-semibold text-rose-800 mt-1 tabular-nums">{revenueStats.failed}</p>
-              </div>
-            </div>
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <p className="text-xs text-slate-500">{revenueStats.totalRecords} payment record{revenueStats.totalRecords === 1 ? "" : "s"} on file</p>
-              <button type="button" onClick={() => setActiveTab("Payments & Subscriptions")} className="admin-link text-xs">
-                Open financial ledger →
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="px-6 pb-6">
-            <p className="text-sm text-slate-500">Revenue figures are hidden. Use &quot;Show revenue&quot; to view payment totals.</p>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <div className="xl:col-span-7 admin-card p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="admin-card-title">Growth trajectory</h3>
-              <p className="admin-card-description">New registrations over the last 7 days</p>
-            </div>
-            <div className="flex gap-4 text-xs text-slate-500">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-primary" />Users</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-secondary" />Partners</span>
-            </div>
-          </div>
-          <div className="h-64 flex items-end justify-between gap-2 px-1 border-b border-slate-100 pb-2">
-            {chartData.map((d, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end max-w-[48px] group">
-                <div className="w-full flex flex-col items-center gap-0.5 h-full justify-end">
-                  <div className="admin-chart-bar bg-primary/85 hover:bg-primary w-full max-w-[20px]" style={{ height: `${Math.max((d.users / maxVal) * 100, 2)}%` }} title={`${d.users} users`} />
-                  <div className="admin-chart-bar bg-secondary/85 hover:bg-secondary w-full max-w-[20px]" style={{ height: `${Math.max((d.merchants / maxVal) * 100, 2)}%` }} title={`${d.merchants} partners`} />
-                </div>
-                <span className="text-[11px] font-medium text-slate-400 group-hover:text-primary transition-colors">{d.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="xl:col-span-5 admin-card flex flex-col min-h-[360px]">
-          <div className="admin-card-header">
-            <div>
-              <h3 className="admin-card-title">Verification queue</h3>
-              <p className="admin-card-description">{merchantRequests.length} partner{merchantRequests.length !== 1 ? "s" : ""} awaiting action</p>
-            </div>
-            <button onClick={() => setActiveTab("Merchants")} className="admin-link">Open queue</button>
-          </div>
-          <div className="flex-1 divide-y divide-slate-100 overflow-y-auto max-h-[320px] custom-scrollbar">
-            {merchantRequests.length > 0 ? merchantRequests.slice(0, 8).map((merchant) => (
-              <div key={merchant.id} className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="admin-avatar">{merchant.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{merchant.name}</p>
-                    <p className="text-xs text-slate-500 truncate">{merchant.category}{merchant.email ? ` · ${merchant.email}` : ""}</p>
-                  </div>
-                </div>
-                <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => handleApprove(merchant)} className="admin-icon-btn !text-emerald-600 hover:!bg-emerald-50" title="Approve">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" /></svg>
-                  </button>
-                  <button onClick={() => handleReject(merchant)} className="admin-icon-btn-danger" title="Reject">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
-              </div>
-            )) : (
-              <div className="admin-empty">No partners in the verification queue</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="admin-card">
-        <div className="admin-card-header">
-          <div>
-            <h3 className="admin-card-title">Activity stream</h3>
-            <p className="admin-card-description">Latest platform events across users, partners, and leads</p>
-          </div>
-          <button className="admin-link" onClick={() => setActiveTab("Users")}>View all</button>
-        </div>
-        <div className="divide-y divide-slate-100">
-          {recentActivities.length > 0 ? recentActivities.slice(0, 12).map((activity) => (
-            <div key={activity.id} className="admin-timeline-item">
-              <div className={`admin-avatar shrink-0 ${activity.type === "user" ? "!bg-blue-50 !text-blue-600 !border-blue-100" : activity.type === "merchant" ? "!bg-emerald-50 !text-emerald-600 !border-emerald-100" : "!bg-amber-50 !text-amber-600 !border-amber-100"}`}>
-                {activity.type === "user" ? "U" : activity.type === "merchant" ? "M" : "L"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900">{activity.title}</p>
-                <p className="text-xs text-slate-500 mt-0.5 truncate">{activity.description}</p>
-              </div>
-              <div className="text-right shrink-0">
-                <p className="text-xs text-slate-600 tabular-nums">{formatActivityDate(activity.timestamp)}</p>
-                <p className="text-[11px] text-slate-400 tabular-nums mt-0.5">{formatActivityTime(activity.timestamp)}</p>
-              </div>
-            </div>
-          )) : (
-            <div className="admin-empty">No recent activity recorded</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function LeadsContent({ leads, categories, merchants }: { 
   leads: Lead[], 

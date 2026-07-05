@@ -270,3 +270,114 @@ export function formatDateTime(value: string | null): string {
   if (!value) return "—";
   return formatDateTimeInr(value);
 }
+
+export type PaymentAnalytics = {
+  totalRevenuePaise: number;
+  mtdRevenuePaise: number;
+  completedCount: number;
+  pendingCount: number;
+  failedCount: number;
+  activeSubscriptions: number;
+  autoDebitEnabled: number;
+  expiring7d: number;
+  expiring30d: number;
+  expiredPlans: number;
+  monthlyRevenuePaise: number;
+  annualRevenuePaise: number;
+  avgTransactionPaise: number;
+  opensCount: number;
+  planBreakdown: { starter: number; growthMonthly: number; proAnnual: number };
+};
+
+function daysUntilExpiry(planExpiresAt: string | null): number | null {
+  const expiry = parseFinderbTimestamp(planExpiresAt);
+  if (!expiry) return null;
+  const now = new Date();
+  return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+export function computePaymentAnalytics(
+  payments: PaymentRecord[],
+  subscriptions: SubscriptionRecord[],
+): PaymentAnalytics {
+  const completed = payments.filter((p) => p.status === "completed");
+  const pending = payments.filter((p) => p.status === "pending");
+  const failed = payments.filter((p) => p.status === "failed");
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const totalRevenuePaise = completed.reduce((sum, p) => sum + p.amountPaise, 0);
+  const mtdRevenuePaise = completed
+    .filter((p) => {
+      const created = parseFinderbTimestamp(p.createdAt);
+      return created && created >= monthStart;
+    })
+    .reduce((sum, p) => sum + p.amountPaise, 0);
+
+  const monthlyRevenuePaise = completed
+    .filter((p) => p.billingCycle === "monthly")
+    .reduce((sum, p) => sum + p.amountPaise, 0);
+  const annualRevenuePaise = completed
+    .filter((p) => p.billingCycle === "annual")
+    .reduce((sum, p) => sum + p.amountPaise, 0);
+
+  const activeSubscriptions = subscriptions.filter(
+    (s) => s.paymentStatus === "completed" && s.subscriptionStatus === "active",
+  ).length;
+  const autoDebitEnabled = subscriptions.filter((s) => s.autoRenewEnabled).length;
+
+  let expiring7d = 0;
+  let expiring30d = 0;
+  let expiredPlans = 0;
+  for (const sub of subscriptions) {
+    const days = daysUntilExpiry(sub.planExpiresAt);
+    if (days === null) continue;
+    if (days < 0) expiredPlans += 1;
+    else if (days <= 7) expiring7d += 1;
+    else if (days <= 30) expiring30d += 1;
+  }
+
+  const mandatePending = subscriptions.filter(
+    (s) => s.mandateStatus === "pending" || s.mandateStatus === "created",
+  ).length;
+
+  const planBreakdown = { starter: 0, growthMonthly: 0, proAnnual: 0 };
+  for (const sub of subscriptions) {
+    if (sub.planName === "Starter") planBreakdown.starter += 1;
+    else if (sub.billingCycle === "annual") planBreakdown.proAnnual += 1;
+    else planBreakdown.growthMonthly += 1;
+  }
+
+  const opensCount =
+    pending.length + failed.length + expiring7d + mandatePending;
+
+  return {
+    totalRevenuePaise,
+    mtdRevenuePaise,
+    completedCount: completed.length,
+    pendingCount: pending.length,
+    failedCount: failed.length,
+    activeSubscriptions,
+    autoDebitEnabled,
+    expiring7d,
+    expiring30d,
+    expiredPlans,
+    monthlyRevenuePaise,
+    annualRevenuePaise,
+    avgTransactionPaise: completed.length ? Math.round(totalRevenuePaise / completed.length) : 0,
+    opensCount,
+    planBreakdown,
+  };
+}
+
+export function getExpiryUrgency(planExpiresAt: string | null): "expired" | "critical" | "warning" | "ok" | "none" {
+  const days = daysUntilExpiry(planExpiresAt);
+  if (days === null) return "none";
+  if (days < 0) return "expired";
+  if (days <= 7) return "critical";
+  if (days <= 30) return "warning";
+  return "ok";
+}
+
+export { daysUntilExpiry };
