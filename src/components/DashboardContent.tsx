@@ -22,14 +22,7 @@ import {
 } from "lucide-react";
 import { formatActivityDate, formatActivityTime } from "../lib/formatDateTime";
 import type { DashboardStats } from "../lib/dashboardStats";
-
-type MerchantRequest = {
-  id: string;
-  name: string;
-  email: string;
-  category: string;
-  date: string;
-};
+import type { MerchantRequest } from "../lib/merchantRequest";
 
 type ActivityItem = {
   id: string;
@@ -157,8 +150,8 @@ export default function DashboardContent({
 }: {
   setActiveTab: (tab: string) => void;
   merchantRequests: MerchantRequest[];
-  handleApprove: (req: MerchantRequest) => void;
-  handleReject: (req: MerchantRequest) => void;
+  handleApprove: (req: MerchantRequest) => void | Promise<void>;
+  handleReject: (req: MerchantRequest) => void | Promise<void>;
   chartData: ChartDay[];
   recentActivities: ActivityItem[];
   stats: DashboardStats;

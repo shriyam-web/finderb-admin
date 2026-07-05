@@ -14,6 +14,7 @@ import MerchantDetailModal from "../../components/MerchantDetailModal";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
 import { planLabel } from "../../lib/merchantPlanAdmin";
 import { classifyStoredPassword, formatRevealedPassword } from "../../lib/passwordDisplay";
+import type { MerchantRequest } from "../../lib/merchantRequest";
 import { getBusinessProfileUrl } from "../../lib/site";
 import {
   CATEGORY_LEAD_BADGE,
@@ -52,14 +53,6 @@ interface Merchant {
   planExpiresAt: string | null;
   slug: string | null;
   city: string | null;
-}
-
-interface MerchantRequest {
-  id: string;
-  name: string;
-  email: string;
-  category: string;
-  date: string;
 }
 
 interface AdminSession {
@@ -102,6 +95,13 @@ interface BusinessData {
   panUrl: string | null;
   aadharUrl: string | null;
   msmeGstUrl: string | null;
+  cinNumber: string | null;
+  bankIfsc: string | null;
+  bankAccountNumber: string | null;
+  upiId: string | null;
+  razorpayContactId: string | null;
+  razorpayFundAccountId: string | null;
+  bankName: string | null;
   kycStatus: string;
   hasVerifiedBadge: boolean;
   paymentStatus: string;
@@ -111,6 +111,7 @@ interface BusinessData {
   planExpiresAt: string | null;
   razorpaySubscriptionId: string | null;
   subscriptionStatus: string | null;
+  subscriptionCancelledAt: string | null;
   autoRenewEnabled: boolean;
   mandateStatus: string | null;
   createdAt: string;
@@ -120,10 +121,30 @@ interface BusinessData {
   email: string | null;
   password: string | null;
   state: string | null;
+  country: string | null;
   status: string;
   images: string[] | null;
   profilePictureUrl: string | null;
   isFinderBVerified: boolean;
+  about: string | null;
+  discountRange: string | null;
+  displayName: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  keywords: string[] | null;
+  latitude: number | null;
+  longitude: number | null;
+  paymentModes: string[] | null;
+  profileQrLink: string | null;
+  rating: number | null;
+  serviceCategory: string | null;
+  timings: unknown;
+  website: string | null;
+  whatsappNumber: string | null;
+  yearsInBusiness: number | null;
+  youtubeUrl: string | null;
+  review: unknown;
+  reviewReply: unknown;
 }
 
 interface Category {
@@ -637,7 +658,8 @@ export default function Dashboard() {
                 name: m.businessName || m.fullName || 'Unknown Merchant',
                 email: m.workEmail || m.email || '',
                 category: m.category || 'Other',
-                date: new Date(m.createdAt || Date.now()).toLocaleDateString()
+                date: new Date(m.createdAt || Date.now()).toLocaleDateString(),
+                registrationNumber: m.registrationNumber || null,
               })));
           } else {
             console.warn("⚠️ No business data returned from Supabase");
@@ -765,7 +787,7 @@ export default function Dashboard() {
         validUntil: "—",
         status: "Active",
         isFinderBVerified: false,
-        registrationNumber: null,
+        registrationNumber: req.registrationNumber || null,
         paymentStatus: "pending",
         selectedPlan: "free",
         billingCycle: "monthly",
@@ -2394,8 +2416,12 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
   const [passwordModalTarget, setPasswordModalTarget] = useState<{ id: string; label: string } | null>(null);
   const isController = adminSession?.role === "controller";
 
-  const filteredActiveMerchants = activeMerchants.filter((m) => matchesSearchTerm(searchTerm, m.id, m.name, m.email));
-  const filteredMerchantRequests = merchantRequests.filter((m) => matchesSearchTerm(searchTerm, m.id, m.name, m.email));
+  const filteredActiveMerchants = activeMerchants.filter((m) =>
+    matchesSearchTerm(searchTerm, m.id, m.name, m.email, m.registrationNumber, m.category),
+  );
+  const filteredMerchantRequests = merchantRequests.filter((m) =>
+    matchesSearchTerm(searchTerm, m.id, m.name, m.email, m.registrationNumber, m.category),
+  );
 
   const fetchMerchantPassword = async (merchantId: string) => {
     const { data } = await createClient().from("Business").select("password").eq("id", merchantId).single();
@@ -2513,7 +2539,6 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
       validUntil: "—",
       status: "Active",
       isFinderBVerified: false,
-      registrationNumber: null,
       paymentStatus: "pending",
       selectedPlan: "free",
       billingCycle: "monthly",
@@ -2697,7 +2722,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative">
-            <input type="text" placeholder="Search partners…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="admin-search w-72" />
+            <input type="text" placeholder="Search by name, email, or merchant ID…" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="admin-search w-72" />
             <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           </div>
           <div className="admin-segmented">
@@ -2934,6 +2959,25 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
           onSave={handleSaveMerchant}
           onAdjustExpiry={handleAdjustPlanExpiry}
           onDelete={() => handleDeleteMerchant(selectedBusiness.id)}
+          hasStoredPassword={Boolean(classifyStoredPassword(selectedBusiness.password))}
+          loginPasswordDisplay={
+            visiblePasswords[selectedBusiness.id]
+              ? formatRevealedPassword(visiblePasswords[selectedBusiness.id])
+              : null
+          }
+          onRevealLoginPassword={() =>
+            setPasswordModalTarget({
+              id: selectedBusiness.id,
+              label: `Enter your admin password to reveal the login password for ${selectedBusiness.businessName || selectedBusiness.fullName || "this merchant"}.`,
+            })
+          }
+          onHideLoginPassword={() =>
+            setVisiblePasswords((prev) => {
+              const next = { ...prev };
+              delete next[selectedBusiness.id];
+              return next;
+            })
+          }
           onApprove={() => {
             handleApprove({
               id: selectedBusiness.id,
@@ -2941,6 +2985,7 @@ function MerchantsContent({ activeMerchants, setActiveMerchants, merchantRequest
               email: selectedBusiness.workEmail || selectedBusiness.email || "",
               category: selectedBusiness.category || "",
               date: "",
+              registrationNumber: selectedBusiness.registrationNumber || null,
             });
             setSelectedBusiness(null);
           }}

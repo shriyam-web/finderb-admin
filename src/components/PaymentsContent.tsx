@@ -5,12 +5,16 @@ import {
   AlertCircle,
   ArrowDownRight,
   ArrowUpRight,
+  BarChart3,
   Calendar,
   ChevronDown,
   ChevronRight,
   Copy,
   CreditCard,
   Filter,
+  LayoutGrid,
+  List,
+  PieChart,
   RefreshCw,
   Search,
   TrendingUp,
@@ -21,6 +25,7 @@ import {
 import { createClient } from "../../utils/supabase/client";
 import { parseFinderbTimestamp } from "../lib/formatDateTime";
 import {
+  buildRevenueChart,
   buildSubscriptionFromBusiness,
   computePaymentAnalytics,
   daysUntilExpiry,
@@ -29,6 +34,7 @@ import {
   getExpiryUrgency,
   mergePaymentHistory,
   paymentTypeLabel,
+  sumCompletedRevenue,
   type PaymentRecord,
   type SubscriptionRecord,
 } from "../lib/paymentUtils";
@@ -56,6 +62,8 @@ type BusinessPaymentRow = {
 };
 
 type TabId = "overview" | "transactions" | "subscriptions" | "tracking";
+type SubViewMode = "grid" | "table";
+type TxnSort = "date_desc" | "date_asc" | "amount_desc" | "amount_asc";
 type StatusFilter = "all" | "completed" | "pending" | "failed";
 type BillingFilter = "all" | "monthly" | "annual";
 type PlanFilter = "all" | "starter" | "growth_monthly" | "pro_annual";
@@ -180,12 +188,14 @@ function StatCard({
   sub,
   icon: Icon,
   accent = "slate",
+  onClick,
 }: {
   label: string;
   value: string | number;
   sub?: string;
   icon: React.ComponentType<{ className?: string }>;
   accent?: "primary" | "emerald" | "amber" | "rose" | "sky" | "slate";
+  onClick?: () => void;
 }) {
   const styles = {
     primary: { card: "from-primary/10 to-primary/5 border-primary/20", icon: "text-primary" },
@@ -196,8 +206,14 @@ function StatCard({
     slate: { card: "from-slate-500/10 to-slate-500/5 border-slate-200/60", icon: "text-slate-700" },
   }[accent];
 
+  const Wrapper = onClick ? "button" : "div";
+
   return (
-    <div className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 shadow-sm ${styles.card}`}>
+    <Wrapper
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 shadow-sm text-left w-full transition-all ${styles.card} ${onClick ? "hover:shadow-md hover:-translate-y-0.5 cursor-pointer" : ""}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
@@ -208,8 +224,35 @@ function StatCard({
           <Icon className="w-5 h-5" />
         </div>
       </div>
+    </Wrapper>
+  );
+}
+
+function SkeletonBlock({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-slate-200/70 ${className}`} />;
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-3 p-5">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="flex items-center gap-4">
+          <SkeletonBlock className="h-10 w-10 rounded-full shrink-0" />
+          <div className="flex-1 space-y-2">
+            <SkeletonBlock className="h-3 w-1/3" />
+            <SkeletonBlock className="h-2 w-1/2" />
+          </div>
+          <SkeletonBlock className="h-6 w-16" />
+        </div>
+      ))}
     </div>
   );
+}
+
+function planAccent(planName: string, billingCycle: string) {
+  if (planName === "Starter") return "border-l-slate-400";
+  if (billingCycle === "annual") return "border-l-secondary";
+  return "border-l-primary";
 }
 
 function SelectFilter({
@@ -255,6 +298,8 @@ export default function PaymentsContent({
   const [showFilters, setShowFilters] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
+  const [subViewMode, setSubViewMode] = useState<SubViewMode>("grid");
+  const [txnSort, setTxnSort] = useState<TxnSort>("date_desc");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -381,6 +426,11 @@ export default function PaymentsContent({
     [payments, subscriptions],
   );
 
+  const revenueChart = useMemo(() => buildRevenueChart(payments, 7), [payments]);
+  const chartMax = Math.max(...revenueChart.map((d) => d.amountPaise), 1);
+
+  const statusTotal = analytics.completedCount + analytics.pendingCount + analytics.failedCount;
+
   const matchesSearch = useCallback((...fields: (string | null | undefined)[]) => {
     const query = search.trim().toLowerCase();
     if (!query) return true;
@@ -436,6 +486,23 @@ export default function PaymentsContent({
       return true;
     });
   }, [subscriptions, statusFilter, billingFilter, planFilter, expiryFilter, autoDebitFilter, mandateFilter, subStatusFilter, matchesSearch]);
+
+  const filteredRevenuePaise = useMemo(
+    () => sumCompletedRevenue(filteredPayments),
+    [filteredPayments],
+  );
+
+  const sortedPayments = useMemo(() => {
+    const list = [...filteredPayments];
+    list.sort((a, b) => {
+      if (txnSort === "amount_desc") return b.amountPaise - a.amountPaise;
+      if (txnSort === "amount_asc") return a.amountPaise - b.amountPaise;
+      const aTime = parseFinderbTimestamp(a.createdAt)?.getTime() ?? 0;
+      const bTime = parseFinderbTimestamp(b.createdAt)?.getTime() ?? 0;
+      return txnSort === "date_asc" ? aTime - bTime : bTime - aTime;
+    });
+    return list;
+  }, [filteredPayments, txnSort]);
 
   const opens = useMemo(() => {
     const items: { id: string; type: "pending" | "failed" | "expiring" | "mandate"; title: string; detail: string; severity: "high" | "medium" }[] = [];
@@ -648,14 +715,34 @@ export default function PaymentsContent({
     <div className="space-y-6">
       {/* Hero header */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-primary/90 text-white p-6 sm:p-8 shadow-xl">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.08),_transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.1),_transparent_55%)]" />
+        <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-primary/25 blur-3xl" />
         <div className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/50">Finance</p>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mt-1">Payments & Subscriptions</h1>
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="px-2.5 py-1 rounded-full bg-white/10 text-[10px] font-semibold uppercase tracking-wider">Razorpay · Ledger</span>
+              {opens.length > 0 && (
+                <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-100 text-[10px] font-bold">
+                  {opens.length} open
+                </span>
+              )}
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Payments & Subscriptions</h1>
             <p className="text-sm text-white/70 mt-2 max-w-xl">
-              Revenue intelligence, Razorpay audit trail, subscription health, and actionable opens in one place.
+              Revenue intelligence, mandate health, subscription lifecycle, and Razorpay audit trail.
             </p>
+            <div className="flex flex-wrap gap-2 mt-4">
+              {[
+                { label: "Success rate", value: statusTotal ? `${Math.round((analytics.completedCount / statusTotal) * 100)}%` : "—" },
+                { label: "Records", value: payments.length },
+                { label: "Merchants", value: subscriptions.length },
+              ].map((pill) => (
+                <span key={pill.label} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 border border-white/10 text-[11px]">
+                  <span className="text-white/50">{pill.label}</span>
+                  <span className="font-bold tabular-nums">{pill.value}</span>
+                </span>
+              ))}
+            </div>
             {lastRefreshed && (
               <p className="text-[11px] text-white/40 mt-3">
                 Last synced {lastRefreshed.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
@@ -683,23 +770,41 @@ export default function PaymentsContent({
 
       {/* Opens alert strip */}
       {opens.length > 0 && (
-        <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50/50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-amber-500/15">
-              <Zap className="w-5 h-5 text-amber-700" />
+        <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50/50 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-amber-500/15">
+                <Zap className="w-5 h-5 text-amber-700" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-amber-900">{opens.length} open item{opens.length !== 1 ? "s" : ""} need attention</p>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {analytics.pendingCount > 0 && (
+                    <button type="button" onClick={() => { setStatusFilter("pending"); setActiveTab("transactions"); }} className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-semibold hover:bg-amber-200 transition-colors">
+                      {analytics.pendingCount} pending
+                    </button>
+                  )}
+                  {analytics.failedCount > 0 && (
+                    <button type="button" onClick={() => { setStatusFilter("failed"); setActiveTab("transactions"); }} className="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-semibold hover:bg-rose-200 transition-colors">
+                      {analytics.failedCount} failed
+                    </button>
+                  )}
+                  {analytics.expiring7d > 0 && (
+                    <button type="button" onClick={() => { setExpiryFilter("expiring_7d"); setActiveTab("subscriptions"); }} className="px-2 py-0.5 rounded-md bg-orange-100 text-orange-800 text-[10px] font-semibold hover:bg-orange-200 transition-colors">
+                      {analytics.expiring7d} expiring
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-amber-900">{opens.length} open item{opens.length !== 1 ? "s" : ""} need attention</p>
-              <p className="text-xs text-amber-800/80">Pending payments, failures, expiring plans, or incomplete mandates</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab("tracking")}
+              className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors shadow-sm"
+            >
+              View tracking
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setActiveTab("tracking")}
-            className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors shadow-sm"
-          >
-            View tracking
-          </button>
         </div>
       )}
 
@@ -711,6 +816,7 @@ export default function PaymentsContent({
           sub={`MTD ${formatAmountInr(analytics.mtdRevenuePaise)}`}
           icon={Wallet}
           accent="primary"
+          onClick={() => setActiveTab("overview")}
         />
         <StatCard
           label="Completed"
@@ -718,6 +824,7 @@ export default function PaymentsContent({
           sub={`Avg ${formatAmountInr(analytics.avgTransactionPaise)} / txn`}
           icon={TrendingUp}
           accent="emerald"
+          onClick={() => { setStatusFilter("completed"); setActiveTab("transactions"); }}
         />
         <StatCard
           label="Active subscriptions"
@@ -725,6 +832,7 @@ export default function PaymentsContent({
           sub={`${analytics.autoDebitEnabled} with auto-debit`}
           icon={CreditCard}
           accent="sky"
+          onClick={() => setActiveTab("subscriptions")}
         />
         <StatCard
           label="Opens"
@@ -732,7 +840,84 @@ export default function PaymentsContent({
           sub={`${analytics.expiring7d} expiring ≤7d · ${analytics.failedCount} failed`}
           icon={AlertCircle}
           accent={analytics.opensCount > 0 ? "amber" : "slate"}
+          onClick={() => setActiveTab("tracking")}
         />
+      </div>
+
+      {/* Financial pulse — revenue chart + status mix */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-8 rounded-2xl border border-slate-200/80 bg-white shadow-sm p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                7-day revenue pulse
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Completed payments per day (IST)</p>
+            </div>
+            <span className="text-lg font-bold text-slate-900 tabular-nums">
+              {formatAmountInr(revenueChart.reduce((s, d) => s + d.amountPaise, 0))}
+              <span className="text-[10px] font-normal text-slate-400 ml-1">week total</span>
+            </span>
+          </div>
+          <div className="h-44 flex items-end justify-between gap-2">
+            {revenueChart.map((day, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group max-w-[64px]">
+                <span className="text-[9px] font-semibold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
+                  {day.count > 0 ? formatAmountInr(day.amountPaise) : "—"}
+                </span>
+                <div
+                  className="w-full max-w-[28px] rounded-t-lg bg-gradient-to-t from-primary to-primary/60 hover:from-primary hover:to-primary/80 transition-all"
+                  style={{ height: `${Math.max((day.amountPaise / chartMax) * 100, day.amountPaise ? 6 : 2)}%` }}
+                  title={`${day.count} payment${day.count !== 1 ? "s" : ""}`}
+                />
+                <span className="text-[10px] font-medium text-slate-500">{day.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="lg:col-span-4 rounded-2xl border border-slate-200/80 bg-white shadow-sm p-6">
+          <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+            <PieChart className="w-4 h-4 text-primary" />
+            Payment status mix
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5 mb-4">{statusTotal} total attempts</p>
+          <div className="h-3 rounded-full overflow-hidden flex bg-slate-100">
+            {statusTotal > 0 && (
+              <>
+                <div className="bg-emerald-500 transition-all" style={{ width: `${(analytics.completedCount / statusTotal) * 100}%` }} title="Completed" />
+                <div className="bg-amber-400 transition-all" style={{ width: `${(analytics.pendingCount / statusTotal) * 100}%` }} title="Pending" />
+                <div className="bg-rose-500 transition-all" style={{ width: `${(analytics.failedCount / statusTotal) * 100}%` }} title="Failed" />
+              </>
+            )}
+          </div>
+          <div className="mt-4 space-y-2.5">
+            {[
+              { label: "Completed", count: analytics.completedCount, color: "bg-emerald-500", filter: "completed" as StatusFilter },
+              { label: "Pending", count: analytics.pendingCount, color: "bg-amber-400", filter: "pending" as StatusFilter },
+              { label: "Failed", count: analytics.failedCount, color: "bg-rose-500", filter: "failed" as StatusFilter },
+            ].map((row) => (
+              <button
+                key={row.label}
+                type="button"
+                onClick={() => { setStatusFilter(row.filter); setActiveTab("transactions"); }}
+                className="w-full flex items-center justify-between text-[11px] hover:bg-slate-50 rounded-lg px-2 py-1.5 -mx-2 transition-colors"
+              >
+                <span className="flex items-center gap-2 text-slate-700">
+                  <span className={`w-2 h-2 rounded-full ${row.color}`} />
+                  {row.label}
+                </span>
+                <span className="font-bold tabular-nums text-slate-900">
+                  {row.count}
+                  <span className="text-slate-400 font-normal ml-1">
+                    ({statusTotal ? Math.round((row.count / statusTotal) * 100) : 0}%)
+                  </span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Secondary metrics */}
@@ -825,7 +1010,7 @@ export default function PaymentsContent({
             </div>
             <div className="divide-y divide-slate-50">
               {loading ? (
-                <p className="px-5 py-10 text-center text-slate-500 text-sm">Loading…</p>
+                <LoadingSkeleton />
               ) : filteredPayments.length === 0 ? (
                 <p className="px-5 py-10 text-center text-slate-500 text-sm">No transactions match filters.</p>
               ) : (
@@ -861,7 +1046,7 @@ export default function PaymentsContent({
             </div>
             <div className="divide-y divide-slate-50">
               {loading ? (
-                <p className="px-5 py-10 text-center text-slate-500 text-sm">Loading…</p>
+                <LoadingSkeleton />
               ) : filteredSubscriptions.length === 0 ? (
                 <p className="px-5 py-10 text-center text-slate-500 text-sm">No subscriptions match filters.</p>
               ) : (
@@ -898,17 +1083,33 @@ export default function PaymentsContent({
 
       {activeTab === "transactions" && (
         <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+          <div className="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-slate-900">Transaction ledger</h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                {filteredPayments.length} of {payments.length} records · click row to expand
+                {sortedPayments.length} of {payments.length} records · click row to expand
               </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-[11px]">
+                <span className="text-emerald-700/70">Filtered revenue </span>
+                <span className="font-bold text-emerald-800 tabular-nums">{formatAmountInr(filteredRevenuePaise)}</span>
+              </div>
+              <select
+                value={txnSort}
+                onChange={(e) => setTxnSort(e.target.value as TxnSort)}
+                className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-800"
+              >
+                <option value="date_desc">Newest first</option>
+                <option value="date_asc">Oldest first</option>
+                <option value="amount_desc">Highest amount</option>
+                <option value="amount_asc">Lowest amount</option>
+              </select>
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[11px]">
-              <thead className="bg-slate-50/80 text-[9px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
+              <thead className="bg-slate-50/80 text-[9px] uppercase tracking-wider text-slate-500 border-b border-slate-100 sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3 w-8" />
                   <th className="px-4 py-3 font-semibold">Date</th>
@@ -924,10 +1125,10 @@ export default function PaymentsContent({
               <tbody className="divide-y divide-slate-50">
                 {loading ? (
                   <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">Loading transactions…</td></tr>
-                ) : filteredPayments.length === 0 ? (
+                ) : sortedPayments.length === 0 ? (
                   <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">No transactions match your filters.</td></tr>
                 ) : (
-                  filteredPayments.map((payment) => {
+                  sortedPayments.map((payment) => {
                     const isExpanded = expandedId === payment.id;
                     return (
                       <Fragment key={payment.id}>
@@ -993,13 +1194,91 @@ export default function PaymentsContent({
 
       {activeTab === "subscriptions" && (
         <div className="space-y-4">
-          <p className="text-xs text-slate-500 px-1">
-            Showing {filteredSubscriptions.length} subscription{filteredSubscriptions.length !== 1 ? "s" : ""}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+            <p className="text-xs text-slate-500">
+              Showing <strong className="text-slate-800">{filteredSubscriptions.length}</strong> subscription{filteredSubscriptions.length !== 1 ? "s" : ""}
+            </p>
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 border border-slate-200/60">
+              <button
+                type="button"
+                onClick={() => setSubViewMode("grid")}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${subViewMode === "grid" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                Cards
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubViewMode("table")}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${subViewMode === "table" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"}`}
+              >
+                <List className="w-3.5 h-3.5" />
+                Table
+              </button>
+            </div>
+          </div>
           {loading ? (
-            <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center text-slate-500">Loading subscriptions…</div>
+            <div className="rounded-2xl border border-slate-200 bg-white"><LoadingSkeleton /></div>
           ) : filteredSubscriptions.length === 0 ? (
-            <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center text-slate-500">No subscriptions match your filters.</div>
+            <div className="rounded-2xl border border-slate-200 bg-white py-20 text-center">
+              <CreditCard className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              <p className="text-sm font-medium text-slate-700">No subscriptions match your filters</p>
+              <p className="text-xs text-slate-400 mt-1">Try clearing filters or refreshing data</p>
+            </div>
+          ) : subViewMode === "table" ? (
+            <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-[11px]">
+                  <thead className="bg-slate-50/80 text-[9px] uppercase tracking-wider text-slate-500 border-b border-slate-100">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Merchant</th>
+                      <th className="px-4 py-3 font-semibold">Plan</th>
+                      <th className="px-4 py-3 font-semibold">Payment</th>
+                      <th className="px-4 py-3 font-semibold">Subscription</th>
+                      <th className="px-4 py-3 font-semibold">Auto-debit</th>
+                      <th className="px-4 py-3 font-semibold">Expires</th>
+                      <th className="px-4 py-3 font-semibold">Mandate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {filteredSubscriptions.map((sub) => {
+                      const urgency = getExpiryUrgency(sub.planExpiresAt);
+                      const days = daysUntilExpiry(sub.planExpiresAt);
+                      return (
+                        <tr key={sub.businessId} className="hover:bg-slate-50/60 align-top">
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-slate-900">{sub.businessName}</p>
+                            <p className="text-[10px] text-slate-500">{sub.merchantEmail}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-medium">{sub.planName}</p>
+                            <p className="text-[10px] capitalize text-slate-500">{sub.billingCycle}</p>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex px-2 py-0.5 rounded-md border text-[10px] font-semibold capitalize ${statusBadgeClass(sub.paymentStatus)}`}>
+                              {sub.paymentStatus}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 capitalize text-slate-700">{sub.subscriptionStatus || "—"}</td>
+                          <td className="px-4 py-3">
+                            <span className={sub.autoRenewEnabled ? "text-emerald-700 font-medium" : "text-slate-400"}>
+                              {sub.autoRenewEnabled ? "On" : "Off"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="text-slate-700 whitespace-nowrap">{formatDateTime(sub.planExpiresAt)}</p>
+                            <span className={`inline-flex mt-1 px-1.5 py-0.5 rounded text-[9px] font-semibold ${expiryBadgeClass(urgency)}`}>
+                              {days === null ? "—" : days < 0 ? "Expired" : `${days}d`}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 capitalize text-slate-600">{sub.mandateStatus}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {filteredSubscriptions.map((sub) => {
@@ -1009,7 +1288,7 @@ export default function PaymentsContent({
                 return (
                   <div
                     key={sub.businessId}
-                    className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                    className={`rounded-2xl border border-slate-200/80 border-l-4 ${planAccent(sub.planName, sub.billingCycle)} bg-white shadow-sm overflow-hidden hover:shadow-md transition-shadow`}
                   >
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-3">
@@ -1131,7 +1410,7 @@ export default function PaymentsContent({
             </div>
             <div className="p-5 space-y-0">
               {loading ? (
-                <p className="text-center text-slate-500 py-8 text-sm">Loading…</p>
+                <LoadingSkeleton />
               ) : filteredPayments.length === 0 ? (
                 <p className="text-center text-slate-500 py-8 text-sm">No activity to show.</p>
               ) : (

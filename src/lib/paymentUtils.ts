@@ -381,3 +381,41 @@ export function getExpiryUrgency(planExpiresAt: string | null): "expired" | "cri
 }
 
 export { daysUntilExpiry };
+
+export type RevenueChartDay = {
+  label: string;
+  amountPaise: number;
+  count: number;
+};
+
+export function buildRevenueChart(payments: PaymentRecord[], days = 7): RevenueChartDay[] {
+  const now = new Date();
+  const result: RevenueChartDay[] = [];
+
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateKey = d.toDateString();
+    const label = d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric" });
+
+    const dayPayments = payments.filter((p) => {
+      if (p.status !== "completed") return false;
+      const created = parseFinderbTimestamp(p.createdAt);
+      return created && created.toDateString() === dateKey;
+    });
+
+    result.push({
+      label,
+      amountPaise: dayPayments.reduce((sum, p) => sum + p.amountPaise, 0),
+      count: dayPayments.length,
+    });
+  }
+
+  return result;
+}
+
+export function sumCompletedRevenue(payments: PaymentRecord[]): number {
+  return payments
+    .filter((p) => p.status === "completed")
+    .reduce((sum, p) => sum + p.amountPaise, 0);
+}

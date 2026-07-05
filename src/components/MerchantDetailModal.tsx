@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { formatDateTimeInr } from "../lib/formatDateTime";
 import {
   collapsePlanExpiry,
@@ -25,7 +25,20 @@ export type MerchantBusinessRecord = {
   billingCycle: string;
   isVerified: boolean;
   registrationNumber: string | null;
+  panNumber: string | null;
+  aadharNumber: string | null;
+  panUrl: string | null;
+  aadharUrl: string | null;
+  msmeGstUrl: string | null;
+  cinNumber: string | null;
+  bankIfsc: string | null;
+  bankAccountNumber: string | null;
+  upiId: string | null;
+  razorpayContactId: string | null;
+  razorpayFundAccountId: string | null;
+  bankName: string | null;
   kycStatus: string;
+  hasVerifiedBadge: boolean;
   paymentStatus: string;
   paymentId: string | null;
   orderId: string | null;
@@ -33,6 +46,7 @@ export type MerchantBusinessRecord = {
   planExpiresAt: string | null;
   razorpaySubscriptionId: string | null;
   subscriptionStatus: string | null;
+  subscriptionCancelledAt: string | null;
   autoRenewEnabled: boolean;
   mandateStatus: string | null;
   createdAt: string;
@@ -41,10 +55,31 @@ export type MerchantBusinessRecord = {
   slug: string | null;
   email: string | null;
   state: string | null;
+  country: string | null;
   status: string;
   images: string[] | null;
   profilePictureUrl: string | null;
   isFinderBVerified: boolean;
+  about: string | null;
+  discountRange: string | null;
+  displayName: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  keywords: string[] | null;
+  latitude: number | null;
+  longitude: number | null;
+  paymentModes: string[] | null;
+  profileQrLink: string | null;
+  rating: number | null;
+  serviceCategory: string | null;
+  timings: unknown;
+  website: string | null;
+  whatsappNumber: string | null;
+  yearsInBusiness: number | null;
+  youtubeUrl: string | null;
+  review: unknown;
+  reviewReply: unknown;
+  password?: string | null;
 };
 
 type MerchantDetailModalProps = {
@@ -64,6 +99,10 @@ type MerchantDetailModalProps = {
   onDeleteImage: (url: string) => Promise<void>;
   onSetProfilePicture: (url: string) => Promise<void>;
   setIsUploading: (value: string | null) => void;
+  loginPasswordDisplay?: string | null;
+  hasStoredPassword?: boolean;
+  onRevealLoginPassword?: () => void;
+  onHideLoginPassword?: () => void;
 };
 
 function Field({
@@ -166,6 +205,120 @@ function formatStatusLabel(value: string | null | undefined): string {
   return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function formatList(value: string[] | null | undefined): string {
+  if (!value?.length) return "—";
+  return value.join(", ");
+}
+
+function formatNumber(value: number | null | undefined, digits = 0): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  return digits > 0 ? value.toFixed(digits) : String(value);
+}
+
+function formatCoords(lat: number | null | undefined, lng: number | null | undefined): string {
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return "—";
+  return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+}
+
+function formatTimings(timings: unknown): string {
+  if (!timings || typeof timings !== "object") return "—";
+  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  return days
+    .map((day) => {
+      const slot = (timings as Record<string, unknown>)[day];
+      if (!slot || slot === "Closed") return `${day}: Closed`;
+      if (typeof slot === "string") return `${day}: ${slot}`;
+      if (typeof slot === "object" && slot !== null) {
+        const parsed = slot as { isClosed?: boolean; open?: string; close?: string };
+        if (parsed.isClosed) return `${day}: Closed`;
+        if (parsed.open && parsed.close) return `${day}: ${parsed.open} – ${parsed.close}`;
+      }
+      return `${day}: —`;
+    })
+    .join("\n");
+}
+
+function formatReviewSummary(review: unknown): string {
+  if (!review) return "—";
+  if (Array.isArray(review)) {
+    if (review.length === 0) return "No reviews";
+    const ratings = review
+      .map((item) => (typeof item === "object" && item && "rating" in item ? Number((item as { rating?: number }).rating) : NaN))
+      .filter((n) => !Number.isNaN(n));
+    const avg = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : null;
+    return avg ? `${review.length} review(s) · avg ${avg}` : `${review.length} review(s)`;
+  }
+  return "Stored";
+}
+
+function formatReviewReply(reviewReply: unknown): string {
+  if (!reviewReply) return "—";
+  if (typeof reviewReply === "string") return reviewReply.trim() || "—";
+  if (typeof reviewReply === "object" && reviewReply !== null && "content" in reviewReply) {
+    const content = (reviewReply as { content?: string }).content;
+    return content?.trim() || "—";
+  }
+  return "—";
+}
+
+function InfoSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">{title}</h3>
+        {description && <p className="text-[11px] text-slate-500 mt-0.5">{description}</p>}
+      </div>
+      <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 bg-white shadow-sm overflow-hidden">{children}</div>
+    </div>
+  );
+}
+
+function Row({ label, value, mono = false }: { label: string; value: string | null | undefined; mono?: boolean }) {
+  return (
+    <div className="flex justify-between gap-4 px-4 py-3">
+      <span className="text-xs text-slate-500 shrink-0">{label}</span>
+      <span className={`text-xs font-medium text-slate-900 text-right break-all ${mono ? "font-mono" : ""}`}>
+        {value?.trim() ? value : "—"}
+      </span>
+    </div>
+  );
+}
+
+function BlockRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="px-4 py-3 space-y-1">
+      <span className="text-xs text-slate-500">{label}</span>
+      <p className="text-xs font-medium text-slate-900 whitespace-pre-wrap break-words">{value || "—"}</p>
+    </div>
+  );
+}
+
+function LinkRow({ label, href }: { label: string; href: string | null | undefined }) {
+  const trimmed = href?.trim();
+  if (!trimmed) return <Row label={label} value={null} />;
+  return (
+    <div className="flex justify-between gap-4 px-4 py-3">
+      <span className="text-xs text-slate-500 shrink-0">{label}</span>
+      <a href={trimmed} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary hover:underline text-right break-all">
+        {trimmed}
+      </a>
+    </div>
+  );
+}
+
+function DocRow({ label, url }: { label: string; url: string | null | undefined }) {
+  const trimmed = url?.trim();
+  if (!trimmed) return <Row label={label} value={null} />;
+  return (
+    <div className="flex justify-between gap-4 px-4 py-3">
+      <span className="text-xs text-slate-500 shrink-0">{label}</span>
+      <a href={trimmed} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-primary hover:underline">
+        View document
+      </a>
+    </div>
+  );
+}
+
 export default function MerchantDetailModal({
   business,
   categories,
@@ -182,6 +335,10 @@ export default function MerchantDetailModal({
   onImageUpload,
   onDeleteImage,
   onSetProfilePicture,
+  loginPasswordDisplay,
+  hasStoredPassword,
+  onRevealLoginPassword,
+  onHideLoginPassword,
 }: MerchantDetailModalProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -253,7 +410,7 @@ export default function MerchantDetailModal({
 
   return (
     <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col">
         <div className="relative px-8 pt-8 pb-6 bg-gradient-to-br from-slate-900 via-slate-800 to-primary/90 text-white">
           <button
             type="button"
@@ -308,6 +465,9 @@ export default function MerchantDetailModal({
                   <span className="px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide bg-white/10 text-white/80">
                     KYC: {display.kycStatus || "—"}
                   </span>
+                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide ${paymentStatusTone(display.paymentStatus) === "success" ? "bg-emerald-500/20 text-emerald-100" : "bg-white/10 text-white/80"}`}>
+                    Payment: {formatStatusLabel(display.paymentStatus)}
+                  </span>
                   <span className="px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide bg-primary/30 text-white">
                     {planLabel(display.selectedPlan, display.billingCycle)}
                   </span>
@@ -358,6 +518,22 @@ export default function MerchantDetailModal({
             </div>
           ) : null}
 
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatTile label="Merchant ID" value={display.registrationNumber || "—"} />
+            <StatTile label="Listing rating" value={formatNumber(display.rating, 1)} />
+            <StatTile label="KYC verified" value={display.isVerified ? "Yes" : "No"} tone={display.isVerified ? "success" : "neutral"} />
+            <StatTile label="Verified badge" value={display.hasVerifiedBadge ? "Active" : "None"} tone={display.hasVerifiedBadge ? "info" : "neutral"} />
+          </div>
+
+          <InfoSection title="Account & identifiers">
+            <Row label="Merchant ID" value={display.registrationNumber} mono />
+            <Row label="Internal ID" value={display.id} mono />
+            <Row label="URL slug" value={display.slug} mono />
+            <Row label="Joined" value={formatDateTimeInr(display.createdAt)} />
+            <Row label="Last updated" value={formatDateTimeInr(display.updatedAt)} />
+            <LinkRow label="Profile QR link" href={display.profileQrLink} />
+          </InfoSection>
+
           <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-slate-50 overflow-hidden shadow-sm">
             <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
@@ -369,8 +545,9 @@ export default function MerchantDetailModal({
               </span>
             </div>
 
-            <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <StatTile label="Payment" value={formatStatusLabel(business.paymentStatus)} tone={paymentStatusTone(business.paymentStatus)} />
+              <StatTile label="Plan" value={business.selectedPlan || "—"} />
               <StatTile label="Billing cycle" value={business.billingCycle === "annual" ? "Annual" : "Monthly"} />
               <StatTile label="Auto-debit" value={business.autoRenewEnabled ? "Enabled" : "Off"} tone={business.autoRenewEnabled ? "info" : "neutral"} />
               <StatTile label="Mandate" value={formatStatusLabel(business.mandateStatus || "none")} />
@@ -385,6 +562,12 @@ export default function MerchantDetailModal({
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Current expiry</p>
                 <p className="text-sm font-medium text-slate-900 mt-1">{formatDateTimeInr(business.planExpiresAt)}</p>
               </div>
+              {business.subscriptionCancelledAt && (
+                <div className="rounded-xl border border-slate-100 bg-white px-4 py-3">
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Subscription cancelled</p>
+                  <p className="text-sm font-medium text-slate-900 mt-1">{formatDateTimeInr(business.subscriptionCancelledAt)}</p>
+                </div>
+              )}
             </div>
 
             {business.subscriptionStatus && (
@@ -462,11 +645,13 @@ export default function MerchantDetailModal({
               <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Contact & profile</h3>
               <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 bg-white shadow-sm overflow-hidden">
                 <Field label="Business name" value={display.businessName || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ businessName: v })} />
+                <Field label="Display name" value={display.displayName || ""} editing={false} />
                 <Field label="Owner" value={display.fullName || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ fullName: v })} />
                 <Field label="Work email" value={display.workEmail || ""} editing={isEditing && isController} type="email" onChange={(v) => patchDraft({ workEmail: v })} />
                 <Field label="Login email" value={display.email || ""} editing={isEditing && isController} type="email" onChange={(v) => patchDraft({ email: v })} />
                 <Field label="Mobile" value={display.mobile || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ mobile: v })} />
                 <Field label="Public phone" value={display.publicPhone || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ publicPhone: v })} />
+                <Field label="WhatsApp" value={display.whatsappNumber || ""} editing={false} />
                 <Field
                   label="Category"
                   value={display.category || ""}
@@ -475,6 +660,7 @@ export default function MerchantDetailModal({
                   options={categoryOptions}
                   onChange={(v) => patchDraft({ category: v })}
                 />
+                <Field label="Service category" value={display.serviceCategory || ""} editing={false} />
                 <Field
                   label="Listing status"
                   value={display.status || "Inactive"}
@@ -499,11 +685,74 @@ export default function MerchantDetailModal({
               <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 bg-white shadow-sm overflow-hidden">
                 <Field label="City" value={display.city || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ city: v })} />
                 <Field label="State" value={display.state || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ state: v })} />
-                <Field label="Location" value={display.location || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ location: v })} />
+                <Field label="Country" value={display.country || ""} editing={false} />
+                <Field label="Location label" value={display.location || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ location: v })} />
+                <Field label="Coordinates" value={formatCoords(display.latitude, display.longitude)} editing={false} />
                 <Field label="Address" value={display.businessAddress || ""} editing={isEditing && isController} type="textarea" onChange={(v) => patchDraft({ businessAddress: v })} />
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InfoSection title="Brand & listing" description="Public profile content from the merchant dashboard.">
+              <BlockRow label="About" value={display.about || ""} />
+              <Row label="Search keywords" value={formatList(display.keywords)} />
+              <Row label="Discount offer" value={display.discountRange} />
+              <Row label="Year established" value={display.yearsInBusiness != null ? String(display.yearsInBusiness) : null} />
+              <Row label="Customer reviews" value={formatReviewSummary(display.review)} />
+              <BlockRow label="Default review reply" value={formatReviewReply(display.reviewReply)} />
+            </InfoSection>
+
+            <InfoSection title="Social & web">
+              <LinkRow label="Website" href={display.website} />
+              <LinkRow label="Instagram" href={display.instagramUrl} />
+              <LinkRow label="Facebook" href={display.facebookUrl} />
+              <LinkRow label="YouTube" href={display.youtubeUrl} />
+            </InfoSection>
+          </div>
+
+          <InfoSection title="Operations">
+            <Row label="Payment modes accepted" value={formatList(display.paymentModes)} />
+            <BlockRow label="Business hours" value={formatTimings(display.timings)} />
+          </InfoSection>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InfoSection title="KYC & compliance" description="Identity and registration documents submitted during onboarding.">
+              <Row label="PAN number" value={display.panNumber} mono />
+              <Row label="Aadhaar number" value={display.aadharNumber} mono />
+              <Row label="CIN number" value={display.cinNumber} mono />
+              <DocRow label="PAN document" url={display.panUrl} />
+              <DocRow label="Aadhaar document" url={display.aadharUrl} />
+              <DocRow label="MSME / GST document" url={display.msmeGstUrl} />
+            </InfoSection>
+
+            <InfoSection title="Banking & payouts" description="Razorpay-linked payout details. Read-only.">
+              <Row label="Bank name" value={display.bankName} />
+              <Row label="Account number" value={display.bankAccountNumber} mono />
+              <Row label="IFSC" value={display.bankIfsc} mono />
+              <Row label="UPI ID" value={display.upiId} />
+              <Row label="Razorpay contact ID" value={display.razorpayContactId} mono />
+              <Row label="Razorpay fund account" value={display.razorpayFundAccountId} mono />
+            </InfoSection>
+          </div>
+
+          {isController && hasStoredPassword && (
+            <InfoSection title="Login credentials" description="Controller-only. Reveal requires your admin password.">
+              <div className="flex items-center gap-3 px-4 py-3">
+                <span className="text-xs text-slate-500 shrink-0">Merchant password</span>
+                <span className="admin-mono text-xs text-slate-900 flex-1 text-right break-all">
+                  {loginPasswordDisplay || "••••••••"}
+                </span>
+                <button
+                  type="button"
+                  onClick={loginPasswordDisplay ? onHideLoginPassword : onRevealLoginPassword}
+                  className="admin-btn-ghost text-[10px] py-1 px-2 shrink-0"
+                >
+                  {loginPasswordDisplay ? "Hide" : "Reveal"}
+                </button>
+              </div>
+            </InfoSection>
+          )}
 
           {(business.paymentId || business.orderId || business.razorpaySubscriptionId) && (
             <div className="space-y-3">
