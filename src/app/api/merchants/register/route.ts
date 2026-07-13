@@ -68,9 +68,13 @@ export async function POST(request: Request) {
 
     const isController = admin.role === "controller";
     const allowed = Array.isArray(admin.allowed_tabs) ? admin.allowed_tabs : [];
-    if (!isController && !allowed.includes("Merchant Registration")) {
+    if (
+      !isController &&
+      !allowed.includes("Business Onboarding") &&
+      !allowed.includes("Merchant Registration")
+    ) {
       return NextResponse.json(
-        { success: false, error: "You do not have permission to register merchants." },
+        { success: false, error: "You do not have permission for business onboarding." },
         { status: 403 },
       );
     }

@@ -2,25 +2,14 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { City, Country, State } from "country-state-city";
-import { DM_Sans, Syne } from "next/font/google";
 import { indianMobileValidationError } from "../lib/indianPhone";
 import { validateRegistrationPassword } from "../lib/merchantPasswordPolicy";
-import { REGISTRATION_EMAIL_REGEX, MIN_NAME_LENGTH, MIN_ADDRESS_LINE1_LENGTH } from "../lib/merchantRegistration";
+import {
+  REGISTRATION_EMAIL_REGEX,
+  MIN_NAME_LENGTH,
+  MIN_ADDRESS_LINE1_LENGTH,
+} from "../lib/merchantRegistration";
 import { getBusinessLoginUrl, getBusinessProfileUrl } from "../lib/site";
-
-const displayFont = Syne({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-reg-display",
-  display: "swap",
-});
-
-const bodyFont = DM_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-reg-body",
-  display: "swap",
-});
 
 export type RegistrationCategory = {
   id: string;
@@ -97,12 +86,6 @@ type Props = {
   onRegistered?: () => void;
 };
 
-const inputClass =
-  "w-full bg-transparent border-0 border-b-2 border-[#cfd6e0] rounded-none px-0 py-3 text-[15px] text-[#0c1222] placeholder:text-[#9aa3b2] focus:outline-none focus:border-[#1a5276] transition-[border-color] duration-200";
-
-const selectClass =
-  "w-full bg-transparent border-0 border-b-2 border-[#cfd6e0] rounded-none px-0 py-3 text-[15px] text-[#0c1222] focus:outline-none focus:border-[#1a5276] transition-[border-color] duration-200 appearance-none cursor-pointer";
-
 function buildMerchantShareMessage(input: {
   ownerName: string;
   businessName: string;
@@ -152,21 +135,26 @@ function Field({
   className?: string;
 }) {
   return (
-    <div id={`field-${id}`} className={`group space-y-1.5 ${className}`}>
-      <label
-        htmlFor={id}
-        className="block text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7385] group-focus-within:text-[#1a5276] transition-colors"
-      >
+    <div id={`field-${id}`} className={`space-y-1.5 ${className}`}>
+      <label htmlFor={id} className="admin-label">
         {label}
       </label>
       {children}
-      {hint && !error && <p className="text-[12px] text-[#8b93a3] leading-snug">{hint}</p>}
-      {error && <p className="text-[12px] font-medium text-[#b91c1c]">{error}</p>}
+      {hint && !error && (
+        <p className="text-[11px] text-slate-400 leading-snug">{hint}</p>
+      )}
+      {error && (
+        <p className="text-[11px] font-medium text-rose-600">{error}</p>
+      )}
     </div>
   );
 }
 
-export default function MerchantRegistrationContent({ categories, adminSession, onRegistered }: Props) {
+export default function MerchantRegistrationContent({
+  categories,
+  adminSession,
+  onRegistered,
+}: Props) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -192,10 +180,20 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
       registrationNumber: created.registrationNumber,
       loginUrl,
     });
-  }, [created, createdPassword, form.fullName, form.email, form.mobile, loginUrl]);
+  }, [
+    created,
+    createdPassword,
+    form.fullName,
+    form.email,
+    form.mobile,
+    loginUrl,
+  ]);
 
   const topCategories = useMemo(
-    () => categories.filter((c) => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name)),
+    () =>
+      categories
+        .filter((c) => !c.parent_id)
+        .sort((a, b) => a.name.localeCompare(b.name)),
     [categories],
   );
 
@@ -208,14 +206,21 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
   );
 
   const countryOptions = useMemo(
-    () => Country.getAllCountries().map((c) => ({ label: c.name, value: c.isoCode })),
+    () =>
+      Country.getAllCountries().map((c) => ({
+        label: c.name,
+        value: c.isoCode,
+      })),
     [],
   );
 
   const stateOptions = useMemo(
     () =>
       form.countryCode
-        ? State.getStatesOfCountry(form.countryCode).map((s) => ({ label: s.name, value: s.isoCode }))
+        ? State.getStatesOfCountry(form.countryCode).map((s) => ({
+            label: s.name,
+            value: s.isoCode,
+          }))
         : [],
     [form.countryCode],
   );
@@ -267,38 +272,58 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
 
   const validateStep1 = (): FieldErrors => {
     const next: FieldErrors = {};
-    if (!form.fullName.trim() || form.fullName.trim().length < MIN_NAME_LENGTH) {
+    if (
+      !form.fullName.trim() ||
+      form.fullName.trim().length < MIN_NAME_LENGTH
+    ) {
       next.fullName = "Owner full name must be at least 2 characters.";
     }
-    if (!form.email.trim() || !REGISTRATION_EMAIL_REGEX.test(form.email.trim())) {
+    if (
+      !form.email.trim() ||
+      !REGISTRATION_EMAIL_REGEX.test(form.email.trim())
+    ) {
       next.email = "Please enter a valid email address.";
     }
     const passwordError = validateRegistrationPassword(form.password);
     if (passwordError) next.password = passwordError;
-    const mobileError = indianMobileValidationError(form.mobile, { label: "mobile number" });
+    const mobileError = indianMobileValidationError(form.mobile, {
+      label: "mobile number",
+    });
     if (mobileError) next.mobile = mobileError;
     return next;
   };
 
   const validateStep2 = (): FieldErrors => {
     const next: FieldErrors = {};
-    if (!form.businessName.trim() || form.businessName.trim().length < MIN_NAME_LENGTH) {
+    if (
+      !form.businessName.trim() ||
+      form.businessName.trim().length < MIN_NAME_LENGTH
+    ) {
       next.businessName = "Legal business name must be at least 2 characters.";
     }
-    if (form.displayName.trim() && form.displayName.trim().length < MIN_NAME_LENGTH) {
+    if (
+      form.displayName.trim() &&
+      form.displayName.trim().length < MIN_NAME_LENGTH
+    ) {
       next.displayName = "Display name must be at least 2 characters.";
     }
-    if (!form.categoryId) next.categoryId = "Please select a business category.";
+    if (!form.categoryId)
+      next.categoryId = "Please select a business category.";
     if (subcategories.length > 0 && !form.subcategoryId) {
       next.subcategoryId = "Please select a subcategory.";
     }
-    if (!form.addressLine1.trim() || form.addressLine1.trim().length < MIN_ADDRESS_LINE1_LENGTH) {
+    if (
+      !form.addressLine1.trim() ||
+      form.addressLine1.trim().length < MIN_ADDRESS_LINE1_LENGTH
+    ) {
       next.addressLine1 = `Address line 1 must be at least ${MIN_ADDRESS_LINE1_LENGTH} characters.`;
     }
     if (!form.country.trim()) next.country = "Please select your country.";
     if (!form.state.trim()) next.state = "Please select your state.";
     if (!form.city.trim()) next.city = "Please select your city.";
-    const phoneError = indianMobileValidationError(form.publicPhone, { label: "display phone number" });
+    const phoneError = indianMobileValidationError(form.publicPhone, {
+      label: "display phone number",
+    });
     if (phoneError) next.publicPhone = phoneError;
     return next;
   };
@@ -322,7 +347,9 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
     const first = order.find((key) => fieldErrors[key]);
     if (!first) return;
     requestAnimationFrame(() => {
-      document.getElementById(`field-${first}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById(`field-${first}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   };
 
@@ -395,7 +422,10 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
       onRegistered?.();
     } catch (error: unknown) {
       setErrors({
-        _form: error instanceof Error ? error.message : "Registration failed. Please try again.",
+        _form:
+          error instanceof Error
+            ? error.message
+            : "Registration failed. Please try again.",
       });
     } finally {
       setLoading(false);
@@ -422,655 +452,652 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
 
   const stepCopy =
     step === 1
-      ? { title: "Who’s signing in?", sub: "Owner identity and login credentials." }
+      ? {
+          title: "Owner & login",
+          sub: "Account credentials for the business owner.",
+        }
       : step === 2
-        ? { title: "Business details", sub: "Listing info and location. Plan stays Free until they pay." }
-        : { title: "Ready to share", sub: "Copy the welcome message and send it to the merchant." };
+        ? {
+            title: "Business details",
+            sub: "Listing info and location. Plan stays Free until they pay.",
+          }
+        : {
+            title: "Share credentials",
+            sub: "Copy the welcome message and send it to the merchant.",
+          };
 
   return (
-    <div
-      className={`${displayFont.variable} ${bodyFont.variable} relative isolate overflow-hidden rounded-[28px] border border-[#d5dbe6]`}
-      style={{ fontFamily: "var(--font-reg-body), system-ui, sans-serif" }}
-    >
-      <div
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 60% at 0% 0%, rgba(26,82,118,0.12), transparent 55%), radial-gradient(ellipse 70% 50% at 100% 100%, rgba(166,124,42,0.10), transparent 50%), linear-gradient(165deg, #f7f8fb 0%, #eef2f7 45%, #f4f1ea 100%)",
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.35]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(12,18,34,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(12,18,34,0.03) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-        }}
-      />
-
-      <div className="grid grid-cols-1 lg:grid-cols-[0.95fr_1.35fr] min-h-[640px]">
-        <aside className="relative border-b lg:border-b-0 lg:border-r border-[#d5dbe6] px-7 py-8 sm:px-9 sm:py-10 flex flex-col justify-between gap-10 bg-[#0b1520] text-white overflow-hidden">
-          <div
-            className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full opacity-40"
-            style={{ background: "radial-gradient(circle, rgba(83,146,191,0.55), transparent 70%)" }}
-          />
-          <div
-            className="pointer-events-none absolute -left-10 bottom-10 h-40 w-40 rounded-full opacity-30"
-            style={{ background: "radial-gradient(circle, rgba(166,124,42,0.5), transparent 70%)" }}
-          />
-
-          <div className="relative space-y-8">
-            <p className="text-[11px] font-semibold tracking-[0.22em] uppercase text-[#8fa4b8]">
-              FinderB · Backend create
-            </p>
-            <div>
-              <h1
-                className="text-[clamp(2rem,3.4vw,2.85rem)] leading-[1.05] tracking-tight text-white"
-                style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-              >
-                Register a
-                <br />
-                <span className="text-[#7eadcf]">merchant</span>
-                <br />
-                in minutes.
-              </h1>
-              <p className="mt-4 text-[15px] leading-relaxed text-[#9eb0c2] max-w-sm">
-                Creates a Free/Starter account by default. Paid plans unlock only after the merchant completes payment.
-              </p>
-            </div>
-
-            <ol className="space-y-3">
-              {[
-                { n: 1, label: "Account", desc: "Owner + login" },
-                { n: 2, label: "Business", desc: "Listing + location" },
-                { n: 3, label: "Share", desc: "Welcome message" },
-              ].map((item) => {
-                const active = step === item.n;
-                const done = step > item.n;
-                return (
-                  <li
-                    key={item.n}
-                    className={`flex items-center gap-4 rounded-2xl border px-4 py-3 transition-colors duration-300 ${
-                      active
-                        ? "border-[#5392bf]/40 bg-white/8"
-                        : done
-                          ? "border-emerald-400/25 bg-emerald-400/5"
-                          : "border-white/10 bg-transparent"
-                    }`}
-                  >
-                    <span
-                      className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold ${
-                        done
-                          ? "bg-emerald-400/20 text-emerald-300"
-                          : active
-                            ? "bg-[#1a5276] text-white"
-                            : "bg-white/5 text-[#7a8fa3]"
-                      }`}
-                      style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-                    >
-                      {done ? "✓" : item.n}
-                    </span>
-                    <div>
-                      <p className={`text-sm font-semibold ${active || done ? "text-white" : "text-[#7a8fa3]"}`}>
-                        {item.label}
-                      </p>
-                      <p className="text-[12px] text-[#7a8fa3]">{item.desc}</p>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-
-          <div className="relative rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8fa4b8]">Default password</p>
-            <p
-              className="mt-1.5 font-mono text-lg tracking-wide text-[#f0f3f8]"
-              style={{ fontFamily: "var(--font-plex-mono), ui-monospace, monospace" }}
-            >
-              {DEFAULT_MERCHANT_PASSWORD}
+    <div className="space-y-4">
+      <div className="admin-platform-hero">
+        <div className="admin-page-header !mb-0">
+          <div>
+            <h1 className="admin-page-title">Business onboarding</h1>
+            <p className="admin-page-subtitle">
+              Create a Free/Starter merchant account from the admin console.
+              Paid plans unlock after payment.
             </p>
           </div>
-        </aside>
-
-        <div className="px-6 py-8 sm:px-9 sm:py-10 flex flex-col">
-          <div className="mb-8 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8b93a3]">
-                {step < 3 ? `Step ${step} / 2` : "Complete"}
-              </p>
-              <h2
-                className="mt-2 text-[1.75rem] leading-tight tracking-tight text-[#0c1222]"
-                style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-              >
-                {stepCopy.title}
-              </h2>
-              <p className="mt-1.5 text-[14px] text-[#6b7385]">{stepCopy.sub}</p>
-            </div>
-            {step < 3 && (
-              <div className="hidden sm:flex h-14 w-14 items-center justify-center rounded-2xl border border-[#d5dbe6] bg-white/70">
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { n: 1, label: "Account" },
+              { n: 2, label: "Business" },
+              { n: 3, label: "Share" },
+            ].map((item) => {
+              const active = step === item.n;
+              const done = step > item.n;
+              return (
                 <span
-                  className="text-2xl font-extrabold text-[#1a5276]"
-                  style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-                >
-                  0{step}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {errors._form && (
-            <div className="mb-6 rounded-2xl border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-[13px] text-[#b91c1c]">
-              {errors._form}
-            </div>
-          )}
-
-          <div className="flex-1 space-y-8">
-            {step === 1 && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-7">
-                  <Field id="fullName" label="Owner full name *" error={errors.fullName}>
-                    <input
-                      id="fullName"
-                      className={inputClass}
-                      value={form.fullName}
-                      onChange={(e) => patch({ fullName: e.target.value })}
-                      placeholder="Priya Sharma"
-                      autoFocus
-                    />
-                  </Field>
-                  <Field id="email" label="Login email *" error={errors.email}>
-                    <input
-                      id="email"
-                      type="email"
-                      className={inputClass}
-                      value={form.email}
-                      onChange={(e) => patch({ email: e.target.value })}
-                      placeholder="partner@studio.in"
-                    />
-                  </Field>
-                  <Field
-                    id="mobile"
-                    label="Mobile *"
-                    error={errors.mobile}
-                    hint="10-digit Indian number"
-                    className="md:col-span-2"
-                  >
-                    <div className="flex items-end gap-3 border-b-2 border-[#cfd6e0] focus-within:border-[#1a5276] transition-colors">
-                      <span className="pb-3 text-[15px] font-medium text-[#6b7385]">+91</span>
-                      <input
-                        id="mobile"
-                        className="w-full bg-transparent border-0 rounded-none px-0 py-3 text-[15px] focus:outline-none"
-                        value={form.mobile}
-                        onChange={(e) => patch({ mobile: e.target.value.replace(/\D/g, "").slice(0, 10) })}
-                        placeholder="98XXXXXXXX"
-                        inputMode="numeric"
-                      />
-                    </div>
-                  </Field>
-                </div>
-
-                <div
-                  id="field-password"
-                  className={`rounded-[22px] border px-5 py-5 transition-colors ${
-                    usingDefaultPassword
-                      ? "border-[#a9c9df] bg-[linear-gradient(135deg,#eef4f8_0%,#ffffff_70%)]"
-                      : "border-[#f2e8d0] bg-[linear-gradient(135deg,#faf6ee_0%,#ffffff_70%)]"
+                  key={item.n}
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium ${
+                    done
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                      : active
+                        ? "border-primary/25 bg-primary-50 text-primary"
+                        : "border-slate-200 bg-white text-slate-400"
                   }`}
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-                    <div>
-                      <p
-                        className="text-lg tracking-tight text-[#0c1222]"
-                        style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-                      >
-                        {usingDefaultPassword ? "Default password locked in" : "Custom password"}
-                      </p>
-                      <p className="text-[13px] text-[#6b7385] mt-1">
-                        Auto-filled for admin creates. Change it only if the merchant needs something else.
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
-                        usingDefaultPassword ? "bg-[#1a5276] text-white" : "bg-[#a67c2a] text-white"
-                      }`}
-                    >
-                      {usingDefaultPassword ? "Default" : "Custom"}
+                  <span className="tabular-nums font-semibold">
+                    {done ? "✓" : item.n}
+                  </span>
+                  {item.label}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {errors._form && (
+        <div className="admin-alert-error">
+          <p className="font-medium text-rose-900">Could not create account</p>
+          <p className="mt-0.5 text-rose-700">{errors._form}</p>
+        </div>
+      )}
+
+      <div className="admin-card">
+        <div className="admin-card-header">
+          <div>
+            <h2 className="admin-card-title">{stepCopy.title}</h2>
+            <p className="admin-card-description">{stepCopy.sub}</p>
+          </div>
+          {step < 3 && (
+            <span className="admin-badge bg-slate-50 text-slate-600 border-slate-200">
+              Step {step} / 2
+            </span>
+          )}
+        </div>
+
+        <div className="p-4 sm:p-5 space-y-5">
+          {step === 1 && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field
+                  id="fullName"
+                  label="Owner full name *"
+                  error={errors.fullName}
+                >
+                  <input
+                    id="fullName"
+                    className="admin-input"
+                    value={form.fullName}
+                    onChange={(e) => patch({ fullName: e.target.value })}
+                    placeholder="Priya Sharma"
+                    autoFocus
+                  />
+                </Field>
+                <Field id="email" label="Login email *" error={errors.email}>
+                  <input
+                    id="email"
+                    type="email"
+                    className="admin-input"
+                    value={form.email}
+                    onChange={(e) => patch({ email: e.target.value })}
+                    placeholder="partner@studio.in"
+                  />
+                </Field>
+                <Field
+                  id="mobile"
+                  label="Mobile *"
+                  error={errors.mobile}
+                  hint="10-digit Indian number"
+                  className="md:col-span-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500">
+                      +91
                     </span>
+                    <input
+                      id="mobile"
+                      className="admin-input"
+                      value={form.mobile}
+                      onChange={(e) =>
+                        patch({
+                          mobile: e.target.value
+                            .replace(/\D/g, "")
+                            .slice(0, 10),
+                        })
+                      }
+                      placeholder="98XXXXXXXX"
+                      inputMode="numeric"
+                    />
                   </div>
+                </Field>
+              </div>
 
-                  <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-                    <div className="relative flex-1">
-                      <label htmlFor="password" className="sr-only">
-                        Password
-                      </label>
-                      <input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        className={`${inputClass} font-mono tracking-wide pr-16`}
-                        style={{ fontFamily: "var(--font-plex-mono), ui-monospace, monospace" }}
-                        value={form.password}
-                        onChange={(e) => patch({ password: e.target.value })}
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-0 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-[#1a5276]"
-                        onClick={() => setShowPassword((v) => !v)}
-                      >
-                        {showPassword ? "Hide" : "Show"}
-                      </button>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => copyText(form.password, "password")}
-                        className="rounded-full border border-[#1a5276] px-4 py-2.5 text-[12px] font-semibold text-[#1a5276] hover:bg-[#1a5276] hover:text-white transition-colors"
-                      >
-                        {copiedPassword ? "Copied" : "Copy"}
-                      </button>
-                      {!usingDefaultPassword && (
-                        <button
-                          type="button"
-                          onClick={() => patch({ password: DEFAULT_MERCHANT_PASSWORD })}
-                          className="rounded-full border border-[#d5dbe6] px-4 py-2.5 text-[12px] font-semibold text-[#6b7385] hover:border-[#1a5276] hover:text-[#1a5276] transition-colors"
-                        >
-                          Reset default
-                        </button>
-                      )}
-                    </div>
+              <div
+                id="field-password"
+                className="rounded-lg border border-slate-200 bg-slate-50/70 p-4 space-y-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      {usingDefaultPassword
+                        ? "Default password"
+                        : "Custom password"}
+                    </p>
+                    <p className="text-[12px] text-slate-500 mt-0.5">
+                      Auto-filled for admin creates. Change only if needed.
+                    </p>
                   </div>
-                  {errors.password && <p className="text-[12px] font-medium text-[#b91c1c] mt-2">{errors.password}</p>}
+                  <span
+                    className={`admin-badge ${
+                      usingDefaultPassword
+                        ? "bg-primary-50 text-primary border-primary/20"
+                        : "bg-amber-50 text-amber-800 border-amber-200"
+                    }`}
+                  >
+                    {usingDefaultPassword ? "Default" : "Custom"}
+                  </span>
                 </div>
-              </>
-            )}
-
-            {step === 2 && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-7">
-                  <Field id="businessName" label="Legal business name *" error={errors.businessName}>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
                     <input
-                      id="businessName"
-                      className={inputClass}
-                      value={form.businessName}
-                      onChange={(e) => patch({ businessName: e.target.value })}
-                      placeholder="Acme Retail Pvt Ltd"
-                      autoFocus
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      className="admin-input admin-mono pr-14"
+                      value={form.password}
+                      onChange={(e) => patch({ password: e.target.value })}
                     />
-                  </Field>
-                  <Field id="displayName" label="Display name" error={errors.displayName} hint="Optional">
-                    <input
-                      id="displayName"
-                      className={inputClass}
-                      value={form.displayName}
-                      onChange={(e) => patch({ displayName: e.target.value })}
-                      placeholder="Acme Store"
-                    />
-                  </Field>
-                  <Field id="categoryId" label="Category *" error={errors.categoryId}>
-                    <select
-                      id="categoryId"
-                      className={selectClass}
-                      value={form.categoryId}
-                      onChange={(e) => patch({ categoryId: e.target.value, subcategoryId: "" })}
+                    <button
+                      type="button"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-primary"
+                      onClick={() => setShowPassword((v) => !v)}
                     >
-                      <option value="">Select category</option>
-                      {topCategories.map((c) => (
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyText(form.password, "password")}
+                    className="admin-btn-secondary"
+                  >
+                    {copiedPassword ? "Copied" : "Copy"}
+                  </button>
+                  {!usingDefaultPassword && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        patch({ password: DEFAULT_MERCHANT_PASSWORD })
+                      }
+                      className="admin-btn-secondary"
+                    >
+                      Reset default
+                    </button>
+                  )}
+                </div>
+                {errors.password && (
+                  <p className="text-[11px] font-medium text-rose-600">
+                    {errors.password}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field
+                  id="businessName"
+                  label="Legal business name *"
+                  error={errors.businessName}
+                >
+                  <input
+                    id="businessName"
+                    className="admin-input"
+                    value={form.businessName}
+                    onChange={(e) => patch({ businessName: e.target.value })}
+                    placeholder="Acme Retail Pvt Ltd"
+                    autoFocus
+                  />
+                </Field>
+                <Field
+                  id="displayName"
+                  label="Display name"
+                  error={errors.displayName}
+                  hint="Optional"
+                >
+                  <input
+                    id="displayName"
+                    className="admin-input"
+                    value={form.displayName}
+                    onChange={(e) => patch({ displayName: e.target.value })}
+                    placeholder="Acme Store"
+                  />
+                </Field>
+                <Field
+                  id="categoryId"
+                  label="Category *"
+                  error={errors.categoryId}
+                >
+                  <select
+                    id="categoryId"
+                    className="admin-input"
+                    value={form.categoryId}
+                    onChange={(e) =>
+                      patch({ categoryId: e.target.value, subcategoryId: "" })
+                    }
+                  >
+                    <option value="">Select category</option>
+                    {topCategories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                {subcategories.length > 0 && (
+                  <Field
+                    id="subcategoryId"
+                    label="Subcategory *"
+                    error={errors.subcategoryId}
+                  >
+                    <select
+                      id="subcategoryId"
+                      className="admin-input"
+                      value={form.subcategoryId}
+                      onChange={(e) => patch({ subcategoryId: e.target.value })}
+                    >
+                      <option value="">Select subcategory</option>
+                      {subcategories.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>
                       ))}
                     </select>
                   </Field>
-                  {subcategories.length > 0 && (
-                    <Field id="subcategoryId" label="Subcategory *" error={errors.subcategoryId}>
-                      <select
-                        id="subcategoryId"
-                        className={selectClass}
-                        value={form.subcategoryId}
-                        onChange={(e) => patch({ subcategoryId: e.target.value })}
-                      >
-                        <option value="">Select subcategory</option>
-                        {subcategories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                  )}
-                </div>
+                )}
+              </div>
 
-                <div className="h-px bg-[#dfe3eb]" />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-7">
-                  <Field id="addressLine1" label="Address line 1 *" error={errors.addressLine1} className="md:col-span-2">
-                    <input
-                      id="addressLine1"
-                      className={inputClass}
-                      value={form.addressLine1}
-                      onChange={(e) => patch({ addressLine1: e.target.value })}
-                      placeholder="Street, building, area"
-                    />
-                  </Field>
-                  <Field id="addressLine2" label="Address line 2" className="md:col-span-2">
-                    <input
-                      id="addressLine2"
-                      className={inputClass}
-                      value={form.addressLine2}
-                      onChange={(e) => patch({ addressLine2: e.target.value })}
-                      placeholder="Landmark (optional)"
-                    />
-                  </Field>
-                  <Field id="country" label="Country *" error={errors.country}>
+              <div className="border-t border-slate-100 pt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field
+                  id="addressLine1"
+                  label="Address line 1 *"
+                  error={errors.addressLine1}
+                  className="md:col-span-2"
+                >
+                  <input
+                    id="addressLine1"
+                    className="admin-input"
+                    value={form.addressLine1}
+                    onChange={(e) => patch({ addressLine1: e.target.value })}
+                    placeholder="Street, building, area"
+                  />
+                </Field>
+                <Field
+                  id="addressLine2"
+                  label="Address line 2"
+                  className="md:col-span-2"
+                >
+                  <input
+                    id="addressLine2"
+                    className="admin-input"
+                    value={form.addressLine2}
+                    onChange={(e) => patch({ addressLine2: e.target.value })}
+                    placeholder="Landmark (optional)"
+                  />
+                </Field>
+                <Field id="country" label="Country *" error={errors.country}>
+                  <select
+                    id="country"
+                    className="admin-input"
+                    value={form.countryCode}
+                    onChange={(e) => {
+                      const selected = Country.getCountryByCode(e.target.value);
+                      patch({
+                        countryCode: e.target.value,
+                        country: selected?.name || "",
+                        stateCode: "",
+                        state: "",
+                        city: "",
+                      });
+                    }}
+                  >
+                    {countryOptions.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field id="state" label="State *" error={errors.state}>
+                  <select
+                    id="state"
+                    className="admin-input"
+                    value={form.stateCode}
+                    onChange={(e) => {
+                      const selected = State.getStateByCodeAndCountry(
+                        e.target.value,
+                        form.countryCode,
+                      );
+                      patch({
+                        stateCode: e.target.value,
+                        state: selected?.name || "",
+                        city: "",
+                      });
+                    }}
+                  >
+                    <option value="">Select state</option>
+                    {stateOptions.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field id="city" label="City *" error={errors.city}>
+                  {cityOptions.length > 0 ? (
                     <select
-                      id="country"
-                      className={selectClass}
-                      value={form.countryCode}
-                      onChange={(e) => {
-                        const selected = Country.getCountryByCode(e.target.value);
-                        patch({
-                          countryCode: e.target.value,
-                          country: selected?.name || "",
-                          stateCode: "",
-                          state: "",
-                          city: "",
-                        });
-                      }}
+                      id="city"
+                      className="admin-input"
+                      value={form.city}
+                      onChange={(e) => patch({ city: e.target.value })}
                     >
-                      {countryOptions.map((c) => (
+                      <option value="">Select city</option>
+                      {cityOptions.map((c) => (
                         <option key={c.value} value={c.value}>
                           {c.label}
                         </option>
                       ))}
                     </select>
-                  </Field>
-                  <Field id="state" label="State *" error={errors.state}>
-                    <select
-                      id="state"
-                      className={selectClass}
-                      value={form.stateCode}
-                      onChange={(e) => {
-                        const selected = State.getStateByCodeAndCountry(e.target.value, form.countryCode);
-                        patch({
-                          stateCode: e.target.value,
-                          state: selected?.name || "",
-                          city: "",
-                        });
-                      }}
-                    >
-                      <option value="">Select state</option>
-                      {stateOptions.map((s) => (
-                        <option key={s.value} value={s.value}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field id="city" label="City *" error={errors.city}>
-                    {cityOptions.length > 0 ? (
-                      <select
-                        id="city"
-                        className={selectClass}
-                        value={form.city}
-                        onChange={(e) => patch({ city: e.target.value })}
-                      >
-                        <option value="">Select city</option>
-                        {cityOptions.map((c) => (
-                          <option key={c.value} value={c.value}>
-                            {c.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        id="city"
-                        className={inputClass}
-                        value={form.city}
-                        onChange={(e) => patch({ city: e.target.value })}
-                        placeholder="Enter city"
-                      />
-                    )}
-                  </Field>
-                  <Field id="publicPhone" label="Public phone *" error={errors.publicPhone}>
-                    <div className="flex items-end gap-3 border-b-2 border-[#cfd6e0] focus-within:border-[#1a5276] transition-colors">
-                      <span className="pb-3 text-[15px] font-medium text-[#6b7385]">+91</span>
-                      <input
-                        id="publicPhone"
-                        className="w-full bg-transparent border-0 rounded-none px-0 py-3 text-[15px] focus:outline-none"
-                        value={form.publicPhone}
-                        onChange={(e) => patch({ publicPhone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
-                        placeholder="98XXXXXXXX"
-                        inputMode="numeric"
-                      />
-                    </div>
-                  </Field>
-                </div>
-
-                <div className="rounded-2xl border border-[#d5dbe6] bg-white/70 px-5 py-4">
-                  <p
-                    className="text-[15px] text-[#0c1222]"
-                    style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-                  >
-                    Plan: Free / Starter
-                  </p>
-                  <p className="text-[13px] text-[#6b7385] mt-1 leading-snug">
-                    Paid plans are applied automatically after the merchant completes payment — no need to pick one here.
-                  </p>
-                </div>
-
-                <label className="flex items-start gap-4 cursor-pointer rounded-2xl border border-[#b7d4c4] bg-[#f0faf5] px-5 py-4">
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 accent-[#047857]"
-                    checked={form.activateImmediately}
-                    onChange={(e) => patch({ activateImmediately: e.target.checked })}
-                  />
-                  <span>
-                    <span
-                      className="block text-[15px] text-[#0c1222]"
-                      style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-                    >
-                      Activate listing immediately
-                    </span>
-                    <span className="block text-[13px] text-[#4d6b5c] mt-1 leading-snug">
-                      Active status + approved KYC. Uncheck to leave them in the pending queue.
-                    </span>
-                  </span>
-                </label>
-              </>
-            )}
-
-            {step === 3 && created && createdPassword && (
-              <div className="space-y-6 animate-[fadeIn_0.45s_ease]">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">
-                    Account live
-                  </span>
-                  <span className="inline-flex items-center rounded-full border border-[#d5dbe6] bg-white/80 px-3 py-1 text-[11px] font-semibold text-[#6b7385]">
-                    Free / Starter
-                  </span>
-                </div>
-
-                <div>
-                  <h3
-                    className="text-[clamp(1.85rem,3vw,2.35rem)] leading-[1.08] tracking-tight text-[#0c1222]"
-                    style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-                  >
-                    {created.businessName}
-                  </h3>
-                  <p className="mt-2 text-[15px] text-[#6b7385] max-w-xl">
-                    Send the pre-written welcome note below — it includes credentials, login link, and next steps.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: "Merchant ID", value: created.registrationNumber, mono: true, testId: true },
-                    { label: "Status", value: `${created.status}` },
-                    { label: "Email", value: created.email },
-                    { label: "Password", value: createdPassword, mono: true },
-                  ].map((row) => (
-                    <button
-                      key={row.label}
-                      type="button"
-                      onClick={() => copyText(String(row.value || ""), row.label === "Password" ? "password" : "message")}
-                      className="rounded-2xl border border-[#d5dbe6] bg-white/80 px-4 py-3 text-left hover:border-[#1a5276]/40 hover:bg-white transition-colors group"
-                      title="Click to copy"
-                    >
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8b93a3] flex items-center justify-between gap-2">
-                        {row.label}
-                        <span className="opacity-0 group-hover:opacity-100 text-[#1a5276] normal-case tracking-normal font-medium">
-                          Copy
-                        </span>
-                      </p>
-                      <p
-                        data-testid={row.testId ? "created-merchant-id" : undefined}
-                        className={`mt-1.5 text-[14px] font-semibold text-[#0c1222] break-all ${row.mono ? "font-mono" : ""}`}
-                      >
-                        {row.value}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="rounded-[24px] border border-[#1a5276]/20 bg-[linear-gradient(160deg,#eef4f8_0%,#ffffff_55%)] overflow-hidden">
-                  <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[#1a5276]/10">
-                    <div>
-                      <p
-                        className="text-[18px] tracking-tight text-[#0c1222]"
-                        style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-                      >
-                        Shareable welcome message
-                      </p>
-                      <p className="text-[12px] text-[#6b7385] mt-0.5">
-                        Greeting · credentials · {loginUrl.replace(/^https?:\/\//, "")} · step-by-step guide
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => copyText(shareMessage, "message")}
-                        className="rounded-full bg-[#1a5276] px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-[#123a54] transition-colors"
-                      >
-                        {copiedMessage ? "Message copied ✓" : "Copy message"}
-                      </button>
-                      {whatsappShareUrl && (
-                        <a
-                          href={whatsappShareUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="rounded-full border border-[#25D366] bg-[#25D366]/10 px-4 py-2.5 text-[12px] font-semibold text-[#128C7E] hover:bg-[#25D366] hover:text-white transition-colors"
-                        >
-                          Open WhatsApp
-                        </a>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="px-5 py-4 max-h-[280px] overflow-y-auto custom-scrollbar">
-                    <pre
-                      className="whitespace-pre-wrap text-[13px] leading-relaxed text-[#243041]"
-                      style={{ fontFamily: "var(--font-reg-body), system-ui, sans-serif" }}
-                    >
-                      {shareMessage}
-                    </pre>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-[#d5dbe6] bg-white/70 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setGuideOpen((v) => !v)}
-                    className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left"
-                  >
-                    <span
-                      className="text-[16px] text-[#0c1222]"
-                      style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-                    >
-                      What the merchant should do next
-                    </span>
-                    <span className="text-[#1a5276] text-sm font-semibold">{guideOpen ? "Hide" : "Show"}</span>
-                  </button>
-                  {guideOpen && (
-                    <ol className="border-t border-[#dfe3eb] px-5 py-4 space-y-3">
-                      {[
-                        { t: "Sign in", d: `Go to ${loginUrl.replace(/^https?:\/\//, "")} with the email & password.` },
-                        { t: "Finish profile", d: "Add photos, about, timings, and WhatsApp." },
-                        { t: "Check listing", d: "Open the public profile and confirm contact details." },
-                        { t: "Upgrade later", d: "Paid plans activate only after a successful payment." },
-                      ].map((item, i) => (
-                        <li key={item.t} className="flex gap-3">
-                          <span
-                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#eef4f8] text-[12px] font-bold text-[#1a5276]"
-                            style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-                          >
-                            {i + 1}
-                          </span>
-                          <div>
-                            <p className="text-[14px] font-semibold text-[#0c1222]">{item.t}</p>
-                            <p className="text-[13px] text-[#6b7385] mt-0.5">{item.d}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
+                  ) : (
+                    <input
+                      id="city"
+                      className="admin-input"
+                      value={form.city}
+                      onChange={(e) => patch({ city: e.target.value })}
+                      placeholder="Enter city"
+                    />
                   )}
-                </div>
+                </Field>
+                <Field
+                  id="publicPhone"
+                  label="Public phone *"
+                  error={errors.publicPhone}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500">
+                      +91
+                    </span>
+                    <input
+                      id="publicPhone"
+                      className="admin-input"
+                      value={form.publicPhone}
+                      onChange={(e) =>
+                        patch({
+                          publicPhone: e.target.value
+                            .replace(/\D/g, "")
+                            .slice(0, 10),
+                        })
+                      }
+                      placeholder="98XXXXXXXX"
+                      inputMode="numeric"
+                    />
+                  </div>
+                </Field>
+              </div>
 
-                <div className="flex flex-wrap gap-3 pt-1">
-                  <a
-                    href={loginUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full border border-[#d5dbe6] px-5 py-2.5 text-[13px] font-semibold text-[#0c1222] hover:border-[#1a5276] hover:text-[#1a5276] transition-colors"
-                  >
-                    Open login page
-                  </a>
-                  <a
-                    href={getBusinessProfileUrl({
-                      id: created.id,
-                      businessName: created.businessName,
-                      slug: created.slug,
-                      city: created.city,
-                    })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-full border border-[#d5dbe6] px-5 py-2.5 text-[13px] font-semibold text-[#0c1222] hover:border-[#1a5276] hover:text-[#1a5276] transition-colors"
-                  >
-                    View public profile
-                  </a>
+              <div className="rounded-lg border border-slate-200 bg-slate-50/70 px-4 py-3">
+                <p className="text-sm font-semibold text-slate-900">
+                  Plan: Free / Starter
+                </p>
+                <p className="text-[12px] text-slate-500 mt-0.5">
+                  Paid plans apply automatically after successful payment.
+                </p>
+              </div>
+
+              <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 accent-emerald-700"
+                  checked={form.activateImmediately}
+                  onChange={(e) =>
+                    patch({ activateImmediately: e.target.checked })
+                  }
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-slate-900">
+                    Activate listing immediately
+                  </span>
+                  <span className="block text-[12px] text-slate-600 mt-0.5">
+                    Active status + approved KYC. Leave unchecked to keep them
+                    in the pending queue.
+                  </span>
+                </span>
+              </label>
+            </>
+          )}
+
+          {step === 3 && created && createdPassword && (
+            <div className="space-y-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="admin-status-pill admin-status-live">
+                  Account created
+                </span>
+                <span className="admin-badge bg-slate-50 text-slate-600 border-slate-200">
+                  Free / Starter
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900 tracking-tight">
+                  {created.businessName}
+                </h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Send the welcome note below — credentials, login link, and
+                  next steps.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  {
+                    label: "Merchant ID",
+                    value: created.registrationNumber,
+                    mono: true,
+                    testId: true,
+                  },
+                  { label: "Status", value: `${created.status}` },
+                  { label: "Email", value: created.email },
+                  { label: "Password", value: createdPassword, mono: true },
+                ].map((row) => (
                   <button
+                    key={row.label}
                     type="button"
-                    onClick={resetForm}
-                    className="rounded-full bg-[#0c1222] px-5 py-2.5 text-[13px] font-semibold text-white hover:bg-[#1a5276] transition-colors"
+                    onClick={() =>
+                      copyText(
+                        String(row.value || ""),
+                        row.label === "Password" ? "password" : "message",
+                      )
+                    }
+                    className="rounded-lg border border-slate-200 bg-white px-3.5 py-3 text-left hover:border-primary/30 hover:bg-primary-50/30 transition-colors group"
+                    title="Click to copy"
                   >
-                    Register another
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 flex items-center justify-between gap-2">
+                      {row.label}
+                      <span className="opacity-0 group-hover:opacity-100 text-primary normal-case tracking-normal font-medium">
+                        Copy
+                      </span>
+                    </p>
+                    <p
+                      data-testid={
+                        row.testId ? "created-merchant-id" : undefined
+                      }
+                      className={`mt-1 text-sm font-medium text-slate-900 break-all ${row.mono ? "admin-mono !text-slate-800" : ""}`}
+                    >
+                      {row.value}
+                    </p>
                   </button>
+                ))}
+              </div>
+
+              <div className="rounded-lg border border-slate-200 overflow-hidden">
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-50/80 border-b border-slate-100">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">
+                      Welcome message
+                    </p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Credentials · {loginUrl.replace(/^https?:\/\//, "")} ·
+                      guide
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => copyText(shareMessage, "message")}
+                      className="admin-btn-primary !text-xs !py-1.5"
+                    >
+                      {copiedMessage ? "Copied" : "Copy message"}
+                    </button>
+                    {whatsappShareUrl && (
+                      <a
+                        href={whatsappShareUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="admin-btn-secondary !text-xs !py-1.5"
+                      >
+                        WhatsApp
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <div className="px-4 py-3 max-h-[260px] overflow-y-auto custom-scrollbar">
+                  <pre className="whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700 font-sans">
+                    {shareMessage}
+                  </pre>
                 </div>
               </div>
-            )}
-          </div>
 
-          {step < 3 && (
-            <div className="mt-10 flex items-center justify-between gap-3 border-t border-[#dfe3eb] pt-6">
-              <button
-                type="button"
-                disabled={loading || step === 1}
-                onClick={() => setStep((s) => Math.max(1, s - 1))}
-                className="text-[13px] font-semibold text-[#6b7385] disabled:opacity-30 hover:text-[#0c1222] transition-colors"
-              >
-                ← Back
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={goNext}
-                className="rounded-full bg-[#1a5276] px-7 py-3 text-[13px] font-semibold text-white hover:bg-[#123a54] disabled:opacity-60 transition-colors"
-              >
-                {loading ? "Creating…" : step === 1 ? "Continue" : "Create merchant"}
-              </button>
+              <div className="rounded-lg border border-slate-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setGuideOpen((v) => !v)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50/80"
+                >
+                  <span className="text-sm font-semibold text-slate-900">
+                    What the merchant should do next
+                  </span>
+                  <span className="text-[11px] font-semibold text-primary">
+                    {guideOpen ? "Hide" : "Show"}
+                  </span>
+                </button>
+                {guideOpen && (
+                  <ol className="border-t border-slate-100 px-4 py-3 space-y-2.5">
+                    {[
+                      {
+                        t: "Sign in",
+                        d: `Go to ${loginUrl.replace(/^https?:\/\//, "")} with the email & password.`,
+                      },
+                      {
+                        t: "Finish profile",
+                        d: "Add photos, about, timings, and WhatsApp.",
+                      },
+                      {
+                        t: "Check listing",
+                        d: "Open the public profile and confirm contact details.",
+                      },
+                      {
+                        t: "Upgrade later",
+                        d: "Paid plans activate only after a successful payment.",
+                      },
+                    ].map((item, i) => (
+                      <li key={item.t} className="flex gap-2.5">
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary-50 text-[11px] font-semibold text-primary">
+                          {i + 1}
+                        </span>
+                        <div>
+                          <p className="text-[13px] font-semibold text-slate-900">
+                            {item.t}
+                          </p>
+                          <p className="text-[12px] text-slate-500 mt-0.5">
+                            {item.d}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1">
+                <a
+                  href={loginUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="admin-btn-secondary"
+                >
+                  Open login page
+                </a>
+                <a
+                  href={getBusinessProfileUrl({
+                    id: created.id,
+                    businessName: created.businessName,
+                    slug: created.slug,
+                    city: created.city,
+                  })}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="admin-btn-secondary"
+                >
+                  View public profile
+                </a>
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="admin-btn-primary"
+                >
+                  Onboard another
+                </button>
+              </div>
             </div>
           )}
         </div>
+
+        {step < 3 && (
+          <div className="px-4 sm:px-5 py-4 border-t border-slate-100 flex items-center justify-between gap-3">
+            <button
+              type="button"
+              disabled={loading || step === 1}
+              onClick={() => setStep((s) => Math.max(1, s - 1))}
+              className="text-sm font-medium text-slate-500 disabled:opacity-30 hover:text-slate-800 transition-colors"
+            >
+              ← Back
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={goNext}
+              className="admin-btn-primary"
+            >
+              {loading
+                ? "Creating…"
+                : step === 1
+                  ? "Continue"
+                  : "Create merchant"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

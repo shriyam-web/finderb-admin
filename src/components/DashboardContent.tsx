@@ -23,6 +23,7 @@ import {
 import { formatActivityDate, formatActivityTime } from "../lib/formatDateTime";
 import type { DashboardStats } from "../lib/dashboardStats";
 import type { MerchantRequest } from "../lib/merchantRequest";
+import AdminBarChart from "./AdminBarChart";
 
 type ActivityItem = {
   id: string;
@@ -52,17 +53,16 @@ function StatCard({
   value: string | number;
   sub?: string;
   icon: React.ComponentType<{ className?: string }>;
-  accent: "primary" | "emerald" | "sky" | "amber" | "violet" | "rose" | "slate";
+  accent: "primary" | "emerald" | "sky" | "amber" | "rose" | "slate";
   onClick?: () => void;
 }) {
   const styles = {
-    primary: { card: "from-primary/10 to-primary/5 border-primary/20", icon: "text-primary" },
-    emerald: { card: "from-emerald-500/10 to-emerald-500/5 border-emerald-200/70", icon: "text-emerald-700" },
-    sky: { card: "from-sky-500/10 to-sky-500/5 border-sky-200/70", icon: "text-sky-700" },
-    amber: { card: "from-amber-500/10 to-amber-500/5 border-amber-200/70", icon: "text-amber-700" },
-    violet: { card: "from-violet-500/10 to-violet-500/5 border-violet-200/70", icon: "text-violet-700" },
-    rose: { card: "from-rose-500/10 to-rose-500/5 border-rose-200/70", icon: "text-rose-700" },
-    slate: { card: "from-slate-500/10 to-slate-500/5 border-slate-200/70", icon: "text-slate-700" },
+    primary: { kpi: "admin-kpi-primary", icon: "bg-teal-600 text-white" },
+    emerald: { kpi: "admin-kpi-success", icon: "bg-emerald-500 text-white" },
+    sky: { kpi: "admin-kpi-neutral", icon: "bg-slate-600 text-white" },
+    amber: { kpi: "admin-kpi-secondary", icon: "bg-amber-500 text-white" },
+    rose: { kpi: "admin-kpi-secondary", icon: "bg-rose-500 text-white" },
+    slate: { kpi: "admin-kpi-neutral", icon: "bg-slate-500 text-white" },
   }[accent];
 
   const Wrapper = onClick ? "button" : "div";
@@ -71,28 +71,42 @@ function StatCard({
     <Wrapper
       type={onClick ? "button" : undefined}
       onClick={onClick}
-      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 shadow-sm text-left w-full transition-all ${styles.card} ${onClick ? "hover:shadow-md hover:-translate-y-0.5 cursor-pointer" : ""}`}
+      className={`admin-kpi ${styles.kpi} text-left w-full group ${onClick ? "cursor-pointer" : ""}`}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</p>
-          <p className="text-2xl font-bold text-slate-900 mt-1 tracking-tight tabular-nums">{value}</p>
-          {sub && <p className="text-[11px] text-slate-500 mt-1">{sub}</p>}
+          <p className="admin-kpi-label">{label}</p>
+          <p className="admin-kpi-value">{value}</p>
+          {sub && <p className="admin-kpi-meta">{sub}</p>}
         </div>
-        <div className={`p-2.5 rounded-xl bg-white/90 shadow-sm ${styles.icon}`}>
-          <Icon className="w-5 h-5" />
+        <div className={`p-1.5 rounded-lg ${styles.icon}`}>
+          <Icon className="w-3.5 h-3.5" />
         </div>
       </div>
     </Wrapper>
   );
 }
 
-function MiniMetric({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
+function MiniMetric({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string | number;
+  hint?: string;
+}) {
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
-      <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">{label}</p>
-      <p className="text-lg font-bold text-slate-900 mt-0.5 tabular-nums">{value}</p>
-      {hint && <p className="text-[10px] text-slate-500 mt-0.5">{hint}</p>}
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+      <p className="text-[11px] font-medium text-slate-500">{label}</p>
+      <p className="text-lg font-semibold text-slate-900 mt-0.5 tabular-nums tracking-tight leading-none">
+        {value}
+      </p>
+      {hint && (
+        <p className="text-[11px] text-slate-500 mt-1 font-normal leading-snug">
+          {hint}
+        </p>
+      )}
     </div>
   );
 }
@@ -114,23 +128,23 @@ function QuickLink({
     <button
       type="button"
       onClick={onClick}
-      className="group flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-sm hover:shadow-md hover:border-primary/30 transition-all w-full"
+      className="group flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left hover:border-slate-300 hover:bg-slate-50 transition-colors w-full"
     >
-      <div className="p-2.5 rounded-xl bg-slate-100 text-slate-600 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+      <div className="p-2 rounded-lg bg-slate-100 text-slate-600 group-hover:bg-teal-50 group-hover:text-teal-700 transition-colors">
         <Icon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-slate-900">{label}</p>
           {badge !== undefined && (
-            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold tabular-nums">
+            <span className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-950 text-[10px] font-bold tabular-nums">
               {badge}
             </span>
           )}
         </div>
         <p className="text-[11px] text-slate-500 mt-0.5">{description}</p>
       </div>
-      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary shrink-0" />
+      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-zinc-950 shrink-0" />
     </button>
   );
 }
@@ -161,11 +175,15 @@ export default function DashboardContent({
   maintenanceMode: boolean;
 }) {
   const [showRevenue, setShowRevenue] = useState(false);
-  const [activityFilter, setActivityFilter] = useState<"all" | "user" | "merchant" | "lead">("all");
+  const [activityFilter, setActivityFilter] = useState<
+    "all" | "user" | "merchant" | "lead"
+  >("all");
 
-  const maxVal = Math.max(...chartData.map((d) => d.users + d.merchants), 1);
   const chartPeak = chartData.reduce(
-    (best, d) => (d.users + d.merchants > best.total ? { label: d.label, total: d.users + d.merchants } : best),
+    (best, d) =>
+      d.users + d.merchants > best.total
+        ? { label: d.label, total: d.users + d.merchants }
+        : best,
     { label: "—", total: 0 },
   );
 
@@ -185,49 +203,51 @@ export default function DashboardContent({
   );
 
   return (
-    <div className="space-y-6">
-      {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-primary/90 text-white p-6 sm:p-8 shadow-xl">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.1),_transparent_55%)]" />
-        <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-primary/20 blur-3xl" />
-        <div className="relative z-10 flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+    <div className="space-y-4">
+      <div className="admin-platform-hero">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <div className="flex flex-wrap items-center gap-3 mb-3">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 text-[10px] font-semibold uppercase tracking-wider">
-                <span className={`w-1.5 h-1.5 rounded-full ${maintenanceMode ? "bg-amber-400" : "bg-emerald-400 animate-pulse"}`} />
-                {maintenanceMode ? "Maintenance" : "Platform live"}
-              </span>
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              {maintenanceMode ? (
+                <span className="admin-status-pill admin-status-warn">
+                  Maintenance
+                </span>
+              ) : (
+                <span className="admin-status-pill admin-status-live">
+                  <span className="admin-status-dot" />
+                  Platform live
+                </span>
+              )}
               {platformDateLabel && (
-                <span className="text-[11px] text-white/50 flex items-center gap-1">
+                <span className="text-[11px] text-slate-500 flex items-center gap-1 tabular-nums font-semibold">
                   <Calendar className="w-3.5 h-3.5" />
                   {platformDateLabel}
                   {platformTimeLabel && ` · ${platformTimeLabel}`}
                 </span>
               )}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Mission control</h1>
-            <p className="text-sm text-white/70 mt-2 max-w-2xl leading-relaxed">
-              Real-time snapshot of users, partners, revenue, leads, and platform health across FinderB.
+            <h1 className="admin-page-title !mb-0">Dashboard</h1>
+            <p className="admin-page-subtitle !mt-1">
+              KYC, partners, leads, and revenue at a glance.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => setActiveTab("Users")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-xs font-semibold hover:bg-white/15 transition-colors"
+              onClick={() => setActiveTab("Business Onboarding")}
+              className="admin-btn-secondary"
             >
-              <Users className="w-4 h-4" />
-              Users
+              Onboard business
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("Merchants")}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white text-slate-900 text-xs font-semibold shadow-lg hover:bg-white/95 transition-colors"
+              className="admin-btn-primary"
             >
               <Building2 className="w-4 h-4" />
               Partner queue
               {stats.merchants.pendingKyc > 0 && (
-                <span className="px-1.5 py-0.5 rounded-md bg-primary text-white text-[10px] font-bold">
+                <span className="px-1.5 py-0.5 rounded-md bg-white/25 text-[10px] font-bold">
                   {stats.merchants.pendingKyc}
                 </span>
               )}
@@ -237,7 +257,7 @@ export default function DashboardContent({
       </div>
 
       {/* Primary KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <StatCard
           label="Registered users"
           value={stats.users.total.toLocaleString()}
@@ -267,113 +287,155 @@ export default function DashboardContent({
           value={stats.weekSignups.total.toLocaleString()}
           sub={`${stats.weekSignups.users} users · ${stats.weekSignups.merchants} partners`}
           icon={UserPlus}
-          accent="violet"
+          accent="primary"
         />
       </div>
 
       {/* Secondary stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <MiniMetric label="Pending KYC" value={stats.merchants.pendingKyc} hint="Awaiting review" />
-        <MiniMetric label="Paid partners" value={stats.merchants.paid} hint="Completed payment" />
-        <MiniMetric label="Payment success" value={`${stats.payments.successRate}%`} hint="Of all attempts" />
-        <MiniMetric label="Active subs" value={stats.payments.activeSubscriptions} hint="Razorpay active" />
-        <MiniMetric label="Opens" value={stats.payments.opensCount} hint="Needs attention" />
-        <MiniMetric label="Categories" value={stats.content.categories} hint={`${stats.content.blogs} blogs · ${stats.content.jobs} jobs`} />
+        <MiniMetric
+          label="Pending KYC"
+          value={stats.merchants.pendingKyc}
+          hint="Awaiting review"
+        />
+        <MiniMetric
+          label="Paid partners"
+          value={stats.merchants.paid}
+          hint="Completed payment"
+        />
+        <MiniMetric
+          label="Payment success"
+          value={`${stats.payments.successRate}%`}
+          hint="Of all attempts"
+        />
+        <MiniMetric
+          label="Active subs"
+          value={stats.payments.activeSubscriptions}
+          hint="Razorpay active"
+        />
+        <MiniMetric
+          label="Opens"
+          value={stats.payments.opensCount}
+          hint="Needs attention"
+        />
+        <MiniMetric
+          label="Categories"
+          value={stats.content.categories}
+          hint={`${stats.content.blogs} blogs · ${stats.content.jobs} jobs`}
+        />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
         {/* Growth chart */}
-        <div className="xl:col-span-8 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100 flex flex-wrap items-start justify-between gap-4">
+        <div className="xl:col-span-8 admin-card overflow-hidden">
+          <div className="admin-card-header">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-primary" />
+              <h3 className="admin-card-title flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-teal-600" />
                 Growth trajectory
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                New registrations over 7 days · peak {chartPeak.label} ({chartPeak.total})
+              <p className="admin-card-description">
+                New registrations · 7 days · peak {chartPeak.label} (
+                {chartPeak.total})
               </p>
             </div>
-            <div className="flex gap-4 text-[11px] text-slate-500">
+            <div className="flex gap-3 text-[11px] text-slate-500 font-semibold">
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm bg-primary" />
+                <span className="w-2.5 h-2.5 rounded-sm bg-slate-700" />
                 Users ({stats.weekSignups.users})
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm bg-secondary" />
+                <span className="w-2.5 h-2.5 rounded-sm bg-teal-600" />
                 Partners ({stats.weekSignups.merchants})
               </span>
             </div>
           </div>
-          <div className="p-6 pt-4">
-            <div className="h-56 flex items-end justify-between gap-2 px-1">
-              {chartData.map((d, i) => {
-                const total = d.users + d.merchants;
-                return (
-                  <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end max-w-[56px] group">
-                    <span className="text-[10px] font-semibold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
-                      {total}
-                    </span>
-                    <div className="w-full flex items-end justify-center gap-1 h-full max-h-[180px]">
-                      <div
-                        className="w-full max-w-[18px] rounded-t-md bg-primary/85 hover:bg-primary transition-colors"
-                        style={{ height: `${Math.max((d.users / maxVal) * 100, d.users ? 4 : 0)}%` }}
-                        title={`${d.users} users`}
-                      />
-                      <div
-                        className="w-full max-w-[18px] rounded-t-md bg-secondary/85 hover:bg-secondary transition-colors"
-                        style={{ height: `${Math.max((d.merchants / maxVal) * 100, d.merchants ? 4 : 0)}%` }}
-                        title={`${d.merchants} partners`}
-                      />
-                    </div>
-                    <span className="text-[11px] font-medium text-slate-500 group-hover:text-primary transition-colors">
-                      {d.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-3 gap-4">
+          <div className="px-3 pt-2 pb-3">
+            <AdminBarChart
+              height={200}
+              series={[
+                { key: "users", label: "Users", color: "#334155" },
+                { key: "merchants", label: "Partners", color: "#0d9488" },
+              ]}
+              data={chartData.map((d) => ({
+                label: d.label,
+                values: { users: d.users, merchants: d.merchants },
+              }))}
+            />
+            <div className="mt-2 pt-3 border-t border-slate-100 grid grid-cols-3 gap-3 px-1">
               <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Leads (7d)</p>
-                <p className="text-lg font-bold text-slate-900 tabular-nums">{stats.leads.weekNew}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                  Leads (7d)
+                </p>
+                <p className="text-base font-bold text-slate-900 tabular-nums">
+                  {stats.leads.weekNew}
+                </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Category leads</p>
-                <p className="text-lg font-bold text-slate-900 tabular-nums">{stats.leads.category}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                  Category leads
+                </p>
+                <p className="text-base font-bold text-slate-900 tabular-nums">
+                  {stats.leads.category}
+                </p>
               </div>
               <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider">Profile leads</p>
-                <p className="text-lg font-bold text-slate-900 tabular-nums">{stats.leads.profile}</p>
+                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                  Profile leads
+                </p>
+                <p className="text-base font-bold text-slate-900 tabular-nums">
+                  {stats.leads.profile}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Plan mix */}
-        <div className="xl:col-span-4 rounded-2xl border border-slate-200/80 bg-white shadow-sm p-6">
-          <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-            <Layers className="w-4 h-4 text-primary" />
+        <div className="xl:col-span-4 admin-card p-4">
+          <h3 className="admin-card-title flex items-center gap-2">
+            <Layers className="w-4 h-4 text-teal-600" />
             Partner plan mix
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5 mb-5">Active partner subscriptions</p>
-          <div className="space-y-4">
+          <p className="admin-card-description mb-3">
+            Active partner subscriptions
+          </p>
+          <div className="space-y-3">
             {[
-              { label: "Starter", count: stats.plans.starter, color: "bg-slate-400" },
-              { label: "Growth — Monthly", count: stats.plans.growthMonthly, color: "bg-primary" },
-              { label: "Pro — Annual", count: stats.plans.proAnnual, color: "bg-secondary" },
+              {
+                label: "Starter",
+                count: stats.plans.starter,
+                color: "bg-slate-400",
+              },
+              {
+                label: "Growth — Monthly",
+                count: stats.plans.growthMonthly,
+                color: "bg-teal-600",
+              },
+              {
+                label: "Pro — Annual",
+                count: stats.plans.proAnnual,
+                color: "bg-slate-600",
+              },
             ].map((plan) => {
-              const pct = stats.merchants.total ? (plan.count / stats.merchants.total) * 100 : 0;
+              const pct = stats.merchants.total
+                ? (plan.count / stats.merchants.total) * 100
+                : 0;
               return (
                 <div key={plan.label}>
-                  <div className="flex justify-between text-[11px] mb-1.5">
-                    <span className="font-medium text-slate-700">{plan.label}</span>
-                    <span className="text-slate-500 tabular-nums">
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="font-bold text-slate-700">
+                      {plan.label}
+                    </span>
+                    <span className="text-slate-500 tabular-nums font-semibold">
                       {plan.count} · {pct.toFixed(0)}%
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div className={`h-full rounded-full ${plan.color} transition-all`} style={{ width: `${pct}%` }} />
+                    <div
+                      className={`h-full rounded-full ${plan.color} transition-all`}
+                      style={{ width: `${pct}%` }}
+                    />
                   </div>
                 </div>
               );
@@ -382,7 +444,7 @@ export default function DashboardContent({
           <button
             type="button"
             onClick={() => setActiveTab("Payments & Subscriptions")}
-            className="mt-6 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="mt-4 w-full admin-btn-secondary"
           >
             <CreditCard className="w-4 h-4" />
             Open payments ledger
@@ -391,104 +453,195 @@ export default function DashboardContent({
       </div>
 
       {/* Revenue */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+      <div className="admin-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-primary" />
+              <Wallet className="w-4 h-4 text-teal-700" />
               Platform revenue
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">Merchant subscription payments · sensitive figures hidden by default</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Subscription payments · hidden by default
+            </p>
           </div>
           <button
             type="button"
             onClick={() => setShowRevenue((v) => !v)}
-            className="px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+            className="admin-btn-secondary !py-1.5 !text-xs"
           >
             {showRevenue ? "Hide revenue" : "Show revenue"}
           </button>
         </div>
         {showRevenue ? (
-          <div className="p-6">
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="p-4">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
               {[
-                { label: "Total revenue", value: stats.payments.totalRevenueDisplay, tone: "border-slate-200 bg-gradient-to-br from-slate-50 to-white" },
-                { label: "MTD revenue", value: stats.payments.mtdRevenueDisplay, tone: "border-primary/20 bg-primary/5" },
-                { label: "Completed", value: stats.payments.completedCount, tone: "border-emerald-200 bg-emerald-50/60" },
-                { label: "Pending", value: stats.payments.pendingCount, tone: "border-amber-200 bg-amber-50/60" },
-                { label: "Failed", value: stats.payments.failedCount, tone: "border-rose-200 bg-rose-50/60" },
+                {
+                  label: "Total revenue",
+                  value: stats.payments.totalRevenueDisplay,
+                  tone: "border-slate-200 bg-slate-50",
+                },
+                {
+                  label: "MTD revenue",
+                  value: stats.payments.mtdRevenueDisplay,
+                  tone: "border-slate-200 bg-white",
+                },
+                {
+                  label: "Completed",
+                  value: stats.payments.completedCount,
+                  tone: "border-emerald-200 bg-emerald-50/50",
+                },
+                {
+                  label: "Pending",
+                  value: stats.payments.pendingCount,
+                  tone: "border-amber-200 bg-amber-50/50",
+                },
+                {
+                  label: "Failed",
+                  value: stats.payments.failedCount,
+                  tone: "border-rose-200 bg-rose-50/50",
+                },
               ].map((item) => (
-                <div key={item.label} className={`rounded-xl border p-4 ${item.tone}`}>
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">{item.label}</p>
-                  <p className="text-xl font-bold text-slate-900 mt-1 tabular-nums">{item.value}</p>
+                <div
+                  key={item.label}
+                  className={`rounded-lg border px-3 py-2.5 ${item.tone}`}
+                >
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">
+                    {item.label}
+                  </p>
+                  <p className="text-lg font-bold text-slate-900 mt-0.5 tabular-nums leading-none">
+                    {item.value}
+                  </p>
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-xs text-slate-500">
-                {stats.payments.expiring7d} expiring ≤7d · {stats.payments.autoDebitEnabled} auto-debit enabled
+                {stats.payments.expiring7d} expiring ≤7d ·{" "}
+                {stats.payments.autoDebitEnabled} auto-debit enabled
               </p>
-              <button type="button" onClick={() => setActiveTab("Payments & Subscriptions")} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+              <button
+                type="button"
+                onClick={() => setActiveTab("Payments & Subscriptions")}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:underline"
+              >
                 Full financial ledger <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
         ) : (
-          <div className="px-6 py-8 text-center">
-            <div className="inline-flex p-3 rounded-2xl bg-slate-100 text-slate-400 mb-2">
-              <Shield className="w-6 h-6" />
+          <div className="px-4 py-5 text-center">
+            <div className="inline-flex p-2 rounded-lg bg-slate-100 text-slate-400 mb-1.5">
+              <Shield className="w-5 h-5" />
             </div>
-            <p className="text-sm text-slate-600">Revenue figures are concealed</p>
-            <p className="text-xs text-slate-400 mt-1">Click &quot;Show revenue&quot; to view payment totals</p>
+            <p className="text-sm text-slate-600">
+              Revenue figures are concealed
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Click &quot;Show revenue&quot; to view payment totals
+            </p>
           </div>
         )}
       </div>
 
       {/* Quick actions */}
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3 px-1">Quick navigation</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3 px-1">
+          Quick navigation
+        </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <QuickLink label="Partner management" description="Profiles, KYC, verification badges" icon={Building2} onClick={() => setActiveTab("Merchants")} badge={stats.merchants.pendingKyc || undefined} />
-          <QuickLink label="Payments & subscriptions" description="Ledger, filters, opens tracking" icon={CreditCard} onClick={() => setActiveTab("Payments & Subscriptions")} badge={stats.payments.opensCount || undefined} />
-          <QuickLink label="Lead inbox" description="Profile and category enquiries" icon={Activity} onClick={() => setActiveTab("Leads")} badge={stats.leads.weekNew ? `+${stats.leads.weekNew}` : undefined} />
-          <QuickLink label="Categories" description="Marketplace taxonomy and slots" icon={Layers} onClick={() => setActiveTab("Categories")} />
-          <QuickLink label="Blogs" description="Editorial content management" icon={FileText} onClick={() => setActiveTab("Blogs")} badge={stats.content.blogs} />
-          <QuickLink label="FinderB Jobs" description="Job listings on platform" icon={Briefcase} onClick={() => setActiveTab("FinderB Jobs")} badge={stats.content.jobs} />
+          <QuickLink
+            label="Partner management"
+            description="Profiles, KYC, verification badges"
+            icon={Building2}
+            onClick={() => setActiveTab("Merchants")}
+            badge={stats.merchants.pendingKyc || undefined}
+          />
+          <QuickLink
+            label="Payments & subscriptions"
+            description="Ledger, filters, opens tracking"
+            icon={CreditCard}
+            onClick={() => setActiveTab("Payments & Subscriptions")}
+            badge={stats.payments.opensCount || undefined}
+          />
+          <QuickLink
+            label="Lead inbox"
+            description="Profile and category enquiries"
+            icon={Activity}
+            onClick={() => setActiveTab("Leads")}
+            badge={stats.leads.weekNew ? `+${stats.leads.weekNew}` : undefined}
+          />
+          <QuickLink
+            label="Categories"
+            description="Marketplace taxonomy and slots"
+            icon={Layers}
+            onClick={() => setActiveTab("Categories")}
+          />
+          <QuickLink
+            label="Blogs"
+            description="Editorial content management"
+            icon={FileText}
+            onClick={() => setActiveTab("Blogs")}
+            badge={stats.content.blogs}
+          />
+          <QuickLink
+            label="FinderB Jobs"
+            description="Job listings on platform"
+            icon={Briefcase}
+            onClick={() => setActiveTab("FinderB Jobs")}
+            badge={stats.content.jobs}
+          />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
         {/* Verification queue */}
-        <div className="xl:col-span-5 rounded-2xl border border-slate-200/80 bg-white shadow-sm flex flex-col min-h-[380px] overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3">
+        <div className="xl:col-span-5 admin-card flex flex-col overflow-hidden">
+          <div className="admin-card-header">
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <h3 className="admin-card-title flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 Verification queue
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {merchantRequests.length} partner{merchantRequests.length !== 1 ? "s" : ""} awaiting action
+              <p className="admin-card-description">
+                {merchantRequests.length} partner
+                {merchantRequests.length !== 1 ? "s" : ""} awaiting action
               </p>
             </div>
-            <button type="button" onClick={() => setActiveTab("Merchants")} className="text-xs font-semibold text-primary hover:underline">
+            <button
+              type="button"
+              onClick={() => setActiveTab("Merchants")}
+              className="admin-link"
+            >
               Open
             </button>
           </div>
-          <div className="flex-1 divide-y divide-slate-50 overflow-y-auto max-h-[340px] custom-scrollbar">
+          <div className="divide-y divide-slate-100 overflow-y-auto max-h-[280px] custom-scrollbar">
             {merchantRequests.length > 0 ? (
               merchantRequests.slice(0, 8).map((merchant) => (
-                <div key={merchant.id} className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors">
+                <div
+                  key={merchant.id}
+                  className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors"
+                >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="admin-avatar shrink-0">
-                      {merchant.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                      {merchant.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{merchant.name}</p>
+                      <p className="text-sm font-medium text-slate-900 truncate">
+                        {merchant.name}
+                      </p>
                       <p className="text-[11px] text-slate-500 truncate">
                         {merchant.category}
                         {merchant.email ? ` · ${merchant.email}` : ""}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Requested {merchant.date}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        Requested {merchant.date}
+                      </p>
                     </div>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
@@ -498,8 +651,18 @@ export default function DashboardContent({
                       className="admin-icon-btn !text-emerald-600 hover:!bg-emerald-50"
                       title="Approve"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2.5"
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                     </button>
                     <button
@@ -508,8 +671,18 @@ export default function DashboardContent({
                       className="admin-icon-btn-danger"
                       title="Reject"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -520,65 +693,113 @@ export default function DashboardContent({
                 <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600 mb-3">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
-                <p className="text-sm font-medium text-slate-900">Queue clear</p>
-                <p className="text-xs text-slate-500 mt-1">No partners awaiting KYC review</p>
+                <p className="text-sm font-medium text-slate-900">
+                  Queue clear
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  No partners awaiting KYC review
+                </p>
               </div>
             )}
           </div>
         </div>
 
         {/* Admin logins */}
-        <div className="xl:col-span-3 rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+        <div className="xl:col-span-3 admin-card overflow-hidden">
+          <div className="admin-card-header !flex-col !items-start">
+            <h3 className="admin-card-title flex items-center gap-2">
               <Shield className="w-4 h-4 text-slate-500" />
               Admin access log
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">Recent controller sign-ins</p>
+            <p className="admin-card-description">Recent controller sign-ins</p>
           </div>
-          <div className="divide-y divide-slate-50 max-h-[340px] overflow-y-auto custom-scrollbar">
+          <div className="divide-y divide-slate-100 max-h-[240px] overflow-y-auto custom-scrollbar">
             {loginLogs.length > 0 ? (
               loginLogs.slice(0, 6).map((log) => (
-                <div key={log.id} className="px-5 py-3">
-                  <p className="text-[11px] font-medium text-slate-800 truncate">{log.admin_email}</p>
+                <div key={log.id} className="px-4 py-2.5">
+                  <p className="text-[11px] font-medium text-slate-800 truncate">
+                    {log.admin_email}
+                  </p>
                   <p className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
-                    {formatActivityDate(log.login_time)} · {formatActivityTime(log.login_time)}
+                    {formatActivityDate(log.login_time)} ·{" "}
+                    {formatActivityTime(log.login_time)}
                   </p>
                 </div>
               ))
             ) : (
-              <p className="px-5 py-10 text-center text-xs text-slate-500">No login records</p>
+              <p className="px-4 py-8 text-center text-xs text-slate-500">
+                No login records
+              </p>
             )}
           </div>
-          <div className="px-5 py-3 border-t border-slate-100">
-            <button type="button" onClick={() => setActiveTab("Settings")} className="text-xs font-semibold text-primary hover:underline">
+          <div className="px-4 py-2.5 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setActiveTab("Settings")}
+              className="admin-link"
+            >
               View in settings →
             </button>
           </div>
         </div>
 
         {/* Platform health */}
-        <div className="xl:col-span-4 rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-white shadow-sm p-5">
-          <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" />
+        <div className="xl:col-span-4 admin-card p-4">
+          <h3 className="admin-card-title flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-teal-700" />
             Platform health
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5 mb-4">Key operational indicators</p>
-          <div className="space-y-3">
+          <p className="admin-card-description mb-3">
+            Key operational indicators
+          </p>
+          <div className="space-y-2.5">
             {[
-              { label: "Listing activation", value: stats.merchants.total ? Math.round((stats.merchants.activeListings / stats.merchants.total) * 100) : 0, hint: `${stats.merchants.activeListings}/${stats.merchants.total} active` },
-              { label: "Verification rate", value: stats.merchants.total ? Math.round((stats.merchants.verified / stats.merchants.total) * 100) : 0, hint: `${stats.merchants.verified} FinderB verified` },
-              { label: "Paid conversion", value: stats.merchants.total ? Math.round((stats.merchants.paid / stats.merchants.total) * 100) : 0, hint: `${stats.merchants.paid} paid partners` },
-              { label: "Payment success", value: stats.payments.successRate, hint: "Completed vs all attempts" },
+              {
+                label: "Listing activation",
+                value: stats.merchants.total
+                  ? Math.round(
+                      (stats.merchants.activeListings / stats.merchants.total) *
+                        100,
+                    )
+                  : 0,
+                hint: `${stats.merchants.activeListings}/${stats.merchants.total} active`,
+              },
+              {
+                label: "Verification rate",
+                value: stats.merchants.total
+                  ? Math.round(
+                      (stats.merchants.verified / stats.merchants.total) * 100,
+                    )
+                  : 0,
+                hint: `${stats.merchants.verified} FinderB verified`,
+              },
+              {
+                label: "Paid conversion",
+                value: stats.merchants.total
+                  ? Math.round(
+                      (stats.merchants.paid / stats.merchants.total) * 100,
+                    )
+                  : 0,
+                hint: `${stats.merchants.paid} paid partners`,
+              },
+              {
+                label: "Payment success",
+                value: stats.payments.successRate,
+                hint: "Completed vs all attempts",
+              },
             ].map((row) => (
               <div key={row.label}>
                 <div className="flex justify-between text-[11px] mb-1">
-                  <span className="font-medium text-slate-700">{row.label}</span>
-                  <span className="text-slate-500 tabular-nums">{row.hint}</span>
+                  <span className="font-medium text-slate-700">
+                    {row.label}
+                  </span>
+                  <span className="text-slate-500 tabular-nums">
+                    {row.hint}
+                  </span>
                 </div>
-                <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all"
+                    className="h-full rounded-full bg-teal-600 transition-all"
                     style={{ width: `${Math.min(row.value, 100)}%` }}
                   />
                 </div>
@@ -589,11 +810,13 @@ export default function DashboardContent({
       </div>
 
       {/* Activity stream */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="admin-card overflow-hidden">
+        <div className="admin-card-header flex-col sm:flex-row !items-start sm:!items-center gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Activity stream</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Latest events across users, partners, and leads</p>
+            <h3 className="admin-card-title">Activity stream</h3>
+            <p className="admin-card-description">
+              Latest events across users, partners, and leads
+            </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {(["all", "user", "merchant", "lead"] as const).map((type) => (
@@ -601,24 +824,29 @@ export default function DashboardContent({
                 key={type}
                 type="button"
                 onClick={() => setActivityFilter(type)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-semibold capitalize transition-all ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold capitalize transition-colors ${
                   activityFilter === type
-                    ? "bg-slate-900 text-white"
+                    ? "bg-teal-700 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
                 }`}
               >
                 {type}
-                <span className="ml-1 opacity-70 tabular-nums">{activityCounts[type]}</span>
+                <span className="ml-1 opacity-70 tabular-nums">
+                  {activityCounts[type]}
+                </span>
               </button>
             ))}
           </div>
         </div>
-        <div className="divide-y divide-slate-50">
+        <div className="divide-y divide-slate-100">
           {filteredActivities.length > 0 ? (
             filteredActivities.slice(0, 14).map((activity) => (
-              <div key={`${activity.type}-${activity.id}`} className="px-6 py-3.5 flex items-center gap-4 hover:bg-slate-50/60 transition-colors">
+              <div
+                key={`${activity.type}-${activity.id}`}
+                className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors"
+              >
                 <div
-                  className={`admin-avatar shrink-0 !w-9 !h-9 text-[10px] ${
+                  className={`admin-avatar shrink-0 !w-8 !h-8 text-[10px] ${
                     activity.type === "user"
                       ? "!bg-sky-50 !text-sky-700 !border-sky-100"
                       : activity.type === "merchant"
@@ -626,20 +854,34 @@ export default function DashboardContent({
                         : "!bg-amber-50 !text-amber-700 !border-amber-100"
                   }`}
                 >
-                  {activity.type === "user" ? "U" : activity.type === "merchant" ? "M" : "L"}
+                  {activity.type === "user"
+                    ? "U"
+                    : activity.type === "merchant"
+                      ? "M"
+                      : "L"}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900">{activity.title}</p>
-                  <p className="text-xs text-slate-500 mt-0.5 truncate">{activity.description}</p>
+                  <p className="text-sm font-medium text-slate-900">
+                    {activity.title}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5 truncate">
+                    {activity.description}
+                  </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-xs text-slate-600 tabular-nums">{formatActivityDate(activity.timestamp)}</p>
-                  <p className="text-[11px] text-slate-400 tabular-nums">{formatActivityTime(activity.timestamp)}</p>
+                  <p className="text-xs text-slate-600 tabular-nums">
+                    {formatActivityDate(activity.timestamp)}
+                  </p>
+                  <p className="text-[11px] text-slate-400 tabular-nums">
+                    {formatActivityTime(activity.timestamp)}
+                  </p>
                 </div>
               </div>
             ))
           ) : (
-            <div className="py-16 text-center text-sm text-slate-500">No activity for this filter</div>
+            <div className="py-10 text-center text-sm text-slate-500">
+              No activity for this filter
+            </div>
           )}
         </div>
       </div>

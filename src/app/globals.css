@@ -1,43 +1,44 @@
 @import "tailwindcss";
 
 :root {
-  --background: #eef0f4;
-  --foreground: #0c1222;
-  --sidebar-background: #0a0e17;
-  --sidebar-foreground: #8b95a8;
-  --sidebar-foreground-active: #f0f3f8;
-  --sidebar-border: rgba(255, 255, 255, 0.07);
-  --sidebar-hover: rgba(255, 255, 255, 0.05);
-  --sidebar-active: rgba(33, 84, 129, 0.28);
-  --sidebar-width: 280px;
-  --primary: #1a5276;
-  --primary-50: #eef4f8;
-  --primary-100: #d4e4ef;
-  --primary-200: #a9c9df;
-  --primary-300: #7eadcf;
-  --primary-400: #5392bf;
-  --primary-500: #1a5276;
-  --primary-600: #164665;
-  --primary-700: #123a54;
-  --primary-800: #0e2e43;
-  --primary-900: #0a2232;
+  --background: #f7f8fa;
+  --foreground: #111827;
+  --sidebar-background: #ffffff;
+  --sidebar-foreground: #6b7280;
+  --sidebar-foreground-active: #111827;
+  --sidebar-border: #eef0f3;
+  --sidebar-hover: rgba(13, 148, 136, 0.05);
+  --sidebar-active: rgba(13, 148, 136, 0.09);
+  --sidebar-width: 268px;
+  --sidebar-collapsed-width: 72px;
+  --primary: #0d9488;
+  --primary-50: #f0fdfa;
+  --primary-100: #ccfbf1;
+  --primary-200: #99f6e4;
+  --primary-300: #5eead4;
+  --primary-400: #2dd4bf;
+  --primary-500: #14b8a6;
+  --primary-600: #0d9488;
+  --primary-700: #0f766e;
+  --primary-800: #115e59;
+  --primary-900: #134e4a;
   --primary-foreground: #ffffff;
-  --secondary: #a67c2a;
-  --secondary-50: #faf6ee;
-  --secondary-100: #f2e8d0;
-  --secondary-500: #a67c2a;
+  --secondary: #f59e0b;
+  --secondary-50: #fffbeb;
+  --secondary-100: #fef3c7;
+  --secondary-500: #f59e0b;
   --secondary-foreground: #ffffff;
-  --muted: #f1f3f6;
-  --muted-foreground: #5c6578;
-  --border: #d8dde6;
-  --input: #d8dde6;
-  --ring: #1a5276;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #0d9488;
   --surface: #ffffff;
-  --surface-muted: #f8f9fb;
-  --success: #047857;
-  --danger: #b91c1c;
-  --warning: #b45309;
-  --command-bar: #ffffff;
+  --surface-muted: #f9fafb;
+  --success: #059669;
+  --danger: #e11d48;
+  --warning: #d97706;
+  --command-bar: rgba(255, 255, 255, 0.92);
 }
 
 @theme inline {
@@ -67,8 +68,8 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: var(--font-plex), "IBM Plex Sans", system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: var(--font-sans-ui), "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-sans-ui), "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 * {
@@ -79,9 +80,21 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  font-size: 14px;
   font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: -0.011em;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Flat light surfaces — no drop shadows on cards / panels */
+.admin-card,
+.admin-kpi,
+.admin-platform-hero,
+.admin-sidebar {
+  box-shadow: none !important;
 }
 
 @layer components {
@@ -92,37 +105,72 @@ body {
 
   .admin-sidebar {
     width: var(--sidebar-width);
-    @apply flex flex-col fixed inset-y-0 z-50;
-    background: var(--sidebar-background);
+    @apply flex flex-col fixed inset-y-0 z-50 bg-white;
     border-right: 1px solid var(--sidebar-border);
-    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  }
+
+  .admin-sidebar.is-collapsed {
+    width: var(--sidebar-collapsed-width);
+  }
+
+  .admin-sidebar.is-resizing {
+    transition: none !important;
+    user-select: none;
+  }
+
+  .admin-sidebar-resize {
+    @apply absolute top-0 right-0 w-1.5 h-full z-20;
+    cursor: col-resize;
+  }
+
+  .admin-sidebar-resize::after {
+    content: "";
+    @apply absolute inset-y-0 right-0 w-px bg-transparent transition-colors;
+  }
+
+  .admin-sidebar-resize:hover::after,
+  .admin-sidebar.is-resizing .admin-sidebar-resize::after {
+    background: var(--primary);
+    width: 2px;
   }
 
   .admin-sidebar-header {
-    @apply relative flex flex-col gap-1 px-5 py-5;
+    @apply relative flex flex-col gap-0.5 px-4 pt-4 pb-3 bg-white;
     border-bottom: 1px solid var(--sidebar-border);
   }
 
+  .admin-sidebar.is-collapsed .admin-sidebar-header {
+    @apply px-2 items-center;
+  }
+
   .admin-sidebar-brand {
-    @apply text-[11px] font-semibold tracking-[0.12em] text-slate-500;
+    @apply text-[11px] font-medium text-slate-400;
   }
 
   .admin-nav-group {
-    @apply mb-5 last:mb-2;
+    @apply mb-3 last:mb-1;
   }
 
   .admin-nav-group-label {
-    @apply px-3 mb-1.5 text-[10px] font-semibold tracking-[0.14em] text-slate-600;
+    @apply px-3 mb-1.5 text-[11px] font-medium text-slate-400;
+  }
+
+  .admin-sidebar.is-collapsed .admin-nav-group-label {
+    @apply sr-only;
   }
 
   .admin-nav-item {
-    @apply w-full flex items-center gap-3 px-3 py-2 text-[13px] font-medium rounded-md transition-colors duration-150 relative;
+    @apply w-full flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium rounded-lg transition-colors duration-150 relative;
+  }
+
+  .admin-sidebar.is-collapsed .admin-nav-item {
+    @apply justify-center px-0 py-2.5;
   }
 
   .admin-nav-item-active {
     background: var(--sidebar-active);
-    color: var(--sidebar-foreground-active);
-    box-shadow: inset 3px 0 0 0 var(--primary-400);
+    color: var(--primary-800);
+    box-shadow: inset 3px 0 0 0 var(--primary);
   }
 
   .admin-nav-item-idle {
@@ -134,45 +182,76 @@ body {
     color: var(--sidebar-foreground-active);
   }
 
-  .admin-topbar {
-    @apply h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30;
+  .admin-nav-badge {
+    @apply ml-auto shrink-0 min-w-[1.2rem] h-[1.2rem] px-1 rounded-md text-[10px] font-medium tabular-nums flex items-center justify-center bg-slate-100 text-slate-600 border border-slate-200;
   }
 
-  .admin-command-bar {
-    @apply border-b border-slate-200/90 px-4 lg:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-14 z-20;
-    background: var(--command-bar);
+  .admin-nav-badge-alert {
+    @apply bg-amber-50 text-amber-700 border-amber-200;
+  }
+
+  .admin-nav-badge-soon {
+    @apply bg-teal-50 text-teal-700 border-teal-100 !min-w-0 !px-1.5;
+  }
+
+  .admin-sidebar-footer {
+    @apply p-3 border-t bg-slate-50/80;
+    border-color: var(--sidebar-border);
+  }
+
+  .admin-sidebar.is-collapsed .admin-sidebar-footer {
+    @apply p-2;
   }
 
   .admin-content-area {
     @apply flex-1 min-w-0;
-    background-color: var(--background);
-    background-image:
-      radial-gradient(circle at 1px 1px, rgba(15, 23, 42, 0.04) 1px, transparent 0);
-    background-size: 24px 24px;
+    margin-left: 0;
+    background: var(--background);
+  }
+
+  @media (min-width: 1024px) {
+    .admin-content-area {
+      margin-left: var(--sidebar-width);
+    }
+
+    .admin-shell.sidebar-collapsed .admin-content-area {
+      margin-left: var(--sidebar-collapsed-width);
+    }
+  }
+
+  .admin-topbar {
+    @apply h-14 border-b border-slate-200/80 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 bg-white/90 backdrop-blur-md;
+  }
+
+  .admin-command-bar {
+    @apply border-b border-slate-200/80 px-4 lg:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-14 z-20;
+    background: var(--command-bar);
+    backdrop-filter: blur(10px);
   }
 
   .admin-main {
-    @apply px-4 sm:px-6 lg:px-8 py-6 lg:py-8 w-full;
+    @apply px-4 sm:px-5 lg:px-6 py-5 lg:py-6 w-full;
+    animation: admin-rise 0.28s ease-out;
   }
 
   .admin-page-header {
-    @apply flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6;
+    @apply flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-5;
   }
 
   .admin-page-title {
-    @apply text-2xl font-semibold text-slate-900 tracking-tight;
+    @apply text-xl font-semibold text-slate-900 tracking-tight;
   }
 
   .admin-page-subtitle {
-    @apply text-sm text-slate-500 leading-relaxed mt-1 max-w-2xl;
+    @apply text-sm text-slate-500 leading-snug mt-1 max-w-2xl font-normal;
   }
 
   .admin-card {
-    @apply bg-white rounded-lg border border-slate-200/90 shadow-[0_1px_3px_rgba(15,23,42,0.06)] overflow-hidden;
+    @apply bg-white rounded-xl border border-slate-200 overflow-hidden;
   }
 
   .admin-card-header {
-    @apply px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/60;
+    @apply px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-white;
   }
 
   .admin-card-title {
@@ -180,31 +259,37 @@ body {
   }
 
   .admin-card-description {
-    @apply text-xs text-slate-500 mt-0.5;
+    @apply text-xs text-slate-500 mt-0.5 font-normal;
   }
 
   .admin-input {
-    @apply w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-colors;
+    @apply w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 transition-colors;
   }
 
   .admin-search {
-    @apply pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-md text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-colors;
+    @apply pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 transition-colors;
   }
 
   .admin-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg text-white transition-colors disabled:opacity-50;
+    background: linear-gradient(180deg, #14b8a6 0%, #0d9488 100%);
+    border: 1px solid #0f766e;
+  }
+
+  .admin-btn-primary:hover {
+    background: linear-gradient(180deg, #0d9488 0%, #0f766e 100%);
   }
 
   .admin-btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-slate-700 text-sm font-medium rounded-md border border-slate-200 hover:bg-slate-50 transition-colors;
+    @apply inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-white text-slate-700 text-sm font-medium rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors;
   }
 
   .admin-btn-ghost {
-    @apply inline-flex items-center justify-center p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors;
+    @apply inline-flex items-center justify-center p-2 text-slate-500 hover:text-teal-700 hover:bg-slate-100 rounded-lg transition-colors;
   }
 
   .admin-btn-danger {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-rose-700 text-sm font-medium rounded-md border border-slate-200 hover:bg-rose-50 hover:border-rose-200 transition-colors;
+    @apply inline-flex items-center justify-center gap-2 px-3.5 py-2 bg-white text-rose-700 text-sm font-medium rounded-lg border border-slate-200 hover:bg-rose-50 hover:border-rose-200 transition-colors;
   }
 
   .admin-table-wrap {
@@ -216,11 +301,11 @@ body {
   }
 
   .admin-table thead {
-    @apply bg-slate-50 border-b border-slate-200 sticky top-0 z-10;
+    @apply bg-slate-50/90 border-b border-slate-200 sticky top-0 z-10;
   }
 
   .admin-table th {
-    @apply px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap;
+    @apply px-5 py-3 text-[11px] font-medium text-slate-500 whitespace-nowrap;
   }
 
   .admin-table tbody {
@@ -228,58 +313,66 @@ body {
   }
 
   .admin-table td {
-    @apply px-5 py-3.5 text-sm text-slate-700;
+    @apply px-5 py-3.5 text-sm font-normal text-slate-700;
   }
 
-  .admin-table tr {
-    @apply hover:bg-slate-50/80 transition-colors;
+  .admin-table tbody tr {
+    @apply transition-colors;
+  }
+
+  .admin-table tbody tr:hover {
+    background: rgba(13, 148, 136, 0.03);
   }
 
   .admin-badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border;
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border;
   }
 
   .admin-kpi-grid {
-    @apply grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4;
+    @apply grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3;
   }
 
   .admin-kpi {
-    @apply relative bg-white rounded-lg border border-slate-200/90 p-5 overflow-hidden;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    @apply relative bg-white rounded-xl border border-slate-200 px-4 py-3 overflow-hidden transition-colors;
+  }
+
+  .admin-kpi:hover {
+    border-color: #d1d5db;
+    background: #fafafa;
   }
 
   .admin-kpi::before {
     content: "";
-    @apply absolute left-0 top-0 bottom-0 w-1 rounded-l-lg;
+    @apply absolute left-0 top-0 bottom-0 w-[3px];
   }
 
   .admin-kpi-primary::before { background: var(--primary); }
-  .admin-kpi-secondary::before { background: var(--secondary); }
+  .admin-kpi-secondary::before { background: #64748b; }
   .admin-kpi-success::before { background: var(--success); }
-  .admin-kpi-neutral::before { background: #64748b; }
+  .admin-kpi-neutral::before { background: #94a3b8; }
 
   .admin-kpi-label {
-    @apply text-xs font-medium text-slate-500;
+    @apply text-[11px] font-medium text-slate-500;
   }
 
   .admin-kpi-value {
-    @apply text-3xl font-semibold text-slate-900 mt-2 tabular-nums tracking-tight;
+    @apply text-2xl font-semibold text-slate-900 mt-1 tabular-nums tracking-tight leading-none;
   }
 
   .admin-kpi-meta {
-    @apply text-xs text-slate-400 mt-1;
+    @apply text-[11px] text-slate-500 mt-1 font-normal leading-snug;
   }
 
   .admin-status-pill {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border;
   }
 
   .admin-status-live {
-    @apply bg-emerald-50 text-emerald-800 border-emerald-200;
+    @apply bg-emerald-50 text-emerald-700 border-emerald-200;
   }
 
   .admin-status-warn {
-    @apply bg-amber-50 text-amber-800 border-amber-200;
+    @apply bg-amber-50 text-amber-700 border-amber-200;
   }
 
   .admin-status-dot {
@@ -288,7 +381,7 @@ body {
   }
 
   .admin-breadcrumb {
-    @apply flex items-center gap-2 text-xs text-slate-500;
+    @apply flex items-center gap-2 text-xs text-slate-500 font-medium;
   }
 
   .admin-breadcrumb-current {
@@ -296,85 +389,91 @@ body {
   }
 
   .admin-metric-chip {
-    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-50 border border-slate-200 text-xs text-slate-600;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-slate-200 text-[11px] text-slate-600 font-medium;
+  }
+
+  .admin-metric-chip:hover {
+    border-color: #d1d5db;
+    background: #f9fafb;
   }
 
   .admin-metric-chip strong {
-    @apply font-semibold text-slate-900 tabular-nums;
+    @apply font-semibold text-slate-900 tabular-nums text-sm;
   }
 
   .admin-icon-btn {
-    @apply w-8 h-8 flex items-center justify-center text-slate-500 hover:text-primary hover:bg-primary/5 rounded-md transition-colors border border-slate-200 bg-white;
+    @apply w-8 h-8 flex items-center justify-center text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors border border-slate-200 bg-white;
   }
 
   .admin-icon-btn-danger {
-    @apply w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors border border-slate-200 bg-white;
+    @apply w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-slate-200 bg-white;
   }
 
   .admin-segmented {
-    @apply inline-flex p-0.5 bg-slate-100 rounded-md border border-slate-200;
+    @apply inline-flex p-1 bg-slate-100 rounded-lg border border-slate-200;
   }
 
   .admin-segmented-btn {
-    @apply px-4 py-2 text-sm font-medium rounded transition-colors;
+    @apply px-4 py-2 text-sm font-medium rounded-md transition-colors;
   }
 
   .admin-segmented-btn-active {
-    @apply bg-white text-primary shadow-sm;
+    @apply bg-white text-teal-800 border border-slate-200;
   }
 
   .admin-segmented-btn-idle {
-    @apply text-slate-500 hover:text-slate-700;
+    @apply text-slate-500 hover:text-slate-800;
   }
 
   .admin-empty {
-    @apply py-16 text-center text-sm text-slate-400;
+    @apply py-16 text-center text-sm text-slate-400 font-medium;
   }
 
   .admin-avatar {
-    @apply w-9 h-9 rounded-md bg-primary-50 text-primary flex items-center justify-center text-xs font-semibold border border-primary/15 shrink-0;
+    @apply w-9 h-9 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center text-xs font-medium border border-teal-100 shrink-0;
   }
 
   .admin-avatar-dark {
-    @apply w-9 h-9 rounded-md flex items-center justify-center text-xs font-semibold shrink-0;
-    background: rgba(255, 255, 255, 0.08);
-    color: #e2e8f0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    @apply w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-medium shrink-0 bg-teal-600 text-white;
   }
 
   .admin-alert-error {
-    @apply rounded-md bg-rose-50 border border-rose-200 p-4 text-sm text-rose-800;
+    @apply rounded-xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-800;
   }
 
   .admin-modal-overlay {
     @apply fixed inset-0 z-50 flex items-center justify-center p-4;
-    background: rgba(10, 14, 23, 0.65);
+    background: rgba(17, 24, 39, 0.35);
     backdrop-filter: blur(4px);
   }
 
   .admin-modal {
-    @apply w-full max-w-md bg-white rounded-lg border border-slate-200 shadow-2xl overflow-hidden;
+    @apply w-full max-w-md bg-white rounded-xl border border-slate-200 overflow-hidden;
   }
 
   .admin-modal-lg {
-    @apply w-full max-w-4xl bg-white rounded-lg border border-slate-200 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col;
+    @apply w-full max-w-4xl bg-white rounded-xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col;
   }
 
   .admin-link {
-    @apply text-xs font-medium text-primary hover:text-primary-700 transition-colors;
+    @apply text-xs font-medium text-teal-700 hover:text-teal-900 transition-colors;
   }
 
   .admin-label {
-    @apply text-xs font-semibold text-slate-600;
+    @apply text-xs font-medium text-slate-600;
   }
 
   .admin-mono {
-    font-family: var(--font-mono);
-    @apply text-xs text-slate-500;
+    font-family: var(--font-sans);
+    @apply text-xs text-slate-500 tabular-nums font-normal;
   }
 
   .admin-timeline-item {
-    @apply flex gap-4 p-4 hover:bg-slate-50/80 transition-colors;
+    @apply flex gap-4 p-4 transition-colors;
+  }
+
+  .admin-timeline-item:hover {
+    background: rgba(13, 148, 136, 0.03);
   }
 
   .admin-timeline-line {
@@ -386,23 +485,29 @@ body {
   }
 
   .admin-platform-hero {
-    @apply rounded-lg border border-slate-200/90 p-6 lg:p-8 mb-6 relative overflow-hidden;
-    background: linear-gradient(135deg, #0a0e17 0%, #12334b 55%, #1a5276 100%);
-    box-shadow: 0 4px 24px rgba(10, 14, 23, 0.15);
+    @apply rounded-xl border border-slate-200 bg-white px-5 py-4 mb-5 relative;
+    background-image: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
   }
 
   .admin-platform-hero-grid {
-    @apply absolute inset-0 opacity-[0.07];
-    background-image:
-      linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px);
-    background-size: 32px 32px;
+    display: none;
   }
 }
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+@keyframes admin-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .custom-scrollbar {
@@ -430,14 +535,14 @@ body {
 
 .sidebar-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .sidebar-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 
 .sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: #cbd5e1;
   border-radius: 999px;
 }

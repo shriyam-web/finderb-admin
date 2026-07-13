@@ -90,7 +90,7 @@ export default function FinderBJobsContent({
       approved: jobs.filter((job) => getJobStatus(job) === "approved").length,
       rejected: jobs.filter((job) => getJobStatus(job) === "rejected").length,
     }),
-    [jobs]
+    [jobs],
   );
 
   const filteredJobs = useMemo(() => {
@@ -118,7 +118,7 @@ export default function FinderBJobsContent({
 
   const updateLocalJob = (id: string, updates: Partial<FinderBJob>) => {
     setJobs((prev) =>
-      prev.map((job) => (job.id === id ? { ...job, ...updates } : job))
+      prev.map((job) => (job.id === id ? { ...job, ...updates } : job)),
     );
   };
 
@@ -219,9 +219,7 @@ export default function FinderBJobsContent({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-1">
         <div>
-          <h1 className="admin-page-title">
-            FinderB Jobs Approval
-          </h1>
+          <h1 className="admin-page-title">FinderB Jobs Approval</h1>
           <p className="admin-page-subtitle">
             Review submitted jobs and approve or reject them with a reason.
           </p>
@@ -229,13 +227,25 @@ export default function FinderBJobsContent({
 
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Pending", value: stats.pending, color: "bg-amber-50 text-amber-700 border-amber-100" },
-            { label: "Approved", value: stats.approved, color: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-            { label: "Rejected", value: stats.rejected, color: "bg-rose-50 text-rose-700 border-rose-100" },
+            {
+              label: "Pending",
+              value: stats.pending,
+              color: "bg-amber-50 text-amber-700 border-amber-100",
+            },
+            {
+              label: "Approved",
+              value: stats.approved,
+              color: "bg-emerald-50 text-emerald-700 border-emerald-100",
+            },
+            {
+              label: "Rejected",
+              value: stats.rejected,
+              color: "bg-rose-50 text-rose-700 border-rose-100",
+            },
           ].map((item) => (
             <div
               key={item.label}
-              className={`px-4 py-3 rounded-2xl border shadow-sm ${item.color}`}
+              className={`px-4 py-3 rounded-2xl border ${item.color}`}
             >
               <p className="text-[9px] font-medium tracking-[0.2em] opacity-80">
                 {item.label}
@@ -248,7 +258,7 @@ export default function FinderBJobsContent({
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl border border-slate-200/60 shadow-sm flex flex-wrap items-center gap-4">
+      <div className="bg-white p-4 rounded-xl border border-slate-200/60 flex flex-wrap items-center gap-4">
         <div className="relative flex-1 min-w-[240px]">
           <input
             type="text"
@@ -314,7 +324,10 @@ export default function FinderBJobsContent({
                 const status = getJobStatus(job);
 
                 return (
-                  <tr key={job.id} className="hover:bg-primary/[0.01] transition-colors group">
+                  <tr
+                    key={job.id}
+                    className="hover:bg-primary/[0.01] transition-colors group"
+                  >
                     <td className="px-6 py-4">
                       <div className="min-w-0">
                         <p className="text-[11px] font-medium text-slate-900 tracking-tight truncate">
@@ -381,34 +394,69 @@ export default function FinderBJobsContent({
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setSelectedJob(job)}
-                          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100 shadow-sm"
+                          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100"
                           title="View details"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                            />
                           </svg>
                         </button>
 
                         <button
                           onClick={() => handleApprove(job)}
                           disabled={isSaving || status === "approved"}
-                          className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all border border-slate-100 hover:border-emerald-200 shadow-sm disabled:opacity-40"
+                          className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all border border-slate-100 hover:border-emerald-200 disabled:opacity-40"
                           title="Approve"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2.5"
+                              d="M5 13l4 4L19 7"
+                            />
                           </svg>
                         </button>
 
                         <button
                           onClick={() => handleOpenReject(job)}
                           disabled={isSaving || status === "rejected"}
-                          className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-slate-100 hover:border-rose-200 shadow-sm disabled:opacity-40"
+                          className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-slate-100 hover:border-rose-200 disabled:opacity-40"
                           title="Reject"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M6 18L18 6M6 6l12 12"
+                            />
                           </svg>
                         </button>
                       </div>
@@ -422,8 +470,18 @@ export default function FinderBJobsContent({
                   <td colSpan={6} className="px-6 py-14 text-center">
                     <div className="flex flex-col items-center opacity-35">
                       <div className="w-14 h-14 rounded-xl bg-slate-50 flex items-center justify-center mb-4">
-                        <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <svg
+                          className="w-7 h-7 text-slate-300"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.5"
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
                         </svg>
                       </div>
                       <p className="text-[10px] font-medium tracking-[0.2em] text-slate-400">
@@ -440,22 +498,30 @@ export default function FinderBJobsContent({
 
       {selectedJob && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
-                <h2 className="admin-page-title">
-                  {selectedJob.title}
-                </h2>
+                <h2 className="admin-page-title">{selectedJob.title}</h2>
                 <p className="text-[10px] text-secondary font-medium mt-1">
                   FinderB Jobs Review Record
                 </p>
               </div>
               <button
                 onClick={() => setSelectedJob(null)}
-                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100 shadow-sm"
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-100"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.5"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -463,12 +529,18 @@ export default function FinderBJobsContent({
             <div className="flex-1 overflow-y-auto p-8 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {[
-                  { label: "Business", value: selectedJob.business_name || selectedJob.business_id },
+                  {
+                    label: "Business",
+                    value: selectedJob.business_name || selectedJob.business_id,
+                  },
                   { label: "Location", value: selectedJob.location },
                   { label: "Type", value: selectedJob.type },
                   { label: "Department", value: selectedJob.department || "—" },
                   { label: "Salary", value: selectedJob.salary || "—" },
-                  { label: "Created", value: formatDateTime(selectedJob.created_at) },
+                  {
+                    label: "Created",
+                    value: formatDateTime(selectedJob.created_at),
+                  },
                 ].map((item) => (
                   <div key={item.label} className="space-y-1">
                     <p className="text-[9px] font-medium text-slate-400">
@@ -537,7 +609,7 @@ export default function FinderBJobsContent({
                   handleOpenReject(selectedJob);
                 }}
                 disabled={isSaving || getJobStatus(selectedJob) === "rejected"}
-                className="px-6 py-2.5 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all shadow-sm disabled:opacity-40"
+                className="px-6 py-2.5 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all disabled:opacity-40"
               >
                 Reject
               </button>
@@ -545,7 +617,7 @@ export default function FinderBJobsContent({
               <button
                 onClick={() => handleApprove(selectedJob)}
                 disabled={isSaving || getJobStatus(selectedJob) === "approved"}
-                className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 shadow-xl shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-40"
+                className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-[0.98] disabled:opacity-40"
               >
                 Approve Job
               </button>
@@ -556,11 +628,9 @@ export default function FinderBJobsContent({
 
       {rejectingJob && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden">
+          <div className="bg-white rounded-3xl w-full max-w-xl overflow-hidden">
             <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50">
-              <h2 className="admin-page-title">
-                Reject Job
-              </h2>
+              <h2 className="admin-page-title">Reject Job</h2>
               <p className="text-[10px] text-rose-500 font-medium mt-1">
                 {rejectingJob.title}
               </p>
@@ -584,7 +654,8 @@ export default function FinderBJobsContent({
                   Warning
                 </p>
                 <p className="text-[11px] text-amber-900 leading-relaxed">
-                  This will mark the job as rejected and store the reason for audit history.
+                  This will mark the job as rejected and store the reason for
+                  audit history.
                 </p>
               </div>
             </div>
@@ -602,7 +673,7 @@ export default function FinderBJobsContent({
               <button
                 onClick={handleReject}
                 disabled={isSaving}
-                className="px-8 py-2.5 bg-rose-600 text-white text-[10px] font-medium rounded-xl hover:bg-rose-700 shadow-xl shadow-rose-200 transition-all disabled:opacity-40"
+                className="px-8 py-2.5 bg-rose-600 text-white text-[10px] font-medium rounded-xl hover:bg-rose-700 transition-all disabled:opacity-40"
               >
                 {isSaving ? "Saving..." : "Reject Job"}
               </button>

@@ -124,7 +124,9 @@ function Field({
     return (
       <div className="flex justify-between gap-4 px-4 py-3">
         <span className="text-xs text-slate-500">{label}</span>
-        <span className="text-xs font-medium text-slate-900 text-right break-all">{value || "—"}</span>
+        <span className="text-xs font-medium text-slate-900 text-right break-all">
+          {value || "—"}
+        </span>
       </div>
     );
   }
@@ -137,7 +139,7 @@ function Field({
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
           rows={2}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20"
         />
       </div>
     );
@@ -150,7 +152,7 @@ function Field({
         <select
           value={value}
           onChange={(e) => onChange?.(e.target.value)}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20"
         >
           {options.map((opt) => (
             <option key={opt} value={opt}>
@@ -169,13 +171,21 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
-        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20"
       />
     </div>
   );
 }
 
-function StatTile({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "success" | "warning" | "danger" | "info" }) {
+function StatTile({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: "neutral" | "success" | "warning" | "danger" | "info";
+}) {
   const toneClasses = {
     neutral: "bg-slate-50 border-slate-100 text-slate-800",
     success: "bg-emerald-50 border-emerald-100 text-emerald-800",
@@ -186,13 +196,17 @@ function StatTile({ label, value, tone = "neutral" }: { label: string; value: st
 
   return (
     <div className={`rounded-xl border px-3 py-2.5 ${toneClasses}`}>
-      <p className="text-[9px] font-semibold uppercase tracking-wider opacity-70">{label}</p>
+      <p className="text-[9px] font-semibold uppercase tracking-wider opacity-70">
+        {label}
+      </p>
       <p className="text-[11px] font-semibold mt-1 truncate">{value}</p>
     </div>
   );
 }
 
-function paymentStatusTone(status: string): "success" | "warning" | "danger" | "neutral" {
+function paymentStatusTone(
+  status: string,
+): "success" | "warning" | "danger" | "neutral" {
   const normalized = status.toLowerCase();
   if (normalized === "completed") return "success";
   if (normalized === "failed") return "danger";
@@ -215,23 +229,40 @@ function formatNumber(value: number | null | undefined, digits = 0): string {
   return digits > 0 ? value.toFixed(digits) : String(value);
 }
 
-function formatCoords(lat: number | null | undefined, lng: number | null | undefined): string {
-  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng)) return "—";
+function formatCoords(
+  lat: number | null | undefined,
+  lng: number | null | undefined,
+): string {
+  if (lat == null || lng == null || Number.isNaN(lat) || Number.isNaN(lng))
+    return "—";
   return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 }
 
 function formatTimings(timings: unknown): string {
   if (!timings || typeof timings !== "object") return "—";
-  const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const days = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ];
   return days
     .map((day) => {
       const slot = (timings as Record<string, unknown>)[day];
       if (!slot || slot === "Closed") return `${day}: Closed`;
       if (typeof slot === "string") return `${day}: ${slot}`;
       if (typeof slot === "object" && slot !== null) {
-        const parsed = slot as { isClosed?: boolean; open?: string; close?: string };
+        const parsed = slot as {
+          isClosed?: boolean;
+          open?: string;
+          close?: string;
+        };
         if (parsed.isClosed) return `${day}: Closed`;
-        if (parsed.open && parsed.close) return `${day}: ${parsed.open} – ${parsed.close}`;
+        if (parsed.open && parsed.close)
+          return `${day}: ${parsed.open} – ${parsed.close}`;
       }
       return `${day}: —`;
     })
@@ -243,10 +274,18 @@ function formatReviewSummary(review: unknown): string {
   if (Array.isArray(review)) {
     if (review.length === 0) return "No reviews";
     const ratings = review
-      .map((item) => (typeof item === "object" && item && "rating" in item ? Number((item as { rating?: number }).rating) : NaN))
+      .map((item) =>
+        typeof item === "object" && item && "rating" in item
+          ? Number((item as { rating?: number }).rating)
+          : NaN,
+      )
       .filter((n) => !Number.isNaN(n));
-    const avg = ratings.length ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : null;
-    return avg ? `${review.length} review(s) · avg ${avg}` : `${review.length} review(s)`;
+    const avg = ratings.length
+      ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
+      : null;
+    return avg
+      ? `${review.length} review(s) · avg ${avg}`
+      : `${review.length} review(s)`;
   }
   return "Stored";
 }
@@ -254,30 +293,58 @@ function formatReviewSummary(review: unknown): string {
 function formatReviewReply(reviewReply: unknown): string {
   if (!reviewReply) return "—";
   if (typeof reviewReply === "string") return reviewReply.trim() || "—";
-  if (typeof reviewReply === "object" && reviewReply !== null && "content" in reviewReply) {
+  if (
+    typeof reviewReply === "object" &&
+    reviewReply !== null &&
+    "content" in reviewReply
+  ) {
     const content = (reviewReply as { content?: string }).content;
     return content?.trim() || "—";
   }
   return "—";
 }
 
-function InfoSection({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
+function InfoSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
   return (
     <div className="space-y-3">
       <div>
-        <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">{title}</h3>
-        {description && <p className="text-[11px] text-slate-500 mt-0.5">{description}</p>}
+        <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+          {title}
+        </h3>
+        {description && (
+          <p className="text-[11px] text-slate-500 mt-0.5">{description}</p>
+        )}
       </div>
-      <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 bg-white shadow-sm overflow-hidden">{children}</div>
+      <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 bg-white overflow-hidden">
+        {children}
+      </div>
     </div>
   );
 }
 
-function Row({ label, value, mono = false }: { label: string; value: string | null | undefined; mono?: boolean }) {
+function Row({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string | null | undefined;
+  mono?: boolean;
+}) {
   return (
     <div className="flex justify-between gap-4 px-4 py-3">
       <span className="text-xs text-slate-500 shrink-0">{label}</span>
-      <span className={`text-xs font-medium text-slate-900 text-right break-all ${mono ? "font-mono" : ""}`}>
+      <span
+        className={`text-xs font-medium text-slate-900 text-right break-all ${mono ? "font-mono" : ""}`}
+      >
         {value?.trim() ? value : "—"}
       </span>
     </div>
@@ -288,31 +355,55 @@ function BlockRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="px-4 py-3 space-y-1">
       <span className="text-xs text-slate-500">{label}</span>
-      <p className="text-xs font-medium text-slate-900 whitespace-pre-wrap break-words">{value || "—"}</p>
+      <p className="text-xs font-medium text-slate-900 whitespace-pre-wrap break-words">
+        {value || "—"}
+      </p>
     </div>
   );
 }
 
-function LinkRow({ label, href }: { label: string; href: string | null | undefined }) {
+function LinkRow({
+  label,
+  href,
+}: {
+  label: string;
+  href: string | null | undefined;
+}) {
   const trimmed = href?.trim();
   if (!trimmed) return <Row label={label} value={null} />;
   return (
     <div className="flex justify-between gap-4 px-4 py-3">
       <span className="text-xs text-slate-500 shrink-0">{label}</span>
-      <a href={trimmed} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary hover:underline text-right break-all">
+      <a
+        href={trimmed}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs font-medium text-primary hover:underline text-right break-all"
+      >
         {trimmed}
       </a>
     </div>
   );
 }
 
-function DocRow({ label, url }: { label: string; url: string | null | undefined }) {
+function DocRow({
+  label,
+  url,
+}: {
+  label: string;
+  url: string | null | undefined;
+}) {
   const trimmed = url?.trim();
   if (!trimmed) return <Row label={label} value={null} />;
   return (
     <div className="flex justify-between gap-4 px-4 py-3">
       <span className="text-xs text-slate-500 shrink-0">{label}</span>
-      <a href={trimmed} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-primary hover:underline">
+      <a
+        href={trimmed}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs font-semibold text-primary hover:underline"
+      >
         View document
       </a>
     </div>
@@ -344,7 +435,9 @@ export default function MerchantDetailModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingExpiry, setIsSavingExpiry] = useState(false);
   const [draft, setDraft] = useState(business);
-  const [planExpiresInput, setPlanExpiresInput] = useState(toDateInputValue(business.planExpiresAt));
+  const [planExpiresInput, setPlanExpiresInput] = useState(
+    toDateInputValue(business.planExpiresAt),
+  );
 
   useEffect(() => {
     setDraft(business);
@@ -356,7 +449,10 @@ export default function MerchantDetailModal({
     setDraft((prev) => ({ ...prev, ...updates }));
   };
 
-  const expiryIso = useMemo(() => dateInputToIso(planExpiresInput), [planExpiresInput]);
+  const expiryIso = useMemo(
+    () => dateInputToIso(planExpiresInput),
+    [planExpiresInput],
+  );
   const isExpiryDirty = expiryIso !== business.planExpiresAt;
 
   const handleSave = async () => {
@@ -383,7 +479,10 @@ export default function MerchantDetailModal({
     }
   };
 
-  const shiftExpiry = (direction: "extend" | "collapse", unit: "month" | "year") => {
+  const shiftExpiry = (
+    direction: "extend" | "collapse",
+    unit: "month" | "year",
+  ) => {
     const current = expiryIso ?? business.planExpiresAt;
     const next =
       direction === "extend"
@@ -405,43 +504,72 @@ export default function MerchantDetailModal({
     setPlanExpiresInput(toDateInputValue(business.planExpiresAt));
   };
 
-  const categoryOptions = categories.length > 0 ? categories : [draft.category || "Other"];
+  const categoryOptions =
+    categories.length > 0 ? categories : [draft.category || "Other"];
   const display = isEditing ? draft : business;
 
   return (
     <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col">
-        <div className="relative px-8 pt-8 pb-6 bg-gradient-to-br from-slate-900 via-slate-800 to-primary/90 text-white">
+      <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col">
+        <div className="relative px-8 pt-8 pb-6 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-800 text-white">
           <button
             type="button"
             onClick={onClose}
             className="absolute top-4 right-4 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-all"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
           <div className="flex items-start justify-between gap-4 pr-10">
             <div className="flex items-start gap-5 min-w-0">
               <div className="relative shrink-0">
                 {display.profilePictureUrl ? (
-                  <img src={display.profilePictureUrl} alt="" className="w-16 h-16 rounded-2xl object-cover border-2 border-white/20 shadow-lg" />
+                  <img
+                    src={display.profilePictureUrl}
+                    alt=""
+                    className="w-16 h-16 rounded-2xl object-cover border-2 border-white/20 "
+                  />
                 ) : (
-                  <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-xl font-semibold shadow-lg">
-                    {(display.businessName || display.fullName || "?").charAt(0)}
+                  <div className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-xl font-semibold ">
+                    {(display.businessName || display.fullName || "?").charAt(
+                      0,
+                    )}
                   </div>
                 )}
                 {display.isFinderBVerified && (
                   <span className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-2 border-slate-900 flex items-center justify-center">
-                    <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="w-3.5 h-3.5 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   </span>
                 )}
               </div>
               <div className="min-w-0">
-                <h2 className="text-xl font-semibold tracking-tight truncate">{display.businessName || display.fullName}</h2>
-                <p className="text-sm text-white/70 mt-1 font-mono">{display.registrationNumber || display.id}</p>
+                <h2 className="text-xl font-semibold tracking-tight truncate">
+                  {display.businessName || display.fullName}
+                </h2>
+                <p className="text-sm text-white/70 mt-1 font-mono">
+                  {display.registrationNumber || display.id}
+                </p>
                 <a
                   href={getBusinessProfileUrl({
                     id: display.id,
@@ -454,18 +582,32 @@ export default function MerchantDetailModal({
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white mt-2 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 transition-colors"
                 >
                   View public profile
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  <svg
+                    className="w-3.5 h-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                    />
                   </svg>
                 </a>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide ${display.status === "Active" ? "bg-emerald-500/20 text-emerald-100" : "bg-white/10 text-white/80"}`}>
+                  <span
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide ${display.status === "Active" ? "bg-emerald-500/20 text-emerald-100" : "bg-white/10 text-white/80"}`}
+                  >
                     {display.status || "Inactive"}
                   </span>
                   <span className="px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide bg-white/10 text-white/80">
                     KYC: {display.kycStatus || "—"}
                   </span>
-                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide ${paymentStatusTone(display.paymentStatus) === "success" ? "bg-emerald-500/20 text-emerald-100" : "bg-white/10 text-white/80"}`}>
+                  <span
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide ${paymentStatusTone(display.paymentStatus) === "success" ? "bg-emerald-500/20 text-emerald-100" : "bg-white/10 text-white/80"}`}
+                  >
                     Payment: {formatStatusLabel(display.paymentStatus)}
                   </span>
                   <span className="px-2.5 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide bg-primary/30 text-white">
@@ -478,15 +620,31 @@ export default function MerchantDetailModal({
               <div className="flex gap-2 shrink-0">
                 {isEditing ? (
                   <>
-                    <button type="button" onClick={() => { setDraft(business); setIsEditing(false); }} className="admin-btn-secondary text-xs !bg-white/10 !border-white/20 !text-white">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDraft(business);
+                        setIsEditing(false);
+                      }}
+                      className="admin-btn-secondary text-xs !bg-white/10 !border-white/20 !text-white"
+                    >
                       Cancel
                     </button>
-                    <button type="button" onClick={handleSave} disabled={isSaving} className="admin-btn-primary text-xs">
+                    <button
+                      type="button"
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="admin-btn-primary text-xs"
+                    >
                       {isSaving ? "Saving…" : "Save profile"}
                     </button>
                   </>
                 ) : (
-                  <button type="button" onClick={() => setIsEditing(true)} className="admin-btn-primary text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="admin-btn-primary text-xs"
+                  >
                     Edit profile
                   </button>
                 )}
@@ -497,32 +655,53 @@ export default function MerchantDetailModal({
 
         <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
           {isController ? (
-            <div className="rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50/90 to-orange-50/50 px-5 py-4 shadow-sm">
+            <div className="rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50/90 to-orange-50/50 px-5 py-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm font-semibold text-amber-900">FinderB Verified badge</p>
-                  <p className="text-xs text-amber-800/80 mt-0.5">Independent of KYC. Controls the green badge on the public listing.</p>
+                  <p className="text-sm font-semibold text-amber-900">
+                    FinderB Verified badge
+                  </p>
+                  <p className="text-xs text-amber-800/80 mt-0.5">
+                    Independent of KYC. Controls the green badge on the public
+                    listing.
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={onToggleFinderBVerified}
                   className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${display.isFinderBVerified ? "bg-emerald-500" : "bg-slate-300"}`}
                 >
-                  <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${display.isFinderBVerified ? "translate-x-5" : "translate-x-0"}`} />
+                  <span
+                    className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${display.isFinderBVerified ? "translate-x-5" : "translate-x-0"}`}
+                  />
                 </button>
               </div>
             </div>
           ) : display.isFinderBVerified ? (
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 px-5 py-4 text-sm text-emerald-800 shadow-sm">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 px-5 py-4 text-sm text-emerald-800">
               FinderB Verified badge is active on this listing.
             </div>
           ) : null}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatTile label="Merchant ID" value={display.registrationNumber || "—"} />
-            <StatTile label="Listing rating" value={formatNumber(display.rating, 1)} />
-            <StatTile label="KYC verified" value={display.isVerified ? "Yes" : "No"} tone={display.isVerified ? "success" : "neutral"} />
-            <StatTile label="Verified badge" value={display.hasVerifiedBadge ? "Active" : "None"} tone={display.hasVerifiedBadge ? "info" : "neutral"} />
+            <StatTile
+              label="Merchant ID"
+              value={display.registrationNumber || "—"}
+            />
+            <StatTile
+              label="Listing rating"
+              value={formatNumber(display.rating, 1)}
+            />
+            <StatTile
+              label="KYC verified"
+              value={display.isVerified ? "Yes" : "No"}
+              tone={display.isVerified ? "success" : "neutral"}
+            />
+            <StatTile
+              label="Verified badge"
+              value={display.hasVerifiedBadge ? "Active" : "None"}
+              tone={display.hasVerifiedBadge ? "info" : "neutral"}
+            />
           </div>
 
           <InfoSection title="Account & identifiers">
@@ -530,15 +709,23 @@ export default function MerchantDetailModal({
             <Row label="Internal ID" value={display.id} mono />
             <Row label="URL slug" value={display.slug} mono />
             <Row label="Joined" value={formatDateTimeInr(display.createdAt)} />
-            <Row label="Last updated" value={formatDateTimeInr(display.updatedAt)} />
+            <Row
+              label="Last updated"
+              value={formatDateTimeInr(display.updatedAt)}
+            />
             <LinkRow label="Profile QR link" href={display.profileQrLink} />
           </InfoSection>
 
-          <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-slate-50 overflow-hidden shadow-sm">
+          <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-slate-50 overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900">Subscription & billing</h3>
-                <p className="text-xs text-slate-500 mt-0.5">Payment details are synced from Razorpay and cannot be edited here.</p>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Subscription & billing
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Payment details are synced from Razorpay and cannot be edited
+                  here.
+                </p>
               </div>
               <span className="inline-flex self-start px-3 py-1 rounded-full bg-slate-900 text-white text-[10px] font-semibold uppercase tracking-wide">
                 {planLabel(business.selectedPlan, business.billingCycle)}
@@ -546,26 +733,54 @@ export default function MerchantDetailModal({
             </div>
 
             <div className="p-5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-              <StatTile label="Payment" value={formatStatusLabel(business.paymentStatus)} tone={paymentStatusTone(business.paymentStatus)} />
+              <StatTile
+                label="Payment"
+                value={formatStatusLabel(business.paymentStatus)}
+                tone={paymentStatusTone(business.paymentStatus)}
+              />
               <StatTile label="Plan" value={business.selectedPlan || "—"} />
-              <StatTile label="Billing cycle" value={business.billingCycle === "annual" ? "Annual" : "Monthly"} />
-              <StatTile label="Auto-debit" value={business.autoRenewEnabled ? "Enabled" : "Off"} tone={business.autoRenewEnabled ? "info" : "neutral"} />
-              <StatTile label="Mandate" value={formatStatusLabel(business.mandateStatus || "none")} />
+              <StatTile
+                label="Billing cycle"
+                value={
+                  business.billingCycle === "annual" ? "Annual" : "Monthly"
+                }
+              />
+              <StatTile
+                label="Auto-debit"
+                value={business.autoRenewEnabled ? "Enabled" : "Off"}
+                tone={business.autoRenewEnabled ? "info" : "neutral"}
+              />
+              <StatTile
+                label="Mandate"
+                value={formatStatusLabel(business.mandateStatus || "none")}
+              />
             </div>
 
             <div className="px-5 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="rounded-xl border border-slate-100 bg-white px-4 py-3">
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Plan started</p>
-                <p className="text-sm font-medium text-slate-900 mt-1">{formatDateTimeInr(business.planStartedAt)}</p>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                  Plan started
+                </p>
+                <p className="text-sm font-medium text-slate-900 mt-1">
+                  {formatDateTimeInr(business.planStartedAt)}
+                </p>
               </div>
               <div className="rounded-xl border border-slate-100 bg-white px-4 py-3">
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Current expiry</p>
-                <p className="text-sm font-medium text-slate-900 mt-1">{formatDateTimeInr(business.planExpiresAt)}</p>
+                <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                  Current expiry
+                </p>
+                <p className="text-sm font-medium text-slate-900 mt-1">
+                  {formatDateTimeInr(business.planExpiresAt)}
+                </p>
               </div>
               {business.subscriptionCancelledAt && (
                 <div className="rounded-xl border border-slate-100 bg-white px-4 py-3">
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">Subscription cancelled</p>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{formatDateTimeInr(business.subscriptionCancelledAt)}</p>
+                  <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+                    Subscription cancelled
+                  </p>
+                  <p className="text-sm font-medium text-slate-900 mt-1">
+                    {formatDateTimeInr(business.subscriptionCancelledAt)}
+                  </p>
                 </div>
               )}
             </div>
@@ -573,7 +788,10 @@ export default function MerchantDetailModal({
             {business.subscriptionStatus && (
               <div className="px-5 pb-5">
                 <p className="text-[11px] text-slate-500">
-                  <span className="font-medium text-slate-700">Subscription status:</span> {formatStatusLabel(business.subscriptionStatus)}
+                  <span className="font-medium text-slate-700">
+                    Subscription status:
+                  </span>{" "}
+                  {formatStatusLabel(business.subscriptionStatus)}
                 </p>
               </div>
             )}
@@ -581,42 +799,117 @@ export default function MerchantDetailModal({
             {isController && (
               <div className="border-t border-primary/10 bg-primary/[0.03] px-5 py-5 space-y-4">
                 <div>
-                  <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Adjust validity</h4>
-                  <p className="text-xs text-slate-500 mt-1">Extend or shorten the subscription end date. Plan, billing, and payment status stay unchanged.</p>
+                  <h4 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                    Adjust validity
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Extend or shorten the subscription end date. Plan, billing,
+                    and payment status stay unchanged.
+                  </p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row sm:items-end gap-3">
                   <div className="flex-1 space-y-1.5">
-                    <label className="text-xs font-medium text-slate-600">New expiry date</label>
+                    <label className="text-xs font-medium text-slate-600">
+                      New expiry date
+                    </label>
                     <input
                       type="date"
                       value={planExpiresInput}
                       onChange={(e) => setPlanExpiresInput(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                   {isExpiryDirty && (
-                    <button type="button" onClick={resetExpiryDraft} className="admin-btn-secondary text-xs py-2.5">
+                    <button
+                      type="button"
+                      onClick={resetExpiryDraft}
+                      className="admin-btn-secondary text-xs py-2.5"
+                    >
                       Reset
                     </button>
                   )}
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <button type="button" onClick={() => shiftExpiry("collapse", "month")} className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" /></svg>
+                  <button
+                    type="button"
+                    onClick={() => shiftExpiry("collapse", "month")}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M20 12H4"
+                      />
+                    </svg>
                     −1 month
                   </button>
-                  <button type="button" onClick={() => shiftExpiry("collapse", "year")} className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" /></svg>
+                  <button
+                    type="button"
+                    onClick={() => shiftExpiry("collapse", "year")}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 transition-colors"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M20 12H4"
+                      />
+                    </svg>
                     −1 year
                   </button>
-                  <button type="button" onClick={() => shiftExpiry("extend", "month")} className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                  <button
+                    type="button"
+                    onClick={() => shiftExpiry("extend", "month")}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
                     +1 month
                   </button>
-                  <button type="button" onClick={() => shiftExpiry("extend", "year")} className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
+                  <button
+                    type="button"
+                    onClick={() => shiftExpiry("extend", "year")}
+                    className="flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-medium text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
                     +1 year
                   </button>
                 </div>
@@ -642,16 +935,58 @@ export default function MerchantDetailModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Contact & profile</h3>
-              <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 bg-white shadow-sm overflow-hidden">
-                <Field label="Business name" value={display.businessName || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ businessName: v })} />
-                <Field label="Display name" value={display.displayName || ""} editing={false} />
-                <Field label="Owner" value={display.fullName || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ fullName: v })} />
-                <Field label="Work email" value={display.workEmail || ""} editing={isEditing && isController} type="email" onChange={(v) => patchDraft({ workEmail: v })} />
-                <Field label="Login email" value={display.email || ""} editing={isEditing && isController} type="email" onChange={(v) => patchDraft({ email: v })} />
-                <Field label="Mobile" value={display.mobile || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ mobile: v })} />
-                <Field label="Public phone" value={display.publicPhone || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ publicPhone: v })} />
-                <Field label="WhatsApp" value={display.whatsappNumber || ""} editing={false} />
+              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                Contact & profile
+              </h3>
+              <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 bg-white overflow-hidden">
+                <Field
+                  label="Business name"
+                  value={display.businessName || ""}
+                  editing={isEditing && isController}
+                  onChange={(v) => patchDraft({ businessName: v })}
+                />
+                <Field
+                  label="Display name"
+                  value={display.displayName || ""}
+                  editing={false}
+                />
+                <Field
+                  label="Owner"
+                  value={display.fullName || ""}
+                  editing={isEditing && isController}
+                  onChange={(v) => patchDraft({ fullName: v })}
+                />
+                <Field
+                  label="Work email"
+                  value={display.workEmail || ""}
+                  editing={isEditing && isController}
+                  type="email"
+                  onChange={(v) => patchDraft({ workEmail: v })}
+                />
+                <Field
+                  label="Login email"
+                  value={display.email || ""}
+                  editing={isEditing && isController}
+                  type="email"
+                  onChange={(v) => patchDraft({ email: v })}
+                />
+                <Field
+                  label="Mobile"
+                  value={display.mobile || ""}
+                  editing={isEditing && isController}
+                  onChange={(v) => patchDraft({ mobile: v })}
+                />
+                <Field
+                  label="Public phone"
+                  value={display.publicPhone || ""}
+                  editing={isEditing && isController}
+                  onChange={(v) => patchDraft({ publicPhone: v })}
+                />
+                <Field
+                  label="WhatsApp"
+                  value={display.whatsappNumber || ""}
+                  editing={false}
+                />
                 <Field
                   label="Category"
                   value={display.category || ""}
@@ -660,7 +995,11 @@ export default function MerchantDetailModal({
                   options={categoryOptions}
                   onChange={(v) => patchDraft({ category: v })}
                 />
-                <Field label="Service category" value={display.serviceCategory || ""} editing={false} />
+                <Field
+                  label="Service category"
+                  value={display.serviceCategory || ""}
+                  editing={false}
+                />
                 <Field
                   label="Listing status"
                   value={display.status || "Inactive"}
@@ -681,26 +1020,76 @@ export default function MerchantDetailModal({
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Location</h3>
-              <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 bg-white shadow-sm overflow-hidden">
-                <Field label="City" value={display.city || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ city: v })} />
-                <Field label="State" value={display.state || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ state: v })} />
-                <Field label="Country" value={display.country || ""} editing={false} />
-                <Field label="Location label" value={display.location || ""} editing={isEditing && isController} onChange={(v) => patchDraft({ location: v })} />
-                <Field label="Coordinates" value={formatCoords(display.latitude, display.longitude)} editing={false} />
-                <Field label="Address" value={display.businessAddress || ""} editing={isEditing && isController} type="textarea" onChange={(v) => patchDraft({ businessAddress: v })} />
+              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                Location
+              </h3>
+              <div className="rounded-2xl border border-slate-200 divide-y divide-slate-100 bg-white overflow-hidden">
+                <Field
+                  label="City"
+                  value={display.city || ""}
+                  editing={isEditing && isController}
+                  onChange={(v) => patchDraft({ city: v })}
+                />
+                <Field
+                  label="State"
+                  value={display.state || ""}
+                  editing={isEditing && isController}
+                  onChange={(v) => patchDraft({ state: v })}
+                />
+                <Field
+                  label="Country"
+                  value={display.country || ""}
+                  editing={false}
+                />
+                <Field
+                  label="Location label"
+                  value={display.location || ""}
+                  editing={isEditing && isController}
+                  onChange={(v) => patchDraft({ location: v })}
+                />
+                <Field
+                  label="Coordinates"
+                  value={formatCoords(display.latitude, display.longitude)}
+                  editing={false}
+                />
+                <Field
+                  label="Address"
+                  value={display.businessAddress || ""}
+                  editing={isEditing && isController}
+                  type="textarea"
+                  onChange={(v) => patchDraft({ businessAddress: v })}
+                />
               </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InfoSection title="Brand & listing" description="Public profile content from the merchant dashboard.">
+            <InfoSection
+              title="Brand & listing"
+              description="Public profile content from the merchant dashboard."
+            >
               <BlockRow label="About" value={display.about || ""} />
-              <Row label="Search keywords" value={formatList(display.keywords)} />
+              <Row
+                label="Search keywords"
+                value={formatList(display.keywords)}
+              />
               <Row label="Discount offer" value={display.discountRange} />
-              <Row label="Year established" value={display.yearsInBusiness != null ? String(display.yearsInBusiness) : null} />
-              <Row label="Customer reviews" value={formatReviewSummary(display.review)} />
-              <BlockRow label="Default review reply" value={formatReviewReply(display.reviewReply)} />
+              <Row
+                label="Year established"
+                value={
+                  display.yearsInBusiness != null
+                    ? String(display.yearsInBusiness)
+                    : null
+                }
+              />
+              <Row
+                label="Customer reviews"
+                value={formatReviewSummary(display.review)}
+              />
+              <BlockRow
+                label="Default review reply"
+                value={formatReviewReply(display.reviewReply)}
+              />
             </InfoSection>
 
             <InfoSection title="Social & web">
@@ -712,12 +1101,21 @@ export default function MerchantDetailModal({
           </div>
 
           <InfoSection title="Operations">
-            <Row label="Payment modes accepted" value={formatList(display.paymentModes)} />
-            <BlockRow label="Business hours" value={formatTimings(display.timings)} />
+            <Row
+              label="Payment modes accepted"
+              value={formatList(display.paymentModes)}
+            />
+            <BlockRow
+              label="Business hours"
+              value={formatTimings(display.timings)}
+            />
           </InfoSection>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InfoSection title="KYC & compliance" description="Identity and registration documents submitted during onboarding.">
+            <InfoSection
+              title="KYC & compliance"
+              description="Identity and registration documents submitted during onboarding."
+            >
               <Row label="PAN number" value={display.panNumber} mono />
               <Row label="Aadhaar number" value={display.aadharNumber} mono />
               <Row label="CIN number" value={display.cinNumber} mono />
@@ -726,26 +1124,50 @@ export default function MerchantDetailModal({
               <DocRow label="MSME / GST document" url={display.msmeGstUrl} />
             </InfoSection>
 
-            <InfoSection title="Banking & payouts" description="Razorpay-linked payout details. Read-only.">
+            <InfoSection
+              title="Banking & payouts"
+              description="Razorpay-linked payout details. Read-only."
+            >
               <Row label="Bank name" value={display.bankName} />
-              <Row label="Account number" value={display.bankAccountNumber} mono />
+              <Row
+                label="Account number"
+                value={display.bankAccountNumber}
+                mono
+              />
               <Row label="IFSC" value={display.bankIfsc} mono />
               <Row label="UPI ID" value={display.upiId} />
-              <Row label="Razorpay contact ID" value={display.razorpayContactId} mono />
-              <Row label="Razorpay fund account" value={display.razorpayFundAccountId} mono />
+              <Row
+                label="Razorpay contact ID"
+                value={display.razorpayContactId}
+                mono
+              />
+              <Row
+                label="Razorpay fund account"
+                value={display.razorpayFundAccountId}
+                mono
+              />
             </InfoSection>
           </div>
 
           {isController && hasStoredPassword && (
-            <InfoSection title="Login credentials" description="Controller-only. Reveal requires your admin password.">
+            <InfoSection
+              title="Login credentials"
+              description="Controller-only. Reveal requires your admin password."
+            >
               <div className="flex items-center gap-3 px-4 py-3">
-                <span className="text-xs text-slate-500 shrink-0">Merchant password</span>
+                <span className="text-xs text-slate-500 shrink-0">
+                  Merchant password
+                </span>
                 <span className="admin-mono text-xs text-slate-900 flex-1 text-right break-all">
                   {loginPasswordDisplay || "••••••••"}
                 </span>
                 <button
                   type="button"
-                  onClick={loginPasswordDisplay ? onHideLoginPassword : onRevealLoginPassword}
+                  onClick={
+                    loginPasswordDisplay
+                      ? onHideLoginPassword
+                      : onRevealLoginPassword
+                  }
                   className="admin-btn-ghost text-[10px] py-1 px-2 shrink-0"
                 >
                   {loginPasswordDisplay ? "Hide" : "Reveal"}
@@ -754,23 +1176,36 @@ export default function MerchantDetailModal({
             </InfoSection>
           )}
 
-          {(business.paymentId || business.orderId || business.razorpaySubscriptionId) && (
+          {(business.paymentId ||
+            business.orderId ||
+            business.razorpaySubscriptionId) && (
             <div className="space-y-3">
-              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Payment references</h3>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2.5 shadow-sm">
+              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                Payment references
+              </h3>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 space-y-2.5">
                 {business.paymentId && (
                   <p className="text-[11px] font-mono text-slate-700 break-all">
-                    <span className="text-slate-400 font-sans">Payment ID · </span>{business.paymentId}
+                    <span className="text-slate-400 font-sans">
+                      Payment ID ·{" "}
+                    </span>
+                    {business.paymentId}
                   </p>
                 )}
                 {business.orderId && (
                   <p className="text-[11px] font-mono text-slate-700 break-all">
-                    <span className="text-slate-400 font-sans">Order ID · </span>{business.orderId}
+                    <span className="text-slate-400 font-sans">
+                      Order ID ·{" "}
+                    </span>
+                    {business.orderId}
                   </p>
                 )}
                 {business.razorpaySubscriptionId && (
                   <p className="text-[11px] font-mono text-slate-700 break-all">
-                    <span className="text-slate-400 font-sans">Subscription ID · </span>{business.razorpaySubscriptionId}
+                    <span className="text-slate-400 font-sans">
+                      Subscription ID ·{" "}
+                    </span>
+                    {business.razorpaySubscriptionId}
                   </p>
                 )}
               </div>
@@ -779,10 +1214,16 @@ export default function MerchantDetailModal({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">Gallery ({display.images?.length || 0}/5)</h3>
+              <h3 className="text-xs font-semibold text-slate-900 uppercase tracking-wider">
+                Gallery ({display.images?.length || 0}/5)
+              </h3>
               {(display.images?.length || 0) < 5 && (
-                <label className={`cursor-pointer px-3 py-1.5 bg-primary text-white rounded-lg text-[10px] font-medium hover:bg-primary/90 transition-all flex items-center gap-2 shadow-sm ${isUploading === "businessImages" ? "opacity-50 pointer-events-none" : ""}`}>
-                  {isUploading === "businessImages" ? "Uploading…" : "Add image"}
+                <label
+                  className={`cursor-pointer px-3 py-1.5 bg-primary text-white rounded-lg text-[10px] font-medium hover:bg-primary/90 transition-all flex items-center gap-2 ${isUploading === "businessImages" ? "opacity-50 pointer-events-none" : ""}`}
+                >
+                  {isUploading === "businessImages"
+                    ? "Uploading…"
+                    : "Add image"}
                   <input
                     type="file"
                     className="hidden"
@@ -798,39 +1239,92 @@ export default function MerchantDetailModal({
             {display.images && display.images.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {display.images.map((url, index) => (
-                  <div key={index} className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50 shadow-sm">
-                    <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
+                  <div
+                    key={index}
+                    className="relative group aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50"
+                  >
+                    <img
+                      src={url}
+                      alt={`Gallery ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
                     {display.profilePictureUrl === url && (
-                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold rounded-full shadow">Profile</span>
+                      <span className="absolute top-2 left-2 px-2 py-0.5 bg-emerald-500 text-white text-[8px] font-bold rounded-full shadow">
+                        Profile
+                      </span>
                     )}
                     <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                      <button type="button" onClick={() => onSetProfilePicture(url)} className="px-2 py-1 bg-white text-slate-900 text-[9px] font-semibold rounded-lg">Set profile</button>
-                      <button type="button" onClick={() => onDeleteImage(url)} className="px-2 py-1 bg-rose-500 text-white text-[9px] font-semibold rounded-lg">Delete</button>
+                      <button
+                        type="button"
+                        onClick={() => onSetProfilePicture(url)}
+                        className="px-2 py-1 bg-white text-slate-900 text-[9px] font-semibold rounded-lg"
+                      >
+                        Set profile
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDeleteImage(url)}
+                        className="px-2 py-1 bg-rose-500 text-white text-[9px] font-semibold rounded-lg"
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-12 border-2 border-dashed border-slate-100 rounded-2xl text-center text-slate-400 text-xs bg-slate-50/50">No gallery images</div>
+              <div className="py-12 border-2 border-dashed border-slate-100 rounded-2xl text-center text-slate-400 text-xs bg-slate-50/50">
+                No gallery images
+              </div>
             )}
           </div>
         </div>
 
         <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/80 flex flex-wrap items-center justify-between gap-3">
           {isController && (
-            <button type="button" onClick={onDelete} className="admin-btn-danger text-xs">Delete profile</button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="admin-btn-danger text-xs"
+            >
+              Delete profile
+            </button>
           )}
           <div className="flex flex-wrap gap-2 ml-auto">
-            <button type="button" onClick={onClose} className="admin-btn-secondary text-xs">Close</button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="admin-btn-secondary text-xs"
+            >
+              Close
+            </button>
             {isController && (
-              <button type="button" onClick={onToggleStatus} className="admin-btn-secondary text-xs">
-                {display.status === "Active" ? "Deactivate listing" : "Activate listing"}
+              <button
+                type="button"
+                onClick={onToggleStatus}
+                className="admin-btn-secondary text-xs"
+              >
+                {display.status === "Active"
+                  ? "Deactivate listing"
+                  : "Activate listing"}
               </button>
             )}
             {isController && business.kycStatus === "pending" && (
               <>
-                <button type="button" onClick={onReject} className="admin-btn-danger text-xs">Reject</button>
-                <button type="button" onClick={onApprove} className="admin-btn-primary text-xs">Approve partner</button>
+                <button
+                  type="button"
+                  onClick={onReject}
+                  className="admin-btn-danger text-xs"
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  onClick={onApprove}
+                  className="admin-btn-primary text-xs"
+                >
+                  Approve partner
+                </button>
               </>
             )}
           </div>
