@@ -6,7 +6,7 @@ import { DM_Sans, Syne } from "next/font/google";
 import { indianMobileValidationError } from "../lib/indianPhone";
 import { validateRegistrationPassword } from "../lib/merchantPasswordPolicy";
 import { REGISTRATION_EMAIL_REGEX, MIN_NAME_LENGTH, MIN_ADDRESS_LINE1_LENGTH } from "../lib/merchantRegistration";
-import { getBusinessProfileUrl } from "../lib/site";
+import { getBusinessLoginUrl, getBusinessProfileUrl } from "../lib/site";
 
 const displayFont = Syne({
   subsets: ["latin"],
@@ -51,8 +51,6 @@ type FormState = {
   state: string;
   city: string;
   publicPhone: string;
-  selectedPlan: string;
-  billingCycle: string;
   activateImmediately: boolean;
 };
 
@@ -77,16 +75,21 @@ const INITIAL_FORM: FormState = {
   state: "",
   city: "",
   publicPhone: "",
-  selectedPlan: "free",
-  billingCycle: "monthly",
-  activateImmediately: true,
+  activateImmediately: false,
 };
 
-const PLAN_OPTIONS = [
-  { value: "free", label: "Starter", hint: "Free listing" },
-  { value: "growth", label: "Growth", hint: "Paid monthly" },
-  { value: "pro", label: "Pro", hint: "Premium tier" },
-] as const;
+type CreatedMerchant = {
+  id: string;
+  registrationNumber: string;
+  businessName: string;
+  fullName?: string;
+  email?: string;
+  mobile?: string;
+  slug?: string | null;
+  city?: string | null;
+  status?: string;
+  kycStatus?: string;
+};
 
 type Props = {
   categories: RegistrationCategory[];
@@ -99,6 +102,39 @@ const inputClass =
 
 const selectClass =
   "w-full bg-transparent border-0 border-b-2 border-[#cfd6e0] rounded-none px-0 py-3 text-[15px] text-[#0c1222] focus:outline-none focus:border-[#1a5276] transition-[border-color] duration-200 appearance-none cursor-pointer";
+
+function buildMerchantShareMessage(input: {
+  ownerName: string;
+  businessName: string;
+  email: string;
+  password: string;
+  mobile: string;
+  registrationNumber: string;
+  loginUrl: string;
+}): string {
+  const name = input.ownerName.trim() || "there";
+  return `Hi ${name},
+
+Welcome to FinderB! Your merchant account for ${input.businessName} is ready.
+
+Login details
+• Merchant ID: ${input.registrationNumber}
+• Email: ${input.email}
+• Password: ${input.password}
+• Mobile: ${input.mobile}
+
+Login here: ${input.loginUrl}
+
+Quick start guide
+1. Open the login link above and sign in with your email & password.
+2. Complete your business profile (photos, about, timings, WhatsApp).
+3. Review your public listing and make sure contact details look right.
+4. When you're ready to grow, upgrade from Free/Starter after payment — your plan unlocks based on successful payment.
+5. Need help? Reply to this message and our team will assist you.
+
+We're excited to have ${input.businessName} on FinderB.
+— Team FinderB`;
+}
 
 function Field({
   id,
@@ -137,21 +173,26 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(true);
   const [copiedPassword, setCopiedPassword] = useState(false);
+  const [copiedMessage, setCopiedMessage] = useState(false);
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
-  const [created, setCreated] = useState<{
-    id: string;
-    registrationNumber: string;
-    businessName: string;
-    fullName?: string;
-    email?: string;
-    mobile?: string;
-    slug?: string | null;
-    city?: string | null;
-    status?: string;
-    kycStatus?: string;
-  } | null>(null);
+  const [guideOpen, setGuideOpen] = useState(true);
+  const [created, setCreated] = useState<CreatedMerchant | null>(null);
 
   const usingDefaultPassword = form.password === DEFAULT_MERCHANT_PASSWORD;
+  const loginUrl = getBusinessLoginUrl();
+
+  const shareMessage = useMemo(() => {
+    if (!created || !createdPassword) return "";
+    return buildMerchantShareMessage({
+      ownerName: created.fullName || form.fullName,
+      businessName: created.businessName,
+      email: created.email || form.email,
+      password: createdPassword,
+      mobile: created.mobile || form.mobile,
+      registrationNumber: created.registrationNumber,
+      loginUrl,
+    });
+  }, [created, createdPassword, form.fullName, form.email, form.mobile, loginUrl]);
 
   const topCategories = useMemo(
     () => categories.filter((c) => !c.parent_id).sort((a, b) => a.name.localeCompare(b.name)),
@@ -209,11 +250,16 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
     return child ? `${parent.name} › ${child.name}` : parent.name;
   };
 
-  const copyPassword = async (value = form.password) => {
+  const copyText = async (value: string, kind: "password" | "message") => {
     try {
       await navigator.clipboard.writeText(value);
-      setCopiedPassword(true);
-      setTimeout(() => setCopiedPassword(false), 1600);
+      if (kind === "password") {
+        setCopiedPassword(true);
+        setTimeout(() => setCopiedPassword(false), 1600);
+      } else {
+        setCopiedMessage(true);
+        setTimeout(() => setCopiedMessage(false), 2000);
+      }
     } catch {
       // ignore
     }
@@ -330,8 +376,8 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
           publicPhone: form.publicPhone,
           addressLine1: form.addressLine1,
           addressLine2: form.addressLine2,
-          selectedPlan: form.selectedPlan,
-          billingCycle: form.billingCycle,
+          selectedPlan: "free",
+          billingCycle: "monthly",
           activateImmediately: form.activateImmediately,
         }),
       });
@@ -344,6 +390,7 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
 
       setCreatedPassword(form.password);
       setCreated(payload.business);
+      setGuideOpen(true);
       setStep(3);
       onRegistered?.();
     } catch (error: unknown) {
@@ -361,15 +408,24 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
     setCreated(null);
     setCreatedPassword(null);
     setShowPassword(true);
+    setCopiedMessage(false);
+    setGuideOpen(true);
     setStep(1);
   };
+
+  const whatsappShareUrl = useMemo(() => {
+    if (!shareMessage || !created?.mobile) return null;
+    const digits = created.mobile.replace(/\D/g, "");
+    const phone = digits.length === 10 ? `91${digits}` : digits;
+    return `https://wa.me/${phone}?text=${encodeURIComponent(shareMessage)}`;
+  }, [shareMessage, created?.mobile]);
 
   const stepCopy =
     step === 1
       ? { title: "Who’s signing in?", sub: "Owner identity and login credentials." }
       : step === 2
-        ? { title: "Where do they operate?", sub: "Listing details, location, and plan." }
-        : { title: "Partner is live", sub: "Share the credentials and you’re done." };
+        ? { title: "Business details", sub: "Listing info and location. Plan stays Free until they pay." }
+        : { title: "Ready to share", sub: "Copy the welcome message and send it to the merchant." };
 
   return (
     <div
@@ -393,7 +449,6 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[0.95fr_1.35fr] min-h-[640px]">
-        {/* Editorial rail */}
         <aside className="relative border-b lg:border-b-0 lg:border-r border-[#d5dbe6] px-7 py-8 sm:px-9 sm:py-10 flex flex-col justify-between gap-10 bg-[#0b1520] text-white overflow-hidden">
           <div
             className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full opacity-40"
@@ -420,15 +475,15 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
                 in minutes.
               </h1>
               <p className="mt-4 text-[15px] leading-relaxed text-[#9eb0c2] max-w-sm">
-                Same fields as public signup — built for admins. Default login password is ready to share.
+                Creates a Free/Starter account by default. Paid plans unlock only after the merchant completes payment.
               </p>
             </div>
 
             <ol className="space-y-3">
               {[
                 { n: 1, label: "Account", desc: "Owner + login" },
-                { n: 2, label: "Business", desc: "Listing + plan" },
-                { n: 3, label: "Done", desc: "Credentials ready" },
+                { n: 2, label: "Business", desc: "Listing + location" },
+                { n: 3, label: "Share", desc: "Welcome message" },
               ].map((item) => {
                 const active = step === item.n;
                 const done = step > item.n;
@@ -478,7 +533,6 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
           </div>
         </aside>
 
-        {/* Form pane */}
         <div className="px-6 py-8 sm:px-9 sm:py-10 flex flex-col">
           <div className="mb-8 flex items-end justify-between gap-4">
             <div>
@@ -609,7 +663,7 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => copyPassword()}
+                        onClick={() => copyText(form.password, "password")}
                         className="rounded-full border border-[#1a5276] px-4 py-2.5 text-[12px] font-semibold text-[#1a5276] hover:bg-[#1a5276] hover:text-white transition-colors"
                       >
                         {copiedPassword ? "Copied" : "Copy"}
@@ -792,59 +846,16 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
                   </Field>
                 </div>
 
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6b7385] mb-3">Plan</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {PLAN_OPTIONS.map((plan) => {
-                      const active = form.selectedPlan === plan.value;
-                      return (
-                        <button
-                          key={plan.value}
-                          type="button"
-                          onClick={() =>
-                            patch({
-                              selectedPlan: plan.value,
-                              billingCycle: plan.value === "free" ? "monthly" : form.billingCycle,
-                            })
-                          }
-                          className={`rounded-2xl border px-4 py-4 text-left transition-all duration-200 ${
-                            active
-                              ? "border-[#1a5276] bg-[#1a5276] text-white"
-                              : "border-[#d5dbe6] bg-white/60 text-[#0c1222] hover:border-[#1a5276]/50"
-                          }`}
-                        >
-                          <p
-                            className="text-[17px] tracking-tight"
-                            style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
-                          >
-                            {plan.label}
-                          </p>
-                          <p className={`text-[12px] mt-1 ${active ? "text-white/75" : "text-[#8b93a3]"}`}>
-                            {plan.hint}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {form.selectedPlan !== "free" && (
-                    <div className="mt-4 flex gap-2">
-                      {(["monthly", "annual"] as const).map((cycle) => (
-                        <button
-                          key={cycle}
-                          type="button"
-                          onClick={() => patch({ billingCycle: cycle })}
-                          className={`rounded-full px-4 py-2 text-[12px] font-semibold capitalize transition-colors ${
-                            form.billingCycle === cycle
-                              ? "bg-[#0c1222] text-white"
-                              : "border border-[#d5dbe6] text-[#6b7385]"
-                          }`}
-                        >
-                          {cycle}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                <div className="rounded-2xl border border-[#d5dbe6] bg-white/70 px-5 py-4">
+                  <p
+                    className="text-[15px] text-[#0c1222]"
+                    style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
+                  >
+                    Plan: Free / Starter
+                  </p>
+                  <p className="text-[13px] text-[#6b7385] mt-1 leading-snug">
+                    Paid plans are applied automatically after the merchant completes payment — no need to pick one here.
+                  </p>
                 </div>
 
                 <label className="flex items-start gap-4 cursor-pointer rounded-2xl border border-[#b7d4c4] bg-[#f0faf5] px-5 py-4">
@@ -869,64 +880,151 @@ export default function MerchantRegistrationContent({ categories, adminSession, 
               </>
             )}
 
-            {step === 3 && created && (
-              <div className="space-y-7 py-2">
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">
-                  Created
+            {step === 3 && created && createdPassword && (
+              <div className="space-y-6 animate-[fadeIn_0.45s_ease]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700">
+                    Account live
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-[#d5dbe6] bg-white/80 px-3 py-1 text-[11px] font-semibold text-[#6b7385]">
+                    Free / Starter
+                  </span>
                 </div>
+
                 <div>
                   <h3
-                    className="text-[2rem] leading-tight tracking-tight text-[#0c1222]"
+                    className="text-[clamp(1.85rem,3vw,2.35rem)] leading-[1.08] tracking-tight text-[#0c1222]"
                     style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
                   >
                     {created.businessName}
                   </h3>
-                  <p className="mt-2 text-[14px] text-[#6b7385]">
-                    Account is ready. Share these credentials with the partner.
+                  <p className="mt-2 text-[15px] text-[#6b7385] max-w-xl">
+                    Send the pre-written welcome note below — it includes credentials, login link, and next steps.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: "Merchant ID", value: created.registrationNumber, mono: true, testId: true },
-                    { label: "Status", value: `${created.status} · KYC ${created.kycStatus}` },
+                    { label: "Status", value: `${created.status}` },
                     { label: "Email", value: created.email },
-                    { label: "Mobile", value: created.mobile },
+                    { label: "Password", value: createdPassword, mono: true },
                   ].map((row) => (
-                    <div key={row.label} className="rounded-2xl border border-[#d5dbe6] bg-white/70 px-4 py-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8b93a3]">{row.label}</p>
+                    <button
+                      key={row.label}
+                      type="button"
+                      onClick={() => copyText(String(row.value || ""), row.label === "Password" ? "password" : "message")}
+                      className="rounded-2xl border border-[#d5dbe6] bg-white/80 px-4 py-3 text-left hover:border-[#1a5276]/40 hover:bg-white transition-colors group"
+                      title="Click to copy"
+                    >
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8b93a3] flex items-center justify-between gap-2">
+                        {row.label}
+                        <span className="opacity-0 group-hover:opacity-100 text-[#1a5276] normal-case tracking-normal font-medium">
+                          Copy
+                        </span>
+                      </p>
                       <p
                         data-testid={row.testId ? "created-merchant-id" : undefined}
                         className={`mt-1.5 text-[14px] font-semibold text-[#0c1222] break-all ${row.mono ? "font-mono" : ""}`}
                       >
                         {row.value}
                       </p>
-                    </div>
+                    </button>
                   ))}
                 </div>
 
-                {createdPassword && (
-                  <div className="rounded-2xl border border-[#1a5276]/25 bg-[#eef4f8] px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="rounded-[24px] border border-[#1a5276]/20 bg-[linear-gradient(160deg,#eef4f8_0%,#ffffff_55%)] overflow-hidden">
+                  <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[#1a5276]/10">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#1a5276]">Login password</p>
                       <p
-                        className="mt-1 font-mono text-xl tracking-wide text-[#0c1222]"
-                        style={{ fontFamily: "var(--font-plex-mono), ui-monospace, monospace" }}
+                        className="text-[18px] tracking-tight text-[#0c1222]"
+                        style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
                       >
-                        {createdPassword}
+                        Shareable welcome message
+                      </p>
+                      <p className="text-[12px] text-[#6b7385] mt-0.5">
+                        Greeting · credentials · {loginUrl.replace(/^https?:\/\//, "")} · step-by-step guide
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => copyPassword(createdPassword)}
-                      className="rounded-full bg-[#1a5276] px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-[#123a54] transition-colors"
-                    >
-                      {copiedPassword ? "Copied" : "Copy password"}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => copyText(shareMessage, "message")}
+                        className="rounded-full bg-[#1a5276] px-4 py-2.5 text-[12px] font-semibold text-white hover:bg-[#123a54] transition-colors"
+                      >
+                        {copiedMessage ? "Message copied ✓" : "Copy message"}
+                      </button>
+                      {whatsappShareUrl && (
+                        <a
+                          href={whatsappShareUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-full border border-[#25D366] bg-[#25D366]/10 px-4 py-2.5 text-[12px] font-semibold text-[#128C7E] hover:bg-[#25D366] hover:text-white transition-colors"
+                        >
+                          Open WhatsApp
+                        </a>
+                      )}
+                    </div>
                   </div>
-                )}
+
+                  <div className="px-5 py-4 max-h-[280px] overflow-y-auto custom-scrollbar">
+                    <pre
+                      className="whitespace-pre-wrap text-[13px] leading-relaxed text-[#243041]"
+                      style={{ fontFamily: "var(--font-reg-body), system-ui, sans-serif" }}
+                    >
+                      {shareMessage}
+                    </pre>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[#d5dbe6] bg-white/70 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setGuideOpen((v) => !v)}
+                    className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left"
+                  >
+                    <span
+                      className="text-[16px] text-[#0c1222]"
+                      style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
+                    >
+                      What the merchant should do next
+                    </span>
+                    <span className="text-[#1a5276] text-sm font-semibold">{guideOpen ? "Hide" : "Show"}</span>
+                  </button>
+                  {guideOpen && (
+                    <ol className="border-t border-[#dfe3eb] px-5 py-4 space-y-3">
+                      {[
+                        { t: "Sign in", d: `Go to ${loginUrl.replace(/^https?:\/\//, "")} with the email & password.` },
+                        { t: "Finish profile", d: "Add photos, about, timings, and WhatsApp." },
+                        { t: "Check listing", d: "Open the public profile and confirm contact details." },
+                        { t: "Upgrade later", d: "Paid plans activate only after a successful payment." },
+                      ].map((item, i) => (
+                        <li key={item.t} className="flex gap-3">
+                          <span
+                            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#eef4f8] text-[12px] font-bold text-[#1a5276]"
+                            style={{ fontFamily: "var(--font-reg-display), system-ui, sans-serif" }}
+                          >
+                            {i + 1}
+                          </span>
+                          <div>
+                            <p className="text-[14px] font-semibold text-[#0c1222]">{item.t}</p>
+                            <p className="text-[13px] text-[#6b7385] mt-0.5">{item.d}</p>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
 
                 <div className="flex flex-wrap gap-3 pt-1">
+                  <a
+                    href={loginUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full border border-[#d5dbe6] px-5 py-2.5 text-[13px] font-semibold text-[#0c1222] hover:border-[#1a5276] hover:text-[#1a5276] transition-colors"
+                  >
+                    Open login page
+                  </a>
                   <a
                     href={getBusinessProfileUrl({
                       id: created.id,

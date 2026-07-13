@@ -6,6 +6,10 @@ export function getPublicSiteUrl(): string {
   return "https://finderb.com";
 }
 
+export function getBusinessLoginUrl(): string {
+  return `${getPublicSiteUrl()}/business/login`;
+}
+
 export function getBusinessProfileUrl(business: {
   id: string;
   slug?: string | null;
