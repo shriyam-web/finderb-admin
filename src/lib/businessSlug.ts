@@ -23,6 +23,10 @@ export function buildBusinessSlugCandidate(businessName: string, city?: string |
   return `${base}-${cityPart}`.slice(0, 96);
 }
 
+export function withSlugSuffix(base: string, suffix: string): string {
+  return `${base}-${suffix}`.slice(0, 96).replace(/-+$/g, "");
+}
+
 export function resolveBusinessSlug(business: {
   slug?: string | null;
   name?: string | null;
