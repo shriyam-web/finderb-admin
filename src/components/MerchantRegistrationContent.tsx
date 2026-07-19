@@ -10,6 +10,7 @@ import {
   MIN_ADDRESS_LINE1_LENGTH,
 } from "../lib/merchantRegistration";
 import { getBusinessLoginUrl, getBusinessProfileUrl } from "../lib/site";
+import { isPlaceholderEmail } from "../lib/placeholderEmail";
 
 export type RegistrationCategory = {
   id: string;
@@ -26,6 +27,7 @@ type AdminSession = {
 type FormState = {
   fullName: string;
   email: string;
+  emailUnavailable: boolean;
   password: string;
   mobile: string;
   businessName: string;
@@ -50,6 +52,7 @@ export const DEFAULT_MERCHANT_PASSWORD = "Finderb@1234";
 const INITIAL_FORM: FormState = {
   fullName: "",
   email: "",
+  emailUnavailable: false,
   password: DEFAULT_MERCHANT_PASSWORD,
   mobile: "",
   businessName: "",
@@ -96,6 +99,11 @@ function buildMerchantShareMessage(input: {
   loginUrl: string;
 }): string {
   const name = input.ownerName.trim() || "there";
+  const placeholderNote = isPlaceholderEmail(input.email)
+    ? `
+
+Note: We created a temporary login email for you since none was available. Please share your real email with our team so we can update it. You can change your password anytime from your dashboard → Settings.`
+    : "";
   return `Hi ${name},
 
 Welcome to FinderB! Your merchant account for ${input.businessName} is ready.
@@ -106,7 +114,7 @@ Login details
 • Password: ${input.password}
 • Mobile: ${input.mobile}
 
-Login here: ${input.loginUrl}
+Login here: ${input.loginUrl}${placeholderNote}
 
 Quick start guide
 1. Open the login link above and sign in with your email & password.
@@ -279,8 +287,8 @@ export default function MerchantRegistrationContent({
       next.fullName = "Owner full name must be at least 2 characters.";
     }
     if (
-      !form.email.trim() ||
-      !REGISTRATION_EMAIL_REGEX.test(form.email.trim())
+      !form.emailUnavailable &&
+      (!form.email.trim() || !REGISTRATION_EMAIL_REGEX.test(form.email.trim()))
     ) {
       next.email = "Please enter a valid email address.";
     }
@@ -391,7 +399,8 @@ export default function MerchantRegistrationContent({
         body: JSON.stringify({
           adminId: adminSession.id,
           fullName: form.fullName,
-          email: form.email,
+          email: form.emailUnavailable ? "" : form.email,
+          emailUnavailable: form.emailUnavailable,
           password: form.password,
           mobile: form.mobile,
           businessName: form.businessName,
@@ -549,11 +558,43 @@ export default function MerchantRegistrationContent({
                   <input
                     id="email"
                     type="email"
-                    className="admin-input"
+                    className="admin-input disabled:bg-slate-50 disabled:text-slate-400"
                     value={form.email}
                     onChange={(e) => patch({ email: e.target.value })}
-                    placeholder="partner@studio.in"
+                    placeholder={
+                      form.emailUnavailable
+                        ? "Will be auto-generated"
+                        : "partner@studio.in"
+                    }
+                    disabled={form.emailUnavailable}
                   />
+                  <label className="flex items-start gap-2 cursor-pointer pt-0.5">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-3.5 w-3.5 accent-teal-700"
+                      checked={form.emailUnavailable}
+                      onChange={(e) =>
+                        patch({
+                          emailUnavailable: e.target.checked,
+                          email: "",
+                        })
+                      }
+                    />
+                    <span className="text-[11px] leading-snug text-slate-600">
+                      I don&apos;t have the email available
+                      {form.emailUnavailable && (
+                        <span className="block text-slate-400 mt-0.5">
+                          A placeholder like{" "}
+                          <span className="admin-mono">
+                            company-name@finderb.com
+                          </span>{" "}
+                          will be generated from the business name. The profile
+                          will be flagged as email missing until the real
+                          address is added.
+                        </span>
+                      )}
+                    </span>
+                  </label>
                 </Field>
                 <Field
                   id="mobile"
@@ -898,6 +939,11 @@ export default function MerchantRegistrationContent({
                 <span className="admin-badge bg-slate-50 text-slate-600 border-slate-200">
                   Free / Starter
                 </span>
+                {isPlaceholderEmail(created.email) && (
+                  <span className="admin-badge bg-amber-50 text-amber-800 border-amber-200">
+                    Placeholder email — collect the real one
+                  </span>
+                )}
               </div>
 
               <div>

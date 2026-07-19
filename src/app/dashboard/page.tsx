@@ -30,6 +30,7 @@ import {
   formatRevealedPassword,
   PASSWORD_HASHED_DISPLAY,
 } from "../../lib/passwordDisplay";
+import { isPlaceholderEmail } from "../../lib/placeholderEmail";
 import type { MerchantRequest } from "../../lib/merchantRequest";
 import { getBusinessProfileUrl } from "../../lib/site";
 import { diffAuditChanges, logMerchantAudit } from "../../lib/merchantAudit";
@@ -4379,7 +4380,15 @@ function MerchantsContent({
                       {merchant.registrationNumber && merchant.email && (
                         <span className="text-slate-300">·</span>
                       )}
-                      <span className="truncate">{merchant.email || "—"}</span>
+                      {isPlaceholderEmail(merchant.email) ? (
+                        <span className="shrink-0 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1.5 py-px text-[10px] font-medium text-amber-800">
+                          Email missing
+                        </span>
+                      ) : (
+                        <span className="truncate">
+                          {merchant.email || "—"}
+                        </span>
+                      )}
                       <a
                         href={getBusinessProfileUrl({
                           id: merchant.id,
@@ -4661,7 +4670,13 @@ function MerchantsContent({
                       {req.registrationNumber && req.email && (
                         <span className="text-slate-300">·</span>
                       )}
-                      <span className="truncate">{req.email || "—"}</span>
+                      {isPlaceholderEmail(req.email) ? (
+                        <span className="shrink-0 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1.5 py-px text-[10px] font-medium text-amber-800">
+                          Email missing
+                        </span>
+                      ) : (
+                        <span className="truncate">{req.email || "—"}</span>
+                      )}
                       <a
                         href={getBusinessProfileUrl({
                           id: req.id,

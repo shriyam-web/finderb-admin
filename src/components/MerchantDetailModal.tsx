@@ -27,6 +27,7 @@ import {
   toDateInputValue,
 } from "../lib/merchantPlanAdmin";
 import { getBusinessProfileUrl } from "../lib/site";
+import { isPlaceholderEmail } from "../lib/placeholderEmail";
 
 export type MerchantBusinessRecord = {
   id: string;
@@ -1381,6 +1382,9 @@ export default function MerchantDetailModal({
                     <Chip tone="neutral">
                       KYC {display.kycStatus || "pending"}
                     </Chip>
+                    {isPlaceholderEmail(display.email) && (
+                      <Chip tone="warning">Email missing</Chip>
+                    )}
                     {canViewFinancialData && (
                       <>
                         <Chip tone={statusTone(display.paymentStatus)}>
@@ -1528,7 +1532,14 @@ export default function MerchantDetailModal({
                       onChange={(v) => patchDraft({ workEmail: v })}
                     />
                     {/* Login email is the merchant's credential — never editable. */}
-                    <Row label="Login email" value={display.email} />
+                    <Row
+                      label="Login email"
+                      value={
+                        isPlaceholderEmail(display.email)
+                          ? `${display.email} (placeholder — real email missing)`
+                          : display.email
+                      }
+                    />
                     <Field
                       label="Owner mobile"
                       value={display.mobile || ""}

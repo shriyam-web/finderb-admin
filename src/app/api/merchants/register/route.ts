@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { buildBusinessSlugCandidate, withSlugSuffix } from "../../../../lib/businessSlug";
+import {
+  buildBusinessSlugCandidate,
+  withSlugSuffix,
+} from "../../../../lib/businessSlug";
+import { buildPlaceholderEmailCandidate } from "../../../../lib/placeholderEmail";
 import { hashPassword } from "../../../../lib/merchantPassword";
 import {
   validateAndNormalizeMerchantRegistration,
@@ -37,11 +41,38 @@ async function generateUniqueSlug(
 
   for (let i = 0; i < 50; i += 1) {
     const candidate = i === 0 ? base : withSlugSuffix(base, String(i + 1));
-    const { data } = await supabase.from("Business").select("id").eq("slug", candidate).limit(1);
+    const { data } = await supabase
+      .from("Business")
+      .select("id")
+      .eq("slug", candidate)
+      .limit(1);
     if (!data?.length) return candidate;
   }
 
   return withSlugSuffix(base, businessId.slice(0, 8));
+}
+
+async function generateUniquePlaceholderEmail(
+  supabase: ReturnType<typeof getSupabase>,
+  businessName: string,
+): Promise<string> {
+  for (let i = 0; i < 50; i += 1) {
+    const candidate = buildPlaceholderEmailCandidate(
+      businessName,
+      i === 0 ? undefined : String(i + 1),
+    );
+    const { data } = await supabase
+      .from("Business")
+      .select("id")
+      .or(`email.eq.${candidate},workEmail.eq.${candidate}`)
+      .limit(1);
+    if (!data?.length) return candidate;
+  }
+
+  return buildPlaceholderEmailCandidate(
+    businessName,
+    crypto.randomUUID().slice(0, 8),
+  );
 }
 
 export async function POST(request: Request) {
@@ -51,7 +82,10 @@ export async function POST(request: Request) {
     };
 
     if (!body.adminId) {
-      return NextResponse.json({ success: false, error: "Admin session required." }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Admin session required." },
+        { status: 401 },
+      );
     }
 
     const supabase = getSupabase();
@@ -63,7 +97,10 @@ export async function POST(request: Request) {
       .single();
 
     if (adminError || !admin || admin.is_disabled) {
-      return NextResponse.json({ success: false, error: "Unauthorized admin session." }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized admin session." },
+        { status: 401 },
+      );
     }
 
     const isController = admin.role === "controller";
@@ -74,29 +111,45 @@ export async function POST(request: Request) {
       !allowed.includes("Merchant Registration")
     ) {
       return NextResponse.json(
-        { success: false, error: "You do not have permission for business onboarding." },
+        {
+          success: false,
+          error: "You do not have permission for business onboarding.",
+        },
         { status: 403 },
       );
     }
 
     const validated = validateAndNormalizeMerchantRegistration(body);
     if (!validated.ok) {
-      return NextResponse.json({ success: false, error: validated.error }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: validated.error },
+        { status: 400 },
+      );
     }
 
     const normalized = validated.data;
 
-    const { data: emailConflict } = await supabase
-      .from("Business")
-      .select("id")
-      .or(`email.eq.${normalized.email},workEmail.eq.${normalized.email}`)
-      .limit(1);
-
-    if (emailConflict?.length) {
-      return NextResponse.json(
-        { success: false, error: "A merchant with this email already exists." },
-        { status: 409 },
+    if (normalized.emailUnavailable) {
+      normalized.email = await generateUniquePlaceholderEmail(
+        supabase,
+        normalized.businessName,
       );
+    } else {
+      const { data: emailConflict } = await supabase
+        .from("Business")
+        .select("id")
+        .or(`email.eq.${normalized.email},workEmail.eq.${normalized.email}`)
+        .limit(1);
+
+      if (emailConflict?.length) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "A merchant with this email already exists.",
+          },
+          { status: 409 },
+        );
+      }
     }
 
     const { data: mobileConflict } = await supabase
@@ -107,7 +160,10 @@ export async function POST(request: Request) {
 
     if (mobileConflict?.length) {
       return NextResponse.json(
-        { success: false, error: "A merchant with this mobile number already exists." },
+        {
+          success: false,
+          error: "A merchant with this mobile number already exists.",
+        },
         { status: 409 },
       );
     }
@@ -115,7 +171,12 @@ export async function POST(request: Request) {
     const now = new Date().toISOString();
     const id = crypto.randomUUID();
     const passwordHash = await hashPassword(normalized.password);
-    const slug = await generateUniqueSlug(supabase, normalized.businessName, normalized.city, id);
+    const slug = await generateUniqueSlug(
+      supabase,
+      normalized.businessName,
+      normalized.city,
+      id,
+    );
 
     let registrationNumber = generateRegistrationNumber();
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -137,7 +198,10 @@ export async function POST(request: Request) {
       .insert({
         id,
         fullName: normalized.fullName,
-        workEmail: normalized.email,
+        // Placeholder logins keep workEmail blank so the profile still
+        // reads as "email missing" until the real address is collected.
+        // (workEmail is NOT NULL, so use an empty string rather than null.)
+        workEmail: normalized.emailUnavailable ? "" : normalized.email,
         email: normalized.email,
         mobile: normalized.mobile,
         businessName: normalized.businessName,
@@ -162,7 +226,9 @@ export async function POST(request: Request) {
         createdAt: now,
         updatedAt: now,
       })
-      .select("id, registrationNumber, businessName, fullName, email, mobile, slug, status, kycStatus, city")
+      .select(
+        "id, registrationNumber, businessName, fullName, email, mobile, slug, status, kycStatus, city",
+      )
       .single();
 
     if (error) {
@@ -172,16 +238,26 @@ export async function POST(request: Request) {
           : error.message.toLowerCase().includes("email")
             ? "A merchant with this email already exists."
             : "A merchant with these details already exists.";
-        return NextResponse.json({ success: false, error: message }, { status: 409 });
+        return NextResponse.json(
+          { success: false, error: message },
+          { status: 409 },
+        );
       }
       console.error("[admin-register] insert failed:", error);
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ success: true, business });
   } catch (error: unknown) {
     console.error("[admin-register] unexpected:", error);
-    const message = error instanceof Error ? error.message : "Registration failed.";
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    const message =
+      error instanceof Error ? error.message : "Registration failed.";
+    return NextResponse.json(
+      { success: false, error: message },
+      { status: 500 },
+    );
   }
 }
