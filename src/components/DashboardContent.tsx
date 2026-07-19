@@ -161,6 +161,7 @@ export default function DashboardContent({
   platformTimeLabel,
   loginLogs,
   maintenanceMode,
+  canViewFinancialData,
 }: {
   setActiveTab: (tab: string) => void;
   merchantRequests: MerchantRequest[];
@@ -173,6 +174,7 @@ export default function DashboardContent({
   platformTimeLabel: string;
   loginLogs: LoginLog[];
   maintenanceMode: boolean;
+  canViewFinancialData: boolean;
 }) {
   const [showRevenue, setShowRevenue] = useState(false);
   const [activityFilter, setActivityFilter] = useState<
@@ -228,7 +230,9 @@ export default function DashboardContent({
             </div>
             <h1 className="admin-page-title !mb-0">Dashboard</h1>
             <p className="admin-page-subtitle !mt-1">
-              KYC, partners, leads, and revenue at a glance.
+              {canViewFinancialData
+                ? "Partners, listing approvals, leads, and revenue at a glance."
+                : "Partners, listing approvals, leads, and platform activity at a glance."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
@@ -292,32 +296,40 @@ export default function DashboardContent({
       </div>
 
       {/* Secondary stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div
+        className={`grid grid-cols-2 gap-3 ${
+          canViewFinancialData ? "sm:grid-cols-3 lg:grid-cols-6" : ""
+        }`}
+      >
         <MiniMetric
-          label="Pending KYC"
+          label="Awaiting listing review"
           value={stats.merchants.pendingKyc}
-          hint="Awaiting review"
+          hint="Pending admin approval"
         />
-        <MiniMetric
-          label="Paid partners"
-          value={stats.merchants.paid}
-          hint="Completed payment"
-        />
-        <MiniMetric
-          label="Payment success"
-          value={`${stats.payments.successRate}%`}
-          hint="Of all attempts"
-        />
-        <MiniMetric
-          label="Active subs"
-          value={stats.payments.activeSubscriptions}
-          hint="Razorpay active"
-        />
-        <MiniMetric
-          label="Opens"
-          value={stats.payments.opensCount}
-          hint="Needs attention"
-        />
+        {canViewFinancialData && (
+          <>
+            <MiniMetric
+              label="Paid partners"
+              value={stats.merchants.paid}
+              hint="Completed payment"
+            />
+            <MiniMetric
+              label="Payment success"
+              value={`${stats.payments.successRate}%`}
+              hint="Of all attempts"
+            />
+            <MiniMetric
+              label="Active subs"
+              value={stats.payments.activeSubscriptions}
+              hint="Razorpay active"
+            />
+            <MiniMetric
+              label="Opens"
+              value={stats.payments.opensCount}
+              hint="Needs attention"
+            />
+          </>
+        )}
         <MiniMetric
           label="Categories"
           value={stats.content.categories}
@@ -327,7 +339,11 @@ export default function DashboardContent({
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
         {/* Growth chart */}
-        <div className="xl:col-span-8 admin-card overflow-hidden">
+        <div
+          className={`admin-card overflow-hidden ${
+            canViewFinancialData ? "xl:col-span-8" : "xl:col-span-12"
+          }`}
+        >
           <div className="admin-card-header">
             <div>
               <h3 className="admin-card-title flex items-center gap-2">
@@ -391,158 +407,162 @@ export default function DashboardContent({
           </div>
         </div>
 
-        {/* Plan mix */}
-        <div className="xl:col-span-4 admin-card p-4">
-          <h3 className="admin-card-title flex items-center gap-2">
-            <Layers className="w-4 h-4 text-teal-600" />
-            Partner plan mix
-          </h3>
-          <p className="admin-card-description mb-3">
-            Active partner subscriptions
-          </p>
-          <div className="space-y-3">
-            {[
-              {
-                label: "Starter",
-                count: stats.plans.starter,
-                color: "bg-slate-400",
-              },
-              {
-                label: "Growth — Monthly",
-                count: stats.plans.growthMonthly,
-                color: "bg-teal-600",
-              },
-              {
-                label: "Pro — Annual",
-                count: stats.plans.proAnnual,
-                color: "bg-slate-600",
-              },
-            ].map((plan) => {
-              const pct = stats.merchants.total
-                ? (plan.count / stats.merchants.total) * 100
-                : 0;
-              return (
-                <div key={plan.label}>
-                  <div className="flex justify-between text-[11px] mb-1">
-                    <span className="font-bold text-slate-700">
-                      {plan.label}
-                    </span>
-                    <span className="text-slate-500 tabular-nums font-semibold">
-                      {plan.count} · {pct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${plan.color} transition-all`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveTab("Payments & Subscriptions")}
-            className="mt-4 w-full admin-btn-secondary"
-          >
-            <CreditCard className="w-4 h-4" />
-            Open payments ledger
-          </button>
-        </div>
-      </div>
-
-      {/* Revenue */}
-      <div className="admin-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-teal-700" />
-              Platform revenue
+        {/* Plan mix is financial/subscription data. */}
+        {canViewFinancialData && (
+          <div className="xl:col-span-4 admin-card p-4">
+            <h3 className="admin-card-title flex items-center gap-2">
+              <Layers className="w-4 h-4 text-teal-600" />
+              Partner plan mix
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Subscription payments · hidden by default
+            <p className="admin-card-description mb-3">
+              Active partner subscriptions
             </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowRevenue((v) => !v)}
-            className="admin-btn-secondary !py-1.5 !text-xs"
-          >
-            {showRevenue ? "Hide revenue" : "Show revenue"}
-          </button>
-        </div>
-        {showRevenue ? (
-          <div className="p-4">
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+            <div className="space-y-3">
               {[
                 {
-                  label: "Total revenue",
-                  value: stats.payments.totalRevenueDisplay,
-                  tone: "border-slate-200 bg-slate-50",
+                  label: "Starter",
+                  count: stats.plans.starter,
+                  color: "bg-slate-400",
                 },
                 {
-                  label: "MTD revenue",
-                  value: stats.payments.mtdRevenueDisplay,
-                  tone: "border-slate-200 bg-white",
+                  label: "Growth — Monthly",
+                  count: stats.plans.growthMonthly,
+                  color: "bg-teal-600",
                 },
                 {
-                  label: "Completed",
-                  value: stats.payments.completedCount,
-                  tone: "border-emerald-200 bg-emerald-50/50",
+                  label: "Pro — Annual",
+                  count: stats.plans.proAnnual,
+                  color: "bg-slate-600",
                 },
-                {
-                  label: "Pending",
-                  value: stats.payments.pendingCount,
-                  tone: "border-amber-200 bg-amber-50/50",
-                },
-                {
-                  label: "Failed",
-                  value: stats.payments.failedCount,
-                  tone: "border-rose-200 bg-rose-50/50",
-                },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className={`rounded-lg border px-3 py-2.5 ${item.tone}`}
-                >
-                  <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">
-                    {item.label}
-                  </p>
-                  <p className="text-lg font-bold text-slate-900 mt-0.5 tabular-nums leading-none">
-                    {item.value}
-                  </p>
-                </div>
-              ))}
+              ].map((plan) => {
+                const pct = stats.merchants.total
+                  ? (plan.count / stats.merchants.total) * 100
+                  : 0;
+                return (
+                  <div key={plan.label}>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="font-bold text-slate-700">
+                        {plan.label}
+                      </span>
+                      <span className="text-slate-500 tabular-nums font-semibold">
+                        {plan.count} · {pct.toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${plan.color} transition-all`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs text-slate-500">
-                {stats.payments.expiring7d} expiring ≤7d ·{" "}
-                {stats.payments.autoDebitEnabled} auto-debit enabled
-              </p>
-              <button
-                type="button"
-                onClick={() => setActiveTab("Payments & Subscriptions")}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:underline"
-              >
-                Full financial ledger <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="px-4 py-5 text-center">
-            <div className="inline-flex p-2 rounded-lg bg-slate-100 text-slate-400 mb-1.5">
-              <Shield className="w-5 h-5" />
-            </div>
-            <p className="text-sm text-slate-600">
-              Revenue figures are concealed
-            </p>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Click &quot;Show revenue&quot; to view payment totals
-            </p>
+            <button
+              type="button"
+              onClick={() => setActiveTab("Payments & Subscriptions")}
+              className="mt-4 w-full admin-btn-secondary"
+            >
+              <CreditCard className="w-4 h-4" />
+              Open payments ledger
+            </button>
           </div>
         )}
       </div>
+
+      {/* Revenue */}
+      {canViewFinancialData && (
+        <div className="admin-card overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-teal-700" />
+                Platform revenue
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Subscription payments · hidden by default
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowRevenue((v) => !v)}
+              className="admin-btn-secondary !py-1.5 !text-xs"
+            >
+              {showRevenue ? "Hide revenue" : "Show revenue"}
+            </button>
+          </div>
+          {showRevenue ? (
+            <div className="p-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+                {[
+                  {
+                    label: "Total revenue",
+                    value: stats.payments.totalRevenueDisplay,
+                    tone: "border-slate-200 bg-slate-50",
+                  },
+                  {
+                    label: "MTD revenue",
+                    value: stats.payments.mtdRevenueDisplay,
+                    tone: "border-slate-200 bg-white",
+                  },
+                  {
+                    label: "Completed",
+                    value: stats.payments.completedCount,
+                    tone: "border-emerald-200 bg-emerald-50/50",
+                  },
+                  {
+                    label: "Pending",
+                    value: stats.payments.pendingCount,
+                    tone: "border-amber-200 bg-amber-50/50",
+                  },
+                  {
+                    label: "Failed",
+                    value: stats.payments.failedCount,
+                    tone: "border-rose-200 bg-rose-50/50",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`rounded-lg border px-3 py-2.5 ${item.tone}`}
+                  >
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">
+                      {item.label}
+                    </p>
+                    <p className="text-lg font-bold text-slate-900 mt-0.5 tabular-nums leading-none">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-slate-500">
+                  {stats.payments.expiring7d} expiring ≤7d ·{" "}
+                  {stats.payments.autoDebitEnabled} auto-debit enabled
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("Payments & Subscriptions")}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:underline"
+                >
+                  Full financial ledger <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="px-4 py-5 text-center">
+              <div className="inline-flex p-2 rounded-lg bg-slate-100 text-slate-400 mb-1.5">
+                <Shield className="w-5 h-5" />
+              </div>
+              <p className="text-sm text-slate-600">
+                Revenue figures are concealed
+              </p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Click &quot;Show revenue&quot; to view payment totals
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quick actions */}
       <div>
@@ -552,18 +572,20 @@ export default function DashboardContent({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <QuickLink
             label="Partner management"
-            description="Profiles, KYC, verification badges"
+            description="Profiles, listing approval, verification badges"
             icon={Building2}
             onClick={() => setActiveTab("Merchants")}
             badge={stats.merchants.pendingKyc || undefined}
           />
-          <QuickLink
-            label="Payments & subscriptions"
-            description="Ledger, filters, opens tracking"
-            icon={CreditCard}
-            onClick={() => setActiveTab("Payments & Subscriptions")}
-            badge={stats.payments.opensCount || undefined}
-          />
+          {canViewFinancialData && (
+            <QuickLink
+              label="Payments & subscriptions"
+              description="Ledger, filters, opens tracking"
+              icon={CreditCard}
+              onClick={() => setActiveTab("Payments & Subscriptions")}
+              badge={stats.payments.opensCount || undefined}
+            />
+          )}
           <QuickLink
             label="Lead inbox"
             description="Profile and category enquiries"
@@ -601,11 +623,12 @@ export default function DashboardContent({
             <div>
               <h3 className="admin-card-title flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                Verification queue
+                Listing approval queue
               </h3>
               <p className="admin-card-description">
                 {merchantRequests.length} partner
-                {merchantRequests.length !== 1 ? "s" : ""} awaiting action
+                {merchantRequests.length !== 1 ? "s" : ""} awaiting listing
+                approval
               </p>
             </div>
             <button
@@ -697,7 +720,7 @@ export default function DashboardContent({
                   Queue clear
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
-                  No partners awaiting KYC review
+                  No partners awaiting listing approval
                 </p>
               </div>
             )}
@@ -773,20 +796,25 @@ export default function DashboardContent({
                   : 0,
                 hint: `${stats.merchants.verified} FinderB verified`,
               },
-              {
-                label: "Paid conversion",
-                value: stats.merchants.total
-                  ? Math.round(
-                      (stats.merchants.paid / stats.merchants.total) * 100,
-                    )
-                  : 0,
-                hint: `${stats.merchants.paid} paid partners`,
-              },
-              {
-                label: "Payment success",
-                value: stats.payments.successRate,
-                hint: "Completed vs all attempts",
-              },
+              ...(canViewFinancialData
+                ? [
+                    {
+                      label: "Paid conversion",
+                      value: stats.merchants.total
+                        ? Math.round(
+                            (stats.merchants.paid / stats.merchants.total) *
+                              100,
+                          )
+                        : 0,
+                      hint: `${stats.merchants.paid} paid partners`,
+                    },
+                    {
+                      label: "Payment success",
+                      value: stats.payments.successRate,
+                      hint: "Completed vs all attempts",
+                    },
+                  ]
+                : []),
             ].map((row) => (
               <div key={row.label}>
                 <div className="flex justify-between text-[11px] mb-1">

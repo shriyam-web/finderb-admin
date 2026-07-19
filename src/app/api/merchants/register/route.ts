@@ -129,7 +129,8 @@ export async function POST(request: Request) {
     }
 
     const status = normalized.activateImmediately ? "Active" : "Pending";
-    const kycStatus = normalized.activateImmediately ? "approved" : "pending";
+    // KYC is a separate verification system — never set by listing activation.
+    const kycStatus = "pending";
 
     const { data: business, error } = await supabase
       .from("Business")
@@ -154,7 +155,7 @@ export async function POST(request: Request) {
         billingCycle: normalized.billingCycle,
         status,
         kycStatus,
-        isVerified: normalized.activateImmediately,
+        isVerified: false,
         registrationNumber,
         password: passwordHash,
         slug,

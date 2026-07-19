@@ -20,6 +20,7 @@ import FinderBJobsContent, {
 import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
+import { useAdminToast } from "../../components/AdminToast";
 import MerchantRegistrationContent from "../../components/MerchantRegistrationContent";
 import ManageAdminsContent from "../../components/ManageAdminsContent";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
@@ -27,9 +28,11 @@ import { planLabel } from "../../lib/merchantPlanAdmin";
 import {
   classifyStoredPassword,
   formatRevealedPassword,
+  PASSWORD_HASHED_DISPLAY,
 } from "../../lib/passwordDisplay";
 import type { MerchantRequest } from "../../lib/merchantRequest";
 import { getBusinessProfileUrl } from "../../lib/site";
+import { diffAuditChanges, logMerchantAudit } from "../../lib/merchantAudit";
 import {
   CATEGORY_LEAD_BADGE,
   PROFILE_LEAD_BADGE,
@@ -71,6 +74,8 @@ interface Merchant {
   planExpiresAt: string | null;
   slug: string | null;
   city: string | null;
+  createdAt: string | null;
+  hasViewablePassword: boolean;
 }
 
 interface AdminSession {
@@ -78,6 +83,76 @@ interface AdminSession {
   email: string;
   role: string;
   allowed_tabs?: string[];
+}
+
+/**
+ * Any admin/super_admin granted a tab gets full access inside it
+ * (same edit/delete/approve actions as a controller for that tab).
+ * Controllers always have full access to every tab.
+ */
+function hasFullTabAccess(session: AdminSession | null, tab: string): boolean {
+  if (!session) return false;
+  if (session.role === "controller") return true;
+  const tabs = session.allowed_tabs ?? [];
+  if (tabs.includes(tab)) return true;
+  // Legacy tab name from before rename
+  if (tab === "Business Onboarding" && tabs.includes("Merchant Registration")) {
+    return true;
+  }
+  return false;
+}
+
+/** Listing approval (public display) — not KYC. */
+function isListingPending(status: string | null | undefined) {
+  return (status || "").toLowerCase() === "pending";
+}
+
+function isManagedPartner(status: string | null | undefined) {
+  const value = (status || "").toLowerCase();
+  return value === "active" || value === "inactive";
+}
+
+function mapBusinessToMerchant(m: any): Merchant {
+  return {
+    id: m.id,
+    name: m.businessName || m.fullName || "Unknown Merchant",
+    email: m.workEmail || m.email || "",
+    category: m.category || "Other",
+    rating: 0,
+    sales: 0,
+    validUntil: m.planExpiresAt
+      ? new Date(m.planExpiresAt).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })
+      : "—",
+    status: m.status || "Active",
+    isFinderBVerified: Boolean(m.isFinderBVerified),
+    registrationNumber: m.registrationNumber || null,
+    paymentStatus: m.paymentStatus || "pending",
+    selectedPlan: m.selectedPlan || "free",
+    billingCycle: m.billingCycle || "monthly",
+    planExpiresAt: m.planExpiresAt || null,
+    slug: m.slug || null,
+    city: m.city || null,
+    createdAt: m.createdAt || null,
+    hasViewablePassword: (() => {
+      const classified = classifyStoredPassword(m.password);
+      return Boolean(classified && classified !== PASSWORD_HASHED_DISPLAY);
+    })(),
+  };
+}
+
+function mapBusinessToMerchantRequest(m: any): MerchantRequest {
+  return {
+    id: m.id,
+    name: m.businessName || m.fullName || "Unknown Merchant",
+    email: m.workEmail || m.email || "",
+    category: m.category || "Other",
+    date: new Date(m.createdAt || Date.now()).toLocaleDateString(),
+    registrationNumber: m.registrationNumber || null,
+  };
 }
 
 interface Lead {
@@ -99,6 +174,8 @@ interface BusinessData {
   fullName: string;
   workEmail: string;
   mobile: string;
+  owner_name: string | null;
+  owner_mobile: string | null;
   businessName: string;
   category: string;
   location: string | null;
@@ -596,6 +673,11 @@ const NAV_GROUPS = [
 export default function Dashboard() {
   const router = useRouter();
   const [adminSession, setAdminSession] = useState<any>(null);
+  const { toast } = useAdminToast();
+  const [uploadProgress, setUploadProgress] = useState<{
+    current: number;
+    total: number;
+  } | null>(null);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
@@ -965,7 +1047,8 @@ export default function Dashboard() {
         console.log("🚀 Fetching business data from Supabase...");
         const { data: merchantData, error: merchantError } = await supabase
           .from("Business")
-          .select("*");
+          .select("*")
+          .order("createdAt", { ascending: false });
 
         if (merchantError) {
           console.error("❌ Business fetch error:", merchantError);
@@ -978,48 +1061,13 @@ export default function Dashboard() {
             setAllBusinessData(merchantData);
             setActiveMerchants(
               merchantData
-                .filter(
-                  (m: any) =>
-                    m.kycStatus !== "pending" && m.kycStatus !== "rejected",
-                )
-                .map((m: any) => ({
-                  id: m.id,
-                  name: m.businessName || m.fullName || "Unknown Merchant",
-                  email: m.workEmail || m.email || "",
-                  category: m.category || "Other",
-                  rating: 0,
-                  sales: 0,
-                  validUntil: m.planExpiresAt
-                    ? new Date(m.planExpiresAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : "—",
-                  status: m.status || "Active",
-                  isFinderBVerified: Boolean(m.isFinderBVerified),
-                  registrationNumber: m.registrationNumber || null,
-                  paymentStatus: m.paymentStatus || "pending",
-                  selectedPlan: m.selectedPlan || "free",
-                  billingCycle: m.billingCycle || "monthly",
-                  planExpiresAt: m.planExpiresAt || null,
-                  slug: m.slug || null,
-                  city: m.city || null,
-                })),
+                .filter((m: any) => isManagedPartner(m.status))
+                .map(mapBusinessToMerchant),
             );
             setMerchantRequests(
               merchantData
-                .filter((m: any) => m.kycStatus === "pending")
-                .map((m: any) => ({
-                  id: m.id,
-                  name: m.businessName || m.fullName || "Unknown Merchant",
-                  email: m.workEmail || m.email || "",
-                  category: m.category || "Other",
-                  date: new Date(
-                    m.createdAt || Date.now(),
-                  ).toLocaleDateString(),
-                  registrationNumber: m.registrationNumber || null,
-                })),
+                .filter((m: any) => isListingPending(m.status))
+                .map(mapBusinessToMerchantRequest),
             );
           } else {
             console.warn("⚠️ No business data returned from Supabase");
@@ -1111,12 +1159,18 @@ export default function Dashboard() {
   ]);
 
   const menuItems = ALL_MENU_ITEMS.filter((item) => {
-    if (COMING_SOON_TABS.has(item.name)) return true;
+    // Controllers always see every tab, including coming soon.
     if (adminSession?.role === "controller") {
       return true;
     }
+    // Manage Admins is controller-only.
     if (item.name === "Manage Admins") {
       return false;
+    }
+    // Coming-soon placeholders only appear once the admin has at least one real tab.
+    if (COMING_SOON_TABS.has(item.name)) {
+      const tabs = adminSession?.allowed_tabs ?? [];
+      return tabs.length > 0;
     }
     if (adminSession?.allowed_tabs && adminSession.allowed_tabs.length > 0) {
       if (adminSession.allowed_tabs.includes(item.name)) return true;
@@ -1131,23 +1185,35 @@ export default function Dashboard() {
     }
     return false;
   });
+  const canViewFinancialData = hasFullTabAccess(
+    adminSession,
+    "Payments & Subscriptions",
+  );
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => !prev);
   };
 
   const handleDashboardApprove = async (req: MerchantRequest) => {
+    // Full access inside Dashboard or Merchants tab — same actions as a controller.
+    if (
+      !hasFullTabAccess(adminSession, "Dashboard") &&
+      !hasFullTabAccess(adminSession, "Merchants")
+    ) {
+      toast("You do not have permission to approve listings.", "error");
+      return;
+    }
     const supabase = createClient();
     const { error } = await supabase
       .from("Business")
       .update({
-        kycStatus: "approved",
-        isVerified: true,
+        status: "Active",
+        updatedAt: new Date().toISOString(),
       })
       .eq("id", req.id);
 
     if (error) {
-      alert("Error approving merchant: " + error.message);
+      toast("Error approving merchant: " + error.message, "error");
       return;
     }
 
@@ -1170,30 +1236,59 @@ export default function Dashboard() {
         planExpiresAt: null,
         slug: null,
         city: null,
+        createdAt: new Date().toISOString(),
+        hasViewablePassword: false,
       },
     ]);
     setMerchantRequests((prev: MerchantRequest[]) =>
       prev.filter((r) => r.id !== req.id),
     );
-    alert(`${req.name} has been approved and added to active merchants!`);
+    await logMerchantAudit({
+      merchantId: req.id,
+      actor: adminSession,
+      action: "listing.approved",
+      summary: "Approved merchant listing",
+      changes: diffAuditChanges({ status: "Pending" }, { status: "Active" }),
+    });
+    toast(`${req.name} is now live on the public listing.`, "success");
   };
 
   const handleDashboardReject = async (req: MerchantRequest) => {
+    if (
+      !hasFullTabAccess(adminSession, "Dashboard") &&
+      !hasFullTabAccess(adminSession, "Merchants")
+    ) {
+      toast("You do not have permission to reject listings.", "error");
+      return;
+    }
     if (confirm(`Are you sure you want to reject ${req.name}?`)) {
       const supabase = createClient();
       const { error } = await supabase
         .from("Business")
-        .update({ kycStatus: "rejected", isVerified: false })
+        .update({
+          status: "Rejected",
+          updatedAt: new Date().toISOString(),
+        })
         .eq("id", req.id);
 
       if (error) {
-        alert("Error rejecting merchant: " + error.message);
+        toast("Error rejecting merchant: " + error.message, "error");
         return;
       }
       setMerchantRequests((prev: MerchantRequest[]) =>
         prev.filter((r) => r.id !== req.id),
       );
-      alert(`${req.name} request has been rejected.`);
+      await logMerchantAudit({
+        merchantId: req.id,
+        actor: adminSession,
+        action: "listing.rejected",
+        summary: "Rejected merchant listing",
+        changes: diffAuditChanges(
+          { status: "Pending" },
+          { status: "Rejected" },
+        ),
+      });
+      toast(`${req.name} listing request has been rejected.`, "success");
     }
   };
 
@@ -1246,7 +1341,7 @@ export default function Dashboard() {
         id: m.id,
         type: "merchant",
         title: `New Business Onboarding`,
-        description: `${m.businessName} - ${m.kycStatus}`,
+        description: `${m.businessName || m.fullName} · listing ${m.status || "—"}`,
         timestamp: m.createdAt,
       });
     });
@@ -1741,6 +1836,7 @@ export default function Dashboard() {
             platformTimeLabel={platformTimeLabel}
             loginLogs={loginLogs}
             maintenanceMode={settings.maintenance}
+            canViewFinancialData={canViewFinancialData}
           />
         );
       case "Users":
@@ -1760,6 +1856,10 @@ export default function Dashboard() {
             setMerchantRequests={setMerchantRequests}
             adminSession={adminSession}
             categories={categories}
+            toast={toast}
+            uploadProgress={uploadProgress}
+            setUploadProgress={setUploadProgress}
+            canViewFinancialData={canViewFinancialData}
           />
         );
       case "Business Onboarding":
@@ -1771,53 +1871,19 @@ export default function Dashboard() {
               const supabase = createClient();
               const { data: merchantData } = await supabase
                 .from("Business")
-                .select("*");
+                .select("*")
+                .order("createdAt", { ascending: false });
               if (!merchantData) return;
               setAllBusinessData(merchantData);
               setActiveMerchants(
                 merchantData
-                  .filter(
-                    (m: any) =>
-                      m.kycStatus !== "pending" && m.kycStatus !== "rejected",
-                  )
-                  .map((m: any) => ({
-                    id: m.id,
-                    name: m.businessName || m.fullName || "Unknown Merchant",
-                    email: m.workEmail || m.email || "",
-                    category: m.category || "Other",
-                    rating: 0,
-                    sales: 0,
-                    validUntil: m.planExpiresAt
-                      ? new Date(m.planExpiresAt).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })
-                      : "—",
-                    status: m.status || "Active",
-                    isFinderBVerified: Boolean(m.isFinderBVerified),
-                    registrationNumber: m.registrationNumber || null,
-                    paymentStatus: m.paymentStatus || "pending",
-                    selectedPlan: m.selectedPlan || "free",
-                    billingCycle: m.billingCycle || "monthly",
-                    planExpiresAt: m.planExpiresAt || null,
-                    slug: m.slug || null,
-                    city: m.city || null,
-                  })),
+                  .filter((m: any) => isManagedPartner(m.status))
+                  .map(mapBusinessToMerchant),
               );
               setMerchantRequests(
                 merchantData
-                  .filter((m: any) => m.kycStatus === "pending")
-                  .map((m: any) => ({
-                    id: m.id,
-                    name: m.businessName || m.fullName || "Unknown Merchant",
-                    email: m.workEmail || m.email || "",
-                    category: m.category || "Other",
-                    date: new Date(
-                      m.createdAt || Date.now(),
-                    ).toLocaleDateString(),
-                    registrationNumber: m.registrationNumber || null,
-                  })),
+                  .filter((m: any) => isListingPending(m.status))
+                  .map(mapBusinessToMerchantRequest),
               );
             }}
           />
@@ -1886,7 +1952,18 @@ export default function Dashboard() {
           <FinderBJobsContent jobs={finderBJobs} setJobs={setFinderBJobs} />
         );
       case "Payments & Subscriptions":
-        return <PaymentsContent businesses={allBusinessData} />;
+        return canViewFinancialData ? (
+          <PaymentsContent businesses={allBusinessData} />
+        ) : (
+          <div className="admin-card p-8 text-center">
+            <h2 className="text-base font-semibold text-slate-900">
+              Financial access restricted
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Payments and subscription data requires explicit tab permission.
+            </p>
+          </div>
+        );
       case "Broadcasts":
         return (
           <BroadcastsContent
@@ -1928,6 +2005,7 @@ export default function Dashboard() {
             platformTimeLabel={platformTimeLabel}
             loginLogs={loginLogs}
             maintenanceMode={settings.maintenance}
+            canViewFinancialData={canViewFinancialData}
           />
         );
     }
@@ -2296,7 +2374,7 @@ export default function Dashboard() {
                   : ""
               }`}
             >
-              Pending KYC <strong>{merchantRequests.length}</strong>
+              Pending review <strong>{merchantRequests.length}</strong>
             </button>
             <button
               type="button"
@@ -2749,7 +2827,7 @@ function ControllerPasswordModal({
       <div className="admin-modal">
         <div className="admin-card-header">
           <div>
-            <h3 className="admin-card-title">Verify controller access</h3>
+            <h3 className="admin-card-title">Verify your password</h3>
             <p className="admin-card-description">{title}</p>
           </div>
         </div>
@@ -2878,9 +2956,10 @@ function UsersContent({
     id: string;
     label: string;
   } | null>(null);
-  const isController = adminSession?.role === "controller";
+  const canManage = hasFullTabAccess(adminSession, "Users");
 
   const handleDeleteUser = async (id: string) => {
+    if (!canManage) return;
     if (confirm("Are you sure you want to delete this user?")) {
       try {
         const supabase = createClient();
@@ -2938,12 +3017,14 @@ function UsersContent({
               />
             </svg>
           </div>
-          <button
-            onClick={() => alert("Add User functionality coming soon!")}
-            className="admin-btn-primary"
-          >
-            Add user
-          </button>
+          {canManage && (
+            <button
+              onClick={() => alert("Add User functionality coming soon!")}
+              className="admin-btn-primary"
+            >
+              Add user
+            </button>
+          )}
         </div>
       </div>
 
@@ -2956,7 +3037,7 @@ function UsersContent({
                 <th>Name</th>
                 <th>Email</th>
                 <th>Joined</th>
-                {isController && <th>Password</th>}
+                {canManage && <th>Password</th>}
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
@@ -2990,7 +3071,7 @@ function UsersContent({
                       {new Date(user.createdAt).toLocaleDateString()}
                     </p>
                   </td>
-                  {isController && (
+                  {canManage && (
                     <PasswordRevealCell
                       id={user.id}
                       visiblePasswords={visiblePasswords}
@@ -3034,7 +3115,7 @@ function UsersContent({
               ))}
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={isController ? 6 : 5} className="admin-empty">
+                  <td colSpan={canManage ? 6 : 5} className="admin-empty">
                     {users.length === 0
                       ? "No users found"
                       : "No users match your search"}
@@ -3102,6 +3183,141 @@ function ComingSoonContent({
   );
 }
 
+const MERCHANT_ROWS_PER_PAGE_OPTIONS = [10, 25, 50] as const;
+
+type MerchantSortOption =
+  "newest" | "name-asc" | "name-desc" | "expiry-asc" | "verified-first";
+
+const MERCHANT_SORT_OPTIONS: { id: MerchantSortOption; label: string }[] = [
+  { id: "newest", label: "Newest first" },
+  { id: "name-asc", label: "Name A–Z" },
+  { id: "name-desc", label: "Name Z–A" },
+  { id: "expiry-asc", label: "Expiring soon" },
+  { id: "verified-first", label: "Verified first" },
+];
+
+function isStarterPlanId(plan: string): boolean {
+  const p = (plan || "").toLowerCase();
+  return p === "" || p === "free" || p.includes("starter");
+}
+
+function planChipClass(plan: string): string {
+  const p = (plan || "").toLowerCase();
+  if (p.includes("pro"))
+    return "bg-indigo-50 text-indigo-700 border-indigo-200";
+  if (p.includes("growth")) return "bg-teal-50 text-teal-700 border-teal-200";
+  return "bg-slate-50 text-slate-600 border-slate-200";
+}
+
+function planExpiryInfo(planExpiresAt: string | null): {
+  cls: string;
+  note?: string;
+} {
+  if (!planExpiresAt) return { cls: "text-slate-500" };
+  const time = new Date(planExpiresAt).getTime();
+  if (Number.isNaN(time)) return { cls: "text-slate-500" };
+  const days = Math.ceil((time - Date.now()) / 86_400_000);
+  if (days < 0) return { cls: "text-rose-600 font-medium", note: "Expired" };
+  if (days <= 30)
+    return { cls: "text-amber-600 font-medium", note: `${days}d left` };
+  return { cls: "text-slate-600" };
+}
+
+function PaginationFooter({
+  total,
+  page,
+  totalPages,
+  rowsPerPage,
+  onPageChange,
+  onRowsPerPageChange,
+  noun,
+}: {
+  total: number;
+  page: number;
+  totalPages: number;
+  rowsPerPage: number;
+  onPageChange: (page: number) => void;
+  onRowsPerPageChange: (rows: number) => void;
+  noun: string;
+}) {
+  if (total === 0) return null;
+  const start = (page - 1) * rowsPerPage + 1;
+  const end = Math.min(page * rowsPerPage, total);
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 bg-slate-50/60">
+      <p className="text-xs text-slate-500">
+        Showing <span className="font-medium text-slate-800">{start}</span>–
+        <span className="font-medium text-slate-800">{end}</span> of{" "}
+        <span className="font-medium text-slate-800">{total}</span> {noun}
+      </p>
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-2 text-xs text-slate-500">
+          Rows per page
+          <select
+            value={rowsPerPage}
+            onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
+            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40"
+          >
+            {MERCHANT_ROWS_PER_PAGE_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1}
+            className="admin-icon-btn disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Previous page"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+          </button>
+          <span className="px-2 text-xs font-medium text-slate-700 whitespace-nowrap">
+            {page} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => onPageChange(page + 1)}
+            disabled={page >= totalPages}
+            className="admin-icon-btn disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Next page"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MerchantsContent({
   activeMerchants,
   setActiveMerchants,
@@ -3109,6 +3325,10 @@ function MerchantsContent({
   setMerchantRequests,
   adminSession,
   categories,
+  toast,
+  uploadProgress,
+  setUploadProgress,
+  canViewFinancialData,
 }: {
   activeMerchants: Merchant[];
   setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>;
@@ -3116,6 +3336,12 @@ function MerchantsContent({
   setMerchantRequests: Dispatch<SetStateAction<MerchantRequest[]>>;
   adminSession: AdminSession | null;
   categories: Category[];
+  toast: (message: string, tone?: "success" | "error" | "info") => void;
+  uploadProgress: { current: number; total: number } | null;
+  setUploadProgress: Dispatch<
+    SetStateAction<{ current: number; total: number } | null>
+  >;
+  canViewFinancialData: boolean;
 }) {
   const [merchantTab, setMerchantTab] = useState<"Active" | "Pending">(
     "Active",
@@ -3125,6 +3351,12 @@ function MerchantsContent({
   );
   const [isUploading, setIsUploading] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [planFilter, setPlanFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<MerchantSortOption>("newest");
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [page, setPage] = useState(1);
   const [visiblePasswords, setVisiblePasswords] = useState<
     Record<string, string>
   >({});
@@ -3132,27 +3364,138 @@ function MerchantsContent({
     id: string;
     label: string;
   } | null>(null);
-  const isController = adminSession?.role === "controller";
+  const canManage = hasFullTabAccess(adminSession, "Merchants");
 
-  const filteredActiveMerchants = activeMerchants.filter((m) =>
-    matchesSearchTerm(
-      searchTerm,
-      m.id,
-      m.name,
-      m.email,
-      m.registrationNumber,
-      m.category,
-    ),
+  const categoriesInUse = useMemo(
+    () =>
+      Array.from(
+        new Set(activeMerchants.map((m) => m.category).filter(Boolean)),
+      ).sort(),
+    [activeMerchants],
   );
-  const filteredMerchantRequests = merchantRequests.filter((m) =>
-    matchesSearchTerm(
-      searchTerm,
-      m.id,
-      m.name,
-      m.email,
-      m.registrationNumber,
-      m.category,
-    ),
+  const plansInUse = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          activeMerchants.map((m) =>
+            (m.selectedPlan || "starter").toLowerCase(),
+          ),
+        ),
+      ).sort(),
+    [activeMerchants],
+  );
+
+  const hasActiveFilters =
+    categoryFilter !== "all" ||
+    statusFilter !== "all" ||
+    (canViewFinancialData && planFilter !== "all") ||
+    Boolean(searchTerm.trim());
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setCategoryFilter("all");
+    setStatusFilter("all");
+    setPlanFilter("all");
+  };
+
+  const filteredActiveMerchants = useMemo(() => {
+    const list = activeMerchants.filter(
+      (m) =>
+        matchesSearchTerm(
+          searchTerm,
+          m.id,
+          m.name,
+          m.email,
+          m.registrationNumber,
+          m.category,
+        ) &&
+        (categoryFilter === "all" || m.category === categoryFilter) &&
+        (statusFilter === "all" || m.status === statusFilter) &&
+        (!canViewFinancialData ||
+          planFilter === "all" ||
+          (m.selectedPlan || "starter").toLowerCase() === planFilter),
+    );
+
+    const byName = (a: Merchant, b: Merchant) =>
+      a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+
+    return list.sort((a, b) => {
+      switch (sortBy) {
+        case "newest": {
+          const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return bTime - aTime || byName(a, b);
+        }
+        case "name-desc":
+          return byName(b, a);
+        case "expiry-asc": {
+          if (!canViewFinancialData) return byName(a, b);
+          const aTime = a.planExpiresAt
+            ? new Date(a.planExpiresAt).getTime()
+            : Infinity;
+          const bTime = b.planExpiresAt
+            ? new Date(b.planExpiresAt).getTime()
+            : Infinity;
+          return aTime - bTime || byName(a, b);
+        }
+        case "verified-first":
+          return (
+            Number(b.isFinderBVerified) - Number(a.isFinderBVerified) ||
+            byName(a, b)
+          );
+        default:
+          return byName(a, b);
+      }
+    });
+  }, [
+    activeMerchants,
+    searchTerm,
+    categoryFilter,
+    statusFilter,
+    planFilter,
+    sortBy,
+    canViewFinancialData,
+  ]);
+
+  const filteredMerchantRequests = merchantRequests.filter(
+    (m) =>
+      matchesSearchTerm(
+        searchTerm,
+        m.id,
+        m.name,
+        m.email,
+        m.registrationNumber,
+        m.category,
+      ) &&
+      (categoryFilter === "all" || m.category === categoryFilter),
+  );
+
+  // Reset to page 1 whenever the visible dataset changes.
+  useEffect(() => {
+    setPage(1);
+  }, [
+    searchTerm,
+    merchantTab,
+    rowsPerPage,
+    categoryFilter,
+    statusFilter,
+    planFilter,
+    sortBy,
+  ]);
+
+  const currentList =
+    merchantTab === "Active"
+      ? filteredActiveMerchants
+      : filteredMerchantRequests;
+  const totalPages = Math.max(1, Math.ceil(currentList.length / rowsPerPage));
+  const safePage = Math.min(page, totalPages);
+  const pagedActiveMerchants = filteredActiveMerchants.slice(
+    (safePage - 1) * rowsPerPage,
+    safePage * rowsPerPage,
+  );
+  const pagedMerchantRequests = filteredMerchantRequests.slice(
+    (safePage - 1) * rowsPerPage,
+    safePage * rowsPerPage,
   );
 
   const fetchMerchantPassword = async (merchantId: string) => {
@@ -3173,45 +3516,90 @@ function MerchantsContent({
       .single();
 
     if (error) {
-      alert("Error fetching business details: " + error.message);
+      toast("Error fetching business details: " + error.message, "error");
       return;
     }
 
+    const profileUrl = getBusinessProfileUrl({
+      id: data.id,
+      businessName: data.businessName,
+      slug: data.slug,
+      city: data.city,
+    });
+    if (data.profileQrLink !== profileUrl) {
+      await supabase
+        .from("Business")
+        .update({ profileQrLink: profileUrl })
+        .eq("id", data.id);
+      data.profileQrLink = profileUrl;
+    }
     setSelectedBusiness(data);
   };
 
-  const handleBusinessImageUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file || !selectedBusiness) return;
+  const handleBusinessImageUpload = async (files: File[]) => {
+    if (!files.length || !selectedBusiness) return;
 
     const currentImages = selectedBusiness.images || [];
-    if (currentImages.length >= 5) {
-      alert("Maximum 5 images allowed.");
+    const remainingSlots = 5 - currentImages.length;
+    if (remainingSlots <= 0) {
+      toast("Maximum 5 images allowed.", "error");
       return;
     }
 
+    const filesToUpload = files.slice(0, remainingSlots);
+    const skipped = files.length - filesToUpload.length;
+
     try {
       setIsUploading("businessImages");
-      const url = await uploadToCloudinary(file);
+
+      const uploadedUrls: string[] = [];
+      for (const [i, file] of filesToUpload.entries()) {
+        setUploadProgress({ current: i + 1, total: filesToUpload.length });
+        uploadedUrls.push(await uploadToCloudinary(file));
+      }
 
       const supabase = createClient();
-      const newImages = [...currentImages, url];
+      const newImages = [...currentImages, ...uploadedUrls];
+      const shouldSetDefaultProfile =
+        !selectedBusiness.profilePictureUrl || currentImages.length === 0;
+      const profilePictureUrl = shouldSetDefaultProfile
+        ? newImages[0] || null
+        : selectedBusiness.profilePictureUrl;
 
       const { error } = await supabase
         .from("Business")
-        .update({ images: newImages })
+        .update({ images: newImages, profilePictureUrl })
         .eq("id", selectedBusiness.id);
 
       if (error) throw error;
 
-      setSelectedBusiness({ ...selectedBusiness, images: newImages });
-      alert("Image uploaded successfully!");
+      setSelectedBusiness((prev) =>
+        prev ? { ...prev, images: newImages, profilePictureUrl } : prev,
+      );
+      await logMerchantAudit({
+        merchantId: selectedBusiness.id,
+        actor: adminSession,
+        action: "gallery.images_added",
+        summary: `Uploaded ${uploadedUrls.length} image(s)`,
+        changes: diffAuditChanges(
+          {
+            images: currentImages,
+            profilePictureUrl: selectedBusiness.profilePictureUrl,
+          },
+          { images: newImages, profilePictureUrl },
+        ),
+      });
+      toast(
+        skipped > 0
+          ? `${uploadedUrls.length} image(s) uploaded. ${skipped} skipped (5 image limit).`
+          : `${uploadedUrls.length} image(s) uploaded successfully!`,
+        "success",
+      );
     } catch (error: any) {
-      alert("Upload failed: " + error.message);
+      toast("Upload failed: " + error.message, "error");
     } finally {
       setIsUploading(null);
+      setUploadProgress(null);
     }
   };
 
@@ -3222,11 +3610,13 @@ function MerchantsContent({
       const currentImages = selectedBusiness.images || [];
       const newImages = currentImages.filter((url) => url !== urlToDelete);
 
-      // If deleted image was profile picture, clear it
-      const newProfilePic =
+      let newProfilePic =
         selectedBusiness.profilePictureUrl === urlToDelete
           ? null
           : selectedBusiness.profilePictureUrl;
+      if (!newProfilePic && newImages.length) {
+        newProfilePic = newImages[0];
+      }
 
       const supabase = createClient();
       const { error } = await supabase
@@ -3236,13 +3626,31 @@ function MerchantsContent({
 
       if (error) throw error;
 
-      setSelectedBusiness({
-        ...selectedBusiness,
-        images: newImages,
-        profilePictureUrl: newProfilePic,
+      setSelectedBusiness((prev) =>
+        prev
+          ? {
+              ...prev,
+              images: newImages,
+              profilePictureUrl: newProfilePic,
+            }
+          : prev,
+      );
+      await logMerchantAudit({
+        merchantId: selectedBusiness.id,
+        actor: adminSession,
+        action: "gallery.image_removed",
+        summary: "Removed gallery image",
+        changes: diffAuditChanges(
+          {
+            images: currentImages,
+            profilePictureUrl: selectedBusiness.profilePictureUrl,
+          },
+          { images: newImages, profilePictureUrl: newProfilePic },
+        ),
       });
+      toast("Image removed", "success");
     } catch (error: any) {
-      alert("Delete failed: " + error.message);
+      toast("Delete failed: " + error.message, "error");
     }
   };
 
@@ -3258,22 +3666,60 @@ function MerchantsContent({
 
       if (error) throw error;
 
-      setSelectedBusiness({ ...selectedBusiness, profilePictureUrl: url });
-      alert("Profile picture updated!");
+      setSelectedBusiness((prev) =>
+        prev ? { ...prev, profilePictureUrl: url } : prev,
+      );
+      await logMerchantAudit({
+        merchantId: selectedBusiness.id,
+        actor: adminSession,
+        action: "gallery.profile_picture_changed",
+        summary: "Changed profile picture",
+        changes: diffAuditChanges(
+          { profilePictureUrl: selectedBusiness.profilePictureUrl },
+          { profilePictureUrl: url },
+        ),
+      });
+      toast("Profile picture updated!", "success");
     } catch (error: any) {
-      alert("Failed to set profile picture: " + error.message);
+      toast("Failed to set profile picture: " + error.message, "error");
     }
+  };
+
+  const handleReorderBusinessImages = async (urls: string[]) => {
+    if (!canManage || !selectedBusiness) return;
+    const before = selectedBusiness.images;
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("Business")
+      .update({ images: urls, updatedAt: new Date().toISOString() })
+      .eq("id", selectedBusiness.id);
+    if (error) {
+      toast(error.message, "error");
+      throw error;
+    }
+    setSelectedBusiness((prev) => (prev ? { ...prev, images: urls } : prev));
+    await logMerchantAudit({
+      merchantId: selectedBusiness.id,
+      actor: adminSession,
+      action: "gallery.images_reordered",
+      summary: "Reordered gallery images",
+      changes: diffAuditChanges({ images: before }, { images: urls }),
+    });
+    toast("Gallery order updated", "success");
   };
 
   const handleApprove = async (merchant: MerchantRequest) => {
     const supabase = createClient();
     const { error } = await supabase
       .from("Business")
-      .update({ kycStatus: "approved", isVerified: true })
+      .update({
+        status: "Active",
+        updatedAt: new Date().toISOString(),
+      })
       .eq("id", merchant.id);
 
     if (error) {
-      alert("Error: " + error.message);
+      toast("Error approving merchant: " + error.message, "error");
       return;
     }
 
@@ -3292,24 +3738,52 @@ function MerchantsContent({
         planExpiresAt: null,
         slug: null,
         city: null,
+        createdAt: new Date().toISOString(),
+        hasViewablePassword: false,
       },
     ]);
     setMerchantRequests(merchantRequests.filter((m) => m.id !== merchant.id));
+    await logMerchantAudit({
+      merchantId: merchant.id,
+      actor: adminSession,
+      action: "listing.approved",
+      summary: "Approved merchant listing",
+      changes: diffAuditChanges({ status: "Pending" }, { status: "Active" }),
+    });
+    toast("Merchant listing approved", "success");
   };
 
   const handleReject = async (id: string) => {
-    if (confirm("Reject this merchant?")) {
+    if (confirm("Reject this merchant listing?")) {
       const supabase = createClient();
-      await supabase
+      const { error } = await supabase
         .from("Business")
-        .update({ kycStatus: "rejected" })
+        .update({
+          status: "Rejected",
+          updatedAt: new Date().toISOString(),
+        })
         .eq("id", id);
+      if (error) {
+        toast("Error rejecting merchant: " + error.message, "error");
+        return;
+      }
       setMerchantRequests(merchantRequests.filter((m) => m.id !== id));
+      await logMerchantAudit({
+        merchantId: id,
+        actor: adminSession,
+        action: "listing.rejected",
+        summary: "Rejected merchant listing",
+        changes: diffAuditChanges(
+          { status: "Pending" },
+          { status: "Rejected" },
+        ),
+      });
+      toast("Merchant listing rejected", "success");
     }
   };
 
   const toggleMerchantStatus = async (id: string, currentStatus: string) => {
-    if (!isController) return;
+    if (!canManage) return;
     const newStatus = currentStatus === "Active" ? "Inactive" : "Active";
     const supabase = createClient();
     const { error } = await supabase
@@ -3318,7 +3792,7 @@ function MerchantsContent({
       .eq("id", id);
 
     if (error) {
-      alert("Error updating status: " + error.message);
+      toast("Error updating status: " + error.message, "error");
       return;
     }
 
@@ -3329,12 +3803,25 @@ function MerchantsContent({
     );
 
     if (selectedBusiness && selectedBusiness.id === id) {
-      setSelectedBusiness({ ...selectedBusiness, status: newStatus });
+      setSelectedBusiness((prev) =>
+        prev ? { ...prev, status: newStatus } : prev,
+      );
     }
+    await logMerchantAudit({
+      merchantId: id,
+      actor: adminSession,
+      action: "listing.status_changed",
+      summary: `Changed listing status to ${newStatus}`,
+      changes: diffAuditChanges(
+        { status: currentStatus },
+        { status: newStatus },
+      ),
+    });
+    toast(`Listing status changed to ${newStatus}`, "success");
   };
 
   const toggleFinderBVerified = async (id: string, currentStatus: boolean) => {
-    if (!isController) return;
+    if (!canManage) return;
     const newStatus = !currentStatus;
     const supabase = createClient();
     const { error } = await supabase
@@ -3343,15 +3830,14 @@ function MerchantsContent({
       .eq("id", id);
 
     if (error) {
-      alert("Error updating verification status: " + error.message);
+      toast("Error updating verification status: " + error.message, "error");
       return;
     }
 
     if (selectedBusiness && selectedBusiness.id === id) {
-      setSelectedBusiness({
-        ...selectedBusiness,
-        isFinderBVerified: newStatus,
-      });
+      setSelectedBusiness((prev) =>
+        prev ? { ...prev, isFinderBVerified: newStatus } : prev,
+      );
     }
 
     setActiveMerchants(
@@ -3359,20 +3845,49 @@ function MerchantsContent({
         m.id === id ? { ...m, isFinderBVerified: newStatus } : m,
       ),
     );
+    await logMerchantAudit({
+      merchantId: id,
+      actor: adminSession,
+      action: "finderb_verification.changed",
+      summary: newStatus
+        ? "Enabled FinderB verification"
+        : "Disabled FinderB verification",
+      changes: diffAuditChanges(
+        { isFinderBVerified: currentStatus },
+        { isFinderBVerified: newStatus },
+      ),
+    });
+    toast(
+      newStatus
+        ? "FinderB verification enabled"
+        : "FinderB verification disabled",
+      "success",
+    );
   };
 
   const handleDeleteMerchant = async (id: string) => {
-    if (!isController) return;
+    if (!canManage) return;
     if (
       confirm(
         "Are you sure you want to delete this merchant profile? This action cannot be undone.",
       )
     ) {
+      const business = selectedBusiness?.id === id ? selectedBusiness : null;
+      const listMerchant = activeMerchants.find(
+        (merchant) => merchant.id === id,
+      );
+      const snapshot = {
+        id,
+        businessName: business?.businessName || listMerchant?.name || null,
+        status: business?.status || listMerchant?.status || null,
+        selectedPlan:
+          business?.selectedPlan || listMerchant?.selectedPlan || null,
+      };
       const supabase = createClient();
       const { error } = await supabase.from("Business").delete().eq("id", id);
 
       if (error) {
-        alert("Error deleting merchant: " + error.message);
+        toast("Error deleting merchant: " + error.message, "error");
         return;
       }
 
@@ -3382,6 +3897,14 @@ function MerchantsContent({
       if (selectedBusiness && selectedBusiness.id === id) {
         setSelectedBusiness(null);
       }
+      await logMerchantAudit({
+        merchantId: id,
+        actor: adminSession,
+        action: "merchant.deleted",
+        summary: "Deleted merchant profile",
+        changes: diffAuditChanges(snapshot, {}),
+      });
+      toast("Merchant deleted", "success");
     }
   };
 
@@ -3399,40 +3922,70 @@ function MerchantsContent({
           category: updates.category || m.category,
           status: updates.status || m.status,
           isFinderBVerified: updates.isFinderBVerified ?? m.isFinderBVerified,
+          selectedPlan: updates.selectedPlan ?? m.selectedPlan,
+          billingCycle: updates.billingCycle ?? m.billingCycle,
+          paymentStatus: updates.paymentStatus ?? m.paymentStatus,
           planExpiresAt:
             updates.planExpiresAt !== undefined
               ? updates.planExpiresAt
               : m.planExpiresAt,
-          validUntil: updates.planExpiresAt
-            ? new Date(updates.planExpiresAt).toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })
-            : m.validUntil,
+          validUntil:
+            updates.planExpiresAt !== undefined
+              ? updates.planExpiresAt
+                ? new Date(updates.planExpiresAt).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—"
+              : m.validUntil,
         };
       }),
     );
   };
 
   const handleSaveMerchant = async (updates: Partial<BusinessData>) => {
-    if (!isController || !selectedBusiness) return;
+    if (!canManage || !selectedBusiness) return;
 
     const supabase = createClient();
     const payload = {
       fullName: updates.fullName,
+      owner_name: updates.owner_name,
+      owner_mobile: updates.owner_mobile,
       businessName: updates.businessName,
+      displayName: updates.displayName,
       workEmail: updates.workEmail,
-      email: updates.email,
       mobile: updates.mobile,
       publicPhone: updates.publicPhone,
+      whatsappNumber: updates.whatsappNumber,
       category: updates.category,
+      serviceCategory: updates.serviceCategory,
       city: updates.city,
       state: updates.state,
+      country: updates.country,
       location: updates.location,
       businessAddress: updates.businessAddress,
+      latitude: updates.latitude,
+      longitude: updates.longitude,
       status: updates.status,
-      kycStatus: updates.kycStatus,
+      about: updates.about,
+      keywords: updates.keywords,
+      discountRange: updates.discountRange,
+      yearsInBusiness: updates.yearsInBusiness,
+      website: updates.website,
+      instagramUrl: updates.instagramUrl,
+      facebookUrl: updates.facebookUrl,
+      youtubeUrl: updates.youtubeUrl,
+      paymentModes: updates.paymentModes,
+      timings: updates.timings,
+      profileQrLink:
+        updates.profileQrLink ??
+        getBusinessProfileUrl({
+          id: selectedBusiness.id,
+          businessName: updates.businessName ?? selectedBusiness.businessName,
+          slug: selectedBusiness.slug,
+          city: updates.city ?? selectedBusiness.city,
+        }),
       updatedAt: new Date().toISOString(),
     };
 
@@ -3444,20 +3997,32 @@ function MerchantsContent({
       .single();
 
     if (error) {
-      alert("Error saving merchant: " + error.message);
-      return;
+      toast("Error saving merchant: " + error.message, "error");
+      throw error;
     }
 
     setSelectedBusiness(data);
     syncMerchantListEntry(selectedBusiness.id, data);
+    await logMerchantAudit({
+      merchantId: selectedBusiness.id,
+      actor: adminSession,
+      action: "merchant.profile_updated",
+      summary: "Updated merchant profile",
+      changes: diffAuditChanges(
+        selectedBusiness as unknown as Record<string, unknown>,
+        data as unknown as Record<string, unknown>,
+        Object.keys(payload),
+      ),
+    });
+    toast("Merchant saved", "success");
 
-    if (data.kycStatus === "approved") {
+    if (isManagedPartner(data.status)) {
       setMerchantRequests((prev) => prev.filter((m) => m.id !== data.id));
     }
   };
 
   const handleAdjustPlanExpiry = async (planExpiresAt: string | null) => {
-    if (!isController || !selectedBusiness) return;
+    if (!canManage || !selectedBusiness) return;
 
     const supabase = createClient();
     const { data, error } = await supabase
@@ -3471,12 +4036,72 @@ function MerchantsContent({
       .single();
 
     if (error) {
-      alert("Error updating subscription validity: " + error.message);
-      return;
+      toast("Error updating subscription validity: " + error.message, "error");
+      throw error;
     }
 
     setSelectedBusiness(data);
     syncMerchantListEntry(selectedBusiness.id, data);
+    await logMerchantAudit({
+      merchantId: selectedBusiness.id,
+      actor: adminSession,
+      action: "subscription.expiry_changed",
+      summary: "Changed subscription expiry",
+      changes: diffAuditChanges(
+        { planExpiresAt: selectedBusiness.planExpiresAt },
+        { planExpiresAt: data.planExpiresAt },
+      ),
+    });
+    toast("Subscription validity updated", "success");
+  };
+
+  const handleChangeMerchantPlan = async (updates: Partial<BusinessData>) => {
+    if (!canManage || !selectedBusiness) return;
+
+    const { data, error } = await createClient()
+      .from("Business")
+      .update({
+        selectedPlan: updates.selectedPlan,
+        billingCycle: updates.billingCycle,
+        paymentStatus: updates.paymentStatus,
+        planStartedAt: updates.planStartedAt,
+        planExpiresAt: updates.planExpiresAt,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", selectedBusiness.id)
+      .select("*")
+      .single();
+
+    if (error) {
+      toast("Error updating merchant plan: " + error.message, "error");
+      throw error;
+    }
+
+    setSelectedBusiness(data);
+    syncMerchantListEntry(selectedBusiness.id, data);
+    await logMerchantAudit({
+      merchantId: selectedBusiness.id,
+      actor: adminSession,
+      action: "subscription.plan_changed",
+      summary: "Changed merchant plan",
+      changes: diffAuditChanges(
+        {
+          selectedPlan: selectedBusiness.selectedPlan,
+          billingCycle: selectedBusiness.billingCycle,
+          paymentStatus: selectedBusiness.paymentStatus,
+          planStartedAt: selectedBusiness.planStartedAt,
+          planExpiresAt: selectedBusiness.planExpiresAt,
+        },
+        {
+          selectedPlan: data.selectedPlan,
+          billingCycle: data.billingCycle,
+          paymentStatus: data.paymentStatus,
+          planStartedAt: data.planStartedAt,
+          planExpiresAt: data.planExpiresAt,
+        },
+      ),
+    });
+    toast("Merchant plan updated", "success");
   };
 
   const verifiedCount = activeMerchants.filter(
@@ -3486,27 +4111,41 @@ function MerchantsContent({
     (m) => m.paymentStatus === "completed",
   ).length;
 
-  return (
-    <div className="space-y-6">
-      <div className="admin-page-header">
-        <div>
-          <h1 className="admin-page-title">Partner management</h1>
-          <p className="admin-page-subtitle">
-            Manage merchant profiles, listing status, and FinderB verification
-            badges.
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search by name, email, or merchant ID…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="admin-search w-72"
-            />
+  const filterSelectClass =
+    "h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 transition-colors";
+
+  const toolbar = (
+    <div className="flex flex-col xl:flex-row xl:items-center gap-2 px-4 py-3 border-b border-slate-100 bg-white">
+      <div className="relative flex-1 min-w-0 max-w-md">
+        <input
+          type="text"
+          placeholder="Search name, email, merchant ID, category…"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="admin-search w-full !py-2 !text-[13px]"
+        />
+        <svg
+          className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={() => setSearchTerm("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            title="Clear search"
+          >
             <svg
-              className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
+              className="w-3.5 h-3.5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -3515,66 +4154,187 @@ function MerchantsContent({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                d="M6 18L18 6M6 6l12 12"
               />
             </svg>
-          </div>
-          <div className="admin-segmented">
-            <button
-              onClick={() => setMerchantTab("Active")}
-              className={`admin-segmented-btn ${merchantTab === "Active" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}
+          </button>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className={filterSelectClass}
+          title="Filter by category"
+        >
+          <option value="all">All categories</option>
+          {categoriesInUse.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
+          ))}
+        </select>
+        {merchantTab === "Active" && (
+          <>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className={filterSelectClass}
+              title="Filter by listing status"
             >
-              Active ({filteredActiveMerchants.length})
-            </button>
-            <button
-              onClick={() => setMerchantTab("Pending")}
-              className={`admin-segmented-btn relative ${merchantTab === "Pending" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}
+              <option value="all">All statuses</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+            {canViewFinancialData && (
+              <select
+                value={planFilter}
+                onChange={(e) => setPlanFilter(e.target.value)}
+                className={filterSelectClass}
+                title="Filter by plan"
+              >
+                <option value="all">All plans</option>
+                {plansInUse.map((plan) => (
+                  <option key={plan} value={plan}>
+                    {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                  </option>
+                ))}
+              </select>
+            )}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as MerchantSortOption)}
+              className={filterSelectClass}
+              title="Sort"
             >
-              Pending
-              {merchantRequests.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-secondary text-[10px] font-semibold text-white border-2 border-white">
-                  {merchantRequests.length}
-                </span>
-              )}
-            </button>
-          </div>
+              {MERCHANT_SORT_OPTIONS.filter(
+                (option) => canViewFinancialData || option.id !== "expiry-asc",
+              ).map((option) => (
+                <option key={option.id} value={option.id}>
+                  Sort: {option.label}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="h-9 px-3 rounded-lg text-xs font-medium text-teal-700 hover:bg-teal-50 border border-transparent hover:border-teal-100 transition-colors"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="admin-page-header">
+        <div>
+          <h1 className="admin-page-title">Partner management</h1>
+          <p className="admin-page-subtitle">
+            Manage merchant profiles, public listing status, and FinderB
+            verification badges.
+          </p>
+        </div>
+        <div className="admin-segmented">
+          <button
+            onClick={() => setMerchantTab("Active")}
+            className={`admin-segmented-btn ${merchantTab === "Active" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}
+          >
+            Active
+            <span
+              className={`ml-1.5 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${merchantTab === "Active" ? "bg-teal-50 text-teal-800" : "bg-slate-200 text-slate-600"}`}
+            >
+              {activeMerchants.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setMerchantTab("Pending")}
+            className={`admin-segmented-btn ${merchantTab === "Pending" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}
+          >
+            Pending
+            <span
+              className={`ml-1.5 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${merchantRequests.length > 0 ? "bg-amber-100 text-amber-800" : merchantTab === "Pending" ? "bg-teal-50 text-teal-800" : "bg-slate-200 text-slate-600"}`}
+            >
+              {merchantRequests.length}
+            </span>
+          </button>
         </div>
       </div>
 
-      <div className="admin-kpi-grid">
-        <div className="admin-kpi admin-kpi-primary">
-          <p className="admin-kpi-label">Active partners</p>
-          <p className="admin-kpi-value">{activeMerchants.length}</p>
-          <p className="admin-kpi-meta">Live merchant profiles</p>
-        </div>
-        <div className="admin-kpi admin-kpi-success">
-          <p className="admin-kpi-label">FinderB verified</p>
-          <p className="admin-kpi-value">{verifiedCount}</p>
-          <p className="admin-kpi-meta">Green badge on listing</p>
-        </div>
-        <div className="admin-kpi admin-kpi-secondary">
-          <p className="admin-kpi-label">Paid plans</p>
-          <p className="admin-kpi-value">{paidCount}</p>
-          <p className="admin-kpi-meta">Completed subscription payment</p>
-        </div>
-        <div className="admin-kpi admin-kpi-neutral">
-          <p className="admin-kpi-label">Awaiting review</p>
-          <p className="admin-kpi-value">{merchantRequests.length}</p>
-          <p className="admin-kpi-meta">New partner requests</p>
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {[
+          {
+            label: "Active partners",
+            value: activeMerchants.length,
+            dot: "bg-teal-500",
+          },
+          {
+            label: "FinderB verified",
+            value: verifiedCount,
+            dot: "bg-emerald-500",
+          },
+          ...(canViewFinancialData
+            ? [{ label: "Paid plans", value: paidCount, dot: "bg-indigo-400" }]
+            : []),
+          {
+            label: "Awaiting review",
+            value: merchantRequests.length,
+            dot: "bg-amber-400",
+          },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5"
+          >
+            <span className={`h-1.5 w-1.5 rounded-full ${stat.dot}`} />
+            <span className="text-xs font-medium text-slate-500">
+              {stat.label}
+            </span>
+            <span className="text-sm font-semibold text-slate-900 tabular-nums">
+              {stat.value}
+            </span>
+          </div>
+        ))}
       </div>
 
       {merchantTab === "Active" ? (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {filteredActiveMerchants.map((merchant) => (
-            <div
-              key={merchant.id}
-              className="admin-card p-5 hover:border-slate-300 transition-all duration-300 group"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4 min-w-0">
+        <div className="admin-card overflow-hidden">
+          {toolbar}
+          <div
+            className={`hidden lg:grid gap-3 px-4 py-2.5 border-b border-slate-100 bg-slate-50/60 text-[10px] font-semibold uppercase tracking-wide text-slate-400 ${
+              canViewFinancialData
+                ? "grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_auto]"
+                : "grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_auto]"
+            }`}
+          >
+            <span>Merchant</span>
+            <span>Category</span>
+            {canViewFinancialData && (
+              <>
+                <span>Plan</span>
+                <span>Valid until</span>
+              </>
+            )}
+            <span className="text-right pr-1">Actions</span>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {pagedActiveMerchants.map((merchant) => (
+              <div
+                key={merchant.id}
+                className={`grid grid-cols-1 gap-2 lg:gap-3 px-4 py-3 lg:items-center hover:bg-slate-50/70 transition-colors ${
+                  canViewFinancialData
+                    ? "lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_auto]"
+                    : "lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_auto]"
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
                   <div className="relative shrink-0">
-                    <div className="admin-avatar !w-12 !h-12 text-sm">
+                    <div className="admin-avatar !w-9 !h-9 !text-xs">
                       {merchant.name
                         .split(" ")
                         .map((n) => n[0])
@@ -3583,11 +4343,11 @@ function MerchantsContent({
                     </div>
                     {merchant.isFinderBVerified && (
                       <span
-                        className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center"
+                        className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center"
                         title="FinderB Verified"
                       >
                         <svg
-                          className="w-3 h-3 text-white"
+                          className="w-2 h-2 text-white"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
@@ -3601,38 +4361,130 @@ function MerchantsContent({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-semibold text-slate-900 truncate">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-[13px] font-semibold text-slate-900 truncate">
                         {merchant.name}
-                      </h3>
-                      {merchant.isFinderBVerified && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-semibold uppercase tracking-wide">
-                          FinderB Verified
+                      </p>
+                      <span
+                        className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${merchant.status === "Active" ? "bg-emerald-500" : "bg-slate-300"}`}
+                        title={merchant.status}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 min-w-0">
+                      {merchant.registrationNumber && (
+                        <span className="admin-mono text-[10px] shrink-0">
+                          {merchant.registrationNumber}
                         </span>
                       )}
+                      {merchant.registrationNumber && merchant.email && (
+                        <span className="text-slate-300">·</span>
+                      )}
+                      <span className="truncate">{merchant.email || "—"}</span>
+                      <a
+                        href={getBusinessProfileUrl({
+                          id: merchant.id,
+                          businessName: merchant.name,
+                          slug: merchant.slug,
+                          city: merchant.city,
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 text-primary hover:underline inline-flex items-center gap-0.5"
+                        title="View public profile"
+                      >
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </a>
                     </div>
-                    {merchant.registrationNumber && (
-                      <p className="admin-mono mt-0.5 text-[10px]">
-                        {merchant.registrationNumber}
+                    {canManage && visiblePasswords[merchant.id] && (
+                      <p className="admin-mono text-[10px] text-slate-700 mt-0.5">
+                        {formatRevealedPassword(visiblePasswords[merchant.id])}
                       </p>
                     )}
-                    <p className="text-xs text-slate-500 mt-1 truncate">
-                      {merchant.email || "—"}
-                    </p>
-                    <a
-                      href={getBusinessProfileUrl({
-                        id: merchant.id,
-                        businessName: merchant.name,
-                        slug: merchant.slug,
-                        city: merchant.city,
-                      })}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline mt-1.5"
+                  </div>
+                </div>
+
+                <div className="min-w-0">
+                  <span className="inline-flex max-w-full items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                    <span className="truncate">{merchant.category}</span>
+                  </span>
+                </div>
+
+                {canViewFinancialData && (
+                  <>
+                    <div className="min-w-0">
+                      <span
+                        className={`inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${planChipClass(merchant.selectedPlan)}`}
+                      >
+                        <span className="truncate">
+                          {planLabel(
+                            merchant.selectedPlan,
+                            merchant.billingCycle,
+                          )}
+                        </span>
+                      </span>
+                    </div>
+
+                    {isStarterPlanId(merchant.selectedPlan) ? (
+                      <div className="text-[11px] text-slate-400">
+                        No expiry
+                      </div>
+                    ) : (
+                      (() => {
+                        const expiry = planExpiryInfo(merchant.planExpiresAt);
+                        return (
+                          <div className={`text-[11px] ${expiry.cls}`}>
+                            <span>{merchant.validUntil}</span>
+                            {expiry.note && (
+                              <span className="block text-[10px] opacity-80">
+                                {expiry.note}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()
+                    )}
+                  </>
+                )}
+
+                <div className="flex items-center justify-start lg:justify-end gap-1.5">
+                  {canManage && merchant.hasViewablePassword && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (visiblePasswords[merchant.id]) {
+                          setVisiblePasswords((p) => {
+                            const next = { ...p };
+                            delete next[merchant.id];
+                            return next;
+                          });
+                        } else {
+                          setPasswordModalTarget({
+                            id: merchant.id,
+                            label: `Enter your admin password to reveal the login password for ${merchant.name}.`,
+                          });
+                        }
+                      }}
+                      className="admin-icon-btn"
+                      title={
+                        visiblePasswords[merchant.id]
+                          ? "Hide login password"
+                          : "Reveal login password"
+                      }
                     >
-                      View public profile
                       <svg
-                        className="w-3 h-3"
+                        className="w-4 h-4"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -3641,113 +4493,23 @@ function MerchantsContent({
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth="2"
-                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
                         />
                       </svg>
-                    </a>
-                  </div>
-                </div>
-                <span
-                  className={`admin-badge shrink-0 ${merchant.status === "Active" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-600 border-slate-200"}`}
-                >
-                  {merchant.status}
-                </span>
-              </div>
-
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
-                  <p className="text-[9px] text-slate-400 uppercase tracking-wide">
-                    Category
-                  </p>
-                  <p className="text-[11px] font-medium text-slate-800 mt-0.5 truncate">
-                    {merchant.category}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
-                  <p className="text-[9px] text-slate-400 uppercase tracking-wide">
-                    Plan
-                  </p>
-                  <p className="text-[11px] font-medium text-slate-800 mt-0.5">
-                    {planLabel(merchant.selectedPlan, merchant.billingCycle)}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-2 col-span-2 sm:col-span-1">
-                  <p className="text-[9px] text-slate-400 uppercase tracking-wide">
-                    Plan valid until
-                  </p>
-                  <p className="text-[11px] font-medium text-slate-800 mt-0.5">
-                    {merchant.validUntil}
-                  </p>
-                </div>
-              </div>
-
-              {isController && (
-                <div className="mt-3 flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-100 px-3 py-2">
-                  <span className="text-[9px] text-slate-400 uppercase tracking-wide shrink-0">
-                    Login password
-                  </span>
-                  <span className="admin-mono text-[11px] text-slate-800 flex-1 truncate">
-                    {visiblePasswords[merchant.id]
-                      ? formatRevealedPassword(visiblePasswords[merchant.id])
-                      : "••••••••"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (visiblePasswords[merchant.id]) {
-                        setVisiblePasswords((p) => {
-                          const next = { ...p };
-                          delete next[merchant.id];
-                          return next;
-                        });
-                      } else {
-                        setPasswordModalTarget({
-                          id: merchant.id,
-                          label: `Enter your admin password to reveal the login password for ${merchant.name}.`,
-                        });
-                      }
-                    }}
-                    className="admin-btn-ghost text-[10px] py-1 px-2 shrink-0"
-                  >
-                    {visiblePasswords[merchant.id] ? "Hide" : "Reveal"}
-                  </button>
-                </div>
-              )}
-
-              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  {isController && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          toggleFinderBVerified(
-                            merchant.id,
-                            merchant.isFinderBVerified,
-                          )
-                        }
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${merchant.isFinderBVerified ? "bg-emerald-500" : "bg-slate-200"}`}
-                        title="Toggle FinderB Verified badge (controller only)"
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition ${merchant.isFinderBVerified ? "translate-x-5" : "translate-x-0"}`}
-                        />
-                      </button>
-                      <span className="text-[10px] text-slate-500">
-                        FinderB badge
-                      </span>
-                    </>
+                    </button>
                   )}
-                </div>
-                <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => handleViewMerchant(merchant.id)}
                     className="admin-btn-secondary text-[10px] py-1.5 px-3"
                   >
                     Details
                   </button>
-                  {isController && (
+                  {canManage && (
                     <>
+                      <span
+                        aria-hidden
+                        className="mx-1 h-4 w-px bg-slate-200"
+                      />
                       <button
                         onClick={() =>
                           toggleMerchantStatus(merchant.id, merchant.status)
@@ -3818,111 +4580,212 @@ function MerchantsContent({
                   )}
                 </div>
               </div>
-            </div>
-          ))}
-          {filteredActiveMerchants.length === 0 && (
-            <div className="admin-card admin-empty col-span-full py-24">
-              {activeMerchants.length === 0
-                ? "No active partners yet"
-                : "No partners match your search"}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredMerchantRequests.map((req) => (
-            <div
-              key={req.id}
-              className="admin-card p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4"
-            >
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="admin-avatar !w-12 !h-12">
-                  {req.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .slice(0, 2)}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-slate-900 truncate">
-                    {req.name}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="admin-badge bg-secondary/5 text-secondary border-secondary/20">
-                      {req.category}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      {req.email || "—"}
-                    </span>
-                    <span className="text-xs text-slate-400">
-                      Requested {req.date}
-                    </span>
-                  </div>
-                  <a
-                    href={getBusinessProfileUrl({
-                      id: req.id,
-                      businessName: req.name,
-                    })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline mt-1.5"
+            ))}
+            {filteredActiveMerchants.length === 0 && (
+              <div className="py-20 text-center">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    View public profile
-                    <svg
-                      className="w-3 h-3"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                  </a>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2 items-center">
-                <button
-                  onClick={() => handleViewMerchant(req.id)}
-                  className="admin-btn-secondary text-xs py-2"
-                >
-                  View details
-                </button>
-                {isController && (
-                  <>
-                    <button
-                      onClick={() => handleReject(req.id)}
-                      className="admin-btn-danger text-xs py-2"
-                    >
-                      Reject
-                    </button>
-                    <button
-                      onClick={() => handleDeleteMerchant(req.id)}
-                      className="admin-btn-danger text-xs py-2"
-                    >
-                      Delete
-                    </button>
-                    <button
-                      onClick={() => handleApprove(req)}
-                      className="admin-btn-primary text-xs py-2"
-                    >
-                      Approve
-                    </button>
-                  </>
+                <p className="text-sm font-medium text-slate-600">
+                  {activeMerchants.length === 0
+                    ? "No active partners yet"
+                    : "No partners match your filters"}
+                </p>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="mt-2 text-xs font-medium text-teal-700 hover:underline"
+                  >
+                    Clear search and filters
+                  </button>
                 )}
               </div>
-            </div>
-          ))}
-          {filteredMerchantRequests.length === 0 && (
-            <div className="admin-card admin-empty py-24">
-              {merchantRequests.length === 0
-                ? "No pending requests"
-                : "No pending partners match your search"}
-            </div>
-          )}
+            )}
+          </div>
+          <PaginationFooter
+            total={filteredActiveMerchants.length}
+            page={safePage}
+            totalPages={totalPages}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={setRowsPerPage}
+            noun="partners"
+          />
+        </div>
+      ) : (
+        <div className="admin-card overflow-hidden">
+          {toolbar}
+          <div className="hidden lg:grid grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-4 py-2.5 border-b border-slate-100 bg-slate-50/60 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+            <span>Merchant</span>
+            <span>Category</span>
+            <span>Requested</span>
+            <span className="text-right pr-1">Actions</span>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {pagedMerchantRequests.map((req) => (
+              <div
+                key={req.id}
+                className="grid grid-cols-1 lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 lg:gap-3 px-4 py-3 lg:items-center hover:bg-slate-50/70 transition-colors"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="admin-avatar !w-9 !h-9 !text-xs shrink-0">
+                    {req.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-slate-900 truncate">
+                      {req.name}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 min-w-0">
+                      {req.registrationNumber && (
+                        <span className="admin-mono text-[10px] shrink-0">
+                          {req.registrationNumber}
+                        </span>
+                      )}
+                      {req.registrationNumber && req.email && (
+                        <span className="text-slate-300">·</span>
+                      )}
+                      <span className="truncate">{req.email || "—"}</span>
+                      <a
+                        href={getBusinessProfileUrl({
+                          id: req.id,
+                          businessName: req.name,
+                        })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 text-primary hover:underline inline-flex items-center"
+                        title="View public profile"
+                      >
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          />
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="min-w-0">
+                  <span className="inline-flex max-w-full items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                    <span className="truncate">{req.category}</span>
+                  </span>
+                </div>
+
+                <div className="text-[11px] text-slate-600">{req.date}</div>
+
+                <div className="flex items-center justify-start lg:justify-end gap-1.5">
+                  <button
+                    onClick={() => handleViewMerchant(req.id)}
+                    className="admin-btn-secondary text-[10px] py-1.5 px-3"
+                  >
+                    Details
+                  </button>
+                  {canManage && (
+                    <>
+                      <button
+                        onClick={() => handleApprove(req)}
+                        className="admin-btn-primary text-[10px] py-1.5 px-3"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleReject(req.id)}
+                        className="admin-btn-danger text-[10px] py-1.5 px-3"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        onClick={() => handleDeleteMerchant(req.id)}
+                        className="admin-icon-btn-danger"
+                        title="Delete"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+            {filteredMerchantRequests.length === 0 && (
+              <div className="py-20 text-center">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium text-slate-600">
+                  {merchantRequests.length === 0
+                    ? "All caught up — no pending requests"
+                    : "No pending partners match your filters"}
+                </p>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="mt-2 text-xs font-medium text-teal-700 hover:underline"
+                  >
+                    Clear search and filters
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <PaginationFooter
+            total={filteredMerchantRequests.length}
+            page={safePage}
+            totalPages={totalPages}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={setRowsPerPage}
+            noun="requests"
+          />
         </div>
       )}
 
@@ -3946,11 +4809,14 @@ function MerchantsContent({
         <MerchantDetailModal
           business={selectedBusiness}
           categories={categories.map((c) => c.name)}
-          isController={isController}
+          canManage={canManage}
+          canViewFinancialData={canViewFinancialData}
           isUploading={isUploading}
+          uploadProgress={uploadProgress}
           setIsUploading={setIsUploading}
           onClose={() => setSelectedBusiness(null)}
           onSave={handleSaveMerchant}
+          onChangePlan={handleChangeMerchantPlan}
           onAdjustExpiry={handleAdjustPlanExpiry}
           onDelete={() => handleDeleteMerchant(selectedBusiness.id)}
           hasStoredPassword={Boolean(
@@ -4001,14 +4867,10 @@ function MerchantsContent({
               selectedBusiness.isFinderBVerified,
             )
           }
-          onImageUpload={async (file) => {
-            const fakeEvent = {
-              target: { files: [file] },
-            } as unknown as React.ChangeEvent<HTMLInputElement>;
-            await handleBusinessImageUpload(fakeEvent);
-          }}
+          onImageUpload={handleBusinessImageUpload}
           onDeleteImage={handleDeleteBusinessImage}
           onSetProfilePicture={handleSetProfilePicture}
+          onReorderImages={handleReorderBusinessImages}
         />
       )}
     </div>

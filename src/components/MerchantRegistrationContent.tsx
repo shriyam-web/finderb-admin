@@ -880,8 +880,9 @@ export default function MerchantRegistrationContent({
                     Activate listing immediately
                   </span>
                   <span className="block text-[12px] text-slate-600 mt-0.5">
-                    Active status + approved KYC. Leave unchecked to keep them
-                    in the pending queue.
+                    Sets listing status to Active so the profile can show
+                    publicly. Leave unchecked to keep them in the pending
+                    approval queue. Does not affect KYC.
                   </span>
                 </span>
               </label>
