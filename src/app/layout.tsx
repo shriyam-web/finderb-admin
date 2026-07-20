@@ -14,7 +14,13 @@ export const metadata: Metadata = {
   title: "Admin | FinderB",
   description: "FinderB admin dashboard",
   icons: {
-    icon: "/icon.png",
+    icon: [
+      { url: "/icon.png", type: "image/png", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "32x32" },
+      { url: "/icon.png", type: "image/png", sizes: "16x16" },
+    ],
+    shortcut: "/icon.png",
+    apple: [{ url: "/icon.png", type: "image/png" }],
   },
 };
 
