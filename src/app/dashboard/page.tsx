@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -105,7 +105,7 @@ function hasFullTabAccess(session: AdminSession | null, tab: string): boolean {
   return false;
 }
 
-/** Listing approval (public display) â€” not KYC. */
+/** Listing approval (public display) — not KYC. */
 function isListingPending(status: string | null | undefined) {
   return (status || "").toLowerCase() === "pending";
 }
@@ -129,7 +129,7 @@ function mapBusinessToMerchant(m: any): Merchant {
           month: "short",
           year: "numeric",
         })
-      : "â€”",
+      : "—",
     status: m.status || "Active",
     isFinderBVerified: Boolean(m.isFinderBVerified),
     registrationNumber: m.registrationNumber || null,
@@ -1229,7 +1229,7 @@ export default function Dashboard() {
   };
 
   const handleDashboardApprove = async (req: MerchantRequest) => {
-    // Full access inside Dashboard or Merchants tab â€” same actions as a controller.
+    // Full access inside Dashboard or Merchants tab — same actions as a controller.
     if (
       !hasFullTabAccess(adminSession, "Dashboard") &&
       !hasFullTabAccess(adminSession, "Merchants")
@@ -1260,7 +1260,7 @@ export default function Dashboard() {
         category: req.category,
         rating: 0,
         sales: 0,
-        validUntil: "â€”",
+        validUntil: "—",
         status: "Active",
         isFinderBVerified: false,
         registrationNumber: req.registrationNumber || null,
@@ -1375,7 +1375,7 @@ export default function Dashboard() {
         id: m.id,
         type: "merchant",
         title: `New Business Onboarding`,
-        description: `${m.businessName || m.fullName} Â· listing ${m.status || "â€”"}`,
+        description: `${m.businessName || m.fullName} · listing ${m.status || "—"}`,
         timestamp: m.createdAt,
       });
     });
@@ -1389,8 +1389,8 @@ export default function Dashboard() {
       activities.push({
         id: l.id,
         type: "lead",
-        title: `New Lead â€” ${source}`,
-        description: `${l.name} Â· ${l.category}${l.merchant_name ? ` â†’ ${l.merchant_name}` : ""}`,
+        title: `New Lead — ${source}`,
+        description: `${l.name} · ${l.category}${l.merchant_name ? ` â†’ ${l.merchant_name}` : ""}`,
         timestamp: l.created_at,
       });
     });
@@ -2153,7 +2153,7 @@ export default function Dashboard() {
                   {settings.maintenance ? "Maintenance" : "Live"}
                 </span>
                 <span className="text-[10px] text-slate-400 tabular-nums font-semibold">
-                  {platformTimeLabel || "â€”"}
+                  {platformTimeLabel || "—"}
                 </span>
               </div>
               <p className="mt-1.5 text-[11px] text-slate-500 leading-snug font-medium">
@@ -2298,7 +2298,7 @@ export default function Dashboard() {
               </div>
               <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
                 <span className="text-[9px] text-slate-400 tabular-nums truncate font-medium">
-                  {platformDateLabel || "â€”"}
+                  {platformDateLabel || "—"}
                 </span>
                 <button
                   type="button"
@@ -2421,7 +2421,7 @@ export default function Dashboard() {
             </button>
           </div>
           <p className="text-xs text-slate-400 tabular-nums hidden sm:block font-semibold">
-            {platformDateLabel || "â€”"}
+            {platformDateLabel || "—"}
           </p>
         </div>
 
@@ -2669,10 +2669,10 @@ function LeadsContent({
         Showing {filteredLeads.length} of {leads.length} lead record
         {leads.length === 1 ? "" : "s"}
         {sourceFilter === "Generated on profile"
-          ? ` Â· ${PROFILE_LEAD_BADGE}`
+          ? ` · ${PROFILE_LEAD_BADGE}`
           : ""}
         {sourceFilter === "Circulated in category"
-          ? ` Â· ${CATEGORY_LEAD_BADGE}`
+          ? ` · ${CATEGORY_LEAD_BADGE}`
           : ""}
       </p>
 
@@ -2725,7 +2725,7 @@ function LeadsContent({
                           {lead.name}
                         </p>
                         <p className="text-[9px] text-slate-500 mt-0.5">
-                          {[lead.phone, lead.email].filter(Boolean).join(" Â· ")}
+                          {[lead.phone, lead.email].filter(Boolean).join(" · ")}
                         </p>
                       </div>
                     </td>
@@ -2734,7 +2734,7 @@ function LeadsContent({
                         className="text-[10px] text-slate-600 line-clamp-2"
                         title={lead.message || ""}
                       >
-                        {lead.message || "â€”"}
+                        {lead.message || "—"}
                       </p>
                     </td>
                     <td className="px-6 py-4">
@@ -2760,7 +2760,7 @@ function LeadsContent({
                         </p>
                       ) : lead.business_id ? (
                         <p className="text-[10px] text-slate-500 font-mono">
-                          {lead.business_id.slice(0, 8)}â€¦
+                          {lead.business_id.slice(0, 8)}…
                         </p>
                       ) : (
                         <span className="text-[9px] text-slate-400 italic">
@@ -2878,7 +2878,7 @@ function ControllerPasswordModal({
               value={adminPassword}
               onChange={(e) => setAdminPassword(e.target.value)}
               className="admin-input"
-              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+              placeholder="••••••••"
             />
           </div>
           {error && (
@@ -2924,7 +2924,7 @@ function PasswordRevealCell({
         <span className="admin-mono bg-slate-50 px-2 py-1 rounded-md border border-slate-100 min-w-[80px]">
           {isVisible
             ? formatRevealedPassword(visiblePasswords[id])
-            : "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"}
+            : "••••••••"}
         </span>
         <button
           onClick={() =>
@@ -3098,7 +3098,7 @@ function UsersContent({
                   </td>
                   <td>
                     <p className="text-sm text-slate-600">
-                      {user.email || "â€”"}
+                      {user.email || "—"}
                     </p>
                   </td>
                   <td>
@@ -3225,8 +3225,8 @@ type MerchantSortOption =
 
 const MERCHANT_SORT_OPTIONS: { id: MerchantSortOption; label: string }[] = [
   { id: "newest", label: "Newest first" },
-  { id: "name-asc", label: "Name Aâ€“Z" },
-  { id: "name-desc", label: "Name Zâ€“A" },
+  { id: "name-asc", label: "Name A–Z" },
+  { id: "name-desc", label: "Name Z–A" },
   { id: "expiry-asc", label: "Expiring soon" },
   { id: "verified-first", label: "Verified first" },
 ];
@@ -3282,7 +3282,7 @@ function PaginationFooter({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 bg-slate-50/60">
       <p className="text-xs text-slate-500">
-        Showing <span className="font-medium text-slate-800">{start}</span>â€“
+        Showing <span className="font-medium text-slate-800">{start}</span>–
         <span className="font-medium text-slate-800">{end}</span> of{" "}
         <span className="font-medium text-slate-800">{total}</span> {noun}
       </p>
@@ -3764,7 +3764,7 @@ function MerchantsContent({
         ...merchant,
         rating: 0,
         sales: 0,
-        validUntil: "â€”",
+        validUntil: "—",
         status: "Active",
         isFinderBVerified: false,
         paymentStatus: "pending",
@@ -3972,7 +3972,7 @@ function MerchantsContent({
                     month: "short",
                     year: "numeric",
                   })
-                : "â€”"
+                : "—"
               : m.validUntil,
         };
       }),
@@ -4154,7 +4154,7 @@ function MerchantsContent({
       <div className="relative flex-1 min-w-0 max-w-md">
         <input
           type="text"
-          placeholder="Search name, email, merchant ID, categoryâ€¦"
+          placeholder="Search name, email, merchant ID, category…"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="admin-search w-full !py-2 !text-[13px]"
@@ -4412,7 +4412,7 @@ function MerchantsContent({
                         </span>
                       )}
                       {merchant.registrationNumber && merchant.email && (
-                        <span className="text-slate-300">Â·</span>
+                        <span className="text-slate-300">·</span>
                       )}
                       {isPlaceholderEmail(merchant.email) ? (
                         <span className="shrink-0 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1.5 py-px text-[10px] font-medium text-amber-800">
@@ -4420,7 +4420,7 @@ function MerchantsContent({
                         </span>
                       ) : (
                         <span className="truncate">
-                          {merchant.email || "â€”"}
+                          {merchant.email || "—"}
                         </span>
                       )}
                       <a
@@ -4702,14 +4702,14 @@ function MerchantsContent({
                         </span>
                       )}
                       {req.registrationNumber && req.email && (
-                        <span className="text-slate-300">Â·</span>
+                        <span className="text-slate-300">·</span>
                       )}
                       {isPlaceholderEmail(req.email) ? (
                         <span className="shrink-0 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1.5 py-px text-[10px] font-medium text-amber-800">
                           Email missing
                         </span>
                       ) : (
-                        <span className="truncate">{req.email || "â€”"}</span>
+                        <span className="truncate">{req.email || "—"}</span>
                       )}
                       <a
                         href={getBusinessProfileUrl({
@@ -4811,7 +4811,7 @@ function MerchantsContent({
                 </div>
                 <p className="text-sm font-medium text-slate-600">
                   {merchantRequests.length === 0
-                    ? "All caught up â€” no pending requests"
+                    ? "All caught up — no pending requests"
                     : "No pending partners match your filters"}
                 </p>
                 {hasActiveFilters && (
@@ -5401,7 +5401,7 @@ function CategoriesContent({
                       >
                         <span className="text-slate-900">{m.name}</span>
                         <span className="text-slate-400 text-[8px]">
-                          {m.id} â€¢ {m.category}
+                          {m.id} • {m.category}
                         </span>
                       </button>
                     ))}
