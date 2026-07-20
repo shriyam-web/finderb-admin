@@ -882,14 +882,14 @@ export default function Dashboard() {
 
         const supabase = createClient();
 
-        console.log("ðŸš€ Fetching categories from Supabase...");
+        console.log("🚀 Fetching categories from Supabase...");
         const { data: catData, error: catError } = await supabase
           .from("categories")
           .select("*")
           .order("position", { ascending: true });
 
         if (catError) {
-          console.error("âŒ Category fetch error:", catError);
+          console.error("❌ Category fetch error:", catError);
           const missingTable =
             catError.message?.toLowerCase().includes("public.categories") ||
             catError.message
@@ -903,7 +903,7 @@ export default function Dashboard() {
           );
         } else {
           setCategoryError(null);
-          console.log("âœ… Categories fetched:", catData?.length || 0);
+          console.log("✅ Categories fetched:", catData?.length || 0);
         }
 
         if (catData) {
@@ -928,33 +928,33 @@ export default function Dashboard() {
           );
         }
 
-        console.log("ðŸš€ Fetching movies from Supabase...");
+        console.log("🚀 Fetching movies from Supabase...");
         const { data: movieData, error: movieError } = await supabase
           .from("movies")
           .select("*")
           .order("created_at", { ascending: false });
 
         if (movieError) {
-          console.error("âŒ Movie fetch error:", movieError);
+          console.error("❌ Movie fetch error:", movieError);
         } else {
-          console.log("âœ… Movies fetched:", movieData?.length || 0);
+          console.log("✅ Movies fetched:", movieData?.length || 0);
           if (movieData) setMovies(movieData);
         }
 
-        console.log("ðŸš€ Fetching tourist places from Supabase...");
+        console.log("🚀 Fetching tourist places from Supabase...");
         const { data: tpData, error: tpError } = await supabase
           .from("tourist_places")
           .select("*")
           .order("created_at", { ascending: false });
 
         if (tpError) {
-          console.error("âŒ Tourist places fetch error:", tpError);
+          console.error("❌ Tourist places fetch error:", tpError);
         } else {
-          console.log("âœ… Tourist places fetched:", tpData?.length || 0);
+          console.log("✅ Tourist places fetched:", tpData?.length || 0);
           if (tpData) setTouristPlaces(tpData);
         }
 
-        console.log("ðŸš€ Fetching news from Supabase...");
+        console.log("🚀 Fetching news from Supabase...");
         const { data: newsData, error: newsError } = await supabase
           .from("news")
           .select("*")
@@ -965,20 +965,20 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (newsError) {
-          console.error("âŒ News fetch error:", newsError);
+          console.error("❌ News fetch error:", newsError);
         } else {
-          console.log("âœ… News fetched:", newsData?.length || 0);
+          console.log("✅ News fetched:", newsData?.length || 0);
           if (newsData) setNews(newsData);
         }
 
         if (blogError) {
-          console.error("âŒ Blogs fetch error:", blogError);
+          console.error("❌ Blogs fetch error:", blogError);
         } else {
-          console.log("âœ… Blogs fetched:", blogData?.length || 0);
+          console.log("✅ Blogs fetched:", blogData?.length || 0);
           if (blogData) setBlogs(blogData);
         }
 
-        console.log("ðŸš€ Fetching finderb jobs from Supabase...");
+        console.log("🚀 Fetching finderb jobs from Supabase...");
         const { data: jobData, error: jobError } = await supabase
           .from("jobs")
           .select(
@@ -1008,9 +1008,9 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (jobError) {
-          console.error("âŒ FinderB jobs fetch error:", jobError);
+          console.error("❌ FinderB jobs fetch error:", jobError);
         } else {
-          console.log("âœ… FinderB jobs fetched:", jobData?.length || 0);
+          console.log("✅ FinderB jobs fetched:", jobData?.length || 0);
           if (jobData) {
             setFinderBJobs(
               jobData.map((job: any) => ({
@@ -1021,7 +1021,7 @@ export default function Dashboard() {
           }
         }
 
-        console.log("ðŸš€ Fetching leads from Supabase...");
+        console.log("🚀 Fetching leads from Supabase...");
         const { data: leadData, error: leadError } = await supabase
           .from("leads")
           .select(
@@ -1039,9 +1039,9 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (leadError) {
-          console.error("âŒ Lead fetch error:", leadError);
+          console.error("❌ Lead fetch error:", leadError);
         } else {
-          console.log("âœ… Leads fetched:", leadData?.length || 0);
+          console.log("✅ Leads fetched:", leadData?.length || 0);
           if (leadData) {
             setLeads(
               leadData.map((row: any) => ({
@@ -1052,7 +1052,7 @@ export default function Dashboard() {
           }
         }
 
-        console.log("ðŸš€ Fetching login logs from Supabase...");
+        console.log("🚀 Fetching login logs from Supabase...");
         const { data: logData, error: logError } = await supabase
           .from("admin_login_logs")
           .select("*")
@@ -1060,37 +1060,37 @@ export default function Dashboard() {
           .limit(50);
 
         if (logError) {
-          console.error("âŒ Login logs fetch error:", logError);
+          console.error("❌ Login logs fetch error:", logError);
         } else {
-          console.log("âœ… Login logs fetched:", logData?.length || 0);
+          console.log("✅ Login logs fetched:", logData?.length || 0);
           if (logData) setLoginLogs(logData);
         }
 
-        console.log("ðŸš€ Fetching users from Supabase...");
+        console.log("🚀 Fetching users from Supabase...");
         const { data: userData, error: userError } = await supabase
           .from("User")
           .select("*")
           .order("createdAt", { ascending: false });
         if (userError) {
-          console.error("âŒ User fetch error:", userError);
+          console.error("❌ User fetch error:", userError);
         } else {
-          console.log("âœ… Users fetched:", userData?.length || 0);
+          console.log("✅ Users fetched:", userData?.length || 0);
           if (userData) setUsers(userData);
         }
 
-        console.log("ðŸš€ Fetching business data from Supabase...");
+        console.log("🚀 Fetching business data from Supabase...");
         const { data: merchantData, error: merchantError } = await supabase
           .from("Business")
           .select("*")
           .order("createdAt", { ascending: false });
 
         if (merchantError) {
-          console.error("âŒ Business fetch error:", merchantError);
+          console.error("❌ Business fetch error:", merchantError);
           setFetchError(
             `Failed to fetch business data: ${merchantError.message}`,
           );
         } else {
-          console.log("âœ… Business data fetched:", merchantData?.length || 0);
+          console.log("✅ Business data fetched:", merchantData?.length || 0);
           if (merchantData && merchantData.length > 0) {
             setAllBusinessData(merchantData);
             setActiveMerchants(
@@ -1104,23 +1104,23 @@ export default function Dashboard() {
                 .map(mapBusinessToMerchantRequest),
             );
           } else {
-            console.warn("âš ï¸ No business data returned from Supabase");
+            console.warn("⚠️ No business data returned from Supabase");
           }
         }
 
-        console.log("ðŸš€ Fetching merchant payments from Supabase...");
+        console.log("🚀 Fetching merchant payments from Supabase...");
         const { data: paymentData, error: paymentError } = await supabase
           .from("merchant_payments")
           .select("*")
           .order("created_at", { ascending: false });
 
         if (paymentError) {
-          console.error("âŒ Merchant payments fetch error:", paymentError);
+          console.error("❌ Merchant payments fetch error:", paymentError);
         } else {
           setMerchantPaymentRows(paymentData ?? []);
         }
       } catch (error: any) {
-        console.error("âŒ Unexpected error during fetch:", error);
+        console.error("❌ Unexpected error during fetch:", error);
         setFetchError(`Unexpected error: ${error?.message || "Unknown error"}`);
       } finally {
         setDataLoading(false);
@@ -1390,7 +1390,7 @@ export default function Dashboard() {
         id: l.id,
         type: "lead",
         title: `New Lead — ${source}`,
-        description: `${l.name} · ${l.category}${l.merchant_name ? ` â†’ ${l.merchant_name}` : ""}`,
+        description: `${l.name} · ${l.category}${l.merchant_name ? ` → ${l.merchant_name}` : ""}`,
         timestamp: l.created_at,
       });
     });
@@ -1472,7 +1472,7 @@ export default function Dashboard() {
 
       if (isSchemaError) {
         alert(
-          `Schema Error: ${error.message}\n\nðŸ”§ Fix: Run "db/update_categories_schema.sql" in Supabase SQL Editor\n â†’ Forces cache refresh + verifies column exists`,
+          `Schema Error: ${error.message}\n\n🔧 Fix: Run "db/update_categories_schema.sql" in Supabase SQL Editor\n → Forces cache refresh + verifies column exists`,
         );
       } else {
         alert(`Update failed: ${error.message}`);
@@ -1486,7 +1486,7 @@ export default function Dashboard() {
       );
       return [...updated].sort((a, b) => (a.position || 0) - (b.position || 0));
     });
-    alert(`âœ… Category "${catName}" updated successfully!`);
+    alert(`✅ Category "${catName}" updated successfully!`);
   };
 
   const handleCreateCategory = async (category: Partial<Category>) => {
