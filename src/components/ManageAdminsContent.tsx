@@ -38,6 +38,7 @@ export const ASSIGNABLE_ADMIN_TABS = [
   "Payments & Subscriptions",
   "Broadcasts",
   "Blogs",
+  "YouTube Playlists",
   "FinderB Jobs",
   "Settings",
 ] as const;

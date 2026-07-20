@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -17,6 +17,8 @@ import { Blog, BlogContent } from "../../components/BlogContent";
 import FinderBJobsContent, {
   FinderBJob,
 } from "../../components/FinderBJobsContent";
+import YouTubePlaylistsContent from "../../components/YouTubePlaylistsContent";
+import TouristPlacesContent from "../../components/TouristPlacesContent";
 import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
@@ -103,7 +105,7 @@ function hasFullTabAccess(session: AdminSession | null, tab: string): boolean {
   return false;
 }
 
-/** Listing approval (public display) — not KYC. */
+/** Listing approval (public display) â€” not KYC. */
 function isListingPending(status: string | null | undefined) {
   return (status || "").toLowerCase() === "pending";
 }
@@ -127,7 +129,7 @@ function mapBusinessToMerchant(m: any): Merchant {
           month: "short",
           year: "numeric",
         })
-      : "—",
+      : "â€”",
     status: m.status || "Active",
     isFinderBVerified: Boolean(m.isFinderBVerified),
     registrationNumber: m.registrationNumber || null,
@@ -564,6 +566,30 @@ const ALL_MENU_ITEMS = [
     ),
   },
   {
+    name: "YouTube Playlists",
+    icon: (
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+  },
+  {
     name: "FinderB Jobs",
     icon: (
       <svg
@@ -657,7 +683,14 @@ const NAV_GROUPS = [
   },
   {
     label: "Content & Media",
-    items: ["Categories", "Movies", "Tourist Places", "Blogs", "FinderB Jobs"],
+    items: [
+      "Categories",
+      "Movies",
+      "Tourist Places",
+      "Blogs",
+      "YouTube Playlists",
+      "FinderB Jobs",
+    ],
   },
   {
     label: "Platform",
@@ -849,14 +882,14 @@ export default function Dashboard() {
 
         const supabase = createClient();
 
-        console.log("🚀 Fetching categories from Supabase...");
+        console.log("ðŸš€ Fetching categories from Supabase...");
         const { data: catData, error: catError } = await supabase
           .from("categories")
           .select("*")
           .order("position", { ascending: true });
 
         if (catError) {
-          console.error("❌ Category fetch error:", catError);
+          console.error("âŒ Category fetch error:", catError);
           const missingTable =
             catError.message?.toLowerCase().includes("public.categories") ||
             catError.message
@@ -870,7 +903,7 @@ export default function Dashboard() {
           );
         } else {
           setCategoryError(null);
-          console.log("✅ Categories fetched:", catData?.length || 0);
+          console.log("âœ… Categories fetched:", catData?.length || 0);
         }
 
         if (catData) {
@@ -895,33 +928,33 @@ export default function Dashboard() {
           );
         }
 
-        console.log("🚀 Fetching movies from Supabase...");
+        console.log("ðŸš€ Fetching movies from Supabase...");
         const { data: movieData, error: movieError } = await supabase
           .from("movies")
           .select("*")
           .order("created_at", { ascending: false });
 
         if (movieError) {
-          console.error("❌ Movie fetch error:", movieError);
+          console.error("âŒ Movie fetch error:", movieError);
         } else {
-          console.log("✅ Movies fetched:", movieData?.length || 0);
+          console.log("âœ… Movies fetched:", movieData?.length || 0);
           if (movieData) setMovies(movieData);
         }
 
-        console.log("🚀 Fetching tourist places from Supabase...");
+        console.log("ðŸš€ Fetching tourist places from Supabase...");
         const { data: tpData, error: tpError } = await supabase
           .from("tourist_places")
           .select("*")
           .order("created_at", { ascending: false });
 
         if (tpError) {
-          console.error("❌ Tourist places fetch error:", tpError);
+          console.error("âŒ Tourist places fetch error:", tpError);
         } else {
-          console.log("✅ Tourist places fetched:", tpData?.length || 0);
+          console.log("âœ… Tourist places fetched:", tpData?.length || 0);
           if (tpData) setTouristPlaces(tpData);
         }
 
-        console.log("🚀 Fetching news from Supabase...");
+        console.log("ðŸš€ Fetching news from Supabase...");
         const { data: newsData, error: newsError } = await supabase
           .from("news")
           .select("*")
@@ -932,20 +965,20 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (newsError) {
-          console.error("❌ News fetch error:", newsError);
+          console.error("âŒ News fetch error:", newsError);
         } else {
-          console.log("✅ News fetched:", newsData?.length || 0);
+          console.log("âœ… News fetched:", newsData?.length || 0);
           if (newsData) setNews(newsData);
         }
 
         if (blogError) {
-          console.error("❌ Blogs fetch error:", blogError);
+          console.error("âŒ Blogs fetch error:", blogError);
         } else {
-          console.log("✅ Blogs fetched:", blogData?.length || 0);
+          console.log("âœ… Blogs fetched:", blogData?.length || 0);
           if (blogData) setBlogs(blogData);
         }
 
-        console.log("🚀 Fetching finderb jobs from Supabase...");
+        console.log("ðŸš€ Fetching finderb jobs from Supabase...");
         const { data: jobData, error: jobError } = await supabase
           .from("jobs")
           .select(
@@ -975,9 +1008,9 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (jobError) {
-          console.error("❌ FinderB jobs fetch error:", jobError);
+          console.error("âŒ FinderB jobs fetch error:", jobError);
         } else {
-          console.log("✅ FinderB jobs fetched:", jobData?.length || 0);
+          console.log("âœ… FinderB jobs fetched:", jobData?.length || 0);
           if (jobData) {
             setFinderBJobs(
               jobData.map((job: any) => ({
@@ -988,7 +1021,7 @@ export default function Dashboard() {
           }
         }
 
-        console.log("🚀 Fetching leads from Supabase...");
+        console.log("ðŸš€ Fetching leads from Supabase...");
         const { data: leadData, error: leadError } = await supabase
           .from("leads")
           .select(
@@ -1006,9 +1039,9 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (leadError) {
-          console.error("❌ Lead fetch error:", leadError);
+          console.error("âŒ Lead fetch error:", leadError);
         } else {
-          console.log("✅ Leads fetched:", leadData?.length || 0);
+          console.log("âœ… Leads fetched:", leadData?.length || 0);
           if (leadData) {
             setLeads(
               leadData.map((row: any) => ({
@@ -1019,7 +1052,7 @@ export default function Dashboard() {
           }
         }
 
-        console.log("🚀 Fetching login logs from Supabase...");
+        console.log("ðŸš€ Fetching login logs from Supabase...");
         const { data: logData, error: logError } = await supabase
           .from("admin_login_logs")
           .select("*")
@@ -1027,37 +1060,37 @@ export default function Dashboard() {
           .limit(50);
 
         if (logError) {
-          console.error("❌ Login logs fetch error:", logError);
+          console.error("âŒ Login logs fetch error:", logError);
         } else {
-          console.log("✅ Login logs fetched:", logData?.length || 0);
+          console.log("âœ… Login logs fetched:", logData?.length || 0);
           if (logData) setLoginLogs(logData);
         }
 
-        console.log("🚀 Fetching users from Supabase...");
+        console.log("ðŸš€ Fetching users from Supabase...");
         const { data: userData, error: userError } = await supabase
           .from("User")
           .select("*")
           .order("createdAt", { ascending: false });
         if (userError) {
-          console.error("❌ User fetch error:", userError);
+          console.error("âŒ User fetch error:", userError);
         } else {
-          console.log("✅ Users fetched:", userData?.length || 0);
+          console.log("âœ… Users fetched:", userData?.length || 0);
           if (userData) setUsers(userData);
         }
 
-        console.log("🚀 Fetching business data from Supabase...");
+        console.log("ðŸš€ Fetching business data from Supabase...");
         const { data: merchantData, error: merchantError } = await supabase
           .from("Business")
           .select("*")
           .order("createdAt", { ascending: false });
 
         if (merchantError) {
-          console.error("❌ Business fetch error:", merchantError);
+          console.error("âŒ Business fetch error:", merchantError);
           setFetchError(
             `Failed to fetch business data: ${merchantError.message}`,
           );
         } else {
-          console.log("✅ Business data fetched:", merchantData?.length || 0);
+          console.log("âœ… Business data fetched:", merchantData?.length || 0);
           if (merchantData && merchantData.length > 0) {
             setAllBusinessData(merchantData);
             setActiveMerchants(
@@ -1071,23 +1104,23 @@ export default function Dashboard() {
                 .map(mapBusinessToMerchantRequest),
             );
           } else {
-            console.warn("⚠️ No business data returned from Supabase");
+            console.warn("âš ï¸ No business data returned from Supabase");
           }
         }
 
-        console.log("🚀 Fetching merchant payments from Supabase...");
+        console.log("ðŸš€ Fetching merchant payments from Supabase...");
         const { data: paymentData, error: paymentError } = await supabase
           .from("merchant_payments")
           .select("*")
           .order("created_at", { ascending: false });
 
         if (paymentError) {
-          console.error("❌ Merchant payments fetch error:", paymentError);
+          console.error("âŒ Merchant payments fetch error:", paymentError);
         } else {
           setMerchantPaymentRows(paymentData ?? []);
         }
       } catch (error: any) {
-        console.error("❌ Unexpected error during fetch:", error);
+        console.error("âŒ Unexpected error during fetch:", error);
         setFetchError(`Unexpected error: ${error?.message || "Unknown error"}`);
       } finally {
         setDataLoading(false);
@@ -1196,7 +1229,7 @@ export default function Dashboard() {
   };
 
   const handleDashboardApprove = async (req: MerchantRequest) => {
-    // Full access inside Dashboard or Merchants tab — same actions as a controller.
+    // Full access inside Dashboard or Merchants tab â€” same actions as a controller.
     if (
       !hasFullTabAccess(adminSession, "Dashboard") &&
       !hasFullTabAccess(adminSession, "Merchants")
@@ -1227,7 +1260,7 @@ export default function Dashboard() {
         category: req.category,
         rating: 0,
         sales: 0,
-        validUntil: "—",
+        validUntil: "â€”",
         status: "Active",
         isFinderBVerified: false,
         registrationNumber: req.registrationNumber || null,
@@ -1342,7 +1375,7 @@ export default function Dashboard() {
         id: m.id,
         type: "merchant",
         title: `New Business Onboarding`,
-        description: `${m.businessName || m.fullName} · listing ${m.status || "—"}`,
+        description: `${m.businessName || m.fullName} Â· listing ${m.status || "â€”"}`,
         timestamp: m.createdAt,
       });
     });
@@ -1356,8 +1389,8 @@ export default function Dashboard() {
       activities.push({
         id: l.id,
         type: "lead",
-        title: `New Lead — ${source}`,
-        description: `${l.name} · ${l.category}${l.merchant_name ? ` → ${l.merchant_name}` : ""}`,
+        title: `New Lead â€” ${source}`,
+        description: `${l.name} Â· ${l.category}${l.merchant_name ? ` â†’ ${l.merchant_name}` : ""}`,
         timestamp: l.created_at,
       });
     });
@@ -1439,7 +1472,7 @@ export default function Dashboard() {
 
       if (isSchemaError) {
         alert(
-          `Schema Error: ${error.message}\n\n🔧 Fix: Run "db/update_categories_schema.sql" in Supabase SQL Editor\n → Forces cache refresh + verifies column exists`,
+          `Schema Error: ${error.message}\n\nðŸ”§ Fix: Run "db/update_categories_schema.sql" in Supabase SQL Editor\n â†’ Forces cache refresh + verifies column exists`,
         );
       } else {
         alert(`Update failed: ${error.message}`);
@@ -1453,7 +1486,7 @@ export default function Dashboard() {
       );
       return [...updated].sort((a, b) => (a.position || 0) - (b.position || 0));
     });
-    alert(`✅ Category "${catName}" updated successfully!`);
+    alert(`âœ… Category "${catName}" updated successfully!`);
   };
 
   const handleCreateCategory = async (category: Partial<Category>) => {
@@ -1919,14 +1952,7 @@ export default function Dashboard() {
           />
         );
       case "Tourist Places":
-        return (
-          <TouristPlacesContent
-            places={touristPlaces}
-            onUpdatePlace={handleUpdateTouristPlace}
-            onCreatePlace={handleCreateTouristPlace}
-            onDeletePlace={handleDeleteTouristPlace}
-          />
-        );
+        return <TouristPlacesContent merchants={activeMerchants} />;
       case "News":
         return (
           <ComingSoonContent tabName="News" message={COMING_SOON_COPY.News} />
@@ -1948,6 +1974,8 @@ export default function Dashboard() {
             onUploadImage={handleBlogImageUpload}
           />
         );
+      case "YouTube Playlists":
+        return <YouTubePlaylistsContent />;
       case "FinderB Jobs":
         return (
           <FinderBJobsContent jobs={finderBJobs} setJobs={setFinderBJobs} />
@@ -2125,7 +2153,7 @@ export default function Dashboard() {
                   {settings.maintenance ? "Maintenance" : "Live"}
                 </span>
                 <span className="text-[10px] text-slate-400 tabular-nums font-semibold">
-                  {platformTimeLabel || "—"}
+                  {platformTimeLabel || "â€”"}
                 </span>
               </div>
               <p className="mt-1.5 text-[11px] text-slate-500 leading-snug font-medium">
@@ -2270,7 +2298,7 @@ export default function Dashboard() {
               </div>
               <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
                 <span className="text-[9px] text-slate-400 tabular-nums truncate font-medium">
-                  {platformDateLabel || "—"}
+                  {platformDateLabel || "â€”"}
                 </span>
                 <button
                   type="button"
@@ -2393,7 +2421,7 @@ export default function Dashboard() {
             </button>
           </div>
           <p className="text-xs text-slate-400 tabular-nums hidden sm:block font-semibold">
-            {platformDateLabel || "—"}
+            {platformDateLabel || "â€”"}
           </p>
         </div>
 
@@ -2641,10 +2669,10 @@ function LeadsContent({
         Showing {filteredLeads.length} of {leads.length} lead record
         {leads.length === 1 ? "" : "s"}
         {sourceFilter === "Generated on profile"
-          ? ` · ${PROFILE_LEAD_BADGE}`
+          ? ` Â· ${PROFILE_LEAD_BADGE}`
           : ""}
         {sourceFilter === "Circulated in category"
-          ? ` · ${CATEGORY_LEAD_BADGE}`
+          ? ` Â· ${CATEGORY_LEAD_BADGE}`
           : ""}
       </p>
 
@@ -2697,7 +2725,7 @@ function LeadsContent({
                           {lead.name}
                         </p>
                         <p className="text-[9px] text-slate-500 mt-0.5">
-                          {[lead.phone, lead.email].filter(Boolean).join(" · ")}
+                          {[lead.phone, lead.email].filter(Boolean).join(" Â· ")}
                         </p>
                       </div>
                     </td>
@@ -2706,7 +2734,7 @@ function LeadsContent({
                         className="text-[10px] text-slate-600 line-clamp-2"
                         title={lead.message || ""}
                       >
-                        {lead.message || "—"}
+                        {lead.message || "â€”"}
                       </p>
                     </td>
                     <td className="px-6 py-4">
@@ -2732,7 +2760,7 @@ function LeadsContent({
                         </p>
                       ) : lead.business_id ? (
                         <p className="text-[10px] text-slate-500 font-mono">
-                          {lead.business_id.slice(0, 8)}…
+                          {lead.business_id.slice(0, 8)}â€¦
                         </p>
                       ) : (
                         <span className="text-[9px] text-slate-400 italic">
@@ -2844,7 +2872,7 @@ function ControllerPasswordModal({
               value={adminPassword}
               onChange={(e) => setAdminPassword(e.target.value)}
               className="admin-input"
-              placeholder="••••••••"
+              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
             />
           </div>
           {error && (
@@ -2890,7 +2918,7 @@ function PasswordRevealCell({
         <span className="admin-mono bg-slate-50 px-2 py-1 rounded-md border border-slate-100 min-w-[80px]">
           {isVisible
             ? formatRevealedPassword(visiblePasswords[id])
-            : "••••••••"}
+            : "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"}
         </span>
         <button
           onClick={() =>
@@ -3064,7 +3092,7 @@ function UsersContent({
                   </td>
                   <td>
                     <p className="text-sm text-slate-600">
-                      {user.email || "—"}
+                      {user.email || "â€”"}
                     </p>
                   </td>
                   <td>
@@ -3191,8 +3219,8 @@ type MerchantSortOption =
 
 const MERCHANT_SORT_OPTIONS: { id: MerchantSortOption; label: string }[] = [
   { id: "newest", label: "Newest first" },
-  { id: "name-asc", label: "Name A–Z" },
-  { id: "name-desc", label: "Name Z–A" },
+  { id: "name-asc", label: "Name Aâ€“Z" },
+  { id: "name-desc", label: "Name Zâ€“A" },
   { id: "expiry-asc", label: "Expiring soon" },
   { id: "verified-first", label: "Verified first" },
 ];
@@ -3248,7 +3276,7 @@ function PaginationFooter({
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-100 bg-slate-50/60">
       <p className="text-xs text-slate-500">
-        Showing <span className="font-medium text-slate-800">{start}</span>–
+        Showing <span className="font-medium text-slate-800">{start}</span>â€“
         <span className="font-medium text-slate-800">{end}</span> of{" "}
         <span className="font-medium text-slate-800">{total}</span> {noun}
       </p>
@@ -3730,7 +3758,7 @@ function MerchantsContent({
         ...merchant,
         rating: 0,
         sales: 0,
-        validUntil: "—",
+        validUntil: "â€”",
         status: "Active",
         isFinderBVerified: false,
         paymentStatus: "pending",
@@ -3938,7 +3966,7 @@ function MerchantsContent({
                     month: "short",
                     year: "numeric",
                   })
-                : "—"
+                : "â€”"
               : m.validUntil,
         };
       }),
@@ -4120,7 +4148,7 @@ function MerchantsContent({
       <div className="relative flex-1 min-w-0 max-w-md">
         <input
           type="text"
-          placeholder="Search name, email, merchant ID, category…"
+          placeholder="Search name, email, merchant ID, categoryâ€¦"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="admin-search w-full !py-2 !text-[13px]"
@@ -4378,7 +4406,7 @@ function MerchantsContent({
                         </span>
                       )}
                       {merchant.registrationNumber && merchant.email && (
-                        <span className="text-slate-300">·</span>
+                        <span className="text-slate-300">Â·</span>
                       )}
                       {isPlaceholderEmail(merchant.email) ? (
                         <span className="shrink-0 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1.5 py-px text-[10px] font-medium text-amber-800">
@@ -4386,7 +4414,7 @@ function MerchantsContent({
                         </span>
                       ) : (
                         <span className="truncate">
-                          {merchant.email || "—"}
+                          {merchant.email || "â€”"}
                         </span>
                       )}
                       <a
@@ -4668,14 +4696,14 @@ function MerchantsContent({
                         </span>
                       )}
                       {req.registrationNumber && req.email && (
-                        <span className="text-slate-300">·</span>
+                        <span className="text-slate-300">Â·</span>
                       )}
                       {isPlaceholderEmail(req.email) ? (
                         <span className="shrink-0 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1.5 py-px text-[10px] font-medium text-amber-800">
                           Email missing
                         </span>
                       ) : (
-                        <span className="truncate">{req.email || "—"}</span>
+                        <span className="truncate">{req.email || "â€”"}</span>
                       )}
                       <a
                         href={getBusinessProfileUrl({
@@ -4777,7 +4805,7 @@ function MerchantsContent({
                 </div>
                 <p className="text-sm font-medium text-slate-600">
                   {merchantRequests.length === 0
-                    ? "All caught up — no pending requests"
+                    ? "All caught up â€” no pending requests"
                     : "No pending partners match your filters"}
                 </p>
                 {hasActiveFilters && (
@@ -5367,7 +5395,7 @@ function CategoriesContent({
                       >
                         <span className="text-slate-900">{m.name}</span>
                         <span className="text-slate-400 text-[8px]">
-                          {m.id} • {m.category}
+                          {m.id} â€¢ {m.category}
                         </span>
                       </button>
                     ))}
@@ -6240,383 +6268,6 @@ function BroadcastsContent({
   );
 }
 
-function TouristPlacesContent({
-  places,
-  onUpdatePlace,
-  onCreatePlace,
-  onDeletePlace,
-}: {
-  places: TouristPlace[];
-  onUpdatePlace: (place: Partial<TouristPlace>) => Promise<void>;
-  onCreatePlace: (place: Partial<TouristPlace>) => Promise<void>;
-  onDeletePlace: (id: string) => Promise<void>;
-}) {
-  const [editingPlace, setEditingPlace] = useState<TouristPlace | null>(null);
-  const [isAddingPlace, setIsAddingPlace] = useState(false);
-  const [newPlace, setNewPlace] = useState<Partial<TouristPlace>>({
-    name: "",
-    description: "",
-    location: "",
-    category: "",
-    image_url: "",
-  });
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const handleSave = async () => {
-    if (editingPlace) {
-      await onUpdatePlace(editingPlace);
-      setEditingPlace(null);
-    }
-  };
-
-  const handleCreate = async () => {
-    if (newPlace.name) {
-      await onCreatePlace(newPlace);
-      setIsAddingPlace(false);
-      setNewPlace({
-        name: "",
-        description: "",
-        location: "",
-        category: "",
-        image_url: "",
-      });
-    }
-  };
-
-  const handleImageUpload = async (file: File, isEditing: boolean) => {
-    try {
-      setUploading(true);
-      const url = await uploadToCloudinary(file, (progress) => {
-        setUploadProgress(progress);
-      });
-      if (isEditing && editingPlace) {
-        setEditingPlace({ ...editingPlace, image_url: url });
-      } else {
-        setNewPlace({ ...newPlace, image_url: url });
-      }
-    } catch (error) {
-      alert(
-        "Upload failed: " +
-          (error instanceof Error ? error.message : "Unknown error"),
-      );
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
-    }
-  };
-
-  const renderPlaceForm = (
-    place: Partial<TouristPlace>,
-    setPlace: Dispatch<SetStateAction<any>>,
-    isEditing: boolean,
-  ) => (
-    <div className="bg-white rounded-3xl border border-slate-200/60 p-8 space-y-6 mb-8 animate-in slide-in-from-top-4 duration-300">
-      <div className="flex items-center justify-between border-b border-slate-50 pb-5">
-        <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
-          <span className="w-2 h-2 bg-primary rounded-full"></span>
-          {isEditing ? `Edit: ${place.name}` : "Add New Tourist Place"}
-        </h3>
-        <button
-          onClick={() =>
-            isEditing ? setEditingPlace(null) : setIsAddingPlace(false)
-          }
-          className="text-slate-400 hover:text-slate-600 transition-colors"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-              Place Name
-            </label>
-            <input
-              type="text"
-              value={place.name || ""}
-              onChange={(e) => setPlace({ ...place, name: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              placeholder="Enter place name"
-            />
-          </div>
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-              Location (City, State)
-            </label>
-            <input
-              type="text"
-              value={place.location || ""}
-              onChange={(e) => setPlace({ ...place, location: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              placeholder="e.g. Jaipur, Rajasthan"
-            />
-          </div>
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-              Category
-            </label>
-            <input
-              type="text"
-              value={place.category || ""}
-              onChange={(e) => setPlace({ ...place, category: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              placeholder="e.g. Historical, Nature"
-            />
-          </div>
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-              Description
-            </label>
-            <textarea
-              value={place.description || ""}
-              onChange={(e) =>
-                setPlace({ ...place, description: e.target.value })
-              }
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]"
-              placeholder="Enter description"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-            Place Image
-          </label>
-          <div className="flex gap-4 items-start">
-            <div className="flex-1 relative">
-              <input
-                type="file"
-                onChange={(e) =>
-                  e.target.files?.[0] &&
-                  handleImageUpload(e.target.files[0], isEditing)
-                }
-                className="hidden"
-                id={`tp-upload-${isEditing ? "edit" : "new"}`}
-                disabled={uploading}
-              />
-              <label
-                htmlFor={`tp-upload-${isEditing ? "edit" : "new"}`}
-                className={`flex flex-col items-center justify-center gap-2 w-full aspect-video bg-slate-50 border-2 border-dashed rounded-2xl p-4 text-[10px] font-normal text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${uploading ? "border-primary/30 bg-primary/5 cursor-not-allowed" : "border-slate-200 hover:border-primary/30"}`}
-              >
-                {uploading ? (
-                  <div className="flex flex-col items-center gap-3 w-full px-4">
-                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                      <div
-                        className="bg-primary h-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                    <span className="text-primary font-medium">
-                      {uploadProgress}% Uploading...
-                    </span>
-                  </div>
-                ) : place.image_url ? (
-                  <img
-                    src={place.image_url}
-                    className="w-full h-full object-cover rounded-xl"
-                    alt="Preview"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <svg
-                      className="w-8 h-8 text-slate-300 transition-transform mb-2"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.5"
-                        d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                      />
-                    </svg>
-                    <span className="text-center">Click to Upload Image</span>
-                  </div>
-                )}
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
-        <button
-          onClick={() =>
-            isEditing ? setEditingPlace(null) : setIsAddingPlace(false)
-          }
-          className="px-6 py-2.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50 rounded-xl transition-all"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={isEditing ? handleSave : handleCreate}
-          disabled={!place.name || uploading}
-          className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50"
-        >
-          {isEditing ? "Save Changes" : "Save Place"}
-        </button>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
-        <div>
-          <h1 className="admin-page-title">Tourist Places in India</h1>
-          <p className="admin-page-subtitle">
-            Manage tourist attractions and locations.
-          </p>
-        </div>
-        {!isAddingPlace && !editingPlace && (
-          <button
-            onClick={() => setIsAddingPlace(true)}
-            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all"
-          >
-            Add New Place
-          </button>
-        )}
-      </div>
-
-      {isAddingPlace && renderPlaceForm(newPlace, setNewPlace, false)}
-      {editingPlace && renderPlaceForm(editingPlace, setEditingPlace, true)}
-
-      {!isAddingPlace && !editingPlace && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {places.map((place) => (
-            <div
-              key={place.id}
-              className="bg-white rounded-xl border border-slate-200/60 p-4 transition-all duration-300 group"
-            >
-              <div className="relative aspect-video rounded-xl overflow-hidden mb-4 bg-slate-100">
-                {place.image_url ? (
-                  <img
-                    src={place.image_url}
-                    className="w-full h-full object-cover transition-transform duration-500"
-                    alt={place.name}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center opacity-20">
-                    <svg
-                      className="w-12 h-12 text-slate-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.5"
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                      />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.5"
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                  </div>
-                )}
-                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => setEditingPlace(place)}
-                    className="p-1.5 bg-white/90 backdrop-blur-sm text-slate-600 hover:text-primary rounded-lg transition-all"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => onDeletePlace(place.id)}
-                    className="p-1.5 bg-white/90 backdrop-blur-sm text-slate-600 hover:text-rose-50 rounded-lg transition-all"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-              <h3 className="text-[11px] font-medium text-slate-900 tracking-tight truncate mb-1">
-                {place.name}
-              </h3>
-              <p className="text-[9px] text-secondary font-medium mb-1">
-                {place.location}
-              </p>
-              <p className="text-[9px] text-slate-400 font-normal line-clamp-2">
-                {place.description}
-              </p>
-            </div>
-          ))}
-
-          {places.length === 0 && (
-            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-xl border border-slate-200/60">
-              <div className="w-16 h-16 rounded-xl bg-slate-50 flex items-center justify-center mb-4">
-                <svg
-                  className="w-8 h-8 text-slate-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              </div>
-              <p className="text-[10px] font-medium tracking-[0.3em] text-slate-400">
-                No tourist places found
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function NewsContent({
   news,
