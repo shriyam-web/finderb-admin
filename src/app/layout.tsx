@@ -15,12 +15,12 @@ export const metadata: Metadata = {
   description: "FinderB admin dashboard",
   icons: {
     icon: [
-      { url: "/icon.png", type: "image/png", sizes: "any" },
-      { url: "/icon.png", type: "image/png", sizes: "32x32" },
-      { url: "/icon.png", type: "image/png", sizes: "16x16" },
+      { url: "/icon.png?v=3", type: "image/png", sizes: "any" },
+      { url: "/icon.png?v=3", type: "image/png", sizes: "32x32" },
+      { url: "/icon.png?v=3", type: "image/png", sizes: "16x16" },
     ],
-    shortcut: "/icon.png",
-    apple: [{ url: "/icon.png", type: "image/png" }],
+    shortcut: "/icon.png?v=3",
+    apple: [{ url: "/icon.png?v=3", type: "image/png" }],
   },
 };
 
