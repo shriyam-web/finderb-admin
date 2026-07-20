@@ -2827,14 +2827,20 @@ function ControllerPasswordModal({
     setLoading(true);
     setError("");
     try {
-      const supabase = createClient();
-      const { data, error: verifyError } = await supabase
-        .from("admins")
-        .select("password")
-        .eq("id", adminSession.id)
-        .single();
-      if (verifyError || !data || data.password !== adminPassword) {
-        setError("Incorrect admin password.");
+      const verifyRes = await fetch("/api/admin/verify-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          adminId: adminSession.id,
+          password: adminPassword,
+        }),
+      });
+      const verifyJson = (await verifyRes.json()) as {
+        success?: boolean;
+        error?: string;
+      };
+      if (!verifyRes.ok || !verifyJson.success) {
+        setError(verifyJson.error || "Incorrect admin password.");
         return;
       }
       const targetPassword = await onFetchPassword();

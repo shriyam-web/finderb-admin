@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "../../utils/supabase/client";
 
 export default function Home() {
   const [username, setUsername] = useState("");
@@ -26,24 +25,28 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const supabase = createClient();
-      const { data, error: fetchError } = await supabase
-        .from("admins")
-        .select("*")
-        .ilike("email", username)
-        .eq("password", password)
-        .single();
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: username.trim(),
+          password,
+        }),
+      });
 
-      if (fetchError || !data) {
-        setError("Incorrect email or password. Please try again.");
-        setIsLoading(false);
-        return;
-      }
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        admin?: {
+          id: string;
+          email: string;
+          role: string;
+          allowed_tabs: string[] | null;
+        };
+      };
 
-      if (data.is_disabled) {
-        setError(
-          "Your account has been disabled. Please contact the Controller.",
-        );
+      if (!response.ok || !result.success || !result.admin) {
+        setError(result.error || "Incorrect email or password. Please try again.");
         setIsLoading(false);
         return;
       }
@@ -51,25 +54,12 @@ export default function Home() {
       localStorage.setItem(
         "admin_session",
         JSON.stringify({
-          email: data.email,
-          role: data.role,
-          id: data.id,
-          allowed_tabs: data.allowed_tabs,
+          email: result.admin.email,
+          role: result.admin.role,
+          id: result.admin.id,
+          allowed_tabs: result.admin.allowed_tabs,
         }),
       );
-
-      const { error: logError } = await supabase
-        .from("admin_login_logs")
-        .insert([
-          {
-            admin_id: data.id,
-            admin_email: data.email,
-          },
-        ]);
-
-      if (logError) {
-        console.error("Failed to record login activity:", logError.message);
-      }
 
       router.push("/dashboard");
     } catch {
