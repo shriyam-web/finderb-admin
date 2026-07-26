@@ -356,6 +356,12 @@ export default function PaymentsContent({
   const [subViewMode, setSubViewMode] = useState<SubViewMode>("grid");
   const [txnSort, setTxnSort] = useState<TxnSort>("date_desc");
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [activeTab]);
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [billingFilter, setBillingFilter] = useState<BillingFilter>("all");

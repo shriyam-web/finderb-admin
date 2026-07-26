@@ -24,6 +24,7 @@ import DashboardContent from "../../components/DashboardContent";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import { useAdminToast } from "../../components/AdminToast";
 import MerchantRegistrationContent from "../../components/MerchantRegistrationContent";
+import QuickOnboardContent from "../../components/QuickOnboardContent";
 import ManageAdminsContent from "../../components/ManageAdminsContent";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
 import { planLabel } from "../../lib/merchantPlanAdmin";
@@ -100,6 +101,14 @@ function hasFullTabAccess(session: AdminSession | null, tab: string): boolean {
   if (tabs.includes(tab)) return true;
   // Legacy tab name from before rename
   if (tab === "Business Onboarding" && tabs.includes("Merchant Registration")) {
+    return true;
+  }
+  // Quick Onboard is available to anyone with Business Onboarding access
+  if (
+    tab === "Quick Onboard" &&
+    (tabs.includes("Business Onboarding") ||
+      tabs.includes("Merchant Registration"))
+  ) {
     return true;
   }
   return false;
@@ -331,9 +340,11 @@ export interface LoginLog {
 const COMING_SOON_TABS = new Set(["News", "FinderB E-commerce"]);
 
 const COMING_SOON_COPY: Record<string, string> = {
-  News: "This feature will roll out soon.",
+  News: "This feature is disabled from the backend. Contact the developer.",
   "FinderB E-commerce": "This feature will roll out soon.",
 };
+
+const DISABLED_FEATURE_TABS = new Set(["News"]);
 
 const SIDEBAR_MIN = 220;
 const SIDEBAR_MAX = 400;
@@ -411,6 +422,24 @@ const ALL_MENU_ITEMS = [
           strokeLinejoin="round"
           strokeWidth="2"
           d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+        />
+      </svg>
+    ),
+  },
+  {
+    name: "Quick Onboard",
+    icon: (
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M13 10V3L4 14h7v7l9-11h-7z"
         />
       </svg>
     ),
@@ -675,11 +704,35 @@ const ALL_MENU_ITEMS = [
   },
 ];
 
-const NAV_GROUPS = [
+type NavLeaf = string;
+type NavBranch = {
+  name: string;
+  children: { name: string; label: string }[];
+};
+type NavEntry = NavLeaf | NavBranch;
+
+function isNavBranch(entry: NavEntry): entry is NavBranch {
+  return typeof entry === "object" && entry !== null && "children" in entry;
+}
+
+const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
   { label: "Overview", items: ["Dashboard"] },
   {
     label: "Operations",
-    items: ["Users", "Merchants", "Business Onboarding", "Leads"],
+    items: [
+      "Users",
+      {
+        name: "Merchants",
+        children: [
+          {
+            name: "Business Onboarding",
+            label: "Merchant Onboarding Form",
+          },
+          { name: "Quick Onboard", label: "Quick Onboard" },
+        ],
+      },
+      "Leads",
+    ],
   },
   {
     label: "Content & Media",
@@ -690,6 +743,7 @@ const NAV_GROUPS = [
       "Blogs",
       "YouTube Playlists",
       "FinderB Jobs",
+      "News",
     ],
   },
   {
@@ -701,7 +755,7 @@ const NAV_GROUPS = [
       "Manage Admins",
     ],
   },
-  { label: "Coming soon", items: ["FinderB E-commerce", "News"] },
+  { label: "Coming soon", items: ["FinderB E-commerce"] },
 ];
 
 export default function Dashboard() {
@@ -714,11 +768,19 @@ export default function Dashboard() {
   } | null>(null);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [merchantsNavOpen, setMerchantsNavOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   const [platformTimeLabel, setPlatformTimeLabel] = useState("");
   const [platformDateLabel, setPlatformDateLabel] = useState("");
+
+  // Always start a tab at the top of the page
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [activeTab]);
 
   useEffect(() => {
     try {
@@ -1212,6 +1274,15 @@ export default function Dashboard() {
       if (
         item.name === "Business Onboarding" &&
         adminSession.allowed_tabs.includes("Merchant Registration")
+      ) {
+        return true;
+      }
+      // Quick Onboard shares Business Onboarding access
+      if (
+        item.name === "Quick Onboard" &&
+        (adminSession.allowed_tabs.includes("Business Onboarding") ||
+          adminSession.allowed_tabs.includes("Merchant Registration") ||
+          adminSession.allowed_tabs.includes("Quick Onboard"))
       ) {
         return true;
       }
@@ -1922,6 +1993,32 @@ export default function Dashboard() {
             }}
           />
         );
+      case "Quick Onboard":
+        return (
+          <QuickOnboardContent
+            categories={categories}
+            adminSession={adminSession}
+            onRegistered={async () => {
+              const supabase = createClient();
+              const { data: merchantData } = await supabase
+                .from("Business")
+                .select("*")
+                .order("createdAt", { ascending: false });
+              if (!merchantData) return;
+              setAllBusinessData(merchantData);
+              setActiveMerchants(
+                merchantData
+                  .filter((m: any) => isManagedPartner(m.status))
+                  .map(mapBusinessToMerchant),
+              );
+              setMerchantRequests(
+                merchantData
+                  .filter((m: any) => isListingPending(m.status))
+                  .map(mapBusinessToMerchantRequest),
+              );
+            }}
+          />
+        );
       case "Leads":
         return (
           <LeadsContent
@@ -1955,7 +2052,11 @@ export default function Dashboard() {
         return <TouristPlacesContent merchants={activeMerchants} />;
       case "News":
         return (
-          <ComingSoonContent tabName="News" message={COMING_SOON_COPY.News} />
+          <ComingSoonContent
+            tabName="News"
+            message={COMING_SOON_COPY.News}
+            badge="Disabled"
+          />
         );
       case "FinderB E-commerce":
         return (
@@ -2175,94 +2276,260 @@ export default function Dashboard() {
 
         <nav className="flex-1 px-2 py-2 overflow-y-auto sidebar-scrollbar">
           {NAV_GROUPS.map((group) => {
-            const groupItems = menuItems.filter((item) =>
-              group.items.includes(item.name),
-            );
-            if (groupItems.length === 0) return null;
+            const menuByName = new Map(menuItems.map((m) => [m.name, m]));
+            const visibleEntries = group.items.filter((entry) => {
+              if (isNavBranch(entry)) {
+                return (
+                  menuByName.has(entry.name) ||
+                  entry.children.some((c) => menuByName.has(c.name))
+                );
+              }
+              return menuByName.has(entry);
+            });
+            if (visibleEntries.length === 0) return null;
+
+            const renderLeaf = (
+              name: string,
+              label: string,
+              opts?: { nested?: boolean },
+            ) => {
+              const item = menuByName.get(name);
+              if (!item) return null;
+              const isComingSoon = COMING_SOON_TABS.has(name);
+              const isActive = activeTab === name;
+              const badge =
+                name === "Quick Onboard"
+                  ? {
+                      value: "New",
+                      alert: false as const,
+                      soon: false as const,
+                      isNew: true as const,
+                    }
+                  : !isComingSoon &&
+                      name === "Merchants" &&
+                      dashboardStats.merchants.pendingKyc > 0
+                    ? {
+                        value: dashboardStats.merchants.pendingKyc,
+                        alert: true as const,
+                        soon: false as const,
+                        isNew: false as const,
+                      }
+                    : !isComingSoon &&
+                        name === "Leads" &&
+                        dashboardStats.leads.weekNew > 0
+                      ? {
+                          value: dashboardStats.leads.weekNew,
+                          alert: false as const,
+                          soon: false as const,
+                          isNew: false as const,
+                        }
+                      : !isComingSoon &&
+                          name === "Users" &&
+                          dashboardStats.users.todayNew > 0
+                        ? {
+                            value: dashboardStats.users.todayNew,
+                            alert: false as const,
+                            soon: false as const,
+                            isNew: false as const,
+                          }
+                        : isComingSoon
+                          ? {
+                              value: DISABLED_FEATURE_TABS.has(name)
+                                ? "Off"
+                                : "Soon",
+                              alert: false as const,
+                              soon: true as const,
+                              isNew: false as const,
+                            }
+                          : null;
+
+              return (
+                <button
+                  key={`${opts?.nested ? "sub-" : ""}${name}-${label}`}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(name);
+                    setIsSidebarOpen(false);
+                    if (opts?.nested) {
+                      setMerchantsNavOpen(true);
+                    }
+                  }}
+                  className={`${opts?.nested ? "admin-nav-subitem" : "admin-nav-item"} w-full ${
+                    isComingSoon && !isActive
+                      ? "admin-nav-item-idle opacity-70"
+                      : isActive
+                        ? opts?.nested
+                          ? "admin-nav-subitem-active"
+                          : "admin-nav-item-active"
+                        : "admin-nav-item-idle"
+                  }`}
+                  title={label}
+                >
+                  {!opts?.nested && (
+                    <span
+                      className={`shrink-0 ${isActive ? "text-teal-600" : "text-slate-400"}`}
+                    >
+                      {item.icon}
+                    </span>
+                  )}
+                  {opts?.nested && (
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full shrink-0 ${isActive ? "bg-teal-600" : "bg-slate-300"}`}
+                    />
+                  )}
+                  {!sidebarCollapsed && (
+                    <span
+                      className={`truncate text-left leading-snug ${
+                        opts?.nested &&
+                        name === "Quick Onboard" &&
+                        !isActive
+                          ? "admin-nav-shimmer-text"
+                          : opts?.nested &&
+                              name === "Quick Onboard" &&
+                              isActive
+                            ? "admin-nav-shimmer-text admin-nav-shimmer-text-active"
+                            : ""
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  )}
+                  {!sidebarCollapsed && badge ? (
+                    <span
+                      className={`admin-nav-badge ${
+                        badge.isNew
+                          ? "admin-nav-badge-new"
+                          : badge.soon
+                            ? "admin-nav-badge-soon"
+                            : badge.alert
+                              ? "admin-nav-badge-alert"
+                              : ""
+                      }`}
+                    >
+                      {typeof badge.value === "number"
+                        ? badge.value > 99
+                          ? "99+"
+                          : badge.value
+                        : badge.value}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            };
+
             return (
               <div key={group.label} className="admin-nav-group">
-                <p className="admin-nav-group-label">{group.label}</p>
                 <div className="space-y-px">
-                  {groupItems.map((item) => {
-                    const isComingSoon = COMING_SOON_TABS.has(item.name);
-                    const isActive = activeTab === item.name;
-                    const badge =
-                      !isComingSoon &&
-                      item.name === "Merchants" &&
-                      dashboardStats.merchants.pendingKyc > 0
-                        ? {
-                            value: dashboardStats.merchants.pendingKyc,
-                            alert: true as const,
-                            soon: false as const,
-                          }
-                        : !isComingSoon &&
-                            item.name === "Leads" &&
-                            dashboardStats.leads.weekNew > 0
-                          ? {
-                              value: dashboardStats.leads.weekNew,
-                              alert: false as const,
-                              soon: false as const,
-                            }
-                          : !isComingSoon &&
-                              item.name === "Users" &&
-                              dashboardStats.users.todayNew > 0
-                            ? {
-                                value: dashboardStats.users.todayNew,
-                                alert: false as const,
-                                soon: false as const,
-                              }
-                            : isComingSoon
-                              ? {
-                                  value: "Soon",
-                                  alert: false as const,
-                                  soon: true as const,
-                                }
-                              : null;
+                  {visibleEntries.map((entry) => {
+                    if (!isNavBranch(entry)) {
+                      return renderLeaf(entry, entry);
+                    }
+
+                    const parentItem =
+                      menuByName.get(entry.name) ||
+                      ALL_MENU_ITEMS.find((m) => m.name === entry.name);
+                    if (!parentItem) return null;
+                    const childVisible = entry.children.filter((c) =>
+                      menuByName.has(c.name),
+                    );
+                    const parentClickable = menuByName.has(entry.name);
+                    if (childVisible.length === 0) {
+                      // No nested tabs visible — fall back to a plain Merchants item
+                      return parentClickable
+                        ? renderLeaf(entry.name, entry.name)
+                        : null;
+                    }
+
+                    const branchActive =
+                      activeTab === entry.name ||
+                      childVisible.some((c) => c.name === activeTab);
+                    // Only merchantsNavOpen controls expand/collapse — don't
+                    // force-open while a nested tab is active (that blocked collapse).
+                    const open = !sidebarCollapsed && merchantsNavOpen;
+                    const inMerchantsSection = branchActive;
+
                     return (
-                      <button
-                        key={item.name}
-                        type="button"
-                        onClick={() => {
-                          setActiveTab(item.name);
-                          setIsSidebarOpen(false);
-                        }}
-                        className={`admin-nav-item w-full ${
-                          isComingSoon && !isActive
-                            ? "admin-nav-item-idle opacity-70"
-                            : isActive
-                              ? "admin-nav-item-active"
-                              : "admin-nav-item-idle"
-                        }`}
-                        title={item.name}
-                      >
-                        <span
-                          className={`shrink-0 ${isActive ? "text-teal-600" : "text-slate-400"}`}
-                        >
-                          {item.icon}
-                        </span>
-                        {!sidebarCollapsed && (
-                          <span className="truncate text-left leading-snug">
-                            {item.name}
-                          </span>
-                        )}
-                        {!sidebarCollapsed && badge ? (
-                          <span
-                            className={`admin-nav-badge ${
-                              badge.soon
-                                ? "admin-nav-badge-soon"
-                                : badge.alert
-                                  ? "admin-nav-badge-alert"
-                                  : ""
+                      <div key={entry.name} className="space-y-0.5">
+                        <div className="flex items-stretch gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (parentClickable) {
+                                setActiveTab(entry.name);
+                                setIsSidebarOpen(false);
+                              }
+                              // Toggle when already in Merchants section;
+                              // otherwise expand so nested links are visible.
+                              setMerchantsNavOpen((v) =>
+                                inMerchantsSection ? !v : true,
+                              );
+                            }}
+                            className={`admin-nav-item flex-1 ${
+                              branchActive || activeTab === entry.name
+                                ? "admin-nav-item-active"
+                                : "admin-nav-item-idle"
                             }`}
+                            title={entry.name}
                           >
-                            {typeof badge.value === "number"
-                              ? badge.value > 99
-                                ? "99+"
-                                : badge.value
-                              : badge.value}
-                          </span>
-                        ) : null}
-                      </button>
+                            <span
+                              className={`shrink-0 ${
+                                branchActive || activeTab === entry.name
+                                  ? "text-teal-600"
+                                  : "text-slate-400"
+                              }`}
+                            >
+                              {parentItem.icon}
+                            </span>
+                            {!sidebarCollapsed && (
+                              <span className="truncate text-left leading-snug">
+                                {entry.name}
+                              </span>
+                            )}
+                            {!sidebarCollapsed &&
+                            dashboardStats.merchants.pendingKyc > 0 ? (
+                              <span className="admin-nav-badge admin-nav-badge-alert">
+                                {dashboardStats.merchants.pendingKyc > 99
+                                  ? "99+"
+                                  : dashboardStats.merchants.pendingKyc}
+                              </span>
+                            ) : null}
+                          </button>
+                          {!sidebarCollapsed && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setMerchantsNavOpen((v) => !v)
+                              }
+                              className="admin-nav-chevron"
+                              title={open ? "Collapse" : "Expand"}
+                              aria-expanded={open}
+                            >
+                              <svg
+                                className={`w-3.5 h-3.5 transition-transform ${open ? "rotate-90" : ""}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        {open && (
+                          <div className="admin-nav-submenu">
+                            {childVisible.map((child) =>
+                              renderLeaf(child.name, child.label, {
+                                nested: true,
+                              }),
+                            )}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -3184,25 +3451,43 @@ function UsersContent({
 function ComingSoonContent({
   tabName,
   message,
+  badge = "Coming soon",
 }: {
   tabName: string;
   message: string;
+  badge?: string;
 }) {
+  const isDisabled = badge.toLowerCase().includes("disabled");
   return (
     <div className="flex flex-col items-center justify-center min-h-[320px] text-center p-8 admin-card">
-      <div className="w-12 h-12 mx-auto rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center mb-4 border border-slate-200">
+      <div
+        className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-4 border ${
+          isDisabled
+            ? "bg-amber-50 text-amber-600 border-amber-200"
+            : "bg-slate-100 text-slate-500 border-slate-200"
+        }`}
+      >
         <svg
           className="w-6 h-6"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.5"
-            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
+          {isDisabled ? (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+              d="M18.364 5.636a9 9 0 11-12.728 0M12 9v4m0 4h.01"
+            />
+          ) : (
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          )}
         </svg>
       </div>
       <h3 className="text-xl font-bold text-slate-900 mb-1.5 tracking-tight">
@@ -3211,8 +3496,14 @@ function ComingSoonContent({
       <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed font-medium">
         {message}
       </p>
-      <span className="mt-4 inline-flex admin-badge bg-slate-100 text-slate-700 border-slate-200">
-        Coming soon
+      <span
+        className={`mt-4 inline-flex admin-badge ${
+          isDisabled
+            ? "bg-amber-50 text-amber-800 border-amber-200"
+            : "bg-slate-100 text-slate-700 border-slate-200"
+        }`}
+      >
+        {badge}
       </span>
     </div>
   );
