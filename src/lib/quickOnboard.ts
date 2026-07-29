@@ -9,6 +9,7 @@ import {
   validateAndNormalizeMerchantRegistration,
   type MerchantRegistrationPayload,
 } from "./merchantRegistration";
+import type { WeekTimings } from "./googleBusinessLink";
 
 /** Strict schema keys the AI must return. */
 export type QuickOnboardAiFields = {
@@ -30,6 +31,18 @@ export type QuickOnboardAiFields = {
   publicPhone: string;
   activateImmediately: boolean;
   notes: string;
+  /** Optional profile enrichment (Google link / AI). */
+  about: string;
+  website: string;
+  mapsUrl: string;
+  facebookUrl: string;
+  instagramUrl: string;
+  youtubeUrl: string;
+  latitude: number | null;
+  longitude: number | null;
+  rating: number | null;
+  photos: string[];
+  timings: WeekTimings | null;
 };
 
 export type QuickOnboardDraft = QuickOnboardAiFields & {
@@ -71,6 +84,17 @@ const EMPTY_FIELDS: QuickOnboardAiFields = {
   publicPhone: "",
   activateImmediately: false,
   notes: "",
+  about: "",
+  website: "",
+  mapsUrl: "",
+  facebookUrl: "",
+  instagramUrl: "",
+  youtubeUrl: "",
+  latitude: null,
+  longitude: null,
+  rating: null,
+  photos: [],
+  timings: null,
 };
 
 export type CategoryOption = {
@@ -103,7 +127,7 @@ export function buildCategoryTaxonomy(
   }));
 }
 
-/** Human-readable taxonomy block embedded in the ChatGPT prompt. */
+/** Human-readable taxonomy block embedded in the AI prompt. */
 export function formatCategoryTaxonomyForPrompt(
   categories: CategoryOption[],
 ): string {
@@ -125,7 +149,7 @@ export function formatCategoryTaxonomyForPrompt(
 }
 
 /**
- * Build the copyable ChatGPT prompt with the live category/subcategory list.
+ * Build the copyable AI prompt with the live category/subcategory list.
  * Names must be copied character-for-character from the taxonomy block.
  */
 export function buildQuickOnboardPrompt(
@@ -189,7 +213,7 @@ OUTPUT FORMAT (exact keys — do not rename, add, or remove keys):
 FIELD RULES
 - businessName: legal / primary business name (required).
 - displayName: public-facing name if different; otherwise same as businessName.
-- ownerFullName: owner or contact person if present; if unknown, copy businessName.
+- ownerFullName: real owner / contact person only if clearly present in the text. If unknown, use "" — never invent and never copy businessName.
 - loginEmail: real business/owner email only if clearly present. NEVER invent Gmail/Yahoo/etc.
 - emailUnavailable: true when no real email exists; then loginEmail must be "".
 - mobile: primary Indian mobile as 10 digits only (no +91 / spaces / dashes). Strip country code if present.
@@ -230,6 +254,28 @@ function asBoolean(value: unknown): boolean {
     return v === "true" || v === "yes" || v === "1";
   }
   return false;
+}
+
+function asNullableNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter(Boolean)
+    .slice(0, 5);
+}
+
+function asTimings(value: unknown): WeekTimings | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as WeekTimings;
 }
 
 function digitsPhone(value: string): string {
@@ -276,7 +322,7 @@ function coerceFields(parsed: Record<string, unknown>): QuickOnboardAiFields {
     loginEmail = "";
   }
 
-  const ownerFullName = asString(parsed.ownerFullName) || businessName;
+  const ownerFullName = asString(parsed.ownerFullName);
 
   // Support legacy "Parent › Child" / "Parent > Child" in category alone.
   let category = asString(parsed.category);
@@ -304,6 +350,17 @@ function coerceFields(parsed: Record<string, unknown>): QuickOnboardAiFields {
     publicPhone,
     activateImmediately: asBoolean(parsed.activateImmediately),
     notes: asString(parsed.notes),
+    about: asString(parsed.about),
+    website: asString(parsed.website),
+    mapsUrl: asString(parsed.mapsUrl),
+    facebookUrl: asString(parsed.facebookUrl),
+    instagramUrl: asString(parsed.instagramUrl),
+    youtubeUrl: asString(parsed.youtubeUrl),
+    latitude: asNullableNumber(parsed.latitude),
+    longitude: asNullableNumber(parsed.longitude),
+    rating: asNullableNumber(parsed.rating),
+    photos: asStringArray(parsed.photos),
+    timings: asTimings(parsed.timings),
   };
 }
 
@@ -317,9 +374,7 @@ function collectFieldIssues(fields: QuickOnboardAiFields): {
   if (!fields.businessName || fields.businessName.length < MIN_NAME_LENGTH) {
     missing.push("businessName");
   }
-  if (!fields.ownerFullName || fields.ownerFullName.length < MIN_NAME_LENGTH) {
-    missing.push("ownerFullName");
-  }
+  // ownerFullName is optional — fill later on the merchant profile if unknown.
   if (
     !fields.addressLine1 ||
     fields.addressLine1.length < MIN_ADDRESS_LINE1_LENGTH
@@ -364,7 +419,7 @@ export function parseQuickOnboardPayload(raw: string): QuickOnboardParseResult {
       fields: null,
       missing: [],
       errors: [],
-      message: "Paste the ChatGPT JSON block, not the raw Google text.",
+      message: "Paste the AI JSON block, not the raw Google text.",
     };
   }
 
@@ -376,7 +431,7 @@ export function parseQuickOnboardPayload(raw: string): QuickOnboardParseResult {
       missing: [],
       errors: [],
       message:
-        "Paste the ChatGPT JSON block, not the raw Google text. Copy the prompt, paste Google details into ChatGPT, then paste only the JSON reply here.",
+        "Paste the AI JSON block, not the raw Google text. Copy the prompt, paste merchant details into any AI, then paste only the JSON reply here.",
     };
   }
 
@@ -638,6 +693,18 @@ export function toRegistrationPayload(
     selectedPlan: "free",
     billingCycle: "monthly",
     activateImmediately: draft.activateImmediately,
+    about: draft.about || undefined,
+    website: draft.website || undefined,
+    mapsUrl: draft.mapsUrl || undefined,
+    facebookUrl: draft.facebookUrl || undefined,
+    instagramUrl: draft.instagramUrl || undefined,
+    youtubeUrl: draft.youtubeUrl || undefined,
+    latitude: draft.latitude ?? undefined,
+    longitude: draft.longitude ?? undefined,
+    // Google Places score — stored as googleRating, not FinderB rating.
+    googleRating: draft.rating ?? undefined,
+    photos: draft.photos?.length ? draft.photos : undefined,
+    timings: draft.timings || undefined,
   };
 }
 

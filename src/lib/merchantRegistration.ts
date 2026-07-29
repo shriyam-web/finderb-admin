@@ -27,6 +27,21 @@ export type MerchantRegistrationPayload = {
   selectedPlan?: string;
   billingCycle?: string;
   activateImmediately?: boolean;
+  /** Optional profile enrichment from Google Business / AI. */
+  about?: string;
+  website?: string;
+  mapsUrl?: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
+  youtubeUrl?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  /** FinderB platform rating (unused by Google import). */
+  rating?: number | null;
+  /** Google Places / Business star rating — stored separately. */
+  googleRating?: number | null;
+  photos?: string[];
+  timings?: unknown;
 };
 
 export type NormalizedMerchantRegistration = {
@@ -47,6 +62,18 @@ export type NormalizedMerchantRegistration = {
   selectedPlan: string;
   billingCycle: string;
   activateImmediately: boolean;
+  about: string | null;
+  website: string | null;
+  mapsUrl: string | null;
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  youtubeUrl: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  rating: number | null;
+  googleRating: number | null;
+  photos: string[];
+  timings: unknown | null;
 };
 
 function combineBusinessAddress(line1: string, line2?: string | null): string {
@@ -59,10 +86,11 @@ export function validateAndNormalizeMerchantRegistration(
   | { ok: true; data: NormalizedMerchantRegistration }
   | { ok: false; error: string } {
   const fullName = data.fullName?.trim() ?? "";
-  if (!fullName || fullName.length < MIN_NAME_LENGTH) {
+  // Owner is optional — can be completed later on the merchant profile.
+  if (fullName && fullName.length < MIN_NAME_LENGTH) {
     return {
       ok: false,
-      error: "Owner full name must be at least 2 characters.",
+      error: "Owner full name must be at least 2 characters when provided.",
     };
   }
 
@@ -124,6 +152,29 @@ export function validateAndNormalizeMerchantRegistration(
   const billingCycle = (data.billingCycle || "monthly").trim().toLowerCase();
   const allowedPlans = new Set(["free", "starter", "growth", "pro"]);
 
+  const lat =
+    typeof data.latitude === "number" && Number.isFinite(data.latitude)
+      ? data.latitude
+      : null;
+  const lng =
+    typeof data.longitude === "number" && Number.isFinite(data.longitude)
+      ? data.longitude
+      : null;
+  const rating =
+    typeof data.rating === "number" && Number.isFinite(data.rating)
+      ? data.rating
+      : null;
+  const googleRating =
+    typeof data.googleRating === "number" && Number.isFinite(data.googleRating)
+      ? data.googleRating
+      : null;
+  const photos = Array.isArray(data.photos)
+    ? data.photos
+        .filter((u): u is string => typeof u === "string" && Boolean(u.trim()))
+        .map((u) => u.trim())
+        .slice(0, 5)
+    : [];
+
   return {
     ok: true,
     data: {
@@ -144,6 +195,18 @@ export function validateAndNormalizeMerchantRegistration(
       selectedPlan: allowedPlans.has(selectedPlan) ? selectedPlan : "free",
       billingCycle: billingCycle === "annual" ? "annual" : "monthly",
       activateImmediately: Boolean(data.activateImmediately),
+      about: data.about?.trim() || null,
+      website: data.website?.trim() || null,
+      mapsUrl: data.mapsUrl?.trim() || null,
+      facebookUrl: data.facebookUrl?.trim() || null,
+      instagramUrl: data.instagramUrl?.trim() || null,
+      youtubeUrl: data.youtubeUrl?.trim() || null,
+      latitude: lat,
+      longitude: lng,
+      rating,
+      googleRating,
+      photos,
+      timings: data.timings ?? null,
     },
   };
 }

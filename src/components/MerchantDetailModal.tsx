@@ -91,6 +91,7 @@ export type MerchantBusinessRecord = {
   paymentModes: string[] | null;
   profileQrLink: string | null;
   rating: number | null;
+  googleRating: number | null;
   serviceCategory: string | null;
   timings: unknown;
   website: string | null;
@@ -259,12 +260,24 @@ function googleMapsLink(
   return `https://www.google.com/maps?q=${lat},${lng}`;
 }
 
+function formatTimeAmPm(value: string): string {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return value;
+  let hour = Number(match[1]);
+  const minute = match[2];
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return value;
+  const period = hour >= 12 ? "PM" : "AM";
+  hour = hour % 12;
+  if (hour === 0) hour = 12;
+  return `${hour}:${minute} ${period}`;
+}
+
 function formatTimings(timings: unknown): string {
   if (!timings || typeof timings !== "object") return "—";
   return WEEKDAYS.map((day) => {
     const slot = normalizeTimings(timings)[day];
     if (slot.isClosed) return `${day}: Closed`;
-    return `${day}: ${slot.open} – ${slot.close}`;
+    return `${day}: ${formatTimeAmPm(slot.open)} – ${formatTimeAmPm(slot.close)}`;
   }).join("\n");
 }
 
@@ -1385,6 +1398,11 @@ export default function MerchantDetailModal({
                     {isPlaceholderEmail(display.email) && (
                       <Chip tone="warning">Email missing</Chip>
                     )}
+                    {display.googleRating != null && (
+                      <Chip tone="warning">
+                        Google ★ {formatNumber(display.googleRating, 1)}
+                      </Chip>
+                    )}
                     {canViewFinancialData && (
                       <>
                         <Chip tone={statusTone(display.paymentStatus)}>
@@ -1605,8 +1623,16 @@ export default function MerchantDetailModal({
                       value={`${display.kycStatus || "pending"} (verification system not live)`}
                     />
                     <Row
-                      label="Rating"
+                      label="FinderB rating"
                       value={formatNumber(display.rating, 1)}
+                    />
+                    <Row
+                      label="Google rating"
+                      value={
+                        display.googleRating != null
+                          ? `${formatNumber(display.googleRating, 1)} ★`
+                          : "—"
+                      }
                     />
                     <Row
                       label="Joined"

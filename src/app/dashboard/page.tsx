@@ -244,6 +244,7 @@ interface BusinessData {
   paymentModes: string[] | null;
   profileQrLink: string | null;
   rating: number | null;
+  googleRating: number | null;
   serviceCategory: string | null;
   timings: unknown;
   website: string | null;
@@ -769,6 +770,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [merchantsNavOpen, setMerchantsNavOpen] = useState(true);
+  const [onboardChooserOpen, setOnboardChooserOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
@@ -2681,7 +2683,7 @@ export default function Dashboard() {
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("Business Onboarding")}
+              onClick={() => setOnboardChooserOpen(true)}
               className="admin-btn-primary !text-xs !py-2 !px-3.5"
             >
               Onboard business
@@ -2702,6 +2704,72 @@ export default function Dashboard() {
           {renderContent()}
         </main>
       </div>
+
+      {onboardChooserOpen && (
+        <div
+          className="admin-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="onboard-chooser-title"
+          onClick={() => setOnboardChooserOpen(false)}
+        >
+          <div
+            className="admin-modal max-w-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-card-header">
+              <div>
+                <h3 id="onboard-chooser-title" className="admin-card-title">
+                  How do you want to onboard?
+                </h3>
+                <p className="admin-card-description">
+                  Choose form-based registration or Quick Onboard.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="admin-btn-secondary !text-xs !py-1.5 !px-2.5"
+                onClick={() => setOnboardChooserOpen(false)}
+                aria-label="Close"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                className="group text-left rounded-xl border border-slate-200 bg-white px-4 py-4 hover:border-teal-300 hover:bg-teal-50/40 transition-colors"
+                onClick={() => {
+                  setOnboardChooserOpen(false);
+                  setActiveTab("Business Onboarding");
+                }}
+              >
+                <span className="block text-[13px] font-semibold text-slate-900 group-hover:text-teal-900">
+                  Form based
+                </span>
+                <span className="mt-1 block text-[12px] leading-snug text-slate-500">
+                  Full registration form — enter every field manually.
+                </span>
+              </button>
+              <button
+                type="button"
+                className="group text-left rounded-xl border border-slate-200 bg-white px-4 py-4 hover:border-teal-300 hover:bg-teal-50/40 transition-colors"
+                onClick={() => {
+                  setOnboardChooserOpen(false);
+                  setActiveTab("Quick Onboard");
+                }}
+              >
+                <span className="block text-[13px] font-semibold text-slate-900 group-hover:text-teal-900">
+                  Quick onboarding
+                </span>
+                <span className="mt-1 block text-[12px] leading-snug text-slate-500">
+                  Import from Google Maps link or paste AI JSON.
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

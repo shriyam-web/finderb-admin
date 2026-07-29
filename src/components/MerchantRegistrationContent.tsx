@@ -11,6 +11,7 @@ import {
 } from "../lib/merchantRegistration";
 import { getBusinessLoginUrl, getBusinessProfileUrl } from "../lib/site";
 import { isPlaceholderEmail } from "../lib/placeholderEmail";
+import { FormOnboardArt } from "./OnboardHeroArt";
 
 export type RegistrationCategory = {
   id: string;
@@ -102,28 +103,31 @@ function buildMerchantShareMessage(input: {
   const placeholderNote = isPlaceholderEmail(input.email)
     ? `
 
-Note: We created a temporary login email for you since none was available. Please share your real email with our team so we can update it. You can change your password anytime from your dashboard → Settings.`
+Temporary email note
+We used a temporary login email because none was available. Please share your real email with our team so we can update it. You can also change your password anytime from Dashboard → Settings.`
     : "";
   return `Hi ${name},
 
-Welcome to FinderB! Your merchant account for ${input.businessName} is ready.
+Welcome to FinderB — your merchant account for ${input.businessName} is ready.
 
-Login details
-• Merchant ID: ${input.registrationNumber}
-• Email: ${input.email}
-• Password: ${input.password}
-• Mobile: ${input.mobile}
+Your login details
+Merchant ID: ${input.registrationNumber}
+Email: ${input.email}
+Password: ${input.password}
+Mobile: ${input.mobile}
 
-Login here: ${input.loginUrl}${placeholderNote}
+Sign in here:
+${input.loginUrl}${placeholderNote}
 
-Quick start guide
-1. Open the login link above and sign in with your email & password.
-2. Complete your business profile (photos, about, timings, WhatsApp).
-3. Review your public listing and make sure contact details look right.
-4. When you're ready to grow, upgrade from Free/Starter after payment — your plan unlocks based on successful payment.
-5. Need help? Reply to this message and our team will assist you.
+Getting started
+1. Open the link above and sign in with your email and password.
+2. Complete your business profile — photos, about, working hours, and WhatsApp.
+3. Review your public listing and confirm contact details look right.
+4. When you want to grow, upgrade from Free/Starter after payment.
 
-We're excited to have ${input.businessName} on FinderB.
+Need help? Reply to this message and our team will assist you.
+
+Glad to have ${input.businessName} on FinderB.
 — Team FinderB`;
 }
 
@@ -478,40 +482,64 @@ export default function MerchantRegistrationContent({
   return (
     <div className="space-y-4">
       <div className="admin-platform-hero">
-        <div className="admin-page-header !mb-0">
-          <div>
-            <h1 className="admin-page-title">Business onboarding</h1>
-            <p className="admin-page-subtitle">
-              Create a Free/Starter merchant account from the admin console.
-              Paid plans unlock after payment.
+        <div className="admin-platform-hero-accent" aria-hidden />
+        <div className="admin-platform-hero-layout">
+          <div className="min-w-0">
+            <h1 className="admin-page-title !text-[1.35rem] sm:!text-[1.5rem]">
+              Create a merchant from scratch
+            </h1>
+            <p className="admin-page-subtitle !mt-1.5 !max-w-2xl">
+              Use the guided form when you already have the owner and business
+              details. Accounts start on Free/Starter; paid plans unlock after
+              payment.
             </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {[
-              { n: 1, label: "Account" },
-              { n: 2, label: "Business" },
-              { n: 3, label: "Share" },
-            ].map((item) => {
-              const active = step === item.n;
-              const done = step > item.n;
-              return (
-                <span
-                  key={item.n}
-                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-medium ${
-                    done
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                      : active
-                        ? "border-primary/25 bg-primary-50 text-primary"
-                        : "border-slate-200 bg-white text-slate-400"
-                  }`}
-                >
-                  <span className="tabular-nums font-semibold">
-                    {done ? "✓" : item.n}
+            <ul className="admin-platform-hero-points">
+              <li>
+                Enter owner login details — email, mobile, and a shareable
+                password.
+              </li>
+              <li>
+                Add business profile fields: name, category, address, and
+                contact info.
+              </li>
+              <li>
+                Create the account, then copy the welcome message to share with
+                the merchant.
+              </li>
+            </ul>
+            <div
+              className="admin-platform-hero-steps"
+              aria-label="Onboarding steps"
+            >
+              {[
+                { n: 1, label: "Account" },
+                { n: 2, label: "Business" },
+                { n: 3, label: "Share" },
+              ].map((item) => {
+                const active = step === item.n;
+                const done = step > item.n;
+                return (
+                  <span
+                    key={item.n}
+                    className={`admin-platform-hero-step ${
+                      done
+                        ? "admin-platform-hero-step-done"
+                        : active
+                          ? "admin-platform-hero-step-active"
+                          : ""
+                    }`}
+                  >
+                    <span className="admin-platform-hero-step-num">
+                      {done ? "✓" : item.n}
+                    </span>
+                    {item.label}
                   </span>
-                  {item.label}
-                </span>
-              );
-            })}
+                );
+              })}
+            </div>
+          </div>
+          <div className="admin-platform-hero-art">
+            <FormOnboardArt />
           </div>
         </div>
       </div>
