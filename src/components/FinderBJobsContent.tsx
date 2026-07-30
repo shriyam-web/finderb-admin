@@ -2,6 +2,12 @@
 
 import { Dispatch, SetStateAction, useMemo, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
+import {
+  ListSearchInput,
+  ListSelect,
+  PaginationControls,
+  useClientPage,
+} from "./AdminListControls";
 
 export interface FinderBJob {
   id: string;
@@ -79,6 +85,7 @@ export default function FinderBJobsContent({
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<JobStatus | "all">("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [selectedJob, setSelectedJob] = useState<FinderBJob | null>(null);
   const [rejectingJob, setRejectingJob] = useState<FinderBJob | null>(null);
   const [reason, setReason] = useState("");
@@ -92,6 +99,11 @@ export default function FinderBJobsContent({
     }),
     [jobs],
   );
+
+  const jobTypes = useMemo(() => {
+    const set = new Set(jobs.map((j) => j.type).filter(Boolean));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [jobs]);
 
   const filteredJobs = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -111,10 +123,18 @@ export default function FinderBJobsContent({
 
       const matchesSearch = term.length === 0 || searchableText.includes(term);
       const matchesStatus = statusFilter === "all" || status === statusFilter;
+      const matchesType = typeFilter === "all" || job.type === typeFilter;
 
-      return matchesSearch && matchesStatus;
+      return matchesSearch && matchesStatus && matchesType;
     });
-  }, [jobs, searchTerm, statusFilter]);
+  }, [jobs, searchTerm, statusFilter, typeFilter]);
+
+  const { page, setPage, totalPages, pageItems, pageSize, total } =
+    useClientPage(
+      filteredJobs,
+      10,
+      `${searchTerm}|${statusFilter}|${typeFilter}`,
+    );
 
   const updateLocalJob = (id: string, updates: Partial<FinderBJob>) => {
     setJobs((prev) =>
@@ -215,60 +235,50 @@ export default function FinderBJobsContent({
     setReason(job.rejection_reason || "");
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 px-1">
-        <div>
-          <h1 className="admin-page-title">FinderB Jobs Approval</h1>
-          <p className="admin-page-subtitle">
-            Review submitted jobs and approve or reject them with a reason.
-          </p>
-        </div>
+  const handleDelete = async (job: FinderBJob) => {
+    const label = job.title || "this job";
+    if (
+      !confirm(
+        `Delete "${label}"? This permanently removes it from FinderB Jobs.`,
+      )
+    ) {
+      return;
+    }
 
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            {
-              label: "Pending",
-              value: stats.pending,
-              color: "bg-amber-50 text-amber-700 border-amber-100",
-            },
-            {
-              label: "Approved",
-              value: stats.approved,
-              color: "bg-emerald-50 text-emerald-700 border-emerald-100",
-            },
-            {
-              label: "Rejected",
-              value: stats.rejected,
-              color: "bg-rose-50 text-rose-700 border-rose-100",
-            },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className={`px-4 py-3 rounded-2xl border ${item.color}`}
-            >
-              <p className="text-[9px] font-medium tracking-[0.2em] opacity-80">
-                {item.label}
-              </p>
-              <p className="text-lg font-semibold tabular-nums leading-none mt-1">
-                {item.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
+    setIsSaving(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("jobs").delete().eq("id", job.id);
+      if (error) throw error;
 
-      <div className="bg-white p-4 rounded-xl border border-slate-200/60 flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 min-w-[240px]">
-          <input
-            type="text"
-            placeholder="Search by title, location, business, or description..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-          />
+      setJobs((prev) => prev.filter((j) => j.id !== job.id));
+      if (selectedJob?.id === job.id) setSelectedJob(null);
+      if (rejectingJob?.id === job.id) {
+        setRejectingJob(null);
+        setReason("");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      alert(`Failed to delete job: ${message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const renderRowActions = (job: FinderBJob) => {
+    const status = getJobStatus(job);
+    const decided = status === "approved" || status === "rejected";
+
+    return (
+      <div className="flex items-center justify-end gap-1.5">
+        <button
+          type="button"
+          onClick={() => setSelectedJob(job)}
+          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-all border border-slate-100"
+          title="View details"
+        >
           <svg
-            className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
+            className="w-4 h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -277,223 +287,286 @@ export default function FinderBJobsContent({
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
             />
           </svg>
+        </button>
+
+        {decided ? (
+          <button
+            type="button"
+            onClick={() => handleDelete(job)}
+            disabled={isSaving}
+            className="w-8 h-8 flex items-center justify-center text-rose-600 hover:bg-rose-50 rounded-lg transition-all border border-slate-100 disabled:opacity-40"
+            title="Delete job"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => handleApprove(job)}
+              disabled={isSaving}
+              className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-slate-100 disabled:opacity-40"
+              title="Approve"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleOpenReject(job)}
+              disabled={isSaving}
+              className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-lg transition-all border border-slate-100 disabled:opacity-40"
+              title="Reject"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4 font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-0.5">
+        <div>
+          <h1 className="admin-page-title">FinderB Jobs</h1>
+          <p className="admin-page-subtitle">
+            Review submitted jobs and approve or reject with a reason.
+          </p>
         </div>
 
-        <select
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            {
+              label: "Pending",
+              value: stats.pending,
+              color: "bg-amber-50 text-amber-800 border-amber-100",
+            },
+            {
+              label: "Approved",
+              value: stats.approved,
+              color: "bg-emerald-50 text-emerald-800 border-emerald-100",
+            },
+            {
+              label: "Rejected",
+              value: stats.rejected,
+              color: "bg-rose-50 text-rose-800 border-rose-100",
+            },
+          ].map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              onClick={() =>
+                setStatusFilter(
+                  item.label.toLowerCase() as JobStatus,
+                )
+              }
+              className={`px-3 py-2 rounded-xl border text-left ${item.color}`}
+            >
+              <p className="text-[11px] font-medium opacity-80">{item.label}</p>
+              <p className="text-base font-semibold tabular-nums leading-none mt-1">
+                {item.value}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-2">
+        <ListSearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Search title, location, business…"
+        />
+        <ListSelect
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as JobStatus | "all")}
-          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-w-[160px]"
+          onChange={(v) => setStatusFilter(v as JobStatus | "all")}
         >
-          <option value="all">All Status</option>
+          <option value="all">All status</option>
           <option value="pending">Pending</option>
           <option value="approved">Approved</option>
           <option value="rejected">Rejected</option>
-        </select>
+        </ListSelect>
+        <ListSelect value={typeFilter} onChange={setTypeFilter}>
+          <option value="all">All types</option>
+          {jobTypes.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </ListSelect>
       </div>
 
       <div className="admin-card">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50/50 border-b border-slate-100">
+            <thead className="bg-slate-50/80 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500">
                   Job
                 </th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500">
                   Business
                 </th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500">
                   Type
                 </th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500">
                   Status
                 </th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500">
                   Reviewed
                 </th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] text-right whitespace-nowrap">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500 text-right">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50/80">
-              {filteredJobs.map((job) => {
+            <tbody className="divide-y divide-slate-100">
+              {pageItems.map((job) => {
                 const status = getJobStatus(job);
 
                 return (
                   <tr
                     key={job.id}
-                    className="hover:bg-primary/[0.01] transition-colors group"
+                    className="hover:bg-slate-50/80 transition-colors group"
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="min-w-0">
-                        <p className="text-[11px] font-medium text-slate-900 tracking-tight truncate">
+                        <p className="text-sm font-medium text-slate-900 truncate">
                           {job.title}
                         </p>
-                        <p className="text-[9px] text-slate-500 mt-0.5 truncate">
+                        <p className="text-xs text-slate-500 mt-0.5 truncate">
                           {job.location}
                         </p>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center text-[10px] font-semibold text-teal-700 shrink-0">
                           {initials(job.business_name || job.business_id)}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[11px] font-medium text-slate-900 truncate">
+                          <p className="text-sm font-medium text-slate-900 truncate">
                             {job.business_name || "Unknown Business"}
                           </p>
-                          <p className="text-[9px] text-slate-500 truncate">
+                          <p className="text-xs text-slate-400 truncate">
                             {job.business_id}
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-secondary font-medium text-[9px] border border-slate-100 w-fit">
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-50 text-slate-700 text-xs font-medium border border-slate-100 w-fit">
                           {job.type}
                         </span>
                         {job.department && (
-                          <span className="text-[9px] text-slate-400">
+                          <span className="text-xs text-slate-400">
                             {job.department}
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <span
-                        className={`px-2.5 py-1 rounded-lg text-[9px] font-medium uppercase tracking-widest border ${
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-medium capitalize ${
                           status === "approved"
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                            ? "bg-emerald-50 text-emerald-700"
                             : status === "rejected"
-                              ? "bg-rose-50 text-rose-600 border-rose-100"
-                              : "bg-amber-50 text-amber-600 border-amber-100"
+                              ? "bg-rose-50 text-rose-700"
+                              : "bg-amber-50 text-amber-700"
                         }`}
                       >
                         {status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex flex-col">
-                        <span className="text-[10px] text-slate-600 tabular-nums">
+                        <span className="text-xs text-slate-600 tabular-nums">
                           {formatDateTime(job.reviewed_at || job.updated_at)}
                         </span>
                         {job.rejection_reason && (
-                          <span className="text-[9px] text-rose-500 mt-0.5 max-w-[220px] truncate">
-                            Reason: {job.rejection_reason}
+                          <span className="text-xs text-rose-500 mt-0.5 max-w-[220px] truncate">
+                            {job.rejection_reason}
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => setSelectedJob(job)}
-                          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/20 rounded-xl transition-all border border-slate-100"
-                          title="View details"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                            />
-                          </svg>
-                        </button>
-
-                        <button
-                          onClick={() => handleApprove(job)}
-                          disabled={isSaving || status === "approved"}
-                          className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all border border-slate-100 hover:border-emerald-200 disabled:opacity-40"
-                          title="Approve"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2.5"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        </button>
-
-                        <button
-                          onClick={() => handleOpenReject(job)}
-                          disabled={isSaving || status === "rejected"}
-                          className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-slate-100 hover:border-rose-200 disabled:opacity-40"
-                          title="Reject"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
-                      </div>
+                    <td className="px-4 py-3 text-right">
+                      {renderRowActions(job)}
                     </td>
                   </tr>
                 );
               })}
 
-              {filteredJobs.length === 0 && (
+              {pageItems.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-14 text-center">
-                    <div className="flex flex-col items-center opacity-35">
-                      <div className="w-14 h-14 rounded-xl bg-slate-50 flex items-center justify-center mb-4">
-                        <svg
-                          className="w-7 h-7 text-slate-300"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="1.5"
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                      </div>
-                      <p className="text-[10px] font-medium tracking-[0.2em] text-slate-400">
-                        No jobs found
-                      </p>
-                    </div>
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <p className="text-sm text-slate-500">No jobs found</p>
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+        {filteredJobs.length > 0 && (
+          <div className="px-4 py-3 border-t border-slate-100">
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          </div>
+        )}
       </div>
 
       {selectedJob && (
@@ -597,30 +670,46 @@ export default function FinderBJobsContent({
 
             <div className="px-8 py-6 border-t border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-end gap-3">
               <button
+                type="button"
                 onClick={() => setSelectedJob(null)}
-                className="px-6 py-2.5 text-[10px] font-medium text-slate-500 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-200"
+                className="px-6 py-2.5 text-sm font-medium text-slate-500 hover:bg-white rounded-xl transition-all border border-transparent hover:border-slate-200"
               >
                 Close
               </button>
 
-              <button
-                onClick={() => {
-                  setSelectedJob(null);
-                  handleOpenReject(selectedJob);
-                }}
-                disabled={isSaving || getJobStatus(selectedJob) === "rejected"}
-                className="px-6 py-2.5 text-[10px] font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all disabled:opacity-40"
-              >
-                Reject
-              </button>
+              {getJobStatus(selectedJob) === "pending" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedJob(null);
+                      handleOpenReject(selectedJob);
+                    }}
+                    disabled={isSaving}
+                    className="px-6 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all disabled:opacity-40"
+                  >
+                    Reject
+                  </button>
 
-              <button
-                onClick={() => handleApprove(selectedJob)}
-                disabled={isSaving || getJobStatus(selectedJob) === "approved"}
-                className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-[0.98] disabled:opacity-40"
-              >
-                Approve Job
-              </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApprove(selectedJob)}
+                    disabled={isSaving}
+                    className="px-8 py-2.5 bg-teal-700 text-white text-sm font-medium rounded-xl hover:bg-teal-800 transition-all disabled:opacity-40"
+                  >
+                    Approve Job
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleDelete(selectedJob)}
+                  disabled={isSaving}
+                  className="px-6 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all disabled:opacity-40"
+                >
+                  Delete job
+                </button>
+              )}
             </div>
           </div>
         </div>

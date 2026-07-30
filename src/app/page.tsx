@@ -42,6 +42,7 @@ export default function Home() {
           email: string;
           role: string;
           allowed_tabs: string[] | null;
+          displayName?: string | null;
         };
       };
 
@@ -58,6 +59,7 @@ export default function Home() {
           role: result.admin.role,
           id: result.admin.id,
           allowed_tabs: result.admin.allowed_tabs,
+          displayName: result.admin.displayName ?? null,
         }),
       );
 
@@ -70,29 +72,40 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-[#f5f7fa]">
-      <div className="hidden lg:flex lg:w-[46%] relative overflow-hidden border-r border-slate-200 bg-white">
+      <div className="hidden lg:flex lg:w-[46%] relative overflow-hidden border-r border-slate-800 bg-slate-950 text-white">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-40"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(45,212,191,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(45,212,191,0.1) 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+          }}
+        />
+        <div className="pointer-events-none absolute -right-20 top-10 h-72 w-72 rounded-full bg-teal-400/20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-cyan-500/15 blur-3xl" />
         <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
           <div>
             <Image
               src="/logo1.png"
               alt="FinderB"
-              width={150}
-              height={44}
-              className="object-contain"
+              width={168}
+              height={48}
+              className="object-contain drop-shadow-[0_0_24px_rgba(45,212,191,0.3)]"
               priority
             />
-            <p className="mt-3 text-[11px] font-semibold tracking-[0.16em] uppercase text-slate-400">
-              Admin panel
-            </p>
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/10 px-2.5 py-1 text-[11px] font-medium text-teal-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-300 animate-pulse" />
+              Control deck · secure access
+            </div>
           </div>
 
           <div className="space-y-8 max-w-md">
             <div>
-              <h2 className="text-3xl xl:text-4xl font-bold leading-tight tracking-tight text-slate-900">
+              <h2 className="text-3xl xl:text-4xl font-semibold leading-tight tracking-tight text-white">
                 Operate FinderB with clarity and speed.
               </h2>
-              <p className="text-slate-500 text-base leading-relaxed mt-4 font-medium">
-                Merchants, teams, payments, and content — one calm, high-signal
+              <p className="text-slate-300 text-base leading-relaxed mt-4">
+                Merchants, teams, payments, and content — one high-signal
                 console for your ops team.
               </p>
             </div>
@@ -105,20 +118,18 @@ export default function Home() {
               ].map((item) => (
                 <div
                   key={item.label}
-                  className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3"
+                  className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-3"
                 >
-                  <p className="text-sm font-bold text-slate-900">
+                  <p className="text-sm font-semibold text-white">
                     {item.label}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                    {item.desc}
-                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <p className="text-xs text-slate-400 font-medium">
+          <p className="text-xs text-slate-500">
             &copy; {new Date().getFullYear()} FinderB Technologies · Authorized
             personnel only
           </p>
@@ -127,7 +138,7 @@ export default function Home() {
 
       <div className="flex flex-1 items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-[420px]">
-          <div className="lg:hidden flex flex-col items-center mb-10">
+          <div className="lg:hidden flex flex-col items-center mb-10 rounded-2xl bg-slate-950 px-6 py-5 border border-slate-800">
             <Image
               src="/logo1.png"
               alt="FinderB"
@@ -136,8 +147,8 @@ export default function Home() {
               className="object-contain"
               priority
             />
-            <p className="mt-2 text-xs font-semibold tracking-widest uppercase text-slate-500">
-              Admin panel
+            <p className="mt-2 text-[11px] font-semibold tracking-[0.16em] uppercase text-teal-200/80">
+              Control deck
             </p>
           </div>
 

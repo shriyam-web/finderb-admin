@@ -18,6 +18,8 @@ export function resolvePlanPresetId(selectedPlan: string, billingCycle: string):
   const plan = selectedPlan.toLowerCase();
   const cycle = billingCycle.toLowerCase();
   if (plan === "free" || plan === "starter") return "starter";
+  if (plan === "pro") return "pro_annual";
+  if (plan === "growth") return "growth_monthly";
   if (cycle === "annual") return "pro_annual";
   return "growth_monthly";
 }

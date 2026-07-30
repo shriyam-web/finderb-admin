@@ -37,13 +37,42 @@ export async function POST(request: Request) {
 
     const supabase = getSupabase();
 
-    // Look up by email only — never filter by password in SQL
-    // (passwords may be scrypt-hashed; .single() caused HTTP 406 on 0 rows).
-    const { data: admin, error } = await supabase
-      .from("admins")
-      .select("id, email, password, role, is_disabled, allowed_tabs")
-      .ilike("email", email)
-      .maybeSingle();
+    const baseFields =
+      "id, email, password, role, is_disabled, allowed_tabs";
+
+    type AdminLoginRow = {
+      id: string;
+      email: string;
+      password: string;
+      role: string;
+      is_disabled: boolean | null;
+      allowed_tabs: string[] | null;
+      display_name?: string | null;
+    };
+
+    // Prefer display_name when the column exists (db/add_admin_display_name.sql).
+    let admin: AdminLoginRow | null = null;
+    let error: { message: string } | null = null;
+
+    {
+      const primary = await supabase
+        .from("admins")
+        .select(`${baseFields}, display_name`)
+        .ilike("email", email)
+        .maybeSingle();
+      admin = primary.data as AdminLoginRow | null;
+      error = primary.error;
+    }
+
+    if (error && /display_name/i.test(error.message || "")) {
+      const fallback = await supabase
+        .from("admins")
+        .select(baseFields)
+        .ilike("email", email)
+        .maybeSingle();
+      admin = fallback.data as AdminLoginRow | null;
+      error = fallback.error;
+    }
 
     if (error) {
       console.error("[admin login] lookup failed:", error.message);
@@ -100,6 +129,8 @@ export async function POST(request: Request) {
       console.error("[admin login] log failed:", logError.message);
     }
 
+    const displayName = admin.display_name?.trim() || null;
+
     return NextResponse.json({
       success: true,
       admin: {
@@ -107,6 +138,7 @@ export async function POST(request: Request) {
         email: admin.email,
         role: admin.role,
         allowed_tabs: admin.allowed_tabs ?? null,
+        displayName,
       },
     });
   } catch (error) {

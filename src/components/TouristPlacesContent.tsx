@@ -10,6 +10,12 @@ import {
 } from "react";
 import { createClient } from "../../utils/supabase/client";
 import { uploadToCloudinary } from "../utils/cloudinary";
+import {
+  ListSearchInput,
+  ListSelect,
+  PaginationControls,
+  useClientPage,
+} from "./AdminListControls";
 
 export type TouristPlaceRecord = {
   id: string;
@@ -98,6 +104,14 @@ export default function TouristPlacesContent({
   const [merchantSearch, setMerchantSearch] = useState("");
   const [saving, setSaving] = useState(false);
   const [tagCounts, setTagCounts] = useState<Record<string, number>>({});
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [partnerFilter, setPartnerFilter] = useState<
+    "all" | "tagged" | "untagged"
+  >("all");
+  const [imageFilter, setImageFilter] = useState<"all" | "has" | "missing">(
+    "all",
+  );
 
   const travelMerchants = useMemo(
     () =>
@@ -158,6 +172,46 @@ export default function TouristPlacesContent({
   useEffect(() => {
     loadPlaces();
   }, [loadPlaces]);
+
+  const placeCategories = useMemo(() => {
+    const set = new Set(
+      places.map((p) => p.category).filter((c): c is string => Boolean(c)),
+    );
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [places]);
+
+  const filteredPlaces = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return places.filter((place) => {
+      if (categoryFilter !== "all" && place.category !== categoryFilter) {
+        return false;
+      }
+      const tags = tagCounts[place.id] ?? 0;
+      if (partnerFilter === "tagged" && tags === 0) return false;
+      if (partnerFilter === "untagged" && tags > 0) return false;
+      const hasImage = Boolean(place.image_url);
+      if (imageFilter === "has" && !hasImage) return false;
+      if (imageFilter === "missing" && hasImage) return false;
+      if (!q) return true;
+      const hay = [
+        place.name,
+        place.location,
+        place.category,
+        place.description,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [places, search, categoryFilter, partnerFilter, imageFilter, tagCounts]);
+
+  const { page, setPage, totalPages, pageItems, pageSize, total } =
+    useClientPage(
+      filteredPlaces,
+      12,
+      `${search}|${categoryFilter}|${partnerFilter}|${imageFilter}`,
+    );
 
   const loadTagsForPlace = async (placeId: string) => {
     const supabase = createClient();
@@ -655,12 +709,12 @@ export default function TouristPlacesContent({
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 px-1 sm:flex-row sm:items-center">
+    <div className="space-y-4 font-sans">
+      <div className="flex flex-col justify-between gap-3 px-0.5 sm:flex-row sm:items-end">
         <div>
-          <h1 className="admin-page-title">Tourist Places in India</h1>
+          <h1 className="admin-page-title">Tourist Places</h1>
           <p className="admin-page-subtitle">
-            Edit destination details and tag Tour &amp; Travels merchants for each place.
+            Destinations and tagged Tour &amp; Travels partners.
           </p>
         </div>
         {!isAddingPlace && !editingPlace && (
@@ -672,15 +726,15 @@ export default function TouristPlacesContent({
               setNewPlace({ ...EMPTY_PLACE });
               setIsAddingPlace(true);
             }}
-            className="rounded-xl bg-primary px-4 py-2 text-[10px] font-medium text-white hover:bg-primary-700"
+            className="rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-teal-800"
           >
-            Add New Place
+            Add place
           </button>
         )}
       </div>
 
       {error ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
           {error}
         </div>
       ) : null}
@@ -689,65 +743,115 @@ export default function TouristPlacesContent({
       {editingPlace && renderPlaceForm(editingPlace, setEditingPlace, true)}
 
       {loading ? (
-        <div className="admin-card px-5 py-10 text-center text-sm text-slate-500">
+        <div className="rounded-xl border border-slate-200 bg-white px-5 py-10 text-center text-sm text-slate-500">
           Loading tourist places…
         </div>
       ) : !isAddingPlace && !editingPlace ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {places.map((place) => (
-            <div
-              key={place.id}
-              className="group rounded-xl border border-slate-200/60 bg-white p-4"
+        <div className="space-y-3">
+          <div className="flex flex-col lg:flex-row gap-2">
+            <ListSearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search name, location, category…"
+            />
+            <ListSelect value={categoryFilter} onChange={setCategoryFilter}>
+              <option value="all">All categories</option>
+              {placeCategories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </ListSelect>
+            <ListSelect
+              value={partnerFilter}
+              onChange={(v) =>
+                setPartnerFilter(v as "all" | "tagged" | "untagged")
+              }
             >
-              <div className="relative mb-4 aspect-video overflow-hidden rounded-xl bg-slate-100">
-                {place.image_url ? (
-                  <img
-                    src={place.image_url}
-                    className="h-full w-full object-cover"
-                    alt={place.name}
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-slate-300">
-                    No image
-                  </div>
-                )}
-                <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(place)}
-                    className="rounded-lg bg-white/90 p-1.5 text-slate-600 hover:text-primary"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(place.id, place.name)}
-                    className="rounded-lg bg-white/90 p-1.5 text-rose-600"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-              <h3 className="mb-1 truncate text-[11px] font-medium text-slate-900">
-                {place.name}
-              </h3>
-              <p className="mb-1 text-[9px] font-medium text-secondary">
-                {place.location}
-              </p>
-              <p className="line-clamp-2 text-[9px] text-slate-400">
-                {place.description}
-              </p>
-              <p className="mt-2 text-[9px] font-medium text-sky-700">
-                {tagCounts[place.id] ?? 0} travel partner
-                {(tagCounts[place.id] ?? 0) === 1 ? "" : "s"}
-              </p>
-            </div>
-          ))}
+              <option value="all">All partners</option>
+              <option value="tagged">Has partners</option>
+              <option value="untagged">No partners</option>
+            </ListSelect>
+            <ListSelect
+              value={imageFilter}
+              onChange={(v) => setImageFilter(v as "all" | "has" | "missing")}
+            >
+              <option value="all">All images</option>
+              <option value="has">Has image</option>
+              <option value="missing">Missing image</option>
+            </ListSelect>
+          </div>
 
-          {places.length === 0 && (
-            <div className="col-span-full flex flex-col items-center rounded-xl border border-slate-200/60 bg-white py-24 opacity-40">
-              <p className="text-[10px] font-medium tracking-[0.3em] text-slate-400">
-                No tourist places found
+          {filteredPlaces.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {pageItems.map((place) => (
+                  <div
+                    key={place.id}
+                    className="group overflow-hidden rounded-xl border border-slate-200 bg-white"
+                  >
+                    <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
+                      {place.image_url ? (
+                        <img
+                          src={place.image_url}
+                          className="h-full w-full object-cover"
+                          alt={place.name}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                          No image
+                        </div>
+                      )}
+                      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(place)}
+                          className="rounded-md bg-white/95 px-2 py-1 text-xs font-medium text-slate-700 hover:text-teal-700"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(place.id, place.name)}
+                          className="rounded-md bg-white/95 px-2 py-1 text-xs font-medium text-rose-600"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <h3 className="truncate text-sm font-semibold text-slate-900">
+                        {place.name}
+                      </h3>
+                      <p className="mt-0.5 truncate text-xs text-slate-500">
+                        {place.location}
+                        {place.category ? ` · ${place.category}` : ""}
+                      </p>
+                      <p className="mt-1.5 line-clamp-2 text-xs text-slate-400 leading-relaxed">
+                        {place.description || "No description"}
+                      </p>
+                      <p className="mt-2 text-xs font-medium text-teal-700 tabular-nums">
+                        {tagCounts[place.id] ?? 0} travel partner
+                        {(tagCounts[place.id] ?? 0) === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                pageSize={pageSize}
+                onPageChange={setPage}
+              />
+            </>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white py-14 text-center">
+              <p className="text-sm font-medium text-slate-700">
+                {places.length === 0
+                  ? "No tourist places found"
+                  : "No places match your filters"}
               </p>
             </div>
           )}

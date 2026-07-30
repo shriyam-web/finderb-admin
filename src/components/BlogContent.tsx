@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Dispatch, SetStateAction } from "react";
+import React, { useMemo, useState, Dispatch, SetStateAction } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -21,7 +21,6 @@ import {
   Save,
   Send,
   ChevronLeft,
-  Calendar,
   User,
   Tag,
   FileText,
@@ -30,6 +29,12 @@ import {
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import {
+  ListSearchInput,
+  ListSelect,
+  PaginationControls,
+  useClientPage,
+} from "./AdminListControls";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -261,6 +266,34 @@ export function BlogContent({
     published_at: null,
   });
   const [uploading, setUploading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "draft" | "published">(
+    "all",
+  );
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
+  const categories = useMemo(() => {
+    const set = new Set(blogs.map((b) => b.category).filter(Boolean));
+    return ["General", "News", "Tutorial", "Review", "Business", ...set].filter(
+      (v, i, arr) => arr.indexOf(v) === i,
+    );
+  }, [blogs]);
+
+  const filteredBlogs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return blogs.filter((b) => {
+      if (statusFilter !== "all" && b.status !== statusFilter) return false;
+      if (categoryFilter !== "all" && b.category !== categoryFilter)
+        return false;
+      if (!q) return true;
+      const hay = `${b.title} ${b.excerpt} ${b.author} ${b.category} ${b.slug}`
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [blogs, search, statusFilter, categoryFilter]);
+
+  const { page, setPage, totalPages, pageItems, pageSize, total } =
+    useClientPage(filteredBlogs, 9, `${search}|${statusFilter}|${categoryFilter}`);
 
   const handleSave = async () => {
     if (editingBlog) {
@@ -515,7 +548,7 @@ export function BlogContent({
   );
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen font-sans">
       {isAddingBlog || editingBlog ? (
         renderBlogForm(
           isAddingBlog ? newItem : editingBlog!,
@@ -523,127 +556,163 @@ export function BlogContent({
           !!editingBlog,
         )
       ) : (
-        <div className="space-y-8 animate-in fade-in duration-700">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-            <div className="space-y-1">
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-                Blog Articles
-              </h1>
-              <p className="text-[12px] text-slate-500 font-medium tracking-[0.2em]">
-                Manage and curate your professional content.
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div>
+              <h1 className="admin-page-title">Blog Articles</h1>
+              <p className="admin-page-subtitle">
+                Manage and curate FinderB content.
               </p>
             </div>
             <button
+              type="button"
               onClick={() => setIsAddingBlog(true)}
-              className="px-6 py-3 bg-slate-900 text-white text-[11px] font-bold rounded-full hover:bg-slate-800 transition-all flex items-center gap-2"
+              className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-teal-800"
             >
-              <FileText size={16} />
-              Write New Article
+              <FileText size={15} />
+              Write article
             </button>
           </div>
 
-          {blogs.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {blogs.map((blog) => (
-                <div
-                  key={blog.id}
-                  className="group bg-white rounded-[32px] border border-slate-200/60 overflow-hidden transition-all duration-500 flex flex-col"
-                >
-                  <div className="relative aspect-[16/10] overflow-hidden bg-slate-100">
-                    {blog.image_url ? (
-                      <img
-                        src={blog.image_url}
-                        className="w-full h-full object-cover transition-transform duration-700"
-                        alt={blog.title}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <FileText size={48} className="text-slate-200" />
-                      </div>
-                    )}
-                    <div className="absolute top-4 left-4">
+          <div className="flex flex-col lg:flex-row gap-2">
+            <ListSearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search title, author, category…"
+            />
+            <ListSelect
+              value={statusFilter}
+              onChange={(v) =>
+                setStatusFilter(v as "all" | "draft" | "published")
+              }
+            >
+              <option value="all">All status</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+            </ListSelect>
+            <ListSelect
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+            >
+              <option value="all">All categories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </ListSelect>
+          </div>
+
+          {filteredBlogs.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                {pageItems.map((blog) => (
+                  <div
+                    key={blog.id}
+                    className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white"
+                  >
+                    <div className="relative aspect-[16/9] overflow-hidden bg-slate-100">
+                      {blog.image_url ? (
+                        <img
+                          src={blog.image_url}
+                          className="h-full w-full object-cover"
+                          alt={blog.title}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <FileText size={28} className="text-slate-300" />
+                        </div>
+                      )}
                       <span
                         className={cn(
-                          "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest backdrop-blur-md",
+                          "absolute left-2 top-2 rounded-full px-2 py-0.5 text-[11px] font-medium capitalize",
                           blog.status === "published"
-                            ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
-                            : "bg-amber-500/10 text-amber-600 border border-amber-500/20",
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-amber-50 text-amber-700",
                         )}
                       >
                         {blog.status}
                       </span>
+                      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => setEditingBlog(blog)}
+                          className="rounded-md bg-white/95 p-1.5 text-slate-700 hover:text-teal-700"
+                          title="Edit"
+                        >
+                          <Eye size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm("Delete article?"))
+                              onDeleteBlog(blog.id);
+                          }}
+                          className="rounded-md bg-white/95 p-1.5 text-rose-600"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="absolute bottom-4 right-4 flex gap-2 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                      <button
-                        onClick={() => setEditingBlog(blog)}
-                        className="p-2.5 bg-white text-slate-900 rounded-full hover:bg-primary hover:text-white transition-all "
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm("Delete article?")) onDeleteBlog(blog.id);
-                        }}
-                        className="p-2.5 bg-white text-rose-500 rounded-full hover:bg-rose-500 hover:text-white transition-all "
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
 
-                  <div className="p-8 flex-1 flex flex-col">
-                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-400 mb-3">
-                      <span>{blog.category}</span>
-                      <span className="w-1 h-1 bg-slate-300 rounded-full" />
-                      <span>
+                    <div className="flex flex-1 flex-col p-3.5">
+                      <p className="text-xs text-slate-500 mb-1">
+                        {blog.category}
+                        <span className="mx-1.5 text-slate-300">·</span>
                         {new Date(blog.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-900 leading-tight mb-3 group-hover:text-primary transition-colors line-clamp-2">
-                      {blog.title}
-                    </h3>
-                    <p className="text-[12px] text-slate-500 leading-relaxed mb-6 line-clamp-2">
-                      {blog.excerpt || "No summary provided."}
-                    </p>
-
-                    <div className="mt-auto pt-6 border-t border-slate-50 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400">
-                          {blog.author.charAt(0)}
-                        </div>
-                        <span className="text-[11px] font-semibold text-slate-700">
+                      </p>
+                      <h3 className="text-sm font-semibold text-slate-900 leading-snug line-clamp-2">
+                        {blog.title}
+                      </h3>
+                      <p className="mt-1.5 text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                        {blog.excerpt || "No summary provided."}
+                      </p>
+                      <div className="mt-auto flex items-center justify-between gap-2 pt-3 border-t border-slate-100 mt-3">
+                        <span className="truncate text-xs font-medium text-slate-600">
                           {blog.author}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingBlog(blog)}
+                          className="text-xs font-medium text-teal-700 hover:underline"
+                        >
+                          Edit
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setEditingBlog(blog)}
-                        className="text-[10px] font-bold text-primary hover:underline"
-                      >
-                        Edit Article
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-32 flex flex-col items-center justify-center bg-white rounded-[40px] border border-slate-200/60 border-dashed">
-              <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mb-6">
-                <FileText size={32} className="text-slate-200" />
+                ))}
               </div>
-              <h3 className="text-xl font-bold text-slate-900 mb-2">
-                No articles found
-              </h3>
-              <p className="text-slate-500 text-sm mb-8">
-                Start sharing your thoughts with the world.
+              <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                pageSize={pageSize}
+                onPageChange={setPage}
+              />
+            </>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white py-16 text-center">
+              <p className="text-sm font-medium text-slate-700">
+                {blogs.length === 0
+                  ? "No articles yet"
+                  : "No articles match your filters"}
               </p>
-              <button
-                onClick={() => setIsAddingBlog(true)}
-                className="px-8 py-3 bg-slate-900 text-white text-[11px] font-medium rounded-full hover:bg-slate-800 transition-all"
-              >
-                Create First Article
-              </button>
+              <p className="mt-1 text-xs text-slate-500">
+                {blogs.length === 0
+                  ? "Start sharing content with FinderB readers."
+                  : "Try a different search or clear filters."}
+              </p>
+              {blogs.length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingBlog(true)}
+                  className="mt-4 rounded-lg bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+                >
+                  Create first article
+                </button>
+              )}
             </div>
           )}
         </div>

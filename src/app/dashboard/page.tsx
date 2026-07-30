@@ -22,12 +22,19 @@ import TouristPlacesContent from "../../components/TouristPlacesContent";
 import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
+import AdminProfileModal from "../../components/AdminProfileModal";
+import {
+  ListSearchInput,
+  ListSelect,
+  PaginationControls,
+  useClientPage,
+} from "../../components/AdminListControls";
 import { useAdminToast } from "../../components/AdminToast";
 import MerchantRegistrationContent from "../../components/MerchantRegistrationContent";
 import QuickOnboardContent from "../../components/QuickOnboardContent";
 import ManageAdminsContent from "../../components/ManageAdminsContent";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
-import { planLabel } from "../../lib/merchantPlanAdmin";
+import { planLabel, MERCHANT_PLAN_PRESETS, resolvePlanPresetId } from "../../lib/merchantPlanAdmin";
 import {
   classifyStoredPassword,
   formatRevealedPassword,
@@ -45,6 +52,7 @@ import {
   isProfileLeadSource,
   leadBadgeClassName,
 } from "../../lib/leadBadges";
+import { countPartnersForCategory } from "../../lib/categoryLabel";
 import {
   formatActivityDate,
   formatActivityTime,
@@ -87,6 +95,7 @@ interface AdminSession {
   email: string;
   role: string;
   allowed_tabs?: string[];
+  displayName?: string | null;
 }
 
 /**
@@ -271,6 +280,46 @@ interface Category {
   position_4_business_id?: string | null;
   position_5_business_id?: string | null;
   position?: number;
+}
+
+function getCategoryConfiguredSlots(cat: Category) {
+  const configured = Math.min(Math.max(cat.fixedSlots || 0, 0), 5);
+  // Form always exposes 5 partner spots; if fixedSlots isn't set, treat capacity as 5.
+  return configured > 0 ? configured : 5;
+}
+
+function getCategoryPositionBookedSlots(cat: Category) {
+  const capacity = getCategoryConfiguredSlots(cat);
+  return [
+    cat.position_1_business_id,
+    cat.position_2_business_id,
+    cat.position_3_business_id,
+    cat.position_4_business_id,
+    cat.position_5_business_id,
+  ]
+    .slice(0, capacity)
+    .filter(Boolean).length;
+}
+
+/** Occupancy for filters/display: max of fixed spots filled and live partner count (capped). */
+function getCategoryBookedSlots(cat: Category, partnerCount = 0) {
+  const capacity = getCategoryConfiguredSlots(cat);
+  const fromPositions = getCategoryPositionBookedSlots(cat);
+  const fromPartners = Math.min(Math.max(partnerCount, 0), capacity);
+  return Math.max(fromPositions, fromPartners);
+}
+
+function getCategoryFreeSlots(cat: Category, partnerCount = 0) {
+  return Math.max(
+    0,
+    getCategoryConfiguredSlots(cat) - getCategoryBookedSlots(cat, partnerCount),
+  );
+}
+
+/** Banner + symbol both set (and name present). */
+function isCategoryInfoComplete(cat: Category) {
+  const has = (v?: string | null) => Boolean(v && v !== "Not Set");
+  return Boolean(cat.name?.trim()) && has(cat.banner) && has(cat.symbol);
 }
 
 interface Movie {
@@ -773,6 +822,7 @@ export default function Dashboard() {
   const [onboardChooserOpen, setOnboardChooserOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showAdminProfile, setShowAdminProfile] = useState(false);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   const [platformTimeLabel, setPlatformTimeLabel] = useState("");
   const [platformDateLabel, setPlatformDateLabel] = useState("");
@@ -2169,84 +2219,106 @@ export default function Dashboard() {
           title="Drag to resize"
         />
 
-        <div className="admin-sidebar-header">
+        <div className={`admin-sidebar-header ${sidebarCollapsed ? "is-collapsed-header" : ""}`}>
           <div
-            className={`flex items-start gap-2 ${sidebarCollapsed ? "flex-col items-center" : "justify-between"}`}
+            className={`admin-brand-splash ${sidebarCollapsed ? "is-collapsed" : ""}`}
           >
-            <Link
-              href="/dashboard"
-              className={`flex flex-col min-w-0 gap-1 ${sidebarCollapsed ? "items-center" : ""}`}
+            <div className="admin-brand-splash-grid" aria-hidden />
+            <div className="admin-brand-splash-glow" aria-hidden />
+            <div
+              className={`relative z-[1] flex ${sidebarCollapsed ? "flex-col items-center gap-2" : "items-start justify-between gap-2"}`}
             >
-              <Image
-                src="/logo1.png"
-                alt="FinderB"
-                width={sidebarCollapsed ? 36 : 108}
-                height={sidebarCollapsed ? 36 : 28}
-                className="object-contain object-left"
-                priority
-              />
-              {!sidebarCollapsed && (
-                <p className="admin-sidebar-brand">Admin panel</p>
-              )}
-            </Link>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={toggleSidebarCollapsed}
-                className="admin-btn-ghost !p-1 hidden lg:inline-flex"
-                aria-label={
-                  sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
-                }
-                title={sidebarCollapsed ? "Expand" : "Collapse"}
+              <Link
+                href="/dashboard"
+                className={`flex flex-col min-w-0 gap-2 ${sidebarCollapsed ? "items-center" : ""}`}
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                <Image
+                  src="/logo-white.png"
+                  alt="FinderB"
+                  width={sidebarCollapsed ? 44 : 132}
+                  height={sidebarCollapsed ? 44 : 36}
+                  className="object-contain object-left"
+                  priority
+                />
+                {!sidebarCollapsed && (
+                  <div className="space-y-0.5 px-0.5">
+                    <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-teal-200">
+                      Control deck
+                    </p>
+                    <p className="text-[11px] text-slate-200 leading-snug">
+                      Signed in as{" "}
+                      <span className="font-semibold text-white">
+                        {adminSession?.displayName?.trim() ||
+                          adminSession?.email?.split("@")[0] ||
+                          "Admin"}
+                      </span>
+                    </p>
+                    <p className="text-[10px] text-slate-400 capitalize leading-snug">
+                      {adminSession?.role?.replace(/_/g, " ") || "Administrator"}{" "}
+                      · FinderB console
+                    </p>
+                  </div>
+                )}
+              </Link>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={toggleSidebarCollapsed}
+                  className="admin-btn-ghost !p-1 hidden lg:inline-flex !text-slate-300 hover:!text-white hover:!bg-white/10"
+                  aria-label={
+                    sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                  }
+                  title={sidebarCollapsed ? "Expand" : "Collapse"}
                 >
-                  {sidebarCollapsed ? (
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    {sidebarCollapsed ? (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                      />
+                    ) : (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+                      />
+                    )}
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="admin-btn-ghost !p-1 lg:hidden !text-slate-300 hover:!text-white hover:!bg-white/10"
+                  aria-label="Close menu"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth="2"
-                      d="M13 5l7 7-7 7M5 5l7 7-7 7"
+                      d="M6 18L18 6M6 6l12 12"
                     />
-                  ) : (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-                    />
-                  )}
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsSidebarOpen(false)}
-                className="admin-btn-ghost !p-1 lg:hidden"
-                aria-label="Close menu"
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
           {!sidebarCollapsed && (
             <>
-              <div className="mt-2.5 flex items-center justify-between gap-2">
+              <div className="mt-2.5 flex items-center justify-between gap-2 px-0.5">
                 <span
                   className={`admin-status-pill ${settings.maintenance ? "admin-status-warn" : "admin-status-live"} !text-[9px] !py-0.5 !px-1.5`}
                 >
@@ -2259,7 +2331,7 @@ export default function Dashboard() {
                   {platformTimeLabel || "—"}
                 </span>
               </div>
-              <p className="mt-1.5 text-[11px] text-slate-500 leading-snug font-medium">
+              <p className="mt-1.5 text-[11px] text-slate-500 leading-snug font-medium px-0.5">
                 {(() => {
                   const h = new Date().getHours();
                   const greet =
@@ -2268,7 +2340,10 @@ export default function Dashboard() {
                       : h < 17
                         ? "Good afternoon"
                         : "Good evening";
-                  const name = adminSession?.email?.split("@")[0] || "Admin";
+                  const name =
+                    adminSession?.displayName?.trim() ||
+                    adminSession?.email?.split("@")[0] ||
+                    "Admin";
                   return `${greet}, ${name}`;
                 })()}
               </p>
@@ -2544,27 +2619,47 @@ export default function Dashboard() {
           {sidebarCollapsed ? (
             <button
               type="button"
-              onClick={toggleSidebarCollapsed}
+              onClick={() => setShowAdminProfile(true)}
               className="admin-avatar-dark mx-auto"
-              title="Expand sidebar"
+              title="Open your profile"
             >
-              {adminSession?.email?.charAt(0).toUpperCase() || "A"}
+              {(
+                adminSession?.displayName?.trim() ||
+                adminSession?.email ||
+                "A"
+              )
+                .charAt(0)
+                .toUpperCase()}
             </button>
           ) : (
             <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2.5">
-              <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAdminProfile(true)}
+                className="w-full flex items-center gap-2 rounded-lg px-0.5 py-0.5 text-left hover:bg-slate-50 transition-colors"
+                title="Open your profile"
+              >
                 <div className="admin-avatar-dark">
-                  {adminSession?.email?.charAt(0).toUpperCase() || "A"}
+                  {(
+                    adminSession?.displayName?.trim() ||
+                    adminSession?.email ||
+                    "A"
+                  )
+                    .charAt(0)
+                    .toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-bold text-slate-900 truncate leading-tight">
-                    {adminSession?.email?.split("@")[0] || "Admin"}
+                    {adminSession?.displayName?.trim() ||
+                      adminSession?.email?.split("@")[0] ||
+                      "Admin"}
                   </p>
                   <p className="text-[10px] text-slate-500 truncate capitalize leading-tight mt-0.5 font-medium">
                     {adminSession?.role?.replace(/_/g, " ") || "Administrator"}
+                    <span className="text-teal-700"> · View profile</span>
                   </p>
                 </div>
-              </div>
+              </button>
               <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
                 <span className="text-[9px] text-slate-400 tabular-nums truncate font-medium">
                   {platformDateLabel || "—"}
@@ -2705,6 +2800,22 @@ export default function Dashboard() {
         </main>
       </div>
 
+      {showAdminProfile && adminSession && (
+        <AdminProfileModal
+          session={adminSession}
+          onClose={() => setShowAdminProfile(false)}
+          onSignOut={() => {
+            setShowAdminProfile(false);
+            handleLogout();
+          }}
+          onDisplayNameChange={(displayName) => {
+            const updated = { ...adminSession, displayName };
+            localStorage.setItem("admin_session", JSON.stringify(updated));
+            setAdminSession(updated);
+          }}
+        />
+      )}
+
       {onboardChooserOpen && (
         <div
           className="admin-modal-overlay"
@@ -2789,6 +2900,9 @@ function LeadsContent({
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
   const [sourceFilter, setSourceFilter] = useState("All Sources");
   const [merchantFilter, setMerchantFilter] = useState("All Merchants");
+  const [dateFilter, setDateFilter] = useState<
+    "all" | "today" | "week" | "month"
+  >("all");
 
   const categoryOptions = useMemo(() => {
     const names = new Set<string>();
@@ -2810,32 +2924,69 @@ function LeadsContent({
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [merchants, leads]);
 
-  const filteredLeads = leads.filter((lead) => {
-    const q = searchTerm.toLowerCase();
-    const matchesSearch =
-      !q ||
-      lead.name.toLowerCase().includes(q) ||
-      (lead.email && lead.email.toLowerCase().includes(q)) ||
-      (lead.phone && lead.phone.includes(searchTerm)) ||
-      (lead.message && lead.message.toLowerCase().includes(q)) ||
-      (lead.merchant_name && lead.merchant_name.toLowerCase().includes(q));
+  const filteredLeads = useMemo(() => {
+    const now = new Date();
+    return leads.filter((lead) => {
+      const q = searchTerm.toLowerCase();
+      const matchesSearch =
+        !q ||
+        lead.name.toLowerCase().includes(q) ||
+        (lead.email && lead.email.toLowerCase().includes(q)) ||
+        (lead.phone && lead.phone.includes(searchTerm)) ||
+        (lead.message && lead.message.toLowerCase().includes(q)) ||
+        (lead.merchant_name && lead.merchant_name.toLowerCase().includes(q));
 
-    const matchesCategory =
-      categoryFilter === "All Categories" || lead.category === categoryFilter;
+      const matchesCategory =
+        categoryFilter === "All Categories" || lead.category === categoryFilter;
 
-    const matchesMerchant =
-      merchantFilter === "All Merchants" || lead.business_id === merchantFilter;
+      const matchesMerchant =
+        merchantFilter === "All Merchants" ||
+        lead.business_id === merchantFilter;
 
-    const matchesSource =
-      sourceFilter === "All Sources" ||
-      (sourceFilter === "Generated on profile" &&
-        isProfileLeadSource(lead.status)) ||
-      (sourceFilter === "Circulated in category" &&
-        isCategoryLeadSource(lead.status)) ||
-      (sourceFilter === "Other" && isLegacyLeadSource(lead.status));
+      const matchesSource =
+        sourceFilter === "All Sources" ||
+        (sourceFilter === "Generated on profile" &&
+          isProfileLeadSource(lead.status)) ||
+        (sourceFilter === "Circulated in category" &&
+          isCategoryLeadSource(lead.status)) ||
+        (sourceFilter === "Other" && isLegacyLeadSource(lead.status));
 
-    return matchesSearch && matchesCategory && matchesMerchant && matchesSource;
-  });
+      const created = new Date(lead.created_at);
+      let matchesDate = true;
+      if (dateFilter === "today") {
+        matchesDate = created.toDateString() === now.toDateString();
+      } else if (dateFilter === "week") {
+        matchesDate =
+          now.getTime() - created.getTime() < 7 * 24 * 60 * 60 * 1000;
+      } else if (dateFilter === "month") {
+        matchesDate =
+          created.getMonth() === now.getMonth() &&
+          created.getFullYear() === now.getFullYear();
+      }
+
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        matchesMerchant &&
+        matchesSource &&
+        matchesDate
+      );
+    });
+  }, [
+    leads,
+    searchTerm,
+    categoryFilter,
+    merchantFilter,
+    sourceFilter,
+    dateFilter,
+  ]);
+
+  const { page, setPage, totalPages, pageItems, pageSize, total } =
+    useClientPage(
+      filteredLeads,
+      12,
+      `${searchTerm}|${categoryFilter}|${sourceFilter}|${merchantFilter}|${dateFilter}`,
+    );
 
   const stats = {
     today: leads.filter(
@@ -2858,228 +3009,226 @@ function LeadsContent({
     circulated: leads.filter((l) => isCategoryLeadSource(l.status)).length,
   };
 
+  const hasActiveFilters =
+    searchTerm.trim() !== "" ||
+    categoryFilter !== "All Categories" ||
+    sourceFilter !== "All Sources" ||
+    merchantFilter !== "All Merchants" ||
+    dateFilter !== "all";
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+    <div className="space-y-4 font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-0.5">
         <div>
-          <h1 className="admin-page-title">Leads Management</h1>
+          <h1 className="admin-page-title">Leads</h1>
           <p className="admin-page-subtitle">
-            Track and manage customer inquiries and service requests.
+            Customer inquiries and service requests across FinderB.
           </p>
         </div>
       </div>
 
-      {/* Stats Section */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
         {[
           {
-            label: "Today's Leads",
+            label: "Today",
             value: stats.today,
-            color: "bg-primary",
-            icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+            filter: "today" as const,
+            tone: "bg-teal-50 text-teal-800 border-teal-100",
           },
           {
-            label: "Weekly Leads",
+            label: "This week",
             value: stats.weekly,
-            color: "bg-secondary",
-            icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+            filter: "week" as const,
+            tone: "bg-sky-50 text-sky-800 border-sky-100",
           },
           {
-            label: "Monthly Leads",
+            label: "This month",
             value: stats.monthly,
-            color: "bg-slate-900",
-            icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+            filter: "month" as const,
+            tone: "bg-slate-50 text-slate-800 border-slate-200",
           },
           {
             label: "On profile",
             value: stats.profile,
-            color: "bg-blue-600",
-            icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
+            filter: null,
+            tone: "bg-blue-50 text-blue-800 border-blue-100",
           },
           {
             label: "Circulated",
             value: stats.circulated,
-            color: "bg-violet-600",
-            icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z",
+            filter: null,
+            tone: "bg-violet-50 text-violet-800 border-violet-100",
           },
-        ].map((stat, i) => (
-          <div
-            key={i}
-            className="bg-white p-5 rounded-xl border border-slate-200/60 hover:border-slate-300 transition-all duration-300 group"
+        ].map((stat) => (
+          <button
+            key={stat.label}
+            type="button"
+            onClick={() => {
+              if (stat.filter) {
+                setDateFilter((prev) =>
+                  prev === stat.filter ? "all" : stat.filter!,
+                );
+              } else if (stat.label === "On profile") {
+                setSourceFilter((prev) =>
+                  prev === "Generated on profile"
+                    ? "All Sources"
+                    : "Generated on profile",
+                );
+              } else if (stat.label === "Circulated") {
+                setSourceFilter((prev) =>
+                  prev === "Circulated in category"
+                    ? "All Sources"
+                    : "Circulated in category",
+                );
+              }
+            }}
+            className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${stat.tone} ${
+              (stat.filter && dateFilter === stat.filter) ||
+              (stat.label === "On profile" &&
+                sourceFilter === "Generated on profile") ||
+              (stat.label === "Circulated" &&
+                sourceFilter === "Circulated in category")
+                ? "ring-2 ring-teal-500/25"
+                : ""
+            }`}
           >
-            <div className="flex items-center gap-4">
-              <div
-                className={`p-2.5 rounded-xl ${stat.color} text-white group-hover:scale-110 transition-all duration-300`}
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d={stat.icon}
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-[10px] font-medium text-slate-400">
-                  {stat.label}
-                </p>
-                <h3 className="text-2xl font-medium text-slate-900 mt-1 tabular-nums">
-                  {stat.value}
-                </h3>
-              </div>
-            </div>
-          </div>
+            <p className="text-[11px] font-medium opacity-80">{stat.label}</p>
+            <p className="text-lg font-semibold tabular-nums mt-0.5">
+              {stat.value}
+            </p>
+          </button>
         ))}
       </div>
 
-      {/* Filters Section */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200/60 flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 min-w-[240px]">
-          <input
-            type="text"
-            placeholder="SEARCH LEADS..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-          />
-          <svg
-            className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-        </div>
-
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-w-[160px]"
-        >
+      <div className="flex flex-col xl:flex-row gap-2">
+        <ListSearchInput
+          value={searchTerm}
+          onChange={setSearchTerm}
+          placeholder="Search name, phone, email, message…"
+        />
+        <ListSelect value={categoryFilter} onChange={setCategoryFilter}>
           {categoryOptions.map((name) => (
             <option key={name} value={name}>
               {name}
             </option>
           ))}
-        </select>
-
-        <select
-          value={sourceFilter}
-          onChange={(e) => setSourceFilter(e.target.value)}
-          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-w-[180px]"
-        >
-          <option>All Sources</option>
-          <option>Generated on profile</option>
-          <option>Circulated in category</option>
-          <option>Other</option>
-        </select>
-
-        <select
-          value={merchantFilter}
-          onChange={(e) => setMerchantFilter(e.target.value)}
-          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-w-[180px]"
-        >
-          <option>All Merchants</option>
+        </ListSelect>
+        <ListSelect value={sourceFilter} onChange={setSourceFilter}>
+          <option value="All Sources">All sources</option>
+          <option value="Generated on profile">On profile</option>
+          <option value="Circulated in category">Circulated</option>
+          <option value="Other">Other</option>
+        </ListSelect>
+        <ListSelect value={merchantFilter} onChange={setMerchantFilter}>
+          <option value="All Merchants">All merchants</option>
           {merchantOptions.map(([id, name]) => (
             <option key={id} value={id}>
               {name}
             </option>
           ))}
-        </select>
+        </ListSelect>
+        <ListSelect
+          value={dateFilter}
+          onChange={(v) =>
+            setDateFilter(v as "all" | "today" | "week" | "month")
+          }
+        >
+          <option value="all">All dates</option>
+          <option value="today">Today</option>
+          <option value="week">This week</option>
+          <option value="month">This month</option>
+        </ListSelect>
       </div>
 
-      <p className="text-[10px] text-slate-500 px-1">
-        Showing {filteredLeads.length} of {leads.length} lead record
-        {leads.length === 1 ? "" : "s"}
-        {sourceFilter === "Generated on profile"
-          ? ` · ${PROFILE_LEAD_BADGE}`
-          : ""}
-        {sourceFilter === "Circulated in category"
-          ? ` · ${CATEGORY_LEAD_BADGE}`
-          : ""}
-      </p>
+      <div className="flex items-center gap-2 text-xs text-slate-500 px-0.5">
+        <span className="tabular-nums">
+          <span className="font-medium text-slate-700">{total}</span> match
+          {total === 1 ? "" : "es"} · {leads.length} total
+        </span>
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm("");
+              setCategoryFilter("All Categories");
+              setSourceFilter("All Sources");
+              setMerchantFilter("All Merchants");
+              setDateFilter("all");
+            }}
+            className="ml-auto text-teal-700 hover:underline font-medium"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
 
-      {/* Leads Table */}
       <div className="admin-card">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50/50 border-b border-slate-100">
+            <thead className="bg-slate-50/80 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500">
                   Customer
                 </th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap min-w-[200px]">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500 min-w-[180px]">
                   Looking for
                 </th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500">
                   Category
                 </th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500">
                   Source
                 </th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">
-                  Assigned merchant
+                <th className="px-4 py-3 text-xs font-medium text-slate-500">
+                  Merchant
                 </th>
-                <th className="px-6 py-4 text-[9px] font-medium text-slate-400 tracking-[0.2em] whitespace-nowrap">
+                <th className="px-4 py-3 text-xs font-medium text-slate-500">
                   Date
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50/80">
-              {filteredLeads.length === 0 ? (
+            <tbody className="divide-y divide-slate-100">
+              {pageItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center">
-                    <p className="text-[11px] font-medium text-slate-500">
+                  <td colSpan={6} className="px-4 py-12 text-center">
+                    <p className="text-sm text-slate-500">
                       {leads.length === 0
-                        ? "No leads in database yet"
+                        ? "No leads yet"
                         : "No leads match the current filters"}
                     </p>
                   </td>
                 </tr>
               ) : (
-                filteredLeads.map((lead) => (
+                pageItems.map((lead) => (
                   <tr
                     key={lead.id}
-                    className="hover:bg-primary/[0.01] transition-colors group"
+                    className="hover:bg-slate-50/80 transition-colors"
                   >
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="text-[11px] font-medium text-slate-900 tracking-tight">
-                          {lead.name}
-                        </p>
-                        <p className="text-[9px] text-slate-500 mt-0.5">
-                          {[lead.phone, lead.email].filter(Boolean).join(" · ")}
-                        </p>
-                      </div>
+                    <td className="px-4 py-3">
+                      <p className="text-sm font-medium text-slate-900">
+                        {lead.name}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {[lead.phone, lead.email].filter(Boolean).join(" · ") ||
+                          "—"}
+                      </p>
                     </td>
-                    <td className="px-6 py-4 max-w-xs">
+                    <td className="px-4 py-3 max-w-xs">
                       <p
-                        className="text-[10px] text-slate-600 line-clamp-2"
+                        className="text-xs text-slate-600 line-clamp-2 leading-relaxed"
                         title={lead.message || ""}
                       >
                         {lead.message || "—"}
                       </p>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100 text-[9px] font-medium">
-                        {lead.category}
+                    <td className="px-4 py-3">
+                      <span className="inline-flex px-2 py-0.5 rounded-md bg-slate-50 text-slate-700 border border-slate-100 text-xs font-medium">
+                        {lead.category || "—"}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <span
-                        className={`inline-block px-2.5 py-1 rounded-lg text-[9px] font-medium border max-w-[140px] ${leadBadgeClassName(lead.status)}`}
+                        className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-medium border max-w-[150px] truncate ${leadBadgeClassName(lead.status)}`}
                       >
                         {isProfileLeadSource(lead.status)
                           ? PROFILE_LEAD_BADGE
@@ -3088,23 +3237,23 @@ function LeadsContent({
                             : lead.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       {lead.merchant_name ? (
-                        <p className="text-[10px] font-medium text-slate-800">
+                        <p className="text-sm font-medium text-slate-800 truncate max-w-[160px]">
                           {lead.merchant_name}
                         </p>
                       ) : lead.business_id ? (
-                        <p className="text-[10px] text-slate-500 font-mono">
+                        <p className="text-xs text-slate-500 font-mono">
                           {lead.business_id.slice(0, 8)}…
                         </p>
                       ) : (
-                        <span className="text-[9px] text-slate-400 italic">
+                        <span className="text-xs text-slate-400">
                           Unassigned
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <p className="text-[10px] text-slate-600 tabular-nums opacity-80">
+                    <td className="px-4 py-3">
+                      <p className="text-xs text-slate-600 tabular-nums">
                         {new Date(lead.created_at).toLocaleString()}
                       </p>
                     </td>
@@ -3114,6 +3263,17 @@ function LeadsContent({
             </tbody>
           </table>
         </div>
+        {filteredLeads.length > 0 && (
+          <div className="px-4 py-3 border-t border-slate-100">
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              total={total}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -3767,17 +3927,8 @@ function MerchantsContent({
       ).sort(),
     [activeMerchants],
   );
-  const plansInUse = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          activeMerchants.map((m) =>
-            (m.selectedPlan || "starter").toLowerCase(),
-          ),
-        ),
-      ).sort(),
-    [activeMerchants],
-  );
+  // Always expose the 3 live FinderB plans in the filter (not only plans currently in use).
+  const planFilterOptions = MERCHANT_PLAN_PRESETS;
 
   const hasActiveFilters =
     categoryFilter !== "all" ||
@@ -3807,7 +3958,10 @@ function MerchantsContent({
         (statusFilter === "all" || m.status === statusFilter) &&
         (!canViewFinancialData ||
           planFilter === "all" ||
-          (m.selectedPlan || "starter").toLowerCase() === planFilter),
+          resolvePlanPresetId(
+            m.selectedPlan || "free",
+            m.billingCycle || "monthly",
+          ) === planFilter),
     );
 
     const byName = (a: Merchant, b: Merchant) =>
@@ -4588,9 +4742,9 @@ function MerchantsContent({
                 title="Filter by plan"
               >
                 <option value="all">All plans</option>
-                {plansInUse.map((plan) => (
-                  <option key={plan} value={plan}>
-                    {plan.charAt(0).toUpperCase() + plan.slice(1)}
+                {planFilterOptions.map((plan) => (
+                  <option key={plan.id} value={plan.id}>
+                    {plan.label}
                   </option>
                 ))}
               </select>
@@ -5216,7 +5370,7 @@ function MerchantsContent({
       {selectedBusiness && (
         <MerchantDetailModal
           business={selectedBusiness}
-          categories={categories.map((c) => c.name)}
+          categories={categories}
           canManage={canManage}
           canViewFinancialData={canViewFinancialData}
           isUploading={isUploading}
@@ -5320,6 +5474,94 @@ function CategoriesContent({
   const [merchantSearch, setMerchantSearch] = useState<{
     [key: string]: string;
   }>({});
+  const [categorySearch, setCategorySearch] = useState("");
+  const [slotsFilter, setSlotsFilter] = useState<
+    "All" | "Free" | "Booked" | "Full"
+  >("All");
+  const [infoFilter, setInfoFilter] = useState<"All" | "Complete" | "Missing">(
+    "All",
+  );
+  const [statusFilter, setStatusFilter] = useState<
+    "All" | "Active" | "Inactive"
+  >("All");
+
+  const partnerCountById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const cat of categories) {
+      map.set(cat.id, countPartnersForCategory(merchants, cat, categories));
+    }
+    return map;
+  }, [categories, merchants]);
+
+  const matchesFilters = useCallback(
+    (cat: Category) => {
+      const q = categorySearch.trim().toLowerCase();
+      if (q) {
+        const parentName = cat.parent_id
+          ? categories.find((c) => c.id === cat.parent_id)?.name || ""
+          : "";
+        const haystack = `${cat.name} ${parentName} ${cat.type}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      if (statusFilter !== "All" && cat.status !== statusFilter) return false;
+
+      const partners = partnerCountById.get(cat.id) ?? 0;
+      const booked = getCategoryBookedSlots(cat, partners);
+      const free = getCategoryFreeSlots(cat, partners);
+      if (slotsFilter === "Free") {
+        // At least one empty partner spot
+        if (free <= 0) return false;
+      } else if (slotsFilter === "Booked") {
+        // At least one filled partner spot / assigned merchant
+        if (booked <= 0) return false;
+      } else if (slotsFilter === "Full") {
+        // No free spots left
+        if (free > 0) return false;
+      }
+
+      if (infoFilter === "Complete" && !isCategoryInfoComplete(cat)) {
+        return false;
+      }
+      if (infoFilter === "Missing" && isCategoryInfoComplete(cat)) {
+        return false;
+      }
+
+      return true;
+    },
+    [
+      categorySearch,
+      slotsFilter,
+      infoFilter,
+      statusFilter,
+      categories,
+      partnerCountById,
+    ],
+  );
+
+  const filteredCategories = useMemo(
+    () => categories.filter(matchesFilters),
+    [categories, matchesFilters],
+  );
+
+  const filteredTopLevel = useMemo(() => {
+    const matchingIds = new Set(filteredCategories.map((c) => c.id));
+    // Include a parent if it matches OR any of its children match
+    return categories.filter((c) => {
+      if (c.parent_id) return false;
+      if (matchingIds.has(c.id)) return true;
+      return categories.some(
+        (child) => child.parent_id === c.id && matchingIds.has(child.id),
+      );
+    });
+  }, [categories, filteredCategories]);
+
+  const orphanFiltered = useMemo(() => {
+    // Categories that match filters but whose parent is missing from the list
+    const topIds = new Set(categories.filter((c) => !c.parent_id).map((c) => c.id));
+    return filteredCategories.filter(
+      (c) => c.parent_id && !topIds.has(c.parent_id),
+    );
+  }, [categories, filteredCategories]);
 
   const handleSave = async () => {
     if (editingCategory) {
@@ -5388,24 +5630,35 @@ function CategoriesContent({
       .slice(0, 5);
   };
 
+  const fieldLabel = "block text-xs font-medium text-slate-600 mb-1";
+  const fieldInput =
+    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40";
+
   const renderCategoryForm = (
     cat: Partial<Category>,
     setCat: (c: any) => void,
     isEditing: boolean,
   ) => (
-    <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-6 animate-in fade-in zoom-in duration-200">
-      <div className="flex items-center justify-between border-b border-slate-50 pb-4">
-        <h2 className="text-sm font-medium text-slate-900 tracking-tight">
-          {isEditing ? `Editing: ${cat.name}` : "Add New Category"}
-        </h2>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+      <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-slate-100 bg-slate-50/60">
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium text-slate-400">
+            {isEditing ? "Edit category" : "New category"}
+          </p>
+          <h2 className="text-base font-semibold text-slate-900 truncate">
+            {isEditing ? cat.name || "Untitled" : "Add to catalog"}
+          </h2>
+        </div>
         <button
+          type="button"
           onClick={() =>
             isEditing ? setEditingCategory(null) : setIsAddingCategory(false)
           }
-          className="text-slate-400 hover:text-slate-600"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+          aria-label="Close"
         >
           <svg
-            className="w-5 h-5"
+            className="w-4 h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -5420,270 +5673,179 @@ function CategoriesContent({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="space-y-4">
-          {!isEditing && (
-            <div>
-              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-                Category Name
-              </label>
-              <input
-                type="text"
-                value={cat.name || ""}
-                onChange={(e) => setCat({ ...cat, name: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="Category Name"
-              />
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-                Type
-              </label>
-              <select
-                value={cat.type}
-                onChange={(e) => setCat({ ...cat, type: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="Merchant">Merchant</option>
-                <option value="Service">Service</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-                Status
-              </label>
-              <select
-                value={cat.status}
-                onChange={(e) => setCat({ ...cat, status: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-                Position (Sorting)
-              </label>
-              <input
-                type="number"
-                value={cat.position || 0}
-                onChange={(e) =>
-                  setCat({ ...cat, position: parseInt(e.target.value) || 0 })
-                }
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="0"
-              />
-            </div>
-            <div>
-              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-                Fixed Slots
-              </label>
-              <input
-                type="number"
-                value={cat.fixedSlots || 0}
-                onChange={(e) =>
-                  setCat({ ...cat, fixedSlots: parseInt(e.target.value) || 0 })
-                }
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder="0"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-              Parent Category (Optional)
-            </label>
-            <select
-              value={cat.parent_id || ""}
-              onChange={(e) =>
-                setCat({ ...cat, parent_id: e.target.value || null })
-              }
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-[11px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
-            >
-              <option value="">None (Top Level)</option>
-              {categories
-                .filter((c) => c.id !== cat.id && !c.parent_id)
-                .map((parent) => (
-                  <option key={parent.id} value={parent.id}>
-                    {parent.name}
-                  </option>
-                ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-              Category Banner
-            </label>
-            <div className="flex gap-3 items-center">
-              <div className="flex-1 relative">
-                <input
-                  type="file"
-                  onChange={(e) =>
-                    e.target.files?.[0] &&
-                    handleImageUpload(e.target.files[0], "banner", isEditing)
-                  }
-                  className="hidden"
-                  id={`banner-upload-${isEditing ? "edit" : "new"}`}
-                  disabled={uploading === "banner"}
-                />
-                <label
-                  htmlFor={`banner-upload-${isEditing ? "edit" : "new"}`}
-                  className={`flex flex-col items-center justify-center gap-2 w-full bg-slate-50 border-2 border-dashed rounded-lg px-3 py-4 text-[10px] font-normal text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${
-                    uploading === "banner"
-                      ? "border-primary/30 bg-primary/5 cursor-not-allowed"
-                      : "border-slate-200 hover:border-primary/30"
-                  }`}
-                >
-                  {uploading === "banner" ? (
-                    <>
-                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-primary to-secondary h-1.5 rounded-full transition-all duration-300 ease-out"
-                          style={{ width: `${uploadProgress.banner || 0}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1 text-[9px] font-medium text-primary tracking-wider">
-                        <div className="w-2 h-2 bg-primary rounded-full"></div>
-                        {uploadProgress.banner?.toFixed(0)}%
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        className="w-4 h-4 transition-transform"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                        />
-                      </svg>
-                      <span>
-                        {cat.banner && cat.banner !== "Not Set"
-                          ? "Change"
-                          : "Upload"}{" "}
-                        Banner
-                      </span>
-                    </>
-                  )}
-                </label>
-              </div>
-              {cat.banner && cat.banner !== "Not Set" && (
-                <div className="w-16 h-12 rounded-lg overflow-hidden border border-slate-200">
-                  <img
-                    src={cat.banner}
-                    className="w-full h-full object-cover"
-                    alt="Banner"
+      <div className="p-5 grid grid-cols-1 lg:grid-cols-5 gap-5">
+        <div className="lg:col-span-3 space-y-5">
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold text-slate-500">Basics</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {!isEditing && (
+                <div className="sm:col-span-2">
+                  <label className={fieldLabel}>Name</label>
+                  <input
+                    type="text"
+                    value={cat.name || ""}
+                    onChange={(e) => setCat({ ...cat, name: e.target.value })}
+                    className={fieldInput}
+                    placeholder="e.g. Restaurants"
                   />
                 </div>
               )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-              Category Symbol (Icon)
-            </label>
-            <div className="flex gap-3 items-center">
-              <div className="flex-1 relative">
-                <input
-                  type="file"
-                  onChange={(e) =>
-                    e.target.files?.[0] &&
-                    handleImageUpload(e.target.files[0], "symbol", isEditing)
-                  }
-                  className="hidden"
-                  id={`symbol-upload-${isEditing ? "edit" : "new"}`}
-                  disabled={uploading === "symbol"}
-                />
-                <label
-                  htmlFor={`symbol-upload-${isEditing ? "edit" : "new"}`}
-                  className={`flex flex-col items-center justify-center gap-2 w-full bg-slate-50 border-2 border-dashed rounded-lg px-3 py-4 text-[10px] font-normal text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${
-                    uploading === "symbol"
-                      ? "border-primary/30 bg-primary/5 cursor-not-allowed"
-                      : "border-slate-200 hover:border-primary/30"
-                  }`}
+              <div>
+                <label className={fieldLabel}>Type</label>
+                <select
+                  value={cat.type}
+                  onChange={(e) => setCat({ ...cat, type: e.target.value })}
+                  className={fieldInput}
                 >
-                  {uploading === "symbol" ? (
-                    <>
-                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-gradient-to-r from-primary to-secondary h-1.5 rounded-full transition-all duration-300 ease-out"
-                          style={{ width: `${uploadProgress.symbol || 0}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-1 text-[9px] font-medium text-primary tracking-wider">
-                        <div className="w-2 h-2 bg-primary rounded-full"></div>
-                        {uploadProgress.symbol?.toFixed(0)}%
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        className="w-4 h-4 transition-transform"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                        />
-                      </svg>
-                      <span>
-                        {cat.symbol && cat.symbol !== "Not Set"
-                          ? "Change"
-                          : "Upload"}{" "}
-                        Symbol
-                      </span>
-                    </>
-                  )}
-                </label>
+                  <option value="Merchant">Merchant</option>
+                  <option value="Service">Service</option>
+                </select>
               </div>
-              {cat.symbol && cat.symbol !== "Not Set" && (
-                <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center bg-slate-50">
-                  <img
-                    src={cat.symbol}
-                    className="max-w-full max-h-full object-contain"
-                    alt="Symbol"
+              <div>
+                <label className={fieldLabel}>Status</label>
+                <select
+                  value={cat.status}
+                  onChange={(e) => setCat({ ...cat, status: e.target.value })}
+                  className={fieldInput}
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
+              </div>
+              <div>
+                <label className={fieldLabel}>Parent</label>
+                <select
+                  value={cat.parent_id || ""}
+                  onChange={(e) =>
+                    setCat({ ...cat, parent_id: e.target.value || null })
+                  }
+                  className={fieldInput}
+                >
+                  <option value="">None — top level</option>
+                  {categories
+                    .filter((c) => c.id !== cat.id && !c.parent_id)
+                    .map((parent) => (
+                      <option key={parent.id} value={parent.id}>
+                        {parent.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={fieldLabel}>Position</label>
+                  <input
+                    type="number"
+                    value={cat.position || 0}
+                    onChange={(e) =>
+                      setCat({
+                        ...cat,
+                        position: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className={fieldInput}
                   />
                 </div>
-              )}
+                <div>
+                  <label className={fieldLabel}>Fixed slots</label>
+                  <input
+                    type="number"
+                    value={cat.fixedSlots || 0}
+                    onChange={(e) =>
+                      setCat({
+                        ...cat,
+                        fixedSlots: parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className={fieldInput}
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold text-slate-500">Imagery</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(
+                [
+                  ["banner", "Banner"],
+                  ["symbol", "Symbol"],
+                ] as const
+              ).map(([type, label]) => {
+                const url = (cat as any)[type] as string | undefined;
+                const hasImage = url && url !== "Not Set";
+                return (
+                  <div key={type} className="rounded-lg border border-slate-200 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-slate-700">
+                        {label}
+                      </span>
+                      {hasImage && (
+                        <div
+                          className={`rounded-md border border-slate-200 bg-slate-50 overflow-hidden flex items-center justify-center ${type === "banner" ? "w-14 h-9" : "w-9 h-9"}`}
+                        >
+                          <img
+                            src={url}
+                            alt=""
+                            className={
+                              type === "banner"
+                                ? "w-full h-full object-cover"
+                                : "max-w-[75%] max-h-[75%] object-contain"
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      onChange={(e) =>
+                        e.target.files?.[0] &&
+                        handleImageUpload(e.target.files[0], type, isEditing)
+                      }
+                      className="hidden"
+                      id={`${type}-upload-${isEditing ? "edit" : "new"}`}
+                      disabled={uploading === type}
+                    />
+                    <label
+                      htmlFor={`${type}-upload-${isEditing ? "edit" : "new"}`}
+                      className={`flex items-center justify-center gap-2 w-full rounded-md border border-dashed px-3 py-2.5 text-xs text-slate-500 cursor-pointer transition-colors ${
+                        uploading === type
+                          ? "border-teal-300 bg-teal-50/50 cursor-not-allowed"
+                          : "border-slate-200 hover:border-teal-300 hover:bg-slate-50"
+                      }`}
+                    >
+                      {uploading === type ? (
+                        <span className="tabular-nums text-teal-700 font-medium">
+                          {(uploadProgress[type] || 0).toFixed(0)}%
+                        </span>
+                      ) : (
+                        <span>{hasImage ? `Change ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}</span>
+                      )}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         </div>
 
-        <div className="space-y-4">
-          <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-            Fixed Partner Spots (Top 5)
-          </label>
-          {[1, 2, 3, 4, 5].map((pos) => {
-            const field = `position_${pos}_business_id` as keyof Category;
-            const currentId = (cat as any)[field] || "";
-            const merchant = merchants.find((m) => m.id === currentId);
+        <div className="lg:col-span-2 space-y-3">
+          <h3 className="text-xs font-semibold text-slate-500">
+            Fixed partner spots
+          </h3>
+          <div className="rounded-lg border border-slate-200 divide-y divide-slate-100">
+            {[1, 2, 3, 4, 5].map((pos) => {
+              const field = `position_${pos}_business_id` as keyof Category;
+              const currentId = (cat as any)[field] || "";
+              const merchant = merchants.find((m) => m.id === currentId);
 
-            return (
-              <div key={pos} className="relative space-y-1">
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-medium text-primary w-4">
-                    #{pos}
-                  </span>
-                  <div className="flex-1 flex gap-2">
+              return (
+                <div key={pos} className="relative p-2.5 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-teal-700 w-5 tabular-nums">
+                      {pos}
+                    </span>
                     <input
                       type="text"
                       value={
@@ -5707,19 +5869,24 @@ function CategoriesContent({
                             (merchant ? merchant.name : currentId),
                         })
                       }
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] font-normal focus:outline-none focus:ring-2 focus:ring-primary/20"
-                      placeholder="Search Merchant Name or ID"
+                      className="flex-1 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40"
+                      placeholder="Search merchant"
                     />
                     {currentId && (
                       <button
+                        type="button"
                         onClick={() => {
                           setCat({ ...cat, [field]: null });
-                          setMerchantSearch({ ...merchantSearch, [field]: "" });
+                          setMerchantSearch({
+                            ...merchantSearch,
+                            [field]: "",
+                          });
                         }}
-                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg"
+                        className="p-1 text-rose-500 hover:bg-rose-50 rounded-md"
+                        aria-label="Clear spot"
                       >
                         <svg
-                          className="w-4 h-4"
+                          className="w-3.5 h-3.5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -5734,81 +5901,73 @@ function CategoriesContent({
                       </button>
                     )}
                   </div>
-                </div>
-
-                {merchantSearch[field] && (
-                  <div className="absolute z-10 left-7 right-0 mt-1 bg-white border border-slate-200 rounded-lg overflow-hidden max-h-40 overflow-y-auto">
-                    {getFilteredMerchants(merchantSearch[field]).map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => {
-                          setCat({ ...cat, [field]: m.id });
-                          setMerchantSearch({
-                            ...merchantSearch,
-                            [field]: m.name,
-                          });
-                          // Small delay to hide results after selection
-                          setTimeout(() => {
-                            setMerchantSearch((prev) => {
-                              const next = { ...prev };
-                              delete next[field];
-                              return next;
+                  {merchantSearch[field] && (
+                    <div className="absolute z-20 left-8 right-2.5 mt-0.5 bg-white border border-slate-200 rounded-lg overflow-hidden max-h-36 overflow-y-auto shadow-lg">
+                      {getFilteredMerchants(merchantSearch[field]).map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            setCat({ ...cat, [field]: m.id });
+                            setMerchantSearch({
+                              ...merchantSearch,
+                              [field]: m.name,
                             });
-                          }, 100);
-                        }}
-                        className="w-full text-left px-3 py-2 text-[10px] font-normal hover:bg-slate-50 flex flex-col border-b border-slate-50 last:border-0"
-                      >
-                        <span className="text-slate-900">{m.name}</span>
-                        <span className="text-slate-400 text-[8px]">
-                          {m.id} • {m.category}
-                        </span>
-                      </button>
-                    ))}
-                    {getFilteredMerchants(merchantSearch[field]).length ===
-                      0 && (
-                      <div className="px-3 py-2 text-[10px] text-slate-400 italic">
-                        No merchants found
-                      </div>
-                    )}
-                  </div>
-                )}
-                {merchant && !merchantSearch[field] && (
-                  <div className="ml-7 text-[8px] font-medium text-emerald-600 flex items-center gap-1">
-                    <svg
-                      className="w-3 h-3"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Linked: {merchant.name}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                            setTimeout(() => {
+                              setMerchantSearch((prev) => {
+                                const next = { ...prev };
+                                delete next[field];
+                                return next;
+                              });
+                            }, 100);
+                          }}
+                          className="w-full text-left px-2.5 py-2 text-xs hover:bg-slate-50 border-b border-slate-50 last:border-0"
+                        >
+                          <span className="block font-medium text-slate-900">
+                            {m.name}
+                          </span>
+                          <span className="block text-[11px] text-slate-400 truncate">
+                            {m.category}
+                          </span>
+                        </button>
+                      ))}
+                      {getFilteredMerchants(merchantSearch[field]).length ===
+                        0 && (
+                        <div className="px-2.5 py-2 text-xs text-slate-400">
+                          No merchants found
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {merchant && !merchantSearch[field] && (
+                    <p className="pl-7 text-[11px] text-emerald-600">
+                      Linked: {merchant.name}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+      <div className="flex justify-end gap-2 px-5 py-3 border-t border-slate-100 bg-slate-50/40">
         <button
+          type="button"
           onClick={() =>
             isEditing ? setEditingCategory(null) : setIsAddingCategory(false)
           }
-          className="px-4 py-2 text-[10px] font-medium text-slate-500 hover:bg-slate-50 rounded-lg transition-all"
+          className="px-3.5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
         >
           Cancel
         </button>
         <button
+          type="button"
           onClick={isEditing ? handleSave : handleCreate}
           disabled={!cat.name || !!uploading}
-          className="px-6 py-2 bg-primary text-white text-[10px] font-medium rounded-lg hover:bg-primary-700 transition-all disabled:opacity-50"
+          className="px-4 py-2 bg-teal-700 text-white text-sm font-medium rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50"
         >
-          {isEditing ? "Save Changes" : "Create Category"}
+          {isEditing ? "Save changes" : "Create category"}
         </button>
       </div>
     </div>
@@ -5817,8 +5976,8 @@ function CategoriesContent({
   const topLevelCategories = categories.filter((c) => !c.parent_id);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+    <div className="space-y-4 font-sans antialiased">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-0.5">
         <div>
           <h1 className="admin-page-title">Category Catalog</h1>
           <p className="admin-page-subtitle">
@@ -5827,32 +5986,18 @@ function CategoriesContent({
         </div>
         {!isAddingCategory && !editingCategory && (
           <button
+            type="button"
             onClick={() => setIsAddingCategory(true)}
-            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all"
+            className="px-3.5 py-2 bg-teal-700 text-white text-sm font-medium rounded-lg hover:bg-teal-800 transition-colors"
           >
-            Add New Category
+            Add category
           </button>
         )}
       </div>
 
       {categoryError && (
-        <div className="p-4 rounded-xl bg-amber-50 border border-amber-100 flex items-center gap-3">
-          <svg
-            className="w-4 h-4 text-amber-600 shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-            />
-          </svg>
-          <p className="text-[10px] font-normal text-amber-800">
-            {categoryError}
-          </p>
+        <div className="px-3.5 py-2.5 rounded-lg bg-amber-50 border border-amber-100 text-sm text-amber-800">
+          {categoryError}
         </div>
       )}
 
@@ -5862,170 +6007,361 @@ function CategoriesContent({
         renderCategoryForm(editingCategory, setEditingCategory, true)}
 
       {!isAddingCategory && !editingCategory && (
-        <div className="space-y-8">
-          {topLevelCategories.map((parent) => (
-            <div key={parent.id} className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="h-px flex-1 bg-slate-200"></div>
-                <h2 className="text-[10px] font-medium text-slate-400 tracking-[0.3em]">
-                  {parent.name} Group
-                </h2>
-                <div className="h-px flex-1 bg-slate-200"></div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {/* Parent Card */}
-                <CategoryCard
-                  cat={parent}
-                  onEdit={setEditingCategory}
-                  isParent
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
+              </svg>
+              <input
+                type="search"
+                value={categorySearch}
+                onChange={(e) => setCategorySearch(e.target.value)}
+                placeholder="Search categories…"
+                className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40"
+              />
+            </div>
+            <select
+              value={slotsFilter}
+              onChange={(e) =>
+                setSlotsFilter(e.target.value as typeof slotsFilter)
+              }
+              className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/15"
+            >
+              <option value="All">All slots</option>
+              <option value="Free">Slots free</option>
+              <option value="Booked">Slots booked</option>
+              <option value="Full">Fully booked</option>
+            </select>
+            <select
+              value={infoFilter}
+              onChange={(e) =>
+                setInfoFilter(e.target.value as typeof infoFilter)
+              }
+              className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/15"
+            >
+              <option value="All">All info</option>
+              <option value="Complete">Complete info</option>
+              <option value="Missing">Missing info</option>
+            </select>
+            <select
+              value={statusFilter}
+              onChange={(e) =>
+                setStatusFilter(e.target.value as typeof statusFilter)
+              }
+              className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/15"
+            >
+              <option value="All">All status</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
 
-                {/* Children Cards */}
-                {categories
-                  .filter((c) => c.parent_id === parent.id)
-                  .map((child) => (
-                    <CategoryCard
-                      key={child.id}
-                      cat={child}
+          <div className="flex items-center gap-2 text-xs text-slate-500 px-0.5">
+            <span className="tabular-nums">
+              <span className="font-medium text-slate-700">
+                {filteredTopLevel.length}
+              </span>{" "}
+              parents
+            </span>
+            <span className="text-slate-300">·</span>
+            <span className="tabular-nums">
+              <span className="font-medium text-slate-700">
+                {filteredCategories.filter((c) => c.parent_id).length}
+              </span>{" "}
+              subcategories
+            </span>
+            {(categorySearch ||
+              slotsFilter !== "All" ||
+              infoFilter !== "All" ||
+              statusFilter !== "All") && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCategorySearch("");
+                  setSlotsFilter("All");
+                  setInfoFilter("All");
+                  setStatusFilter("All");
+                }}
+                className="ml-auto text-teal-700 hover:underline font-medium"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            {filteredTopLevel.map((parent) => {
+              const allChildren = categories.filter(
+                (c) => c.parent_id === parent.id,
+              );
+              const children = allChildren.filter((c) => {
+                if (
+                  !categorySearch.trim() &&
+                  slotsFilter === "All" &&
+                  infoFilter === "All" &&
+                  statusFilter === "All"
+                ) {
+                  return true;
+                }
+                return matchesFilters(c);
+              });
+              const parentMatches = matchesFilters(parent);
+              if (!parentMatches && children.length === 0) return null;
+
+              return (
+                <div
+                  key={parent.id}
+                  className="rounded-xl border border-slate-200 bg-white overflow-hidden"
+                >
+                  {parentMatches && (
+                    <CategoryTreeRow
+                      cat={parent}
+                      partnerCount={partnerCountById.get(parent.id) ?? 0}
+                      childCount={allChildren.length}
                       onEdit={setEditingCategory}
+                      depth="parent"
+                    />
+                  )}
+
+                  {!parentMatches && (
+                    <div className="flex items-center gap-2.5 px-3 py-2 bg-slate-50/80 border-b border-slate-100">
+                      <CategorySymbol cat={parent} size="sm" />
+                      <span className="text-sm font-medium text-slate-700 truncate">
+                        {parent.name}
+                      </span>
+                      <span className="text-xs text-slate-400 ml-auto tabular-nums">
+                        {children.length} match
+                        {children.length === 1 ? "" : "es"}
+                      </span>
+                    </div>
+                  )}
+
+                  {children.length > 0 && (
+                    <div className="bg-slate-50/40">
+                      {children.map((child, index) => (
+                        <CategoryTreeRow
+                          key={child.id}
+                          cat={child}
+                          partnerCount={partnerCountById.get(child.id) ?? 0}
+                          onEdit={setEditingCategory}
+                          depth="child"
+                          isLast={index === children.length - 1}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {children.length === 0 &&
+                    parentMatches &&
+                    allChildren.length === 0 && (
+                      <p className="px-3 py-2 text-xs text-slate-400 border-t border-slate-100">
+                        No subcategories yet
+                      </p>
+                    )}
+                </div>
+              );
+            })}
+
+            {orphanFiltered.length > 0 && (
+              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                <div className="px-3 py-2 text-xs font-medium text-slate-500 bg-slate-50 border-b border-slate-100">
+                  Other
+                </div>
+                {orphanFiltered.map((cat, index) => (
+                  <CategoryTreeRow
+                    key={cat.id}
+                    cat={cat}
+                    partnerCount={partnerCountById.get(cat.id) ?? 0}
+                    onEdit={setEditingCategory}
+                    depth="child"
+                    isLast={index === orphanFiltered.length - 1}
+                  />
+                ))}
+              </div>
+            )}
+
+            {categories.length > 0 &&
+              topLevelCategories.length === 0 &&
+              filteredCategories.length > 0 && (
+                <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                  {filteredCategories.map((cat, index) => (
+                    <CategoryTreeRow
+                      key={cat.id}
+                      cat={cat}
+                      partnerCount={partnerCountById.get(cat.id) ?? 0}
+                      onEdit={setEditingCategory}
+                      depth="parent"
+                      isLast={index === filteredCategories.length - 1}
                     />
                   ))}
-              </div>
-            </div>
-          ))}
+                </div>
+              )}
 
-          {/* Uncategorized / Lone categories */}
-          {categories.length > 0 && topLevelCategories.length === 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {categories.map((cat) => (
-                <CategoryCard
-                  key={cat.id}
-                  cat={cat}
-                  onEdit={setEditingCategory}
-                />
-              ))}
-            </div>
-          )}
+            {filteredTopLevel.length === 0 &&
+              orphanFiltered.length === 0 &&
+              categories.length > 0 && (
+                <div className="py-14 text-center text-sm text-slate-500 bg-white rounded-xl border border-slate-200">
+                  No categories match your search
+                </div>
+              )}
 
-          {categories.length === 0 && !categoryError && (
-            <div className="py-24 flex flex-col items-center opacity-30 bg-white rounded-xl border border-slate-200/60">
-              <div className="w-16 h-16 rounded-xl bg-slate-50 flex items-center justify-center mb-4">
-                <svg
-                  className="w-8 h-8 text-slate-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    d="M4 6h16M4 10h16M4 14h16M4 18h16"
-                  />
-                </svg>
-              </div>
-              <p className="text-[10px] font-medium tracking-[0.3em] text-slate-400">
+            {categories.length === 0 && !categoryError && (
+              <div className="py-16 text-center text-sm text-slate-400 bg-white rounded-xl border border-slate-200">
                 No categories defined
-              </p>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function CategoryCard({
+function CategorySymbol({
+  cat,
+  size = "md",
+}: {
+  cat: Pick<Category, "name" | "symbol" | "banner">;
+  size?: "sm" | "md";
+}) {
+  const dim = size === "sm" ? "w-7 h-7" : "w-8 h-8";
+  return (
+    <div
+      className={`${dim} rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0 text-xs font-semibold text-teal-700`}
+    >
+      {cat.symbol && cat.symbol !== "Not Set" ? (
+        <img
+          src={cat.symbol}
+          className="max-w-[70%] max-h-[70%] object-contain"
+          alt=""
+        />
+      ) : cat.banner && cat.banner !== "Not Set" ? (
+        <img src={cat.banner} className="w-full h-full object-cover" alt="" />
+      ) : (
+        cat.name[0]
+      )}
+    </div>
+  );
+}
+
+function CategoryTreeRow({
   cat,
   onEdit,
-  isParent,
+  depth,
+  partnerCount,
+  childCount,
+  isLast,
 }: {
   cat: Category;
   onEdit: (c: Category) => void;
-  isParent?: boolean;
+  depth: "parent" | "child";
+  partnerCount: number;
+  childCount?: number;
+  isLast?: boolean;
 }) {
+  const isParent = depth === "parent";
+
   return (
     <div
-      className={`bg-white rounded-2xl border ${isParent ? "border-primary/20" : "border-slate-200/60"} p-5 hover:border-slate-300 transition-all duration-300 group relative overflow-hidden`}
+      className={`group flex items-center gap-2.5 ${isParent ? "px-3 py-2.5 bg-white" : "pr-3 pl-0 py-1.5"} ${!isLast && !isParent ? "border-b border-slate-100/70" : ""} ${isParent && (childCount ?? 0) > 0 ? "border-b border-slate-100" : ""}`}
     >
-      {isParent && (
-        <div className="absolute top-0 right-0 px-3 py-1 bg-primary/10 rounded-bl-xl">
-          <span className="text-[7px] font-medium text-primary">Parent</span>
+      {isParent ? (
+        <CategorySymbol cat={cat} />
+      ) : (
+        <div className="relative flex items-center shrink-0 w-12 self-stretch">
+          <span
+            className={`absolute left-5 top-0 w-px bg-slate-200 ${isLast ? "h-1/2" : "h-full"}`}
+            aria-hidden
+          />
+          <span
+            className="absolute left-5 top-1/2 w-3 h-px bg-slate-200"
+            aria-hidden
+          />
+          <div className="ml-auto">
+            <CategorySymbol cat={cat} size="sm" />
+          </div>
         </div>
       )}
-      <div className="flex justify-between items-start mb-4">
-        <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-medium border border-slate-200 transition-all overflow-hidden">
-          {cat.symbol && cat.symbol !== "Not Set" ? (
-            <img
-              src={cat.symbol}
-              className="max-w-[70%] max-h-[70%] object-contain"
-              alt=""
-            />
-          ) : cat.banner && cat.banner !== "Not Set" ? (
-            <img
-              src={cat.banner}
-              className="w-full h-full object-cover"
-              alt=""
-            />
-          ) : (
-            cat.name[0]
+
+      <div className="min-w-0 flex-1 py-0.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <h3
+            className={`truncate text-slate-900 ${isParent ? "text-sm font-semibold" : "text-sm font-medium"}`}
+            title={cat.name}
+          >
+            {cat.name}
+          </h3>
+          {isParent && (
+            <span className="shrink-0 text-[11px] font-medium text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">
+              Parent
+            </span>
+          )}
+          {!isCategoryInfoComplete(cat) && (
+            <span className="shrink-0 text-[11px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
+              Missing info
+            </span>
           )}
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => onEdit(cat)}
-            className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
-            title="Edit Category"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-              />
-            </svg>
-          </button>
-          <span
-            className={`px-2 py-0.5 rounded-lg text-[8px] font-medium uppercase tracking-widest border ${cat.status === "Active" ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-slate-50 text-slate-400 border-slate-100"}`}
-          >
-            {cat.status}
-          </span>
-        </div>
+        <p className="text-xs text-slate-500 mt-0.5 tabular-nums truncate">
+          {partnerCount} partner{partnerCount === 1 ? "" : "s"}
+          {isParent && typeof childCount === "number"
+            ? ` · ${childCount} sub${childCount === 1 ? "" : "s"}`
+            : ""}
+          {" · "}
+          {(() => {
+            const configured = getCategoryConfiguredSlots(cat);
+            const booked = getCategoryBookedSlots(cat, partnerCount);
+            const free = configured - booked;
+            if (booked === 0 && free === configured) {
+              return `${configured} slots free`;
+            }
+            if (free === 0) return `${booked}/${configured} full`;
+            return `${booked}/${configured} slots · ${free} free`;
+          })()}
+        </p>
       </div>
-      <h3 className="text-sm font-medium text-slate-900 tracking-tight">
-        {cat.name}
-      </h3>
-      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-50">
-        <div className="flex flex-col">
-          <span className="text-[8px] font-medium text-slate-400">
-            Partners
-          </span>
-          <span className="text-xs font-medium text-primary tabular-nums">
-            {cat.items}
-          </span>
-        </div>
-        <div className="w-px h-6 bg-slate-100"></div>
-        <div className="flex flex-col">
-          <span className="text-[8px] font-medium text-slate-400">Type</span>
-          <span className="text-[10px] font-medium text-secondary">
-            {cat.type}
-          </span>
-        </div>
-        <div className="w-px h-6 bg-slate-100"></div>
-        <div className="flex flex-col">
-          <span className="text-[8px] font-medium text-slate-400">Pos</span>
-          <span className="text-[10px] font-medium text-slate-600 tabular-nums">
-            #{cat.position || 0}
-          </span>
-        </div>
-      </div>
+
+      <span
+        className={`shrink-0 text-[11px] font-medium px-2 py-0.5 rounded-full ${
+          cat.status === "Active"
+            ? "text-emerald-700 bg-emerald-50"
+            : "text-slate-500 bg-slate-100"
+        }`}
+      >
+        {cat.status}
+      </span>
+
+      <button
+        type="button"
+        onClick={() => onEdit(cat)}
+        className="shrink-0 p-1.5 text-slate-400 hover:text-teal-700 hover:bg-teal-50 rounded-md transition-colors opacity-70 group-hover:opacity-100"
+        title="Edit"
+      >
+        <svg
+          className="w-3.5 h-3.5"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+          />
+        </svg>
+      </button>
     </div>
   );
 }
@@ -6054,6 +6390,52 @@ function MoviesContent({
   });
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [search, setSearch] = useState("");
+  const [ratingFilter, setRatingFilter] = useState<
+    "all" | "high" | "mid" | "low" | "unrated"
+  >("all");
+  const [yearFilter, setYearFilter] = useState("all");
+  const [posterFilter, setPosterFilter] = useState<"all" | "has" | "missing">(
+    "all",
+  );
+
+  const yearOptions = useMemo(() => {
+    const years = new Set<number>();
+    for (const m of movies) {
+      const y = new Date(m.release_date).getFullYear();
+      if (!Number.isNaN(y)) years.add(y);
+    }
+    return Array.from(years).sort((a, b) => b - a);
+  }, [movies]);
+
+  const filteredMovies = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return movies.filter((movie) => {
+      const rating = Number(movie.finderb_rating) || 0;
+      if (ratingFilter === "high" && rating < 7) return false;
+      if (ratingFilter === "mid" && (rating < 4 || rating >= 7)) return false;
+      if (ratingFilter === "low" && (rating <= 0 || rating >= 4)) return false;
+      if (ratingFilter === "unrated" && rating > 0) return false;
+
+      const year = new Date(movie.release_date).getFullYear();
+      if (yearFilter !== "all" && String(year) !== yearFilter) return false;
+
+      const hasPoster = Boolean(movie.poster_url);
+      if (posterFilter === "has" && !hasPoster) return false;
+      if (posterFilter === "missing" && hasPoster) return false;
+
+      if (!q) return true;
+      const hay = `${movie.name} ${movie.description || ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [movies, search, ratingFilter, yearFilter, posterFilter]);
+
+  const { page, setPage, totalPages, pageItems, pageSize, total } =
+    useClientPage(
+      filteredMovies,
+      12,
+      `${search}|${ratingFilter}|${yearFilter}|${posterFilter}`,
+    );
 
   const handleSave = async () => {
     if (editingMovie) {
@@ -6099,25 +6481,35 @@ function MoviesContent({
     }
   };
 
+  const fieldLabel = "block text-xs font-medium text-slate-600 mb-1";
+  const fieldInput =
+    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40";
+
   const renderMovieForm = (
     movie: Partial<Movie>,
     setMovie: Dispatch<SetStateAction<any>>,
     isEditing: boolean,
   ) => (
-    <div className="bg-white rounded-3xl border border-slate-200/60 p-8 space-y-6 mb-8 animate-in slide-in-from-top-4 duration-300">
-      <div className="flex items-center justify-between border-b border-slate-50 pb-5">
-        <h3 className="text-sm font-medium text-slate-900 flex items-center gap-2">
-          <span className="w-2 h-2 bg-primary rounded-full"></span>
-          {isEditing ? `Edit: ${movie.name}` : "Add New Movie"}
-        </h3>
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mb-4">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+        <div>
+          <p className="text-[11px] font-medium text-slate-400">
+            {isEditing ? "Edit movie" : "New movie"}
+          </p>
+          <h3 className="text-sm font-semibold text-slate-900">
+            {isEditing ? movie.name || "Untitled" : "Add to library"}
+          </h3>
+        </div>
         <button
+          type="button"
           onClick={() =>
             isEditing ? setEditingMovie(null) : setIsAddingMovie(false)
           }
-          className="text-slate-400 hover:text-slate-600 transition-colors"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+          aria-label="Close"
         >
           <svg
-            className="w-5 h-5"
+            className="w-4 h-4"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -6132,196 +6524,151 @@ function MoviesContent({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
+      <div className="p-4 grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="md:col-span-3 space-y-3">
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-              Movie Name
-            </label>
+            <label className={fieldLabel}>Name</label>
             <input
               type="text"
-              value={movie.name}
+              value={movie.name || ""}
               onChange={(e) => setMovie({ ...movie, name: e.target.value })}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
-              placeholder="Enter movie name"
+              className={fieldInput}
+              placeholder="Movie title"
             />
           </div>
-
           <div>
-            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-              Description
-            </label>
+            <label className={fieldLabel}>Description</label>
             <textarea
-              value={movie.description}
+              value={movie.description || ""}
               onChange={(e) =>
                 setMovie({ ...movie, description: e.target.value })
               }
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all min-h-[100px]"
-              placeholder="Enter movie description"
+              className={`${fieldInput} min-h-[100px]`}
+              placeholder="Short synopsis"
             />
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-                FinderB Rating
-              </label>
+              <label className={fieldLabel}>FinderB rating</label>
               <input
                 type="number"
                 step="0.1"
                 min="0"
                 max="10"
-                value={movie.finderb_rating}
+                value={movie.finderb_rating ?? 0}
                 onChange={(e) =>
                   setMovie({
                     ...movie,
-                    finderb_rating: parseFloat(e.target.value),
+                    finderb_rating: parseFloat(e.target.value) || 0,
                   })
                 }
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className={fieldInput}
               />
             </div>
             <div>
-              <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-                Release Date
-              </label>
+              <label className={fieldLabel}>Release date</label>
               <input
                 type="date"
-                value={movie.release_date}
+                value={movie.release_date || ""}
                 onChange={(e) =>
                   setMovie({ ...movie, release_date: e.target.value })
                 }
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-[11px] font-normal text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className={fieldInput}
               />
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 mb-1.5">
-              Movie Poster
-            </label>
-            <div className="flex gap-4 items-start">
-              <div className="flex-1 relative">
-                <input
-                  type="file"
-                  onChange={(e) =>
-                    e.target.files?.[0] &&
-                    handleImageUpload(e.target.files[0], isEditing)
-                  }
-                  className="hidden"
-                  id={`poster-upload-${isEditing ? "edit" : "new"}`}
-                  disabled={uploading}
-                />
-                <label
-                  htmlFor={`poster-upload-${isEditing ? "edit" : "new"}`}
-                  className={`flex flex-col items-center justify-center gap-2 w-full aspect-[2/3] bg-slate-50 border-2 border-dashed rounded-2xl p-4 text-[10px] font-normal text-slate-500 cursor-pointer hover:bg-slate-100 transition-all group relative overflow-hidden ${
-                    uploading
-                      ? "border-primary/30 bg-primary/5 cursor-not-allowed"
-                      : "border-slate-200 hover:border-primary/30"
-                  }`}
-                >
-                  {uploading ? (
-                    <div className="flex flex-col items-center gap-3 w-full px-4">
-                      <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                        <div
-                          className="bg-primary h-full transition-all duration-300"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                      <span className="text-primary font-medium">
-                        {uploadProgress}% Uploading...
-                      </span>
-                    </div>
-                  ) : movie.poster_url ? (
-                    <img
-                      src={movie.poster_url}
-                      className="w-full h-full object-cover rounded-xl"
-                      alt="Poster Preview"
-                    />
-                  ) : (
-                    <>
-                      <svg
-                        className="w-8 h-8 text-slate-300 transition-transform mb-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="1.5"
-                          d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                        />
-                      </svg>
-                      <span className="text-center">
-                        Click to Upload Movie Poster
-                      </span>
-                    </>
-                  )}
-                </label>
-              </div>
-              {movie.poster_url && !uploading && (
-                <button
-                  onClick={() => setMovie({ ...movie, poster_url: "" })}
-                  className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-transparent hover:border-rose-100"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              )}
-            </div>
-          </div>
+        <div className="md:col-span-2 space-y-2">
+          <label className={fieldLabel}>Poster</label>
+          <input
+            type="file"
+            onChange={(e) =>
+              e.target.files?.[0] &&
+              handleImageUpload(e.target.files[0], isEditing)
+            }
+            className="hidden"
+            id={`poster-upload-${isEditing ? "edit" : "new"}`}
+            disabled={uploading}
+          />
+          <label
+            htmlFor={`poster-upload-${isEditing ? "edit" : "new"}`}
+            className={`flex flex-col items-center justify-center gap-2 w-full aspect-[2/3] max-h-56 rounded-lg border border-dashed text-xs text-slate-500 cursor-pointer overflow-hidden ${
+              uploading
+                ? "border-teal-300 bg-teal-50/40 cursor-not-allowed"
+                : "border-slate-200 bg-slate-50 hover:border-teal-300"
+            }`}
+          >
+            {uploading ? (
+              <span className="tabular-nums text-teal-700 font-medium">
+                {uploadProgress}% uploading…
+              </span>
+            ) : movie.poster_url ? (
+              <img
+                src={movie.poster_url}
+                className="w-full h-full object-cover"
+                alt=""
+              />
+            ) : (
+              <span>Upload poster</span>
+            )}
+          </label>
+          {movie.poster_url && !uploading && (
+            <button
+              type="button"
+              onClick={() => setMovie({ ...movie, poster_url: "" })}
+              className="text-xs font-medium text-rose-600 hover:underline"
+            >
+              Remove poster
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+      <div className="flex justify-end gap-2 px-4 py-3 border-t border-slate-100 bg-slate-50/40">
         <button
+          type="button"
           onClick={() =>
             isEditing ? setEditingMovie(null) : setIsAddingMovie(false)
           }
-          className="px-6 py-2.5 text-[10px] font-medium text-slate-500 hover:bg-slate-50 rounded-xl transition-all"
+          className="px-3.5 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg"
         >
           Cancel
         </button>
         <button
+          type="button"
           onClick={isEditing ? handleSave : handleCreate}
           disabled={!movie.name || uploading}
-          className="px-8 py-2.5 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all disabled:opacity-50"
+          className="px-4 py-2 bg-teal-700 text-white text-sm font-medium rounded-lg hover:bg-teal-800 disabled:opacity-50"
         >
-          {isEditing ? "Save Changes" : "Save Movie"}
+          {isEditing ? "Save changes" : "Save movie"}
         </button>
       </div>
     </div>
   );
 
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    ratingFilter !== "all" ||
+    yearFilter !== "all" ||
+    posterFilter !== "all";
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
+    <div className="space-y-4 font-sans">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-0.5">
         <div>
-          <h1 className="admin-page-title">Movie Library</h1>
+          <h1 className="admin-page-title">Movies</h1>
           <p className="admin-page-subtitle">
-            Manage platform movies and ratings.
+            Manage platform movies and FinderB ratings.
           </p>
         </div>
         {!isAddingMovie && !editingMovie && (
           <button
+            type="button"
             onClick={() => setIsAddingMovie(true)}
-            className="px-4 py-2 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all"
+            className="rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-teal-800"
           >
-            Add New Movie
+            Add movie
           </button>
         )}
       </div>
@@ -6330,116 +6677,174 @@ function MoviesContent({
       {editingMovie && renderMovieForm(editingMovie, setEditingMovie, true)}
 
       {!isAddingMovie && !editingMovie && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {movies.map((movie) => (
-            <div
-              key={movie.id}
-              className="bg-white rounded-xl border border-slate-200/60 p-4 transition-all duration-300 group"
+        <div className="space-y-3">
+          <div className="flex flex-col lg:flex-row gap-2">
+            <ListSearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder="Search title or description…"
+            />
+            <ListSelect
+              value={ratingFilter}
+              onChange={(v) =>
+                setRatingFilter(
+                  v as "all" | "high" | "mid" | "low" | "unrated",
+                )
+              }
             >
-              <div className="relative aspect-[2/3] rounded-xl overflow-hidden mb-4 bg-slate-100">
-                {movie.poster_url ? (
-                  <img
-                    src={movie.poster_url}
-                    className="w-full h-full object-cover transition-transform duration-500"
-                    alt={movie.name}
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center opacity-20">
-                    <svg
-                      className="w-12 h-12 text-slate-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.5"
-                        d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
-                      />
-                    </svg>
-                  </div>
-                )}
-                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => setEditingMovie(movie)}
-                    className="p-1.5 bg-white/90 backdrop-blur-sm text-slate-600 hover:text-primary rounded-lg transition-all"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    onClick={() => onDeleteMovie(movie.id)}
-                    className="p-1.5 bg-white/90 backdrop-blur-sm text-slate-600 hover:text-rose-500 rounded-lg transition-all"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
-                </div>
-                <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 backdrop-blur-sm text-white rounded-lg flex items-center gap-1.5">
-                  <svg
-                    className="w-2.5 h-2.5 text-amber-400"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                  <span className="text-[9px] font-medium">
-                    {movie.finderb_rating?.toFixed(1) || "0.0"}
-                  </span>
-                </div>
-              </div>
-              <h3 className="text-[11px] font-medium text-slate-900 tracking-tight truncate mb-1">
-                {movie.name}
-              </h3>
-              <p className="text-[9px] text-slate-500 font-normal">
-                {new Date(movie.release_date).getFullYear() || "TBA"}
-              </p>
-            </div>
-          ))}
+              <option value="all">All ratings</option>
+              <option value="high">High (7+)</option>
+              <option value="mid">Mid (4–6.9)</option>
+              <option value="low">Low (0.1–3.9)</option>
+              <option value="unrated">Unrated</option>
+            </ListSelect>
+            <ListSelect value={yearFilter} onChange={setYearFilter}>
+              <option value="all">All years</option>
+              {yearOptions.map((y) => (
+                <option key={y} value={String(y)}>
+                  {y}
+                </option>
+              ))}
+            </ListSelect>
+            <ListSelect
+              value={posterFilter}
+              onChange={(v) => setPosterFilter(v as "all" | "has" | "missing")}
+            >
+              <option value="all">All posters</option>
+              <option value="has">Has poster</option>
+              <option value="missing">Missing poster</option>
+            </ListSelect>
+          </div>
 
-          {movies.length === 0 && (
-            <div className="col-span-full py-24 flex flex-col items-center opacity-30 bg-white rounded-xl border border-slate-200/60">
-              <div className="w-16 h-16 rounded-xl bg-slate-50 flex items-center justify-center mb-4">
-                <svg
-                  className="w-8 h-8 text-slate-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
-                  />
-                </svg>
+          <div className="flex items-center gap-2 text-xs text-slate-500 px-0.5">
+            <span className="tabular-nums">
+              <span className="font-medium text-slate-700">{total}</span> match
+              {total === 1 ? "" : "es"} · {movies.length} total
+            </span>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setRatingFilter("all");
+                  setYearFilter("all");
+                  setPosterFilter("all");
+                }}
+                className="ml-auto text-teal-700 hover:underline font-medium"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+
+          {filteredMovies.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2.5">
+                {pageItems.map((movie) => (
+                  <div
+                    key={movie.id}
+                    className="group overflow-hidden rounded-xl border border-slate-200 bg-white"
+                  >
+                    <div className="relative aspect-[2/3] bg-slate-100 overflow-hidden">
+                      {movie.poster_url ? (
+                        <img
+                          src={movie.poster_url}
+                          className="w-full h-full object-cover"
+                          alt={movie.name}
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                          No poster
+                        </div>
+                      )}
+                      <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <button
+                          type="button"
+                          onClick={() => setEditingMovie(movie)}
+                          className="rounded-md bg-white/95 p-1.5 text-slate-700 hover:text-teal-700"
+                          title="Edit"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Delete "${movie.name}"?`)) {
+                              onDeleteMovie(movie.id);
+                            }
+                          }}
+                          className="rounded-md bg-white/95 p-1.5 text-rose-600"
+                          title="Delete"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="absolute bottom-1.5 left-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[11px] font-medium text-white tabular-nums">
+                        ★ {movie.finderb_rating?.toFixed(1) || "0.0"}
+                      </div>
+                    </div>
+                    <div className="p-2.5">
+                      <h3
+                        className="truncate text-sm font-semibold text-slate-900"
+                        title={movie.name}
+                      >
+                        {movie.name}
+                      </h3>
+                      <p className="mt-0.5 text-xs text-slate-500 tabular-nums">
+                        {new Date(movie.release_date).getFullYear() || "TBA"}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <p className="text-[10px] font-medium tracking-[0.3em] text-slate-400">
-                No movies found
+              <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                pageSize={pageSize}
+                onPageChange={setPage}
+              />
+            </>
+          ) : (
+            <div className="rounded-xl border border-dashed border-slate-200 bg-white py-14 text-center">
+              <p className="text-sm font-medium text-slate-700">
+                {movies.length === 0
+                  ? "No movies yet"
+                  : "No movies match your filters"}
               </p>
+              {movies.length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingMovie(true)}
+                  className="mt-3 rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-teal-800"
+                >
+                  Add first movie
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -6465,10 +6870,38 @@ function BroadcastsContent({
 }) {
   const [isSending, setIsSending] = useState(false);
   const [pastBroadcasts, setPastBroadcasts] = useState<any[]>([]);
-  const AUDIENCE_OPTIONS = ["Users", "Merchants", "Service Providers"];
+  const [dispatchNote, setDispatchNote] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
+  const AUDIENCE_OPTIONS = [
+    {
+      id: "Users",
+      label: "Users",
+      hint: "App users & shoppers",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      ),
+    },
+    {
+      id: "Merchants",
+      label: "Merchants",
+      hint: "Partner businesses",
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      ),
+    },
+  ] as const;
 
   useEffect(() => {
     fetchPastBroadcasts();
+    // Drop legacy "Service Providers" from draft if present
+    setAudiences(audiences.filter((a) => a === "Users" || a === "Merchants"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPastBroadcasts = async () => {
@@ -6477,7 +6910,7 @@ function BroadcastsContent({
       .from("broadcasts")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(5);
+      .limit(12);
     if (!error && data) setPastBroadcasts(data);
   };
 
@@ -6489,143 +6922,335 @@ function BroadcastsContent({
     }
   };
 
+  const canDispatch =
+    title.trim().length > 0 &&
+    message.trim().length > 0 &&
+    audiences.length > 0 &&
+    !isSending;
+
   const handleDispatch = async () => {
-    if (!title.trim() || !message.trim() || audiences.length === 0) {
-      alert("Please fill in all fields and select at least one audience.");
+    if (!canDispatch) {
+      setDispatchNote({
+        tone: "error",
+        text: "Add a title, message, and at least one audience.",
+      });
       return;
     }
 
     try {
       setIsSending(true);
+      setDispatchNote(null);
       const supabase = createClient();
       const { error } = await supabase.from("broadcasts").insert({
-        title,
-        message,
+        title: title.trim(),
+        message: message.trim(),
         target_audience: audiences,
       });
 
       if (error) throw error;
 
-      alert("Broadcast dispatched successfully!");
+      setDispatchNote({
+        tone: "success",
+        text: "Broadcast dispatched successfully.",
+      });
       setTitle("");
       setMessage("");
       fetchPastBroadcasts();
     } catch (err: any) {
-      alert("Error dispatching broadcast: " + err.message);
+      setDispatchNote({
+        tone: "error",
+        text: err.message || "Failed to dispatch broadcast.",
+      });
     } finally {
       setIsSending(false);
     }
   };
 
+  const formatAudience = (raw: unknown) => {
+    const list = Array.isArray(raw)
+      ? raw.filter((a) => a === "Users" || a === "Merchants")
+      : [];
+    return list.length ? list.join(" · ") : "—";
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <div className="space-y-6">
-        <div className="flex flex-col gap-1.5 px-1">
-          <h1 className="admin-page-title">Global Broadcast</h1>
-          <p className="admin-page-subtitle">
-            Push announcements and updates to platform users.
-          </p>
-        </div>
-
-        <div className="bg-white border border-slate-200/60 rounded-xl p-8 space-y-6">
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 tracking-[0.2em] mb-2.5">
-              Broadcast Title
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="ENTER TITLE..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-300"
-            />
+    <div className="space-y-5">
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.35]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(45,212,191,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(45,212,191,0.08) 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+          }}
+        />
+        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-teal-400/20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-cyan-500/10 blur-3xl" />
+        <div className="relative px-5 py-5 sm:px-6 sm:py-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div className="space-y-2 max-w-xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-2.5 py-1 text-[11px] font-medium text-teal-200">
+              <span className="h-1.5 w-1.5 rounded-full bg-teal-300 animate-pulse" />
+              Signal channel
+            </div>
+            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
+              Global Broadcast
+            </h1>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              Push announcements to users and merchants across FinderB in one
+              dispatch.
+            </p>
           </div>
-
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 tracking-[0.2em] mb-2.5">
-              Target Audience
-            </label>
-            <div className="flex flex-wrap gap-3">
-              {AUDIENCE_OPTIONS.map((opt) => (
-                <label
-                  key={opt}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-primary/30 transition-all"
-                >
-                  <input
-                    type="checkbox"
-                    checked={audiences.includes(opt)}
-                    onChange={() => toggleAudience(opt)}
-                    className="w-4 h-4 rounded text-primary focus:ring-primary/20"
-                  />
-                  <span className="text-[10px] font-medium text-slate-600">
-                    {opt}
-                  </span>
-                </label>
-              ))}
+          <div className="flex gap-4 text-right">
+            <div>
+              <p className="text-[11px] text-slate-400">Recent</p>
+              <p className="text-lg font-semibold tabular-nums text-teal-200">
+                {pastBroadcasts.length}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] text-slate-400">Targets</p>
+              <p className="text-lg font-semibold tabular-nums text-teal-200">
+                {audiences.length || 0}
+              </p>
             </div>
           </div>
-
-          <div>
-            <label className="block text-[9px] font-medium text-slate-400 tracking-[0.2em] mb-2.5">
-              Announcement Content
-            </label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="TYPE YOUR MESSAGE HERE..."
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all min-h-[160px] placeholder:text-slate-300"
-            />
-          </div>
-
-          <button
-            onClick={handleDispatch}
-            disabled={isSending}
-            className="w-full py-4 bg-primary text-white text-[10px] font-medium rounded-xl hover:bg-primary-700 transition-all active:scale-[0.98] tracking-[0.2em] disabled:opacity-50"
-          >
-            {isSending ? "Dispatching..." : "Dispatch Announcement"}
-          </button>
         </div>
       </div>
 
-      <div className="space-y-6">
-        <div className="flex flex-col gap-1.5 px-1">
-          <h1 className="admin-page-title">Recent History</h1>
-          <p className="admin-page-subtitle">
-            View previously dispatched announcements.
-          </p>
-        </div>
-
-        <div className="bg-white border border-slate-200/60 rounded-xl overflow-hidden">
-          <div className="divide-y divide-slate-50">
-            {pastBroadcasts.length > 0 ? (
-              pastBroadcasts.map((b) => (
-                <div
-                  key={b.id}
-                  className="p-6 hover:bg-slate-50 transition-colors"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold text-primary">
-                      {b.target_audience?.join(" & ")}
-                    </span>
-                    <span className="text-[9px] text-slate-400 font-medium tabular-nums">
-                      {new Date(b.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <h3 className="text-[11px] font-semibold text-slate-900 tracking-tight mb-1">
-                    {b.title}
-                  </h3>
-                  <p className="text-[10px] text-slate-600 line-clamp-2 leading-relaxed">
-                    {b.message}
-                  </p>
-                </div>
-              ))
-            ) : (
-              <div className="p-12 text-center">
-                <p className="text-[10px] text-slate-400">
-                  No broadcast history found
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
+        <div className="xl:col-span-3 space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">Compose</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Title, audience, and message
                 </p>
               </div>
-            )}
+              <span className="text-[11px] font-medium text-slate-400 tabular-nums">
+                {message.length} chars
+              </span>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Platform maintenance tonight"
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  Audience
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {AUDIENCE_OPTIONS.map((opt) => {
+                    const active = audiences.includes(opt.id);
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => toggleAudience(opt.id)}
+                        className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-all ${
+                          active
+                            ? "border-teal-500/40 bg-teal-50/80 ring-1 ring-teal-500/20"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                        }`}
+                      >
+                        <span
+                          className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg ${
+                            active
+                              ? "bg-teal-600 text-white"
+                              : "bg-slate-100 text-slate-500"
+                          }`}
+                        >
+                          {opt.icon}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold text-slate-900">
+                              {opt.label}
+                            </span>
+                            <span
+                              className={`h-4 w-4 rounded-full border flex items-center justify-center ${
+                                active
+                                  ? "border-teal-600 bg-teal-600"
+                                  : "border-slate-300"
+                              }`}
+                            >
+                              {active && (
+                                <svg
+                                  className="w-2.5 h-2.5 text-white"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              )}
+                            </span>
+                          </span>
+                          <span className="block text-xs text-slate-500 mt-0.5">
+                            {opt.hint}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                  Message
+                </label>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Write the announcement users and merchants will see…"
+                  rows={7}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 resize-y min-h-[140px]"
+                />
+              </div>
+
+              {dispatchNote && (
+                <div
+                  className={`rounded-lg px-3 py-2.5 text-sm ${
+                    dispatchNote.tone === "success"
+                      ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
+                      : "bg-rose-50 text-rose-800 border border-rose-100"
+                  }`}
+                >
+                  {dispatchNote.text}
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between pt-1">
+                <p className="text-xs text-slate-400">
+                  Dispatches immediately to selected audiences.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleDispatch}
+                  disabled={!canDispatch}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-45 disabled:cursor-not-allowed"
+                >
+                  {isSending ? (
+                    "Dispatching…"
+                  ) : (
+                    <>
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                        />
+                      </svg>
+                      Dispatch
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="xl:col-span-2 space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/70">
+              <h2 className="text-sm font-semibold text-slate-900">Live preview</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                How the announcement will read
+              </p>
+            </div>
+            <div className="p-4">
+              <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-950 text-[10px] font-bold text-teal-300">
+                    FB
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold text-slate-900">
+                      FinderB
+                    </p>
+                    <p className="text-[11px] text-slate-400">Announcement</p>
+                  </div>
+                </div>
+                <h3 className="text-sm font-semibold text-slate-900 leading-snug">
+                  {title.trim() || "Your title appears here"}
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
+                  {message.trim() ||
+                    "Your message preview will show up here as you type."}
+                </p>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {(audiences.length ? audiences : ["No audience"]).map((a) => (
+                    <span
+                      key={a}
+                      className="rounded-full bg-teal-50 text-teal-800 px-2 py-0.5 text-[11px] font-medium"
+                    >
+                      {a}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-semibold text-slate-900">
+                  Dispatch history
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">Latest sends</p>
+              </div>
+            </div>
+            <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
+              {pastBroadcasts.length > 0 ? (
+                pastBroadcasts.map((b) => (
+                  <div
+                    key={b.id}
+                    className="px-4 py-3.5 hover:bg-slate-50/80 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-1">
+                      <h3 className="text-sm font-semibold text-slate-900 leading-snug">
+                        {b.title}
+                      </h3>
+                      <span className="shrink-0 text-[11px] text-slate-400 tabular-nums">
+                        {new Date(b.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2">
+                      {b.message}
+                    </p>
+                    <p className="text-[11px] font-medium text-teal-700">
+                      {formatAudience(b.target_audience)}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="px-4 py-12 text-center text-sm text-slate-400">
+                  No broadcasts yet
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

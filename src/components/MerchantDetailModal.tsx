@@ -28,6 +28,11 @@ import {
 } from "../lib/merchantPlanAdmin";
 import { getBusinessProfileUrl } from "../lib/site";
 import { isPlaceholderEmail } from "../lib/placeholderEmail";
+import type { CategoryRef } from "../lib/categoryLabel";
+import {
+  CategoryLabelDisplay,
+  CategorySubcategoryPicker,
+} from "./CategorySubcategoryPicker";
 
 export type MerchantBusinessRecord = {
   id: string;
@@ -105,7 +110,7 @@ export type MerchantBusinessRecord = {
 
 type MerchantDetailModalProps = {
   business: MerchantBusinessRecord;
-  categories: string[];
+  categories: CategoryRef[];
   canManage: boolean;
   canViewFinancialData: boolean;
   isUploading: string | null;
@@ -1333,8 +1338,6 @@ export default function MerchantDetailModal({
     }
   };
 
-  const categoryOptions =
-    categories.length > 0 ? categories : [draft.category || "Other"];
   const display = isEditing ? draft : business;
   const editable = isEditing && canManage;
   const reviews = useMemo(() => parseReviews(display.review), [display.review]);
@@ -1583,14 +1586,18 @@ export default function MerchantDetailModal({
                   </Section>
 
                   <Section title="Listing">
-                    <Field
-                      label="Category"
-                      value={display.category || ""}
-                      editing={editable}
-                      type="select"
-                      options={categoryOptions}
-                      onChange={(v) => patchDraft({ category: v })}
-                    />
+                    {editable ? (
+                      <CategorySubcategoryPicker
+                        categories={categories}
+                        value={draft.category || ""}
+                        onChange={(v) => patchDraft({ category: v })}
+                      />
+                    ) : (
+                      <CategoryLabelDisplay
+                        label={display.category || ""}
+                        categories={categories}
+                      />
+                    )}
                     {editable ? (
                       <TagListEditor
                         label="Service categories"
