@@ -14,12 +14,16 @@ export const MERCHANT_PLAN_PRESETS: MerchantPlanPreset[] = [
   { id: "pro_annual", label: "Pro — Annual", selectedPlan: "pro", billingCycle: "annual", paymentStatus: "completed" },
 ];
 
+/**
+ * Map stored plan fields → preset id.
+ * Paid plans are distinguished by billing cycle (same rule as planLabel):
+ * annual → Pro — Annual, otherwise → Growth — Monthly.
+ * Do not key off selectedPlan === "pro" alone — many Growth clients still store "pro".
+ */
 export function resolvePlanPresetId(selectedPlan: string, billingCycle: string): string {
-  const plan = selectedPlan.toLowerCase();
-  const cycle = billingCycle.toLowerCase();
+  const plan = (selectedPlan || "free").toLowerCase();
+  const cycle = (billingCycle || "monthly").toLowerCase();
   if (plan === "free" || plan === "starter") return "starter";
-  if (plan === "pro") return "pro_annual";
-  if (plan === "growth") return "growth_monthly";
   if (cycle === "annual") return "pro_annual";
   return "growth_monthly";
 }
@@ -114,9 +118,9 @@ export function applyPlanPreset(
 }
 
 export function planLabel(plan: string, billingCycle: string) {
-  const normalized = plan.toLowerCase();
-  const cycle = billingCycle?.toLowerCase();
-  if (normalized === "free" || normalized === "starter") return "Starter";
-  if (cycle === "annual") return "Pro — Annual";
-  return "Growth — Monthly";
+  const presetId = resolvePlanPresetId(plan, billingCycle);
+  return (
+    MERCHANT_PLAN_PRESETS.find((preset) => preset.id === presetId)?.label ??
+    "Growth — Monthly"
+  );
 }
