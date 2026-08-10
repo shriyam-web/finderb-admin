@@ -165,7 +165,7 @@ export default function WhatsNewPanel({
                   What&apos;s New
                 </h2>
                 <p className="text-[12px] text-slate-500 mt-0.5">
-                  Product updates for FinderB Admin
+                  Latest FinderB Admin enhancements
                   {panelUnread > 0 ? ` · ${panelUnread} unread` : ""}
                 </p>
               </div>

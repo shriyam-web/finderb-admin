@@ -310,9 +310,9 @@ body {
     align-items: center;
     justify-content: center;
     gap: 0.55rem;
-    width: 2.6rem;
-    min-height: 10.5rem;
-    padding: 1.15rem 0.45rem;
+    width: 2.75rem;
+    min-height: 11.25rem;
+    padding: 1.25rem 0.5rem;
     border-radius: 0.85rem 0 0 0.85rem;
     border: 1px solid #d97706;
     border-right: none;
