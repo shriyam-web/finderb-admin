@@ -9,9 +9,11 @@ import {
   MIN_NAME_LENGTH,
   MIN_ADDRESS_LINE1_LENGTH,
 } from "../lib/merchantRegistration";
+import { DEFAULT_ONBOARDING_PAYMENT_MODES } from "../lib/paymentModes";
 import { getBusinessLoginUrl, getBusinessProfileUrl } from "../lib/site";
 import { isPlaceholderEmail } from "../lib/placeholderEmail";
 import { FormOnboardArt } from "./OnboardHeroArt";
+import PaymentModesCheckboxes from "./PaymentModesCheckboxes";
 
 export type RegistrationCategory = {
   id: string;
@@ -44,6 +46,7 @@ type FormState = {
   city: string;
   publicPhone: string;
   activateImmediately: boolean;
+  paymentModes: string[];
 };
 
 type FieldErrors = Partial<Record<keyof FormState | "_form", string>>;
@@ -69,6 +72,7 @@ const INITIAL_FORM: FormState = {
   city: "",
   publicPhone: "",
   activateImmediately: false,
+  paymentModes: [...DEFAULT_ONBOARDING_PAYMENT_MODES],
 };
 
 type CreatedMerchant = {
@@ -419,6 +423,7 @@ export default function MerchantRegistrationContent({
           selectedPlan: "free",
           billingCycle: "monthly",
           activateImmediately: form.activateImmediately,
+          paymentModes: form.paymentModes,
         }),
       });
 
@@ -933,6 +938,14 @@ export default function MerchantRegistrationContent({
                 <p className="text-[12px] text-slate-500 mt-0.5">
                   Paid plans apply automatically after successful payment.
                 </p>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+                <PaymentModesCheckboxes
+                  idPrefix="reg-payment"
+                  values={form.paymentModes}
+                  onChange={(paymentModes) => patch({ paymentModes })}
+                />
               </div>
 
               <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3">

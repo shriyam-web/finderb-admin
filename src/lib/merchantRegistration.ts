@@ -3,6 +3,7 @@ import {
   normalizeIndianPhoneForStorage,
 } from "./indianPhone";
 import { validateRegistrationPassword } from "./merchantPasswordPolicy";
+import { normalizePaymentModes } from "./paymentModes";
 
 export const REGISTRATION_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const MIN_NAME_LENGTH = 2;
@@ -42,6 +43,8 @@ export type MerchantRegistrationPayload = {
   googleRating?: number | null;
   photos?: string[];
   timings?: unknown;
+  /** Accepted payment methods shown on the listing. */
+  paymentModes?: string[];
 };
 
 export type NormalizedMerchantRegistration = {
@@ -74,6 +77,7 @@ export type NormalizedMerchantRegistration = {
   googleRating: number | null;
   photos: string[];
   timings: unknown | null;
+  paymentModes: string[] | null;
 };
 
 function combineBusinessAddress(line1: string, line2?: string | null): string {
@@ -175,6 +179,8 @@ export function validateAndNormalizeMerchantRegistration(
         .slice(0, 5)
     : [];
 
+  const paymentModesList = normalizePaymentModes(data.paymentModes);
+
   return {
     ok: true,
     data: {
@@ -207,6 +213,7 @@ export function validateAndNormalizeMerchantRegistration(
       googleRating,
       photos,
       timings: data.timings ?? null,
+      paymentModes: paymentModesList.length ? paymentModesList : null,
     },
   };
 }

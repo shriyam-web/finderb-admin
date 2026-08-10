@@ -278,6 +278,7 @@ export async function POST(request: Request) {
         timings: normalized.timings,
         images: galleryImages.length ? galleryImages : null,
         profilePictureUrl,
+        paymentModes: normalized.paymentModes,
         createdAt: now,
         updatedAt: now,
       })

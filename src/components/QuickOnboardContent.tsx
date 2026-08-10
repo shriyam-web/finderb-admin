@@ -21,6 +21,7 @@ import {
   type WeekTimings,
 } from "../lib/googleBusinessLink";
 import { AiJsonArt, MapsImportArt } from "./OnboardHeroArt";
+import PaymentModesCheckboxes from "./PaymentModesCheckboxes";
 
 type AdminSession = {
   id: string;
@@ -607,7 +608,12 @@ export default function QuickOnboardContent({
     }
     if (result.fields) {
       const next = draftFromAiFields(result.fields, categories);
-      setDraft(next);
+      // Keep payment-mode edits across AI JSON re-parses.
+      setDraft((prev) =>
+        prev?.paymentModes
+          ? { ...next, paymentModes: prev.paymentModes }
+          : next,
+      );
       setParseMessage(result.ok ? "" : result.message);
       setParseErrors(result.errors);
     }
@@ -2139,6 +2145,14 @@ export default function QuickOnboardContent({
                         Reset
                       </button>
                     </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white px-3.5 py-3">
+                    <PaymentModesCheckboxes
+                      idPrefix="qo-payment"
+                      values={draft.paymentModes}
+                      onChange={(paymentModes) => patchDraft({ paymentModes })}
+                    />
                   </div>
 
                   <label className="flex items-start gap-2.5 cursor-pointer rounded-lg border border-slate-200 bg-slate-50/50 px-3.5 py-2.5">

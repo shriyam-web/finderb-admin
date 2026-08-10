@@ -10,6 +10,7 @@ import {
   type MerchantRegistrationPayload,
 } from "./merchantRegistration";
 import type { WeekTimings } from "./googleBusinessLink";
+import { DEFAULT_ONBOARDING_PAYMENT_MODES } from "./paymentModes";
 
 /** Strict schema keys the AI must return. */
 export type QuickOnboardAiFields = {
@@ -49,6 +50,8 @@ export type QuickOnboardDraft = QuickOnboardAiFields & {
   /** Resolved category label ready for register API (may include parent › child). */
   resolvedCategory: string;
   categoryMatched: boolean;
+  /** Editable on the review form; not inferred from Google/AI. */
+  paymentModes: string[];
 };
 
 export type QuickOnboardParseResult =
@@ -667,6 +670,7 @@ export function draftFromAiFields(
     ...fields,
     resolvedCategory: resolved.matched ? resolved.label : fallbackLabel,
     categoryMatched: resolved.matched,
+    paymentModes: [...DEFAULT_ONBOARDING_PAYMENT_MODES],
   };
 }
 
@@ -705,6 +709,7 @@ export function toRegistrationPayload(
     googleRating: draft.rating ?? undefined,
     photos: draft.photos?.length ? draft.photos : undefined,
     timings: draft.timings || undefined,
+    paymentModes: draft.paymentModes,
   };
 }
 

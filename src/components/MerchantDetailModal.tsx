@@ -29,6 +29,7 @@ import {
 import { getBusinessProfileUrl } from "../lib/site";
 import { isPlaceholderEmail } from "../lib/placeholderEmail";
 import type { CategoryRef } from "../lib/categoryLabel";
+import { PAYMENT_MODE_OPTIONS } from "../lib/paymentModes";
 import {
   CategoryLabelDisplay,
   CategorySubcategoryPicker,
@@ -164,17 +165,6 @@ const DEFAULT_DAY: DayHours = {
   open: "09:00",
   close: "18:00",
 };
-
-const PAYMENT_MODE_OPTIONS = [
-  "Cash",
-  "UPI",
-  "Debit Card",
-  "Credit Card",
-  "Net Banking",
-  "Wallets",
-  "Cheque",
-  "EMI",
-];
 
 const DISCOUNT_OPTIONS = [
   "Up to 10%",
@@ -828,9 +818,10 @@ function PaymentModesEditor({
 }) {
   const selected = values ?? [];
   // Preserve any legacy values not in the preset list.
+  const preset = PAYMENT_MODE_OPTIONS as readonly string[];
   const options = [
-    ...PAYMENT_MODE_OPTIONS,
-    ...selected.filter((v) => !PAYMENT_MODE_OPTIONS.includes(v)),
+    ...preset,
+    ...selected.filter((v) => !preset.includes(v)),
   ];
 
   const toggle = (mode: string) => {
