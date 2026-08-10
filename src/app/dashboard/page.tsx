@@ -23,6 +23,9 @@ import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
+import WhatsNewPanel, {
+  useWhatsNewUnreadCount,
+} from "../../components/WhatsNewPanel";
 import {
   ListSearchInput,
   ListSelect,
@@ -823,9 +826,14 @@ export default function Dashboard() {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showAdminProfile, setShowAdminProfile] = useState(false);
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   const [platformTimeLabel, setPlatformTimeLabel] = useState("");
   const [platformDateLabel, setPlatformDateLabel] = useState("");
+  const {
+    unreadCount: whatsNewUnreadCount,
+    setUnreadCount: setWhatsNewUnreadCount,
+  } = useWhatsNewUnreadCount(adminSession?.id);
 
   // Always start a tab at the top of the page
   useEffect(() => {
@@ -2813,6 +2821,17 @@ export default function Dashboard() {
             localStorage.setItem("admin_session", JSON.stringify(updated));
             setAdminSession(updated);
           }}
+        />
+      )}
+
+      {adminSession?.id && (
+        <WhatsNewPanel
+          open={whatsNewOpen}
+          onOpen={() => setWhatsNewOpen(true)}
+          onClose={() => setWhatsNewOpen(false)}
+          adminId={adminSession.id}
+          unreadCount={whatsNewUnreadCount}
+          onUnreadCountChange={setWhatsNewUnreadCount}
         />
       )}
 
