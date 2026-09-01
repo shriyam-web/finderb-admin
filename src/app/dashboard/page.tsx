@@ -6897,7 +6897,7 @@ function BroadcastsContent({
     {
       id: "Users",
       label: "Users",
-      hint: "App users & shoppers",
+                  hint: "FinderB app inbox + push",
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -6959,18 +6959,28 @@ function BroadcastsContent({
     try {
       setIsSending(true);
       setDispatchNote(null);
-      const supabase = createClient();
-      const { error } = await supabase.from("broadcasts").insert({
-        title: title.trim(),
-        message: message.trim(),
-        target_audience: audiences,
+      const res = await fetch("/api/admin/broadcasts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          message: message.trim(),
+          audiences,
+        }),
       });
+      const payload = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+      } | null;
 
-      if (error) throw error;
+      if (!res.ok || !payload?.success) {
+        throw new Error(payload?.error || "Failed to dispatch broadcast.");
+      }
 
       setDispatchNote({
         tone: "success",
-        text: "Broadcast dispatched successfully.",
+        text: payload.message || "Broadcast dispatched successfully.",
       });
       setTitle("");
       setMessage("");
@@ -7015,8 +7025,9 @@ function BroadcastsContent({
               Global Broadcast
             </h1>
             <p className="text-sm text-slate-300 leading-relaxed">
-              Push announcements to users and merchants across FinderB in one
-              dispatch.
+              Push announcements to FinderB app users and merchants in one
+              dispatch. User-targeted messages appear in the mobile app
+              Notifications screen.
             </p>
           </div>
           <div className="flex gap-4 text-right">
