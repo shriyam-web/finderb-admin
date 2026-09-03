@@ -23,6 +23,7 @@ import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
+import AdminBootLoader from "../../components/AdminBootLoader";
 import WhatsNewPanel, {
   useWhatsNewUnreadCount,
 } from "../../components/WhatsNewPanel";
@@ -814,6 +815,7 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
 export default function Dashboard() {
   const router = useRouter();
   const [adminSession, setAdminSession] = useState<any>(null);
+  const [sessionReady, setSessionReady] = useState(false);
   const { toast } = useAdminToast();
   const [uploadProgress, setUploadProgress] = useState<{
     current: number;
@@ -1001,51 +1003,58 @@ export default function Dashboard() {
 
   useEffect(() => {
     const validateSession = async () => {
-      const sessionStr = localStorage.getItem("admin_session");
-      if (!sessionStr) {
-        router.push("/");
-        return;
-      }
+      try {
+        const sessionStr = localStorage.getItem("admin_session");
+        if (!sessionStr) {
+          router.push("/");
+          return;
+        }
 
-      const session = JSON.parse(sessionStr);
-      const supabase = createClient();
+        const session = JSON.parse(sessionStr);
+        const supabase = createClient();
 
-      const { data, error } = await supabase
-        .from("admins")
-        .select("*")
-        .eq("id", session.id)
-        .single();
+        const { data, error } = await supabase
+          .from("admins")
+          .select("*")
+          .eq("id", session.id)
+          .single();
 
-      if (error || !data || data.is_disabled) {
+        if (error || !data || data.is_disabled) {
+          localStorage.removeItem("admin_session");
+          router.push("/");
+          return;
+        }
+
+        // Update session if role or tab access changed
+        const nextModes = sanitizeTabModes(data.allowed_tab_modes);
+        const prevModes = sanitizeTabModes(session.allowed_tab_modes);
+        if (
+          data.role !== session.role ||
+          JSON.stringify(data.allowed_tabs) !==
+            JSON.stringify(session.allowed_tabs) ||
+          JSON.stringify(nextModes) !== JSON.stringify(prevModes)
+        ) {
+          const updatedSession = {
+            ...session,
+            role: data.role,
+            allowed_tabs: data.allowed_tabs,
+            allowed_tab_modes: Object.keys(nextModes).length ? nextModes : null,
+          };
+          localStorage.setItem("admin_session", JSON.stringify(updatedSession));
+          setAdminSession(updatedSession);
+        } else {
+          setAdminSession({
+            ...session,
+            allowed_tab_modes:
+              session.allowed_tab_modes ??
+              (Object.keys(nextModes).length ? nextModes : null),
+          });
+        }
+      } catch {
         localStorage.removeItem("admin_session");
         router.push("/");
-        return;
-      }
-
-      // Update session if role or tab access changed
-      const nextModes = sanitizeTabModes(data.allowed_tab_modes);
-      const prevModes = sanitizeTabModes(session.allowed_tab_modes);
-      if (
-        data.role !== session.role ||
-        JSON.stringify(data.allowed_tabs) !==
-          JSON.stringify(session.allowed_tabs) ||
-        JSON.stringify(nextModes) !== JSON.stringify(prevModes)
-      ) {
-        const updatedSession = {
-          ...session,
-          role: data.role,
-          allowed_tabs: data.allowed_tabs,
-          allowed_tab_modes: Object.keys(nextModes).length ? nextModes : null,
-        };
-        localStorage.setItem("admin_session", JSON.stringify(updatedSession));
-        setAdminSession(updatedSession);
-      } else {
-        setAdminSession({
-          ...session,
-          allowed_tab_modes:
-            session.allowed_tab_modes ??
-            (Object.keys(nextModes).length ? nextModes : null),
-        });
+      } finally {
+        setSessionReady(true);
       }
     };
 
@@ -2015,7 +2024,13 @@ export default function Dashboard() {
   };
 
   const renderContent = () => {
-    if (adminSession?.role !== "controller" && menuItems.length === 0) {
+    // Only after session + permissions are resolved — never during boot.
+    if (
+      sessionReady &&
+      adminSession &&
+      adminSession.role !== "controller" &&
+      menuItems.length === 0
+    ) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8 admin-card">
           <div className="w-16 h-16 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500 mb-6">
@@ -2293,6 +2308,10 @@ export default function Dashboard() {
         );
     }
   };
+
+  if (!sessionReady || !adminSession) {
+    return <AdminBootLoader />;
+  }
 
   return (
     <div
