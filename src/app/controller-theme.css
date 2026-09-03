@@ -175,13 +175,27 @@ html[data-admin-theme="controller"] .admin-role-badge-controller {
 }
 
 html[data-admin-theme="controller"] .admin-sign-out {
-  background: rgba(225, 29, 72, 0.16) !important;
-  border-color: rgba(251, 113, 133, 0.4) !important;
-  color: #fecdd3 !important;
+  background: linear-gradient(180deg, #fb7185 0%, #e11d48 55%, #be123c 100%) !important;
+  border-color: #be123c !important;
+  color: #fff !important;
+  box-shadow: 0 6px 14px rgba(225, 29, 72, 0.3) !important;
 }
 
 html[data-admin-theme="controller"] .admin-sign-out:hover {
-  background: rgba(225, 29, 72, 0.24) !important;
+  filter: brightness(1.06);
+  background: linear-gradient(180deg, #fb7185 0%, #e11d48 55%, #be123c 100%) !important;
+}
+
+html[data-admin-theme="controller"] .admin-topbar-divider {
+  background: rgba(251, 191, 36, 0.28) !important;
+}
+
+html[data-admin-theme="controller"] .admin-breadcrumb-home {
+  color: #d6d3d1 !important;
+}
+
+html[data-admin-theme="controller"] .admin-breadcrumb-home:hover {
+  color: #fde68a !important;
 }
 
 /* ——— Admin design-system surfaces ——— */

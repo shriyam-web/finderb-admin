@@ -2866,10 +2866,19 @@ export default function Dashboard() {
                 </svg>
               </button>
               <div className="admin-breadcrumb hidden sm:flex">
-                <span>FinderB</span>
+                <button
+                  type="button"
+                  className="admin-breadcrumb-home"
+                  onClick={() => setActiveTab("Dashboard")}
+                  title="Go to Dashboard"
+                >
+                  FinderB
+                </button>
                 <span className="text-slate-300">/</span>
                 <span className="admin-breadcrumb-current">{activeTab}</span>
               </div>
+            </div>
+            <div className="admin-topbar-actions">
               <span
                 className={`admin-role-badge capitalize ${
                   adminSession?.role === "controller"
@@ -2882,8 +2891,6 @@ export default function Dashboard() {
                 <span className="admin-role-badge-dot" aria-hidden />
                 {adminSession?.role?.replace("_", " ") || "Admin"}
               </span>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
               {canToggleColorMode && (
                 <button
                   type="button"
@@ -2936,13 +2943,14 @@ export default function Dashboard() {
                   </span>
                 </button>
               )}
+              <span className="admin-topbar-divider" aria-hidden />
               <button
                 type="button"
                 onClick={handleLogout}
                 className="admin-sign-out"
               >
                 <svg
-                  className="w-3.5 h-3.5"
+                  className="w-4 h-4 shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -2955,7 +2963,7 @@ export default function Dashboard() {
                     d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"
                   />
                 </svg>
-                Sign out
+                <span>Sign out</span>
               </button>
             </div>
           </header>

@@ -433,6 +433,54 @@ body {
     @apply border-slate-300 bg-slate-50 text-slate-900;
   }
 
+  .admin-topbar-actions {
+    @apply flex items-center gap-2.5 shrink-0;
+  }
+
+  .admin-topbar-divider {
+    display: none;
+    width: 1px;
+    height: 1.35rem;
+    background: #e2e8f0;
+    margin: 0 0.15rem;
+  }
+
+  @media (min-width: 640px) {
+    .admin-topbar-divider {
+      display: block;
+    }
+  }
+
+  .admin-sign-out {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 2.1rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.65rem;
+    border: 1px solid #e11d48;
+    background: linear-gradient(180deg, #fb7185 0%, #e11d48 55%, #be123c 100%);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 6px 14px rgba(225, 29, 72, 0.22);
+    transition:
+      filter 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  .admin-sign-out:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+
+  .admin-sign-out:active {
+    transform: translateY(0);
+    filter: brightness(0.98);
+  }
+
   .admin-main {
     @apply relative z-0 px-4 sm:px-5 lg:px-6 py-5 lg:py-6 w-full;
     animation: admin-rise 0.28s ease-out;
@@ -574,11 +622,33 @@ body {
   }
 
   .admin-sign-out {
-    @apply inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-bold text-rose-700 transition-colors;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 2.1rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 0.65rem;
+    border: 1px solid #e11d48;
+    background: linear-gradient(180deg, #fb7185 0%, #e11d48 55%, #be123c 100%);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 6px 14px rgba(225, 29, 72, 0.22);
+    transition:
+      filter 0.15s ease,
+      transform 0.15s ease;
   }
 
   .admin-sign-out:hover {
-    @apply border-rose-300 bg-rose-100 text-rose-800;
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+
+  .admin-sign-out:active {
+    transform: translateY(0);
+    filter: brightness(0.98);
   }
 
   /* Fully locked console: only theme + sign out + restricted card stay usable */
@@ -659,6 +729,18 @@ body {
 
   .admin-breadcrumb {
     @apply flex items-center gap-2 text-xs text-slate-500 font-medium;
+  }
+
+  .admin-breadcrumb-home {
+    @apply text-xs font-semibold text-slate-600 transition-colors;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .admin-breadcrumb-home:hover {
+    @apply text-teal-700;
   }
 
   .admin-breadcrumb-current {
