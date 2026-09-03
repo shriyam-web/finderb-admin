@@ -213,7 +213,7 @@ export default function DashboardContent({
   return (
     <div className="space-y-4">
       <div className="admin-platform-hero">
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-1.5">
               {maintenanceMode ? (

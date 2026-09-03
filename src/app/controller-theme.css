@@ -1,5 +1,5 @@
-/* Controller-only premium console.
-   Applied via html[data-admin-theme="controller"] set from the dashboard. */
+/* Controller premium console — colors only, no layout breakage.
+   Applied via html[data-admin-theme="controller"]. */
 
 html[data-admin-theme="controller"],
 html[data-admin-theme="controller"] body {
@@ -9,43 +9,40 @@ html[data-admin-theme="controller"] body {
 
 html[data-admin-theme="controller"] .admin-shell {
   background:
-    radial-gradient(1100px 560px at 90% -10%, rgba(245, 158, 11, 0.28), transparent 55%),
-    radial-gradient(900px 500px at 0% 20%, rgba(120, 53, 15, 0.35), transparent 52%),
+    radial-gradient(1100px 560px at 90% -10%, rgba(245, 158, 11, 0.22), transparent 55%),
     linear-gradient(165deg, #050403 0%, #1c1917 45%, #0c0a09 100%) !important;
   color: #f5f5f4 !important;
 }
 
 html[data-admin-theme="controller"] .admin-sidebar {
-  background: linear-gradient(180deg, #000000 0%, #0c0a09 45%, #1c1917 100%) !important;
+  background: linear-gradient(180deg, #000 0%, #0c0a09 50%, #1c1917 100%) !important;
   border-right: 1px solid rgba(251, 191, 36, 0.35) !important;
-  box-shadow: 16px 0 48px rgba(0, 0, 0, 0.55) !important;
 }
 
 html[data-admin-theme="controller"] .admin-sidebar-header {
   background: transparent !important;
-  border-bottom: 1px solid rgba(251, 191, 36, 0.25) !important;
+  border-bottom-color: rgba(251, 191, 36, 0.25) !important;
 }
 
 html[data-admin-theme="controller"] .admin-brand-splash {
   background:
-    radial-gradient(120% 120% at 100% 0%, rgba(251, 191, 36, 0.5), transparent 55%),
+    radial-gradient(120% 120% at 100% 0%, rgba(251, 191, 36, 0.45), transparent 55%),
     linear-gradient(160deg, #292524 0%, #0c0a09 100%) !important;
-  border: 1px solid rgba(251, 191, 36, 0.55) !important;
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.5) !important;
+  border-color: rgba(251, 191, 36, 0.5) !important;
 }
 
 html[data-admin-theme="controller"] .admin-brand-splash-grid {
   background-image:
-    linear-gradient(rgba(251, 191, 36, 0.16) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(251, 191, 36, 0.16) 1px, transparent 1px) !important;
+    linear-gradient(rgba(251, 191, 36, 0.14) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(251, 191, 36, 0.14) 1px, transparent 1px) !important;
 }
 
 html[data-admin-theme="controller"] .admin-brand-splash-glow {
-  background: rgba(251, 191, 36, 0.45) !important;
+  background: rgba(251, 191, 36, 0.4) !important;
 }
 
 html[data-admin-theme="controller"] .admin-nav-item-active {
-  background: rgba(251, 191, 36, 0.18) !important;
+  background: rgba(251, 191, 36, 0.16) !important;
   color: #fde68a !important;
   box-shadow: inset 3px 0 0 0 #f59e0b !important;
 }
@@ -55,42 +52,48 @@ html[data-admin-theme="controller"] .admin-nav-item-idle {
 }
 
 html[data-admin-theme="controller"] .admin-nav-item-idle:hover {
-  background: rgba(251, 191, 36, 0.12) !important;
+  background: rgba(251, 191, 36, 0.1) !important;
   color: #fff7ed !important;
 }
 
-html[data-admin-theme="controller"] .admin-nav-group-label,
-html[data-admin-theme="controller"] .admin-sidebar-brand {
+html[data-admin-theme="controller"] .admin-nav-group-label {
   color: #78716c !important;
 }
 
+/* Sticky stack: ribbon → topbar → command bar (prevents overlaps) */
 html[data-admin-theme="controller"] .admin-controller-ribbon {
-  display: flex !important;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.55rem 1.1rem;
+  min-height: 2.25rem;
+  padding: 0.45rem 1rem;
   background: linear-gradient(90deg, #78350f 0%, #b45309 40%, #f59e0b 100%) !important;
   color: #fffbeb !important;
-  border-bottom: 1px solid rgba(253, 230, 138, 0.45) !important;
+  border-bottom: 1px solid rgba(253, 230, 138, 0.4) !important;
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 html[data-admin-theme="controller"] .admin-controller-ribbon span {
-  opacity: 0.95;
   font-weight: 600;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   text-transform: none;
+  opacity: 0.95;
 }
 
 html[data-admin-theme="controller"] .admin-topbar {
-  background: rgba(12, 10, 9, 0.94) !important;
-  border-bottom: 1px solid rgba(251, 191, 36, 0.3) !important;
+  top: 2.25rem !important;
+  z-index: 35 !important;
+  background: #0c0a09 !important;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.28) !important;
   color: #fafaf9 !important;
-  backdrop-filter: blur(14px);
+  backdrop-filter: none !important;
 }
 
 html[data-admin-theme="controller"] .admin-breadcrumb,
@@ -99,14 +102,17 @@ html[data-admin-theme="controller"] .admin-breadcrumb-current {
 }
 
 html[data-admin-theme="controller"] .admin-command-bar {
-  background: rgba(28, 25, 23, 0.95) !important;
+  top: calc(2.25rem + 3.5rem) !important;
+  z-index: 30 !important;
+  background: #1c1917 !important;
   border-bottom: 1px solid rgba(251, 191, 36, 0.2) !important;
   color: #e7e5e4 !important;
+  backdrop-filter: none !important;
 }
 
 html[data-admin-theme="controller"] .admin-metric-chip {
-  background: #1c1917 !important;
-  border: 1px solid rgba(251, 191, 36, 0.3) !important;
+  background: #292524 !important;
+  border: 1px solid rgba(251, 191, 36, 0.28) !important;
   color: #e7e5e4 !important;
 }
 
@@ -115,6 +121,8 @@ html[data-admin-theme="controller"] .admin-metric-chip strong {
 }
 
 html[data-admin-theme="controller"] .admin-main {
+  position: relative;
+  z-index: 1;
   color: #f5f5f4 !important;
 }
 
@@ -124,25 +132,38 @@ html[data-admin-theme="controller"] .admin-card-title {
 }
 
 html[data-admin-theme="controller"] .admin-page-subtitle,
-html[data-admin-theme="controller"] .admin-card-description {
+html[data-admin-theme="controller"] .admin-card-description,
+html[data-admin-theme="controller"] .admin-kpi-label,
+html[data-admin-theme="controller"] .admin-kpi-meta {
   color: #a8a29e !important;
 }
 
+html[data-admin-theme="controller"] .admin-kpi-value {
+  color: #fffbeb !important;
+}
+
 html[data-admin-theme="controller"] .admin-card,
-html[data-admin-theme="controller"] .admin-platform-hero {
-  background: linear-gradient(180deg, #292524 0%, #1c1917 100%) !important;
-  border: 1px solid rgba(251, 191, 36, 0.28) !important;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35) !important;
+html[data-admin-theme="controller"] .admin-platform-hero,
+html[data-admin-theme="controller"] .admin-kpi {
+  background: #1c1917 !important;
+  border-color: rgba(251, 191, 36, 0.24) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25) !important;
   color: #f5f5f4 !important;
 }
 
 html[data-admin-theme="controller"] .admin-card-header {
-  background: rgba(12, 10, 9, 0.72) !important;
-  border-bottom: 1px solid rgba(251, 191, 36, 0.18) !important;
+  background: #0c0a09 !important;
+  border-bottom-color: rgba(251, 191, 36, 0.16) !important;
+}
+
+html[data-admin-theme="controller"] .admin-platform-hero {
+  background:
+    radial-gradient(ellipse 80% 120% at 100% 0%, rgba(245, 158, 11, 0.14), transparent 55%),
+    #1c1917 !important;
 }
 
 html[data-admin-theme="controller"] .admin-platform-hero-accent {
-  background: linear-gradient(180deg, #fde68a, #f59e0b 50%, #92400e) !important;
+  background: linear-gradient(180deg, #fde68a, #f59e0b 55%, #92400e) !important;
 }
 
 html[data-admin-theme="controller"] .admin-platform-hero-kicker {
@@ -150,105 +171,62 @@ html[data-admin-theme="controller"] .admin-platform-hero-kicker {
 }
 
 html[data-admin-theme="controller"] .admin-btn-primary {
-  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 45%, #d97706 100%) !important;
-  border: 1px solid #b45309 !important;
+  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 50%, #d97706 100%) !important;
+  border-color: #b45309 !important;
   color: #1c1917 !important;
-  box-shadow: 0 12px 28px rgba(217, 119, 6, 0.4) !important;
+  box-shadow: 0 8px 18px rgba(217, 119, 6, 0.35) !important;
 }
 
 html[data-admin-theme="controller"] .admin-btn-secondary,
 html[data-admin-theme="controller"] .admin-btn-ghost {
-  background: #1c1917 !important;
-  border: 1px solid rgba(251, 191, 36, 0.35) !important;
+  background: #0c0a09 !important;
+  border-color: rgba(251, 191, 36, 0.35) !important;
   color: #fde68a !important;
 }
 
 html[data-admin-theme="controller"] .admin-input,
 html[data-admin-theme="controller"] .admin-search {
   background: #0c0a09 !important;
-  border: 1px solid rgba(251, 191, 36, 0.3) !important;
+  border-color: rgba(251, 191, 36, 0.3) !important;
   color: #fafaf9 !important;
 }
 
 html[data-admin-theme="controller"] .admin-input:focus,
 html[data-admin-theme="controller"] .admin-search:focus {
   border-color: #f59e0b !important;
-  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.22) !important;
-}
-
-html[data-admin-theme="controller"] table {
-  color: #e7e5e4 !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2) !important;
 }
 
 html[data-admin-theme="controller"] th {
   color: #fde68a !important;
   background: #0c0a09 !important;
-  border-color: rgba(251, 191, 36, 0.18) !important;
+  border-color: rgba(251, 191, 36, 0.16) !important;
 }
 
 html[data-admin-theme="controller"] td {
-  border-color: rgba(251, 191, 36, 0.12) !important;
   color: #e7e5e4 !important;
+  border-color: rgba(251, 191, 36, 0.12) !important;
 }
 
 html[data-admin-theme="controller"] .admin-controller-badge {
   background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%) !important;
   color: #78350f !important;
-  border: 1px solid #fbbf24 !important;
+  border-color: #fbbf24 !important;
   font-weight: 800 !important;
-  box-shadow: 0 8px 20px rgba(245, 158, 11, 0.4) !important;
 }
 
 html[data-admin-theme="controller"] .admin-whats-new-fab {
   background: linear-gradient(180deg, #fde68a 0%, #d97706 100%) !important;
   border-color: #fbbf24 !important;
   color: #78350f !important;
-  box-shadow: 0 16px 36px rgba(180, 83, 9, 0.5) !important;
+  z-index: 60;
 }
 
 html[data-admin-theme="controller"] .admin-nav-badge,
 html[data-admin-theme="controller"] .admin-nav-badge-alert,
 html[data-admin-theme="controller"] .admin-nav-badge-new,
 html[data-admin-theme="controller"] .admin-nav-badge-soon {
-  background: rgba(251, 191, 36, 0.16) !important;
+  background: rgba(251, 191, 36, 0.14) !important;
   color: #fde68a !important;
-  border-color: rgba(251, 191, 36, 0.4) !important;
-}
-
-/* Force common light surfaces dark inside controller console */
-html[data-admin-theme="controller"] .admin-main [class*="bg-white"],
-html[data-admin-theme="controller"] .admin-main [class*="bg-slate-50"],
-html[data-admin-theme="controller"] .admin-content-area [class*="bg-white"],
-html[data-admin-theme="controller"] .admin-content-area [class*="bg-slate-50"] {
-  background-color: #1c1917 !important;
-}
-
-html[data-admin-theme="controller"] .admin-main [class*="text-slate-900"],
-html[data-admin-theme="controller"] .admin-main [class*="text-slate-800"],
-html[data-admin-theme="controller"] .admin-main [class*="text-slate-700"],
-html[data-admin-theme="controller"] .admin-content-area [class*="text-slate-900"],
-html[data-admin-theme="controller"] .admin-content-area [class*="text-slate-800"] {
-  color: #fafaf9 !important;
-}
-
-html[data-admin-theme="controller"] .admin-main [class*="text-slate-500"],
-html[data-admin-theme="controller"] .admin-main [class*="text-slate-600"],
-html[data-admin-theme="controller"] .admin-main [class*="text-slate-400"] {
-  color: #a8a29e !important;
-}
-
-html[data-admin-theme="controller"] .admin-main [class*="border-slate-"],
-html[data-admin-theme="controller"] .admin-content-area [class*="border-slate-"] {
-  border-color: rgba(251, 191, 36, 0.18) !important;
-}
-
-html[data-admin-theme="controller"] .admin-main [class*="text-teal-"],
-html[data-admin-theme="controller"] .admin-content-area [class*="text-teal-"] {
-  color: #fbbf24 !important;
-}
-
-html[data-admin-theme="controller"] .admin-main [class*="bg-teal-"],
-html[data-admin-theme="controller"] .admin-content-area [class*="bg-teal-"] {
-  background-color: rgba(245, 158, 11, 0.16) !important;
-  color: #fde68a !important;
+  border-color: rgba(251, 191, 36, 0.35) !important;
 }

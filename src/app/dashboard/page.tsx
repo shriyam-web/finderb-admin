@@ -2261,15 +2261,6 @@ export default function Dashboard() {
       data-admin-theme={
         adminSession?.role === "controller" ? "controller" : undefined
       }
-      style={
-        adminSession?.role === "controller"
-          ? {
-              background:
-                "radial-gradient(1100px 560px at 90% -10%, rgba(245,158,11,0.28), transparent 55%), linear-gradient(165deg, #050403 0%, #1c1917 45%, #0c0a09 100%)",
-              color: "#f5f5f4",
-            }
-          : undefined
-      }
     >
       {isSidebarOpen && (
         <div
