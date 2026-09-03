@@ -2731,6 +2731,12 @@ export default function Dashboard() {
       </aside>
 
       <div className="admin-content-area flex-1 flex flex-col min-w-0">
+        {adminSession?.role === "controller" && (
+          <div className="admin-controller-ribbon">
+            <strong>Controller access</strong>
+            <span>Full platform authority · premium console</span>
+          </div>
+        )}
         <header className="admin-topbar">
           <div className="flex items-center gap-3 min-w-0">
             <button
