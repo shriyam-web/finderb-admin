@@ -1931,7 +1931,7 @@ export default function QuickOnboardContent({
                         }
                         placeholder={
                           draft.emailUnavailable
-                            ? "Will generate company-name@finderb.com"
+                            ? "Will generate company-name-#####@finderb.com"
                             : "partner@studio.in"
                         }
                       />

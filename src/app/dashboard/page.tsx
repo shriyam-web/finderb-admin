@@ -63,6 +63,12 @@ import {
 } from "../../lib/formatDateTime";
 import { mergePaymentHistory } from "../../lib/paymentUtils";
 import { computeDashboardStats } from "../../lib/dashboardStats";
+import {
+  canAccessTab,
+  canEditTab,
+  sanitizeTabModes,
+  type TabAccessMode,
+} from "../../lib/adminTabAccess";
 
 interface User {
   id: string;
@@ -98,32 +104,20 @@ interface AdminSession {
   email: string;
   role: string;
   allowed_tabs?: string[];
+  allowed_tab_modes?: Record<string, TabAccessMode> | null;
   displayName?: string | null;
 }
 
 /**
- * Any admin/super_admin granted a tab gets full access inside it
- * (same edit/delete/approve actions as a controller for that tab).
- * Controllers always have full access to every tab.
+ * Edit access for a tab (approve/delete/save). Controllers always edit.
+ * Legacy allowed_tabs without modes still mean edit.
  */
 function hasFullTabAccess(session: AdminSession | null, tab: string): boolean {
-  if (!session) return false;
-  if (session.role === "controller") return true;
-  const tabs = session.allowed_tabs ?? [];
-  if (tabs.includes(tab)) return true;
-  // Legacy tab name from before rename
-  if (tab === "Business Onboarding" && tabs.includes("Merchant Registration")) {
-    return true;
-  }
-  // Quick Onboard is available to anyone with Business Onboarding access
-  if (
-    tab === "Quick Onboard" &&
-    (tabs.includes("Business Onboarding") ||
-      tabs.includes("Merchant Registration"))
-  ) {
-    return true;
-  }
-  return false;
+  return canEditTab(session, tab);
+}
+
+function hasTabAccess(session: AdminSession | null, tab: string): boolean {
+  return canAccessTab(session, tab);
 }
 
 /** Listing approval (public display) — not KYC. */
@@ -364,6 +358,7 @@ interface AdminProfile {
   role: string;
   is_disabled: boolean;
   allowed_tabs: string[] | null;
+  allowed_tab_modes?: Record<string, TabAccessMode> | null;
   created_at: string;
 }
 
@@ -969,21 +964,30 @@ export default function Dashboard() {
         return;
       }
 
-      // Update session if role or allowed_tabs changed
+      // Update session if role or tab access changed
+      const nextModes = sanitizeTabModes(data.allowed_tab_modes);
+      const prevModes = sanitizeTabModes(session.allowed_tab_modes);
       if (
         data.role !== session.role ||
         JSON.stringify(data.allowed_tabs) !==
-          JSON.stringify(session.allowed_tabs)
+          JSON.stringify(session.allowed_tabs) ||
+        JSON.stringify(nextModes) !== JSON.stringify(prevModes)
       ) {
         const updatedSession = {
           ...session,
           role: data.role,
           allowed_tabs: data.allowed_tabs,
+          allowed_tab_modes: Object.keys(nextModes).length ? nextModes : null,
         };
         localStorage.setItem("admin_session", JSON.stringify(updatedSession));
         setAdminSession(updatedSession);
       } else {
-        setAdminSession(session);
+        setAdminSession({
+          ...session,
+          allowed_tab_modes:
+            session.allowed_tab_modes ??
+            (Object.keys(nextModes).length ? nextModes : null),
+        });
       }
     };
 
@@ -1325,46 +1329,45 @@ export default function Dashboard() {
     }
     // Coming-soon placeholders only appear once the admin has at least one real tab.
     if (COMING_SOON_TABS.has(item.name)) {
-      const tabs = adminSession?.allowed_tabs ?? [];
-      return tabs.length > 0;
+      return (adminSession?.allowed_tabs ?? []).length > 0;
     }
-    if (adminSession?.allowed_tabs && adminSession.allowed_tabs.length > 0) {
-      if (adminSession.allowed_tabs.includes(item.name)) return true;
-      // Legacy tab name from before rename
-      if (
-        item.name === "Business Onboarding" &&
-        adminSession.allowed_tabs.includes("Merchant Registration")
-      ) {
-        return true;
-      }
-      // Quick Onboard shares Business Onboarding access
-      if (
-        item.name === "Quick Onboard" &&
-        (adminSession.allowed_tabs.includes("Business Onboarding") ||
-          adminSession.allowed_tabs.includes("Merchant Registration") ||
-          adminSession.allowed_tabs.includes("Quick Onboard"))
-      ) {
-        return true;
-      }
-      return false;
-    }
-    return false;
+    return hasTabAccess(adminSession, item.name);
   });
-  const canViewFinancialData = hasFullTabAccess(
+  const canViewFinancialData = hasTabAccess(
     adminSession,
     "Payments & Subscriptions",
   );
+  const canEditListings =
+    hasFullTabAccess(adminSession, "Dashboard") ||
+    hasFullTabAccess(adminSession, "Merchants");
+  const canViewListingsQueue =
+    hasTabAccess(adminSession, "Dashboard") ||
+    hasTabAccess(adminSession, "Merchants");
+
+  // Block deep-links / leftover activeTab for tabs this admin cannot open.
+  useEffect(() => {
+    if (!adminSession) return;
+    if (adminSession.role === "controller") return;
+    if (activeTab === "Manage Admins") {
+      setActiveTab("Dashboard");
+      return;
+    }
+    if (COMING_SOON_TABS.has(activeTab)) return;
+    if (!hasTabAccess(adminSession, activeTab)) {
+      const fallback =
+        menuItems.find((item) => !COMING_SOON_TABS.has(item.name))?.name ||
+        "Dashboard";
+      setActiveTab(fallback);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adminSession, activeTab, menuItems]);
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => !prev);
   };
 
   const handleDashboardApprove = async (req: MerchantRequest) => {
-    // Full access inside Dashboard or Merchants tab — same actions as a controller.
-    if (
-      !hasFullTabAccess(adminSession, "Dashboard") &&
-      !hasFullTabAccess(adminSession, "Merchants")
-    ) {
+    if (!canEditListings) {
       toast("You do not have permission to approve listings.", "error");
       return;
     }
@@ -1419,10 +1422,7 @@ export default function Dashboard() {
   };
 
   const handleDashboardReject = async (req: MerchantRequest) => {
-    if (
-      !hasFullTabAccess(adminSession, "Dashboard") &&
-      !hasFullTabAccess(adminSession, "Merchants")
-    ) {
+    if (!canEditListings) {
       toast("You do not have permission to reject listings.", "error");
       return;
     }
@@ -2002,6 +2002,9 @@ export default function Dashboard() {
             loginLogs={loginLogs}
             maintenanceMode={settings.maintenance}
             canViewFinancialData={canViewFinancialData}
+            canAccessTab={(tab) => hasTabAccess(adminSession, tab)}
+            canEditListings={canEditListings}
+            canViewListingsQueue={canViewListingsQueue}
           />
         );
       case "Users":
@@ -2028,6 +2031,19 @@ export default function Dashboard() {
           />
         );
       case "Business Onboarding":
+        if (!hasFullTabAccess(adminSession, "Business Onboarding")) {
+          return (
+            <div className="admin-card p-6 max-w-xl">
+              <h2 className="text-base font-semibold text-slate-900">
+                Read-only access
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                You can open Business Onboarding, but registering new merchants
+                requires Edit permission from the Controller.
+              </p>
+            </div>
+          );
+        }
         return (
           <MerchantRegistrationContent
             categories={categories}
@@ -2054,6 +2070,22 @@ export default function Dashboard() {
           />
         );
       case "Quick Onboard":
+        if (
+          !hasFullTabAccess(adminSession, "Quick Onboard") &&
+          !hasFullTabAccess(adminSession, "Business Onboarding")
+        ) {
+          return (
+            <div className="admin-card p-6 max-w-xl">
+              <h2 className="text-base font-semibold text-slate-900">
+                Read-only access
+              </h2>
+              <p className="mt-1 text-sm text-slate-600">
+                You can open Quick Onboard, but creating merchants requires Edit
+                permission from the Controller.
+              </p>
+            </div>
+          );
+        }
         return (
           <QuickOnboardContent
             categories={categories}
@@ -2196,6 +2228,9 @@ export default function Dashboard() {
             loginLogs={loginLogs}
             maintenanceMode={settings.maintenance}
             canViewFinancialData={canViewFinancialData}
+            canAccessTab={(tab) => hasTabAccess(adminSession, tab)}
+            canEditListings={canEditListings}
+            canViewListingsQueue={canViewListingsQueue}
           />
         );
     }
@@ -2751,46 +2786,57 @@ export default function Dashboard() {
 
         <div className="admin-command-bar">
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab("Users")}
-              className="admin-metric-chip"
-            >
-              Users <strong>{users.length.toLocaleString()}</strong>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("Merchants")}
-              className="admin-metric-chip"
-            >
-              Partners{" "}
-              <strong>{activeMerchants.length.toLocaleString()}</strong>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("Merchants")}
-              className={`admin-metric-chip ${
-                merchantRequests.length > 0
-                  ? "!border-amber-200 !bg-amber-50 !text-amber-800"
-                  : ""
-              }`}
-            >
-              Pending review <strong>{merchantRequests.length}</strong>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("Leads")}
-              className="admin-metric-chip"
-            >
-              Leads <strong>{leads.length.toLocaleString()}</strong>
-            </button>
-            <button
-              type="button"
-              onClick={() => setOnboardChooserOpen(true)}
-              className="admin-btn-primary !text-xs !py-2 !px-3.5"
-            >
-              Onboard business
-            </button>
+            {hasTabAccess(adminSession, "Users") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("Users")}
+                className="admin-metric-chip"
+              >
+                Users <strong>{users.length.toLocaleString()}</strong>
+              </button>
+            )}
+            {hasTabAccess(adminSession, "Merchants") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("Merchants")}
+                className="admin-metric-chip"
+              >
+                Partners{" "}
+                <strong>{activeMerchants.length.toLocaleString()}</strong>
+              </button>
+            )}
+            {hasTabAccess(adminSession, "Merchants") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("Merchants")}
+                className={`admin-metric-chip ${
+                  merchantRequests.length > 0
+                    ? "!border-amber-200 !bg-amber-50 !text-amber-800"
+                    : ""
+                }`}
+              >
+                Pending review <strong>{merchantRequests.length}</strong>
+              </button>
+            )}
+            {hasTabAccess(adminSession, "Leads") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("Leads")}
+                className="admin-metric-chip"
+              >
+                Leads <strong>{leads.length.toLocaleString()}</strong>
+              </button>
+            )}
+            {(hasTabAccess(adminSession, "Business Onboarding") ||
+              hasTabAccess(adminSession, "Quick Onboard")) && (
+              <button
+                type="button"
+                onClick={() => setOnboardChooserOpen(true)}
+                className="admin-btn-primary !text-xs !py-2 !px-3.5"
+              >
+                Onboard business
+              </button>
+            )}
           </div>
           <p className="text-xs text-slate-400 tabular-nums hidden sm:block font-semibold">
             {platformDateLabel || "—"}
@@ -3640,25 +3686,29 @@ function UsersContent({
                     />
                   )}
                   <td className="text-right">
-                    <button
-                      onClick={() => handleDeleteUser(user.id)}
-                      className="admin-icon-btn-danger"
-                      title="Delete"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                    {canManage ? (
+                      <button
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="admin-icon-btn-danger"
+                        title="Delete"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-slate-400">View</span>
+                    )}
                   </td>
                 </tr>
               ))}

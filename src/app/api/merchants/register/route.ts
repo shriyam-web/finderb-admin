@@ -4,12 +4,16 @@ import {
   buildBusinessSlugCandidate,
   withSlugSuffix,
 } from "../../../../lib/businessSlug";
-import { buildPlaceholderEmailCandidate } from "../../../../lib/placeholderEmail";
+import {
+  buildPlaceholderEmailCandidate,
+  randomPlaceholderEmailDigits,
+} from "../../../../lib/placeholderEmail";
 import { hashPassword } from "../../../../lib/merchantPassword";
 import {
   validateAndNormalizeMerchantRegistration,
   type MerchantRegistrationPayload,
 } from "../../../../lib/merchantRegistration";
+import { canEditTab } from "../../../../lib/adminTabAccess";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -57,10 +61,8 @@ async function generateUniquePlaceholderEmail(
   businessName: string,
 ): Promise<string> {
   for (let i = 0; i < 50; i += 1) {
-    const candidate = buildPlaceholderEmailCandidate(
-      businessName,
-      i === 0 ? undefined : String(i + 1),
-    );
+    // Always randomize — never use bare brand@finderb.com (guessable with default password).
+    const candidate = buildPlaceholderEmailCandidate(businessName);
     const { data } = await supabase
       .from("Business")
       .select("id")
@@ -71,7 +73,7 @@ async function generateUniquePlaceholderEmail(
 
   return buildPlaceholderEmailCandidate(
     businessName,
-    crypto.randomUUID().slice(0, 8),
+    `${randomPlaceholderEmailDigits()}${crypto.randomUUID().replace(/\D/g, "").slice(0, 6)}`,
   );
 }
 
@@ -133,7 +135,7 @@ export async function POST(request: Request) {
 
     const { data: admin, error: adminError } = await supabase
       .from("admins")
-      .select("id, role, is_disabled, allowed_tabs")
+      .select("id, role, is_disabled, allowed_tabs, allowed_tab_modes")
       .eq("id", body.adminId)
       .single();
 
@@ -144,17 +146,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const isController = admin.role === "controller";
-    const allowed = Array.isArray(admin.allowed_tabs) ? admin.allowed_tabs : [];
     if (
-      !isController &&
-      !allowed.includes("Business Onboarding") &&
-      !allowed.includes("Merchant Registration")
+      !canEditTab(
+        {
+          role: admin.role,
+          allowed_tabs: admin.allowed_tabs,
+          allowed_tab_modes: admin.allowed_tab_modes,
+        },
+        "Business Onboarding",
+      ) &&
+      !canEditTab(
+        {
+          role: admin.role,
+          allowed_tabs: admin.allowed_tabs,
+          allowed_tab_modes: admin.allowed_tab_modes,
+        },
+        "Quick Onboard",
+      )
     ) {
       return NextResponse.json(
         {
           success: false,
-          error: "You do not have permission for business onboarding.",
+          error: "You do not have edit permission for business onboarding.",
         },
         { status: 403 },
       );

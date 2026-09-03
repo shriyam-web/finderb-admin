@@ -8,6 +8,12 @@ import {
   type SetStateAction,
 } from "react";
 import { createClient } from "../../utils/supabase/client";
+import {
+  allowedTabsFromModes,
+  countGrantedTabs,
+  modesFromAllowedTabs,
+  type TabAccessMode,
+} from "../lib/adminTabAccess";
 
 export type AdminProfile = {
   id: string;
@@ -16,6 +22,7 @@ export type AdminProfile = {
   role: string;
   is_disabled: boolean;
   allowed_tabs: string[] | null;
+  allowed_tab_modes?: Record<string, TabAccessMode> | null;
   created_at: string;
 };
 
@@ -93,7 +100,9 @@ export default function ManageAdminsContent({
   const [permissionsAdmin, setPermissionsAdmin] = useState<AdminProfile | null>(
     null,
   );
-  const [draftTabs, setDraftTabs] = useState<string[]>([]);
+  const [draftModes, setDraftModes] = useState<Record<string, TabAccessMode>>(
+    {},
+  );
   const [savingTabs, setSavingTabs] = useState(false);
   const [visiblePasswords, setVisiblePasswords] = useState<
     Record<string, boolean>
@@ -250,20 +259,28 @@ export default function ManageAdminsContent({
 
   const openPermissions = (admin: AdminProfile) => {
     setPermissionsAdmin(admin);
-    const tabs = (admin.allowed_tabs || []).map((t) =>
-      t === "Merchant Registration" ? "Business Onboarding" : t,
-    );
-    setDraftTabs([...new Set(tabs)]);
+    if (
+      admin.allowed_tab_modes &&
+      Object.keys(admin.allowed_tab_modes).length > 0
+    ) {
+      setDraftModes({ ...admin.allowed_tab_modes });
+    } else {
+      setDraftModes(modesFromAllowedTabs(admin.allowed_tabs));
+    }
   };
 
   const handleSaveTabs = async () => {
     if (!isController || !permissionsAdmin) return;
     setSavingTabs(true);
     try {
+      const allowed_tabs = allowedTabsFromModes(draftModes);
       const supabase = createClient();
       const { data, error } = await supabase
         .from("admins")
-        .update({ allowed_tabs: draftTabs })
+        .update({
+          allowed_tabs,
+          allowed_tab_modes: draftModes,
+        })
         .eq("id", permissionsAdmin.id)
         .select();
       if (error) flash(error.message);
@@ -271,7 +288,11 @@ export default function ManageAdminsContent({
         setAdmins((prev) =>
           prev.map((a) =>
             a.id === permissionsAdmin.id
-              ? { ...a, allowed_tabs: draftTabs }
+              ? {
+                  ...a,
+                  allowed_tabs,
+                  allowed_tab_modes: draftModes,
+                }
               : a,
           ),
         );
@@ -306,11 +327,16 @@ export default function ManageAdminsContent({
     }
   };
 
-  const toggleDraftTab = (tab: string) => {
-    setDraftTabs((prev) =>
-      prev.includes(tab) ? prev.filter((t) => t !== tab) : [...prev, tab],
-    );
+  const setDraftTabMode = (tab: string, mode: TabAccessMode) => {
+    setDraftModes((prev) => {
+      const next = { ...prev };
+      if (mode === "none") delete next[tab];
+      else next[tab] = mode;
+      return next;
+    });
   };
+
+  const grantedCount = countGrantedTabs(draftModes);
 
   const colSpan = isController ? 7 : 4;
 
@@ -781,7 +807,7 @@ export default function ManageAdminsContent({
             aria-label="Close"
             onClick={() => setPermissionsAdmin(null)}
           />
-          <div className="relative w-full sm:max-w-md max-h-[88vh] overflow-hidden rounded-t-xl sm:rounded-lg border border-slate-200 bg-white flex flex-col ">
+          <div className="relative w-full sm:max-w-lg max-h-[88vh] overflow-hidden rounded-t-xl sm:rounded-lg border border-slate-200 bg-white flex flex-col ">
             <div className="px-4 pt-4 pb-3 border-b border-slate-100">
               <h3 className="text-base font-semibold text-slate-900 tracking-tight">
                 Tab access
@@ -789,47 +815,91 @@ export default function ManageAdminsContent({
               <p className="mt-0.5 text-xs text-slate-500 break-all">
                 {permissionsAdmin.email}
               </p>
+              <p className="mt-2 text-[11px] text-slate-500 leading-snug">
+                Choose None, Read, or Edit for each tab. Read can view but not
+                change data. Edit includes full actions for that tab.
+              </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setDraftTabs([...ASSIGNABLE_ADMIN_TABS])}
+                  onClick={() =>
+                    setDraftModes(
+                      Object.fromEntries(
+                        ASSIGNABLE_ADMIN_TABS.map((tab) => [tab, "edit"]),
+                      ),
+                    )
+                  }
                   className="text-[11px] font-semibold text-primary hover:underline"
                 >
-                  Select all
+                  All edit
                 </button>
                 <span className="text-slate-300">·</span>
                 <button
                   type="button"
-                  onClick={() => setDraftTabs([])}
+                  onClick={() =>
+                    setDraftModes(
+                      Object.fromEntries(
+                        ASSIGNABLE_ADMIN_TABS.map((tab) => [tab, "read"]),
+                      ),
+                    )
+                  }
+                  className="text-[11px] font-semibold text-slate-600 hover:underline"
+                >
+                  All read
+                </button>
+                <span className="text-slate-300">·</span>
+                <button
+                  type="button"
+                  onClick={() => setDraftModes({})}
                   className="text-[11px] font-semibold text-slate-500 hover:underline"
                 >
                   Clear
                 </button>
                 <span className="ml-auto text-[11px] tabular-nums text-slate-400">
-                  {draftTabs.length}/{ASSIGNABLE_ADMIN_TABS.length}
+                  {grantedCount}/{ASSIGNABLE_ADMIN_TABS.length}
                 </span>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-2 py-2">
+            <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
               {ASSIGNABLE_ADMIN_TABS.map((tab) => {
-                const checked = draftTabs.includes(tab);
+                const mode = draftModes[tab] ?? "none";
                 return (
-                  <label
+                  <div
                     key={tab}
-                    className={`flex items-center gap-2.5 rounded-md px-2.5 py-2 cursor-pointer ${
-                      checked ? "bg-primary/5" : "hover:bg-slate-50"
+                    className={`flex flex-col sm:flex-row sm:items-center gap-2 rounded-md px-2.5 py-2 ${
+                      mode !== "none" ? "bg-primary/5" : "hover:bg-slate-50"
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => toggleDraftTab(tab)}
-                      className="h-3.5 w-3.5 accent-primary"
-                    />
-                    <span className="text-[13px] font-medium text-slate-800">
+                    <span className="text-[13px] font-medium text-slate-800 sm:min-w-[10.5rem]">
                       {tab}
                     </span>
-                  </label>
+                    <div className="inline-flex rounded-md border border-slate-200 overflow-hidden ml-auto">
+                      {(
+                        [
+                          ["none", "None"],
+                          ["read", "Read"],
+                          ["edit", "Edit"],
+                        ] as const
+                      ).map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() => setDraftTabMode(tab, value)}
+                          className={`px-2.5 py-1 text-[11px] font-semibold ${
+                            mode === value
+                              ? value === "edit"
+                                ? "bg-teal-700 text-white"
+                                : value === "read"
+                                  ? "bg-slate-700 text-white"
+                                  : "bg-slate-200 text-slate-700"
+                              : "bg-white text-slate-500 hover:bg-slate-50"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 );
               })}
             </div>

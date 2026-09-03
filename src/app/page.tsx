@@ -42,6 +42,7 @@ export default function Home() {
           email: string;
           role: string;
           allowed_tabs: string[] | null;
+          allowed_tab_modes?: Record<string, string> | null;
           displayName?: string | null;
         };
       };
@@ -59,6 +60,7 @@ export default function Home() {
           role: result.admin.role,
           id: result.admin.id,
           allowed_tabs: result.admin.allowed_tabs,
+          allowed_tab_modes: result.admin.allowed_tab_modes ?? null,
           displayName: result.admin.displayName ?? null,
         }),
       );

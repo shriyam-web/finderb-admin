@@ -162,6 +162,9 @@ export default function DashboardContent({
   loginLogs,
   maintenanceMode,
   canViewFinancialData,
+  canAccessTab,
+  canEditListings,
+  canViewListingsQueue,
 }: {
   setActiveTab: (tab: string) => void;
   merchantRequests: MerchantRequest[];
@@ -175,6 +178,9 @@ export default function DashboardContent({
   loginLogs: LoginLog[];
   maintenanceMode: boolean;
   canViewFinancialData: boolean;
+  canAccessTab: (tab: string) => boolean;
+  canEditListings: boolean;
+  canViewListingsQueue: boolean;
 }) {
   const [showRevenue, setShowRevenue] = useState(false);
   const [activityFilter, setActivityFilter] = useState<
@@ -236,63 +242,75 @@ export default function DashboardContent({
             </p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab("Business Onboarding")}
-              className="admin-btn-secondary"
-            >
-              Onboard business
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("Merchants")}
-              className="admin-btn-primary"
-            >
-              <Building2 className="w-4 h-4" />
-              Partner queue
-              {stats.merchants.pendingKyc > 0 && (
-                <span className="px-1.5 py-0.5 rounded-md bg-white/25 text-[10px] font-bold">
-                  {stats.merchants.pendingKyc}
-                </span>
-              )}
-            </button>
+            {canAccessTab("Business Onboarding") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("Business Onboarding")}
+                className="admin-btn-secondary"
+              >
+                Onboard business
+              </button>
+            )}
+            {canAccessTab("Merchants") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("Merchants")}
+                className="admin-btn-primary"
+              >
+                <Building2 className="w-4 h-4" />
+                Partner queue
+                {stats.merchants.pendingKyc > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-md bg-white/25 text-[10px] font-bold">
+                    {stats.merchants.pendingKyc}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Primary KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <StatCard
-          label="Registered users"
-          value={stats.users.total.toLocaleString()}
-          sub={`+${stats.users.weekNew} this week · ${stats.users.todayNew} today`}
-          icon={Users}
-          accent="sky"
-          onClick={() => setActiveTab("Users")}
-        />
-        <StatCard
-          label="Active partners"
-          value={stats.merchants.total.toLocaleString()}
-          sub={`${stats.merchants.activeListings} live listings · ${stats.merchants.verified} verified`}
-          icon={Building2}
-          accent="emerald"
-          onClick={() => setActiveTab("Merchants")}
-        />
-        <StatCard
-          label="Total leads"
-          value={stats.leads.total.toLocaleString()}
-          sub={`+${stats.leads.weekNew} this week · ${stats.leads.profile} profile`}
-          icon={Zap}
-          accent="amber"
-          onClick={() => setActiveTab("Leads")}
-        />
-        <StatCard
-          label="Weekly sign-ups"
-          value={stats.weekSignups.total.toLocaleString()}
-          sub={`${stats.weekSignups.users} users · ${stats.weekSignups.merchants} partners`}
-          icon={UserPlus}
-          accent="primary"
-        />
+        {canAccessTab("Users") && (
+          <StatCard
+            label="Registered users"
+            value={stats.users.total.toLocaleString()}
+            sub={`+${stats.users.weekNew} this week · ${stats.users.todayNew} today`}
+            icon={Users}
+            accent="sky"
+            onClick={() => setActiveTab("Users")}
+          />
+        )}
+        {canAccessTab("Merchants") && (
+          <StatCard
+            label="Active partners"
+            value={stats.merchants.total.toLocaleString()}
+            sub={`${stats.merchants.activeListings} live listings · ${stats.merchants.verified} verified`}
+            icon={Building2}
+            accent="emerald"
+            onClick={() => setActiveTab("Merchants")}
+          />
+        )}
+        {canAccessTab("Leads") && (
+          <StatCard
+            label="Total leads"
+            value={stats.leads.total.toLocaleString()}
+            sub={`+${stats.leads.weekNew} this week · ${stats.leads.profile} profile`}
+            icon={Zap}
+            accent="amber"
+            onClick={() => setActiveTab("Leads")}
+          />
+        )}
+        {(canAccessTab("Users") || canAccessTab("Merchants")) && (
+          <StatCard
+            label="Weekly sign-ups"
+            value={stats.weekSignups.total.toLocaleString()}
+            sub={`${stats.weekSignups.users} users · ${stats.weekSignups.merchants} partners`}
+            icon={UserPlus}
+            accent="primary"
+          />
+        )}
       </div>
 
       {/* Secondary stats row */}
@@ -301,11 +319,13 @@ export default function DashboardContent({
           canViewFinancialData ? "sm:grid-cols-3 lg:grid-cols-6" : ""
         }`}
       >
-        <MiniMetric
-          label="Awaiting listing review"
-          value={stats.merchants.pendingKyc}
-          hint="Pending admin approval"
-        />
+        {canViewListingsQueue && (
+          <MiniMetric
+            label="Awaiting listing review"
+            value={stats.merchants.pendingKyc}
+            hint="Pending admin approval"
+          />
+        )}
         {canViewFinancialData && (
           <>
             <MiniMetric
@@ -330,11 +350,13 @@ export default function DashboardContent({
             />
           </>
         )}
-        <MiniMetric
-          label="Categories"
-          value={stats.content.categories}
-          hint={`${stats.content.blogs} blogs · ${stats.content.jobs} jobs`}
-        />
+        {canAccessTab("Categories") && (
+          <MiniMetric
+            label="Categories"
+            value={stats.content.categories}
+            hint={`${stats.content.blogs} blogs · ${stats.content.jobs} jobs`}
+          />
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
@@ -570,13 +592,15 @@ export default function DashboardContent({
           Quick navigation
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <QuickLink
-            label="Partner management"
-            description="Profiles, listing approval, verification badges"
-            icon={Building2}
-            onClick={() => setActiveTab("Merchants")}
-            badge={stats.merchants.pendingKyc || undefined}
-          />
+          {canAccessTab("Merchants") && (
+            <QuickLink
+              label="Partner management"
+              description="Profiles, listing approval, verification badges"
+              icon={Building2}
+              onClick={() => setActiveTab("Merchants")}
+              badge={stats.merchants.pendingKyc || undefined}
+            />
+          )}
           {canViewFinancialData && (
             <QuickLink
               label="Payments & subscriptions"
@@ -586,38 +610,47 @@ export default function DashboardContent({
               badge={stats.payments.opensCount || undefined}
             />
           )}
-          <QuickLink
-            label="Lead inbox"
-            description="Profile and category enquiries"
-            icon={Activity}
-            onClick={() => setActiveTab("Leads")}
-            badge={stats.leads.weekNew ? `+${stats.leads.weekNew}` : undefined}
-          />
-          <QuickLink
-            label="Categories"
-            description="Marketplace taxonomy and slots"
-            icon={Layers}
-            onClick={() => setActiveTab("Categories")}
-          />
-          <QuickLink
-            label="Blogs"
-            description="Editorial content management"
-            icon={FileText}
-            onClick={() => setActiveTab("Blogs")}
-            badge={stats.content.blogs}
-          />
-          <QuickLink
-            label="FinderB Jobs"
-            description="Job listings on platform"
-            icon={Briefcase}
-            onClick={() => setActiveTab("FinderB Jobs")}
-            badge={stats.content.jobs}
-          />
+          {canAccessTab("Leads") && (
+            <QuickLink
+              label="Lead inbox"
+              description="Profile and category enquiries"
+              icon={Activity}
+              onClick={() => setActiveTab("Leads")}
+              badge={stats.leads.weekNew ? `+${stats.leads.weekNew}` : undefined}
+            />
+          )}
+          {canAccessTab("Categories") && (
+            <QuickLink
+              label="Categories"
+              description="Marketplace taxonomy and slots"
+              icon={Layers}
+              onClick={() => setActiveTab("Categories")}
+            />
+          )}
+          {canAccessTab("Blogs") && (
+            <QuickLink
+              label="Blogs"
+              description="Editorial content management"
+              icon={FileText}
+              onClick={() => setActiveTab("Blogs")}
+              badge={stats.content.blogs}
+            />
+          )}
+          {canAccessTab("FinderB Jobs") && (
+            <QuickLink
+              label="FinderB Jobs"
+              description="Job listings on platform"
+              icon={Briefcase}
+              onClick={() => setActiveTab("FinderB Jobs")}
+              badge={stats.content.jobs}
+            />
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
         {/* Verification queue */}
+        {canViewListingsQueue && (
         <div className="xl:col-span-5 admin-card flex flex-col overflow-hidden">
           <div className="admin-card-header">
             <div>
@@ -631,13 +664,15 @@ export default function DashboardContent({
                 approval
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab("Merchants")}
-              className="admin-link"
-            >
-              Open
-            </button>
+            {canAccessTab("Merchants") && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("Merchants")}
+                className="admin-link"
+              >
+                Open
+              </button>
+            )}
           </div>
           <div className="divide-y divide-slate-100 overflow-y-auto max-h-[280px] custom-scrollbar">
             {merchantRequests.length > 0 ? (
@@ -668,46 +703,54 @@ export default function DashboardContent({
                     </div>
                   </div>
                   <div className="flex gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleApprove(merchant)}
-                      className="admin-icon-btn !text-emerald-600 hover:!bg-emerald-50"
-                      title="Approve"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2.5"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleReject(merchant)}
-                      className="admin-icon-btn-danger"
-                      title="Reject"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
+                    {canEditListings ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(merchant)}
+                          className="admin-icon-btn !text-emerald-600 hover:!bg-emerald-50"
+                          title="Approve"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2.5"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReject(merchant)}
+                          className="admin-icon-btn-danger"
+                          title="Reject"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-slate-400 px-1">
+                        Read only
+                      </span>
+                    )}
                   </div>
                 </div>
               ))
@@ -726,9 +769,12 @@ export default function DashboardContent({
             )}
           </div>
         </div>
+        )}
 
         {/* Admin logins */}
-        <div className="xl:col-span-3 admin-card overflow-hidden">
+        <div
+          className={`${canViewListingsQueue ? "xl:col-span-3" : "xl:col-span-4"} admin-card overflow-hidden`}
+        >
           <div className="admin-card-header !flex-col !items-start">
             <h3 className="admin-card-title flex items-center gap-2">
               <Shield className="w-4 h-4 text-slate-500" />
@@ -756,13 +802,19 @@ export default function DashboardContent({
             )}
           </div>
           <div className="px-4 py-2.5 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setActiveTab("Settings")}
-              className="admin-link"
-            >
-              View in settings →
-            </button>
+            {canAccessTab("Settings") ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab("Settings")}
+                className="admin-link"
+              >
+                View in settings →
+              </button>
+            ) : (
+              <span className="text-[11px] text-slate-400">
+                Settings access required
+              </span>
+            )}
           </div>
         </div>
 

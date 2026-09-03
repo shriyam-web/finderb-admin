@@ -619,11 +619,11 @@ export default function MerchantRegistrationContent({
                         <span className="block text-slate-400 mt-0.5">
                           A placeholder like{" "}
                           <span className="admin-mono">
-                            company-name@finderb.com
+                            company-name-43422@finderb.com
                           </span>{" "}
-                          will be generated from the business name. The profile
-                          will be flagged as email missing until the real
-                          address is added.
+                          will be generated (random digits included). The
+                          profile will be flagged as email missing until the
+                          real address is added.
                         </span>
                       )}
                     </span>

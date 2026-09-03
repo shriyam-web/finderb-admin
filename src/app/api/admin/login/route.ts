@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const supabase = getSupabase();
 
     const baseFields =
-      "id, email, password, role, is_disabled, allowed_tabs";
+      "id, email, password, role, is_disabled, allowed_tabs, allowed_tab_modes";
 
     type AdminLoginRow = {
       id: string;
@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       role: string;
       is_disabled: boolean | null;
       allowed_tabs: string[] | null;
+      allowed_tab_modes?: Record<string, string> | null;
       display_name?: string | null;
     };
 
@@ -64,10 +65,20 @@ export async function POST(request: Request) {
       error = primary.error;
     }
 
+    if (error && /allowed_tab_modes/i.test(error.message || "")) {
+      const withoutModes = await supabase
+        .from("admins")
+        .select("id, email, password, role, is_disabled, allowed_tabs, display_name")
+        .ilike("email", email)
+        .maybeSingle();
+      admin = withoutModes.data as AdminLoginRow | null;
+      error = withoutModes.error;
+    }
+
     if (error && /display_name/i.test(error.message || "")) {
       const fallback = await supabase
         .from("admins")
-        .select(baseFields)
+        .select("id, email, password, role, is_disabled, allowed_tabs")
         .ilike("email", email)
         .maybeSingle();
       admin = fallback.data as AdminLoginRow | null;
@@ -138,6 +149,7 @@ export async function POST(request: Request) {
         email: admin.email,
         role: admin.role,
         allowed_tabs: admin.allowed_tabs ?? null,
+        allowed_tab_modes: admin.allowed_tab_modes ?? null,
         displayName,
       },
     });
