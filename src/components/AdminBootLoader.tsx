@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import styles from "./AdminBootLoader.module.css";
 
 const BOOT_STEPS = [
   "Verifying your session",
@@ -21,60 +22,63 @@ export default function AdminBootLoader() {
   }, []);
 
   return (
-    <div className="admin-boot" role="status" aria-live="polite">
-      <div className="admin-boot-aurora" aria-hidden />
-      <div className="admin-boot-grid" aria-hidden />
+    <div className={styles.root} role="status" aria-live="polite">
+      <div className={styles.aurora} aria-hidden />
+      <div className={styles.grid} aria-hidden />
 
-      <div className="admin-boot-card">
-        <div className="admin-boot-orbit" aria-hidden>
-          <span className="admin-boot-ring admin-boot-ring-a" />
-          <span className="admin-boot-ring admin-boot-ring-b" />
-          <span className="admin-boot-ring admin-boot-ring-c" />
-          <span className="admin-boot-pulse" />
+      <div className={styles.card}>
+        <div className={styles.orbit} aria-hidden>
+          <span className={styles.ringA} />
+          <span className={styles.ringB} />
+          <span className={styles.ringC} />
+          <span className={styles.pulse} />
+          <div className={styles.logoWrap}>
+            <Image
+              src="/logo-white.png"
+              alt="FinderB"
+              width={72}
+              height={20}
+              className={styles.logo}
+              priority
+            />
+          </div>
         </div>
 
-        <div className="admin-boot-logo-wrap">
-          <Image
-            src="/logo-white.png"
-            alt="FinderB"
-            width={148}
-            height={40}
-            className="admin-boot-logo object-contain"
-            priority
-          />
-        </div>
-
-        <p className="admin-boot-kicker">FinderB Admin</p>
-        <h1 className="admin-boot-title">Opening your console</h1>
-        <p key={stepIndex} className="admin-boot-step">
+        <p className={styles.kicker}>FinderB Admin</p>
+        <h1 className={styles.title}>Opening your console</h1>
+        <p key={stepIndex} className={styles.step}>
           {BOOT_STEPS[stepIndex]}
-          <span className="admin-boot-dots" aria-hidden>
+          <span className={styles.dots} aria-hidden>
             <i />
             <i />
             <i />
           </span>
         </p>
 
-        <div className="admin-boot-track" aria-hidden>
-          <span className="admin-boot-bar" />
+        <div className={styles.track} aria-hidden>
+          <span className={styles.bar} />
         </div>
 
-        <ul className="admin-boot-checklist" aria-hidden>
-          {BOOT_STEPS.map((label, i) => (
-            <li
-              key={label}
-              className={
-                i < stepIndex
-                  ? "is-done"
-                  : i === stepIndex
-                    ? "is-active"
-                    : undefined
-              }
-            >
-              <span className="admin-boot-check" />
-              {label}
-            </li>
-          ))}
+        <ul className={styles.checklist} aria-hidden>
+          {BOOT_STEPS.map((label, i) => {
+            const stateClass =
+              i < stepIndex
+                ? styles.done
+                : i === stepIndex
+                  ? styles.active
+                  : undefined;
+            return (
+              <li
+                key={label}
+                className={[styles.checklistItem, stateClass]
+                  .filter(Boolean)
+                  .join(" ")}
+              >
+                <span className={styles.check} />
+                {label}
+              </li>
+            );
+          })}
         </ul>
       </div>
     </div>
