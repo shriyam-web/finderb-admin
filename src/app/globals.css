@@ -425,6 +425,14 @@ body {
     backdrop-filter: blur(10px);
   }
 
+  .admin-theme-toggle {
+    @apply inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition-colors;
+  }
+
+  .admin-theme-toggle:hover {
+    @apply border-slate-300 bg-slate-50 text-slate-900;
+  }
+
   .admin-main {
     @apply relative z-0 px-4 sm:px-5 lg:px-6 py-5 lg:py-6 w-full;
     animation: admin-rise 0.28s ease-out;

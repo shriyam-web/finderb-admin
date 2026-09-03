@@ -69,6 +69,11 @@ import {
   sanitizeTabModes,
   type TabAccessMode,
 } from "../../lib/adminTabAccess";
+import {
+  readAdminColorMode,
+  writeAdminColorMode,
+  type AdminColorMode,
+} from "../../lib/adminColorMode";
 
 interface User {
   id: string;
@@ -825,10 +830,21 @@ export default function Dashboard() {
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   const [platformTimeLabel, setPlatformTimeLabel] = useState("");
   const [platformDateLabel, setPlatformDateLabel] = useState("");
+  const [colorMode, setColorMode] = useState<AdminColorMode>("light");
   const {
     unreadCount: whatsNewUnreadCount,
     setUnreadCount: setWhatsNewUnreadCount,
   } = useWhatsNewUnreadCount(adminSession?.id);
+
+  const isController = adminSession?.role === "controller";
+  const canToggleColorMode =
+    !!adminSession &&
+    (adminSession.role === "admin" || adminSession.role === "super_admin");
+  const resolvedTheme = isController
+    ? "controller"
+    : canToggleColorMode && colorMode === "dark"
+      ? "dark"
+      : null;
 
   // Always start a tab at the top of the page
   useEffect(() => {
@@ -837,22 +853,47 @@ export default function Dashboard() {
     document.body.scrollTop = 0;
   }, [activeTab]);
 
-  // Whole-console premium theme for Controller accounts
+  useEffect(() => {
+    setColorMode(readAdminColorMode());
+  }, []);
+
+  // Controller = gold premium. Others = optional neutral dark via switch.
   useEffect(() => {
     const root = document.documentElement;
-    const isController = adminSession?.role === "controller";
-    if (isController) {
+    root.classList.remove("admin-theme-controller", "admin-theme-dark");
+    if (resolvedTheme === "controller") {
       root.setAttribute("data-admin-theme", "controller");
+      root.classList.add("admin-theme-controller");
       document.body.classList.add("admin-theme-controller");
+      document.body.classList.remove("admin-theme-dark");
+    } else if (resolvedTheme === "dark") {
+      root.setAttribute("data-admin-theme", "dark");
+      root.classList.add("admin-theme-dark");
+      document.body.classList.add("admin-theme-dark");
+      document.body.classList.remove("admin-theme-controller");
     } else {
       root.removeAttribute("data-admin-theme");
-      document.body.classList.remove("admin-theme-controller");
+      document.body.classList.remove(
+        "admin-theme-controller",
+        "admin-theme-dark",
+      );
     }
     return () => {
       root.removeAttribute("data-admin-theme");
-      document.body.classList.remove("admin-theme-controller");
+      root.classList.remove("admin-theme-controller", "admin-theme-dark");
+      document.body.classList.remove(
+        "admin-theme-controller",
+        "admin-theme-dark",
+      );
     };
-  }, [adminSession?.role]);
+  }, [resolvedTheme]);
+
+  const toggleColorMode = () => {
+    if (isController) return;
+    const next: AdminColorMode = colorMode === "dark" ? "light" : "dark";
+    setColorMode(next);
+    writeAdminColorMode(next);
+  };
 
   useEffect(() => {
     try {
@@ -2256,11 +2297,9 @@ export default function Dashboard() {
   return (
     <div
       className={`admin-shell flex min-h-screen ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${
-        adminSession?.role === "controller" ? "admin-shell-controller" : ""
-      }`}
-      data-admin-theme={
-        adminSession?.role === "controller" ? "controller" : undefined
-      }
+        isController ? "admin-shell-controller" : ""
+      } ${resolvedTheme === "dark" ? "admin-shell-dark" : ""}`}
+      data-admin-theme={resolvedTheme || undefined}
     >
       {isSidebarOpen && (
         <div
@@ -2809,9 +2848,61 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {canToggleColorMode && (
+                <button
+                  type="button"
+                  onClick={toggleColorMode}
+                  className="admin-theme-toggle"
+                  aria-label={
+                    colorMode === "dark"
+                      ? "Switch to light theme"
+                      : "Switch to dark theme"
+                  }
+                  title={
+                    colorMode === "dark"
+                      ? "Switch to light theme"
+                      : "Switch to dark theme"
+                  }
+                >
+                  {colorMode === "dark" ? (
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05L5.636 5.636m12.728 0l-1.414 1.414M7.05 16.95l-1.414 1.414M12 8a4 4 0 100 8 4 4 0 000-8z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      aria-hidden
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"
+                      />
+                    </svg>
+                  )}
+                  <span className="hidden sm:inline">
+                    {colorMode === "dark" ? "Light" : "Dark"}
+                  </span>
+                </button>
+              )}
               <span
                 className={`hidden md:inline admin-badge capitalize ${
-                  adminSession?.role === "controller"
+                  isController
                     ? "admin-controller-badge"
                     : "bg-teal-50 text-teal-800 border-teal-100"
                 }`}

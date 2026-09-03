@@ -1,0 +1,445 @@
+/* Optional dark theme for admin / super_admin (and other non-controller roles).
+   Keeps teal accents — NOT the Controller gold premium look. */
+
+html[data-admin-theme="dark"] {
+  --background: #0f172a;
+  --foreground: #e2e8f0;
+  --sidebar-background: #0b1220;
+  --sidebar-foreground: #94a3b8;
+  --sidebar-foreground-active: #f8fafc;
+  --sidebar-border: rgba(148, 163, 184, 0.18);
+  --sidebar-hover: rgba(45, 212, 191, 0.08);
+  --sidebar-active: rgba(45, 212, 191, 0.14);
+  --primary: #14b8a6;
+  --primary-50: #0f172a;
+  --primary-100: #1e293b;
+  --primary-200: #334155;
+  --primary-300: #94a3b8;
+  --primary-400: #2dd4bf;
+  --primary-500: #14b8a6;
+  --primary-600: #0d9488;
+  --primary-700: #0f766e;
+  --primary-800: #115e59;
+  --primary-900: #134e4a;
+  --primary-foreground: #042f2e;
+  --secondary: #f59e0b;
+  --secondary-50: #1e293b;
+  --secondary-100: #334155;
+  --secondary-500: #f59e0b;
+  --secondary-foreground: #0f172a;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --border: rgba(148, 163, 184, 0.2);
+  --input: rgba(148, 163, 184, 0.28);
+  --ring: #14b8a6;
+  --surface: #111827;
+  --surface-muted: #1e293b;
+  --command-bar: #111827;
+  color-scheme: dark;
+}
+
+html[data-admin-theme="dark"],
+html[data-admin-theme="dark"] body {
+  background: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell {
+  background:
+    radial-gradient(1000px 520px at 88% -8%, rgba(20, 184, 166, 0.12), transparent 55%),
+    linear-gradient(165deg, #020617 0%, #0f172a 48%, #020617 100%) !important;
+  color: #e2e8f0 !important;
+}
+
+html[data-admin-theme="dark"] .admin-content-area {
+  background: transparent !important;
+}
+
+html[data-admin-theme="dark"] .admin-chrome-sticky {
+  background: #0b1220 !important;
+  z-index: 40 !important;
+}
+
+/* ——— Sidebar ——— */
+html[data-admin-theme="dark"] .admin-sidebar {
+  background: linear-gradient(180deg, #020617 0%, #0b1220 55%, #111827 100%) !important;
+  border-right: 1px solid rgba(148, 163, 184, 0.18) !important;
+  color: #e2e8f0 !important;
+}
+
+html[data-admin-theme="dark"] .admin-sidebar-header,
+html[data-admin-theme="dark"] .admin-sidebar-footer {
+  background: transparent !important;
+  border-color: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-admin-theme="dark"] .admin-brand-splash {
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(45, 212, 191, 0.28), transparent 55%),
+    linear-gradient(160deg, #1e293b 0%, #0b1220 100%) !important;
+  border-color: rgba(45, 212, 191, 0.28) !important;
+}
+
+html[data-admin-theme="dark"] .admin-brand-splash-grid {
+  background-image:
+    linear-gradient(rgba(45, 212, 191, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45, 212, 191, 0.1) 1px, transparent 1px) !important;
+}
+
+html[data-admin-theme="dark"] .admin-brand-splash-glow {
+  background: rgba(45, 212, 191, 0.32) !important;
+}
+
+html[data-admin-theme="dark"] .admin-nav-item-active {
+  background: rgba(45, 212, 191, 0.14) !important;
+  color: #99f6e4 !important;
+  box-shadow: inset 3px 0 0 0 #14b8a6 !important;
+}
+
+html[data-admin-theme="dark"] .admin-nav-item-idle {
+  color: #94a3b8 !important;
+}
+
+html[data-admin-theme="dark"] .admin-nav-item-idle:hover {
+  background: rgba(45, 212, 191, 0.08) !important;
+  color: #f1f5f9 !important;
+}
+
+html[data-admin-theme="dark"] .admin-nav-group-label {
+  color: #64748b !important;
+}
+
+html[data-admin-theme="dark"] .admin-nav-badge,
+html[data-admin-theme="dark"] .admin-nav-badge-alert,
+html[data-admin-theme="dark"] .admin-nav-badge-new,
+html[data-admin-theme="dark"] .admin-nav-badge-soon {
+  background: rgba(45, 212, 191, 0.12) !important;
+  color: #99f6e4 !important;
+  border-color: rgba(45, 212, 191, 0.28) !important;
+}
+
+/* ——— Chrome ——— */
+html[data-admin-theme="dark"] .admin-topbar {
+  background: #0b1220 !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
+  color: #f1f5f9 !important;
+  backdrop-filter: none !important;
+}
+
+html[data-admin-theme="dark"] .admin-breadcrumb,
+html[data-admin-theme="dark"] .admin-breadcrumb-current {
+  color: #cbd5e1 !important;
+}
+
+html[data-admin-theme="dark"] .admin-command-bar {
+  background: #111827 !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+  color: #e2e8f0 !important;
+  backdrop-filter: none !important;
+}
+
+html[data-admin-theme="dark"] .admin-metric-chip {
+  background: #1e293b !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  color: #e2e8f0 !important;
+}
+
+html[data-admin-theme="dark"] .admin-metric-chip:hover {
+  background: #334155 !important;
+  border-color: rgba(45, 212, 191, 0.35) !important;
+}
+
+html[data-admin-theme="dark"] .admin-metric-chip strong {
+  color: #5eead4 !important;
+}
+
+/* ——— Surfaces ——— */
+html[data-admin-theme="dark"] .admin-main {
+  color: #e2e8f0 !important;
+}
+
+html[data-admin-theme="dark"] .admin-page-title,
+html[data-admin-theme="dark"] .admin-card-title {
+  color: #f8fafc !important;
+}
+
+html[data-admin-theme="dark"] .admin-page-subtitle,
+html[data-admin-theme="dark"] .admin-card-description,
+html[data-admin-theme="dark"] .admin-kpi-label,
+html[data-admin-theme="dark"] .admin-kpi-meta {
+  color: #94a3b8 !important;
+}
+
+html[data-admin-theme="dark"] .admin-kpi-value {
+  color: #f8fafc !important;
+}
+
+html[data-admin-theme="dark"] .admin-card,
+html[data-admin-theme="dark"] .admin-platform-hero,
+html[data-admin-theme="dark"] .admin-kpi,
+html[data-admin-theme="dark"] .admin-table-wrap,
+html[data-admin-theme="dark"] .admin-modal,
+html[data-admin-theme="dark"] .admin-modal-lg {
+  background: #111827 !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  box-shadow: none !important;
+  color: #e2e8f0 !important;
+}
+
+html[data-admin-theme="dark"] .admin-card-header,
+html[data-admin-theme="dark"] .admin-table thead {
+  background: #0b1220 !important;
+  border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+html[data-admin-theme="dark"] .admin-platform-hero {
+  background:
+    radial-gradient(ellipse 80% 120% at 100% 0%, rgba(20, 184, 166, 0.12), transparent 55%),
+    #111827 !important;
+}
+
+html[data-admin-theme="dark"] .admin-platform-hero-accent {
+  background: linear-gradient(180deg, #5eead4, #14b8a6 55%, #0f766e) !important;
+}
+
+html[data-admin-theme="dark"] .admin-platform-hero-kicker {
+  color: #5eead4 !important;
+}
+
+html[data-admin-theme="dark"] .admin-kpi:hover {
+  border-color: rgba(45, 212, 191, 0.35) !important;
+  background: #1e293b !important;
+}
+
+html[data-admin-theme="dark"] .admin-status-pill,
+html[data-admin-theme="dark"] .admin-badge {
+  background: #1e293b !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  color: #cbd5e1 !important;
+}
+
+html[data-admin-theme="dark"] .admin-status-live {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #6ee7b7 !important;
+}
+
+html[data-admin-theme="dark"] .admin-status-warn {
+  background: rgba(245, 158, 11, 0.14) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #fcd34d !important;
+}
+
+html[data-admin-theme="dark"] .admin-btn-primary {
+  background: linear-gradient(180deg, #2dd4bf 0%, #14b8a6 50%, #0d9488 100%) !important;
+  border-color: #0f766e !important;
+  color: #042f2e !important;
+  box-shadow: 0 8px 18px rgba(13, 148, 136, 0.28) !important;
+}
+
+html[data-admin-theme="dark"] .admin-btn-secondary,
+html[data-admin-theme="dark"] .admin-btn-ghost {
+  background: #0b1220 !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+html[data-admin-theme="dark"] .admin-btn-secondary:hover,
+html[data-admin-theme="dark"] .admin-btn-ghost:hover {
+  background: #1e293b !important;
+  border-color: rgba(45, 212, 191, 0.35) !important;
+}
+
+html[data-admin-theme="dark"] .admin-input,
+html[data-admin-theme="dark"] .admin-search,
+html[data-admin-theme="dark"] select,
+html[data-admin-theme="dark"] textarea,
+html[data-admin-theme="dark"] input[type="text"],
+html[data-admin-theme="dark"] input[type="email"],
+html[data-admin-theme="dark"] input[type="password"],
+html[data-admin-theme="dark"] input[type="number"],
+html[data-admin-theme="dark"] input[type="search"],
+html[data-admin-theme="dark"] input[type="url"],
+html[data-admin-theme="dark"] input[type="tel"],
+html[data-admin-theme="dark"] input[type="date"] {
+  background: #0b1220 !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #f8fafc !important;
+}
+
+html[data-admin-theme="dark"] .admin-input:focus,
+html[data-admin-theme="dark"] .admin-search:focus,
+html[data-admin-theme="dark"] select:focus,
+html[data-admin-theme="dark"] textarea:focus,
+html[data-admin-theme="dark"] input:focus {
+  border-color: #14b8a6 !important;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2) !important;
+  outline: none !important;
+}
+
+html[data-admin-theme="dark"] .admin-table th,
+html[data-admin-theme="dark"] th {
+  color: #99f6e4 !important;
+  background: #0b1220 !important;
+  border-color: rgba(148, 163, 184, 0.14) !important;
+}
+
+html[data-admin-theme="dark"] .admin-table td,
+html[data-admin-theme="dark"] td {
+  color: #e2e8f0 !important;
+  border-color: rgba(148, 163, 184, 0.1) !important;
+}
+
+html[data-admin-theme="dark"] .admin-table tbody tr:hover {
+  background: rgba(45, 212, 191, 0.05) !important;
+}
+
+html[data-admin-theme="dark"] .admin-alert-error {
+  background: rgba(225, 29, 72, 0.12) !important;
+  border-color: rgba(251, 113, 133, 0.35) !important;
+  color: #fecdd3 !important;
+}
+
+html[data-admin-theme="dark"] .admin-whats-new-fab {
+  background: linear-gradient(180deg, #2dd4bf 0%, #0d9488 100%) !important;
+  border-color: #14b8a6 !important;
+  color: #042f2e !important;
+  z-index: 60;
+}
+
+html[data-admin-theme="dark"] .admin-whats-new-panel {
+  background: #111827 !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  color: #e2e8f0 !important;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Theme toggle control */
+html[data-admin-theme="dark"] .admin-theme-toggle {
+  background: #1e293b !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+/* ——— Hardcoded Tailwind light utilities ——— */
+html[data-admin-theme="dark"] .admin-shell .bg-white,
+html[data-admin-theme="dark"] .admin-shell .bg-white\/90,
+html[data-admin-theme="dark"] .admin-shell .bg-white\/80,
+html[data-admin-theme="dark"] .admin-shell .bg-slate-50,
+html[data-admin-theme="dark"] .admin-shell .bg-slate-50\/50,
+html[data-admin-theme="dark"] .admin-shell .bg-slate-50\/80,
+html[data-admin-theme="dark"] .admin-shell .bg-slate-50\/90,
+html[data-admin-theme="dark"] .admin-shell .bg-gray-50,
+html[data-admin-theme="dark"] .admin-shell .bg-zinc-50,
+html[data-admin-theme="dark"] .admin-shell .bg-stone-50 {
+  background-color: #111827 !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .bg-slate-100,
+html[data-admin-theme="dark"] .admin-shell .bg-gray-100,
+html[data-admin-theme="dark"] .admin-shell .bg-zinc-100,
+html[data-admin-theme="dark"] .admin-shell .bg-stone-100,
+html[data-admin-theme="dark"] .admin-shell .hover\:bg-slate-50:hover,
+html[data-admin-theme="dark"] .admin-shell .hover\:bg-slate-100:hover,
+html[data-admin-theme="dark"] .admin-shell .hover\:bg-white:hover {
+  background-color: #1e293b !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .border-slate-100,
+html[data-admin-theme="dark"] .admin-shell .border-slate-200,
+html[data-admin-theme="dark"] .admin-shell .border-slate-200\/80,
+html[data-admin-theme="dark"] .admin-shell .border-slate-200\/90,
+html[data-admin-theme="dark"] .admin-shell .border-gray-200,
+html[data-admin-theme="dark"] .admin-shell .border-zinc-200,
+html[data-admin-theme="dark"] .admin-shell .hover\:border-slate-300:hover {
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-slate-900,
+html[data-admin-theme="dark"] .admin-shell .text-slate-800,
+html[data-admin-theme="dark"] .admin-shell .text-gray-900,
+html[data-admin-theme="dark"] .admin-shell .text-zinc-900,
+html[data-admin-theme="dark"] .admin-shell .text-zinc-950,
+html[data-admin-theme="dark"] .admin-shell .text-black {
+  color: #f8fafc !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-slate-700,
+html[data-admin-theme="dark"] .admin-shell .text-slate-600,
+html[data-admin-theme="dark"] .admin-shell .text-gray-700,
+html[data-admin-theme="dark"] .admin-shell .text-zinc-700 {
+  color: #e2e8f0 !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-slate-500,
+html[data-admin-theme="dark"] .admin-shell .text-slate-400,
+html[data-admin-theme="dark"] .admin-shell .text-gray-500,
+html[data-admin-theme="dark"] .admin-shell .text-zinc-500 {
+  color: #94a3b8 !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-slate-300,
+html[data-admin-theme="dark"] .admin-shell .text-gray-300 {
+  color: #64748b !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-teal-600,
+html[data-admin-theme="dark"] .admin-shell .text-teal-700,
+html[data-admin-theme="dark"] .admin-shell .text-teal-800 {
+  color: #5eead4 !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .bg-teal-50,
+html[data-admin-theme="dark"] .admin-shell .bg-emerald-50,
+html[data-admin-theme="dark"] .admin-shell .bg-amber-50,
+html[data-admin-theme="dark"] .admin-shell .bg-sky-50,
+html[data-admin-theme="dark"] .admin-shell .bg-rose-50,
+html[data-admin-theme="dark"] .admin-shell .bg-orange-50 {
+  background-color: #1e293b !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .border-teal-100,
+html[data-admin-theme="dark"] .admin-shell .border-teal-200,
+html[data-admin-theme="dark"] .admin-shell .border-emerald-100,
+html[data-admin-theme="dark"] .admin-shell .border-emerald-200,
+html[data-admin-theme="dark"] .admin-shell .border-amber-100,
+html[data-admin-theme="dark"] .admin-shell .border-amber-200,
+html[data-admin-theme="dark"] .admin-shell .border-sky-100,
+html[data-admin-theme="dark"] .admin-shell .border-rose-100 {
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html[data-admin-theme="dark"] .admin-shell .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(148, 163, 184, 0.12) !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .bg-teal-600,
+html[data-admin-theme="dark"] .admin-shell .bg-emerald-500,
+html[data-admin-theme="dark"] .admin-shell .bg-amber-500,
+html[data-admin-theme="dark"] .admin-shell .bg-rose-500,
+html[data-admin-theme="dark"] .admin-shell .bg-slate-600,
+html[data-admin-theme="dark"] .admin-shell .bg-slate-500,
+html[data-admin-theme="dark"] .admin-shell .bg-slate-700 {
+  color: #fff !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .\!bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.14) !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .\!text-amber-800 {
+  color: #fcd34d !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .\!border-amber-200 {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .qo-hero,
+html[data-admin-theme="dark"] .admin-shell .qo-panel,
+html[data-admin-theme="dark"] .admin-shell .qo-success {
+  background: #111827 !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  color: #e2e8f0 !important;
+}
