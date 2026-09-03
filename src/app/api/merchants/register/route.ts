@@ -276,7 +276,8 @@ export async function POST(request: Request) {
         longitude: normalized.longitude,
         googleRating: normalized.googleRating,
         timings: normalized.timings,
-        images: galleryImages.length ? galleryImages : null,
+        // Business.images is NOT NULL (default '{}') — never insert null.
+        images: galleryImages,
         profilePictureUrl,
         paymentModes: normalized.paymentModes,
         createdAt: now,
