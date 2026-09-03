@@ -245,12 +245,14 @@ export function BlogContent({
   onCreateBlog,
   onDeleteBlog,
   onUploadImage,
+  canManage = false,
 }: {
   blogs: Blog[];
   onUpdateBlog: (item: Partial<Blog>) => Promise<void>;
   onCreateBlog: (item: Partial<Blog>) => Promise<void>;
   onDeleteBlog: (id: string) => Promise<void>;
   onUploadImage: (file: File) => Promise<string>;
+  canManage?: boolean;
 }) {
   const [editingBlog, setEditingBlog] = useState<Blog | null>(null);
   const [isAddingBlog, setIsAddingBlog] = useState(false);
@@ -297,6 +299,7 @@ export function BlogContent({
     useClientPage(filteredBlogs, 9, `${search}|${statusFilter}|${categoryFilter}`);
 
   const handleSave = async () => {
+    if (!canManage) return;
     if (editingBlog) {
       await onUpdateBlog(editingBlog);
       setEditingBlog(null);
@@ -304,6 +307,7 @@ export function BlogContent({
   };
 
   const handleCreate = async () => {
+    if (!canManage) return;
     if (newItem.title && newItem.content) {
       const slug =
         newItem.slug ||
@@ -329,6 +333,7 @@ export function BlogContent({
   };
 
   const handleImageUpload = async (file: File, isEditing: boolean) => {
+    if (!canManage) return;
     try {
       setUploading(true);
       const url = await onUploadImage(file);
@@ -363,16 +368,18 @@ export function BlogContent({
           <span className="text-sm font-medium">Back to Articles</span>
         </button>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => (isEditing ? handleSave() : handleCreate())}
-            disabled={!item.title || !item.content || uploading}
-            className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white text-[12px] font-semibold rounded-full hover:bg-slate-800 transition-all disabled:opacity-50"
-          >
-            {isEditing ? <Save size={16} /> : <Send size={16} />}
-            {isEditing ? "SAVE CHANGES" : "PUBLISH ARTICLE"}
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => (isEditing ? handleSave() : handleCreate())}
+              disabled={!item.title || !item.content || uploading}
+              className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white text-[12px] font-semibold rounded-full hover:bg-slate-800 transition-all disabled:opacity-50"
+            >
+              {isEditing ? <Save size={16} /> : <Send size={16} />}
+              {isEditing ? "SAVE CHANGES" : "PUBLISH ARTICLE"}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -447,16 +454,18 @@ export function BlogContent({
                         className="w-full h-full object-cover"
                         alt="Featured"
                       />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <label
-                          htmlFor="blog-image-upload"
-                          className="px-4 py-2 bg-white text-[10px] font-bold rounded-lg cursor-pointer"
-                        >
-                          CHANGE IMAGE
-                        </label>
-                      </div>
+                      {canManage && (
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <label
+                            htmlFor="blog-image-upload"
+                            className="px-4 py-2 bg-white text-[10px] font-bold rounded-lg cursor-pointer"
+                          >
+                            CHANGE IMAGE
+                          </label>
+                        </div>
+                      )}
                     </>
-                  ) : (
+                  ) : canManage ? (
                     <label
                       htmlFor="blog-image-upload"
                       className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer"
@@ -466,16 +475,25 @@ export function BlogContent({
                         Click to upload
                       </span>
                     </label>
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <ImageIcon size={32} className="text-slate-200 mb-2" />
+                      <span className="text-[10px] font-medium text-slate-400">
+                        No image
+                      </span>
+                    </div>
                   )}
-                  <input
-                    type="file"
-                    id="blog-image-upload"
-                    className="hidden"
-                    onChange={(e) =>
-                      e.target.files?.[0] &&
-                      handleImageUpload(e.target.files[0], isEditing)
-                    }
-                  />
+                  {canManage && (
+                    <input
+                      type="file"
+                      id="blog-image-upload"
+                      className="hidden"
+                      onChange={(e) =>
+                        e.target.files?.[0] &&
+                        handleImageUpload(e.target.files[0], isEditing)
+                      }
+                    />
+                  )}
                 </div>
               </div>
 
@@ -565,14 +583,16 @@ export function BlogContent({
                 Manage and curate FinderB content.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsAddingBlog(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-teal-800"
-            >
-              <FileText size={15} />
-              Write article
-            </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => setIsAddingBlog(true)}
+                className="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-teal-800"
+              >
+                <FileText size={15} />
+                Write article
+              </button>
+            )}
           </div>
 
           <div className="flex flex-col lg:flex-row gap-2">
@@ -634,27 +654,30 @@ export function BlogContent({
                       >
                         {blog.status}
                       </span>
-                      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                        <button
-                          type="button"
-                          onClick={() => setEditingBlog(blog)}
-                          className="rounded-md bg-white/95 p-1.5 text-slate-700 hover:text-teal-700"
-                          title="Edit"
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm("Delete article?"))
-                              onDeleteBlog(blog.id);
-                          }}
-                          className="rounded-md bg-white/95 p-1.5 text-rose-600"
-                          title="Delete"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      {canManage && (
+                        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => setEditingBlog(blog)}
+                            className="rounded-md bg-white/95 p-1.5 text-slate-700 hover:text-teal-700"
+                            title="Edit"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!canManage) return;
+                              if (confirm("Delete article?"))
+                                onDeleteBlog(blog.id);
+                            }}
+                            className="rounded-md bg-white/95 p-1.5 text-rose-600"
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex flex-1 flex-col p-3.5">
@@ -673,13 +696,15 @@ export function BlogContent({
                         <span className="truncate text-xs font-medium text-slate-600">
                           {blog.author}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => setEditingBlog(blog)}
-                          className="text-xs font-medium text-teal-700 hover:underline"
-                        >
-                          Edit
-                        </button>
+                        {canManage && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingBlog(blog)}
+                            className="text-xs font-medium text-teal-700 hover:underline"
+                          >
+                            Edit
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -705,7 +730,7 @@ export function BlogContent({
                   ? "Start sharing content with FinderB readers."
                   : "Try a different search or clear filters."}
               </p>
-              {blogs.length === 0 && (
+              {blogs.length === 0 && canManage && (
                 <button
                   type="button"
                   onClick={() => setIsAddingBlog(true)}

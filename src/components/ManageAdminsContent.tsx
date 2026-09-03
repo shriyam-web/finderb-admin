@@ -11,7 +11,8 @@ import { createClient } from "../../utils/supabase/client";
 import {
   allowedTabsFromModes,
   countGrantedTabs,
-  modesFromAllowedTabs,
+  normalizeAccessFields,
+  sanitizeTabModes,
   type TabAccessMode,
 } from "../lib/adminTabAccess";
 
@@ -259,45 +260,54 @@ export default function ManageAdminsContent({
 
   const openPermissions = (admin: AdminProfile) => {
     setPermissionsAdmin(admin);
-    if (
-      admin.allowed_tab_modes &&
-      Object.keys(admin.allowed_tab_modes).length > 0
-    ) {
-      setDraftModes({ ...admin.allowed_tab_modes });
-    } else {
-      setDraftModes(modesFromAllowedTabs(admin.allowed_tabs));
-    }
+    const { allowed_tab_modes } = normalizeAccessFields(
+      admin.allowed_tabs,
+      admin.allowed_tab_modes,
+    );
+    setDraftModes(allowed_tab_modes);
   };
 
   const handleSaveTabs = async () => {
     if (!isController || !permissionsAdmin) return;
     setSavingTabs(true);
     try {
-      const allowed_tabs = allowedTabsFromModes(draftModes);
+      // Strict allow-list: only read/edit keys are persisted. Empty = zero tabs.
+      const allowed_tab_modes = sanitizeTabModes(draftModes);
+      const allowed_tabs = allowedTabsFromModes(allowed_tab_modes);
       const supabase = createClient();
       const { data, error } = await supabase
         .from("admins")
         .update({
           allowed_tabs,
-          allowed_tab_modes: draftModes,
+          allowed_tab_modes,
         })
         .eq("id", permissionsAdmin.id)
-        .select();
+        .select("id, allowed_tabs, allowed_tab_modes");
       if (error) flash(error.message);
       else if (data?.[0]) {
+        const saved = normalizeAccessFields(
+          data[0].allowed_tabs,
+          data[0].allowed_tab_modes,
+        );
         setAdmins((prev) =>
           prev.map((a) =>
             a.id === permissionsAdmin.id
               ? {
                   ...a,
-                  allowed_tabs,
-                  allowed_tab_modes: draftModes,
+                  allowed_tabs: saved.allowed_tabs,
+                  allowed_tab_modes: saved.allowed_tab_modes,
                 }
               : a,
           ),
         );
         setPermissionsAdmin(null);
-        flash("Tab access updated");
+        flash(
+          saved.allowed_tabs.length
+            ? `Tab access updated (${saved.allowed_tabs.length} tab${saved.allowed_tabs.length === 1 ? "" : "s"})`
+            : "Tab access cleared — this admin cannot open any tabs",
+        );
+      } else {
+        flash("Could not save tab access. Please try again.");
       }
     } finally {
       setSavingTabs(false);
@@ -816,8 +826,9 @@ export default function ManageAdminsContent({
                 {permissionsAdmin.email}
               </p>
               <p className="mt-2 text-[11px] text-slate-500 leading-snug">
-                Choose None, Read, or Edit for each tab. Read can view but not
-                change data. Edit includes full actions for that tab.
+                Only tabs set to Read or Edit are visible. Everything else stays
+                hidden. Use Clear, then grant exactly the tabs you want — do not
+                leave old Edit grants on tabs you meant to revoke.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <button

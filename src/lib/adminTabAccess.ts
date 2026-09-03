@@ -18,95 +18,24 @@ export function normalizeAdminTabName(tab: string): string {
   return tab;
 }
 
-function legacyTabsInclude(
-  tabs: string[] | null | undefined,
-  tab: string,
-): boolean {
-  const list = tabs ?? [];
-  const normalized = normalizeAdminTabName(tab);
-  if (list.includes(normalized) || list.includes(tab)) return true;
-  if (
-    normalized === "Business Onboarding" &&
-    list.includes("Merchant Registration")
-  ) {
-    return true;
-  }
-  if (
-    normalized === "Quick Onboard" &&
-    (list.includes("Quick Onboard") ||
-      list.includes("Business Onboarding") ||
-      list.includes("Merchant Registration"))
-  ) {
-    return true;
-  }
-  return false;
+export function isTabAccessMode(value: unknown): value is TabAccessMode {
+  return value === "none" || value === "read" || value === "edit";
 }
 
-function modeFromMap(
-  modes: Record<string, TabAccessMode> | null | undefined,
-  tab: string,
-): TabAccessMode | null {
-  if (!modes || typeof modes !== "object") return null;
-  const keys = Object.keys(modes);
-  if (!keys.length) return null;
-
-  const normalized = normalizeAdminTabName(tab);
-  const direct = modes[normalized] ?? modes[tab];
-  if (direct === "read" || direct === "edit") return direct;
-  if (direct === "none") return "none";
-
-  if (
-    normalized === "Business Onboarding" &&
-    (modes["Merchant Registration"] === "read" ||
-      modes["Merchant Registration"] === "edit")
-  ) {
-    return modes["Merchant Registration"];
+/** Strip invalid / none entries. Missing key = no access. */
+export function sanitizeTabModes(
+  input: unknown,
+): Record<string, TabAccessMode> {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const out: Record<string, TabAccessMode> = {};
+  for (const [rawKey, rawMode] of Object.entries(
+    input as Record<string, unknown>,
+  )) {
+    const key = normalizeAdminTabName(rawKey);
+    if (!isTabAccessMode(rawMode) || rawMode === "none") continue;
+    out[key] = rawMode;
   }
-
-  // Quick Onboard inherits Business Onboarding when not explicitly set.
-  if (normalized === "Quick Onboard") {
-    const qo = modes["Quick Onboard"];
-    if (qo === "read" || qo === "edit") return qo;
-    const onboard =
-      modes["Business Onboarding"] ?? modes["Merchant Registration"];
-    if (onboard === "read" || onboard === "edit") return onboard;
-  }
-
-  return "none";
-}
-
-/**
- * Resolve access for a tab.
- * Controllers always get edit.
- * If allowed_tab_modes is present and non-empty, it wins.
- * Otherwise legacy allowed_tabs presence means edit.
- */
-export function resolveTabAccess(
-  session: AdminAccessSession | null | undefined,
-  tab: string,
-): TabAccessMode {
-  if (!session) return "none";
-  if (session.role === "controller") return "edit";
-  if (tab === "Manage Admins") return "none";
-
-  const fromModes = modeFromMap(session.allowed_tab_modes, tab);
-  if (fromModes !== null) return fromModes;
-
-  return legacyTabsInclude(session.allowed_tabs, tab) ? "edit" : "none";
-}
-
-export function canAccessTab(
-  session: AdminAccessSession | null | undefined,
-  tab: string,
-): boolean {
-  return resolveTabAccess(session, tab) !== "none";
-}
-
-export function canEditTab(
-  session: AdminAccessSession | null | undefined,
-  tab: string,
-): boolean {
-  return resolveTabAccess(session, tab) === "edit";
+  return out;
 }
 
 /** Build modes map from legacy string[] (all edit). */
@@ -116,6 +45,8 @@ export function modesFromAllowedTabs(
   const out: Record<string, TabAccessMode> = {};
   for (const raw of tabs || []) {
     const tab = normalizeAdminTabName(raw);
+    // Coming-soon placeholders must never expand a restricted allow-list.
+    if (tab === "News" || tab === "FinderB E-commerce") continue;
     out[tab] = "edit";
   }
   return out;
@@ -134,21 +65,101 @@ export function countGrantedTabs(modes: Record<string, TabAccessMode>): number {
   return allowedTabsFromModes(modes).length;
 }
 
-export function isTabAccessMode(value: unknown): value is TabAccessMode {
-  return value === "none" || value === "read" || value === "edit";
+/**
+ * Authoritative allow-list for a session.
+ * - If allowed_tab_modes is present (including {}), it is the source of truth.
+ *   An explicit empty object means zero tabs — never fall back to a fat
+ *   allowed_tabs array (that was the "gave 2 tabs, sees all" leak).
+ * - If allowed_tab_modes is null/undefined, derive edit grants from legacy
+ *   allowed_tabs (pre-modes accounts only).
+ */
+export function effectiveTabModes(
+  session: AdminAccessSession | null | undefined,
+): Record<string, TabAccessMode> {
+  if (!session) return {};
+  const raw = session.allowed_tab_modes;
+  if (raw !== null && raw !== undefined) {
+    return sanitizeTabModes(raw);
+  }
+  return modesFromAllowedTabs(session.allowed_tabs);
 }
 
-export function sanitizeTabModes(
-  input: unknown,
-): Record<string, TabAccessMode> {
-  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
-  const out: Record<string, TabAccessMode> = {};
-  for (const [rawKey, rawMode] of Object.entries(
-    input as Record<string, unknown>,
-  )) {
-    const key = normalizeAdminTabName(rawKey);
-    if (!isTabAccessMode(rawMode) || rawMode === "none") continue;
-    out[key] = rawMode;
+/**
+ * Normalize DB/session fields into a consistent allow-list pair.
+ * Always keeps allowed_tabs in sync with the effective modes map.
+ */
+export function normalizeAccessFields(
+  allowed_tabs: string[] | null | undefined,
+  allowed_tab_modes: unknown,
+): {
+  allowed_tabs: string[];
+  allowed_tab_modes: Record<string, TabAccessMode>;
+} {
+  // null/undefined → legacy; object (even {}) → modes are authoritative
+  const hasModesColumn =
+    allowed_tab_modes !== null && allowed_tab_modes !== undefined;
+  const modes = effectiveTabModes({
+    allowed_tabs,
+    allowed_tab_modes: hasModesColumn
+      ? (allowed_tab_modes as Record<string, TabAccessMode>)
+      : null,
+  });
+  return {
+    allowed_tabs: allowedTabsFromModes(modes),
+    allowed_tab_modes: modes,
+  };
+}
+
+function modeFromAllowList(
+  modes: Record<string, TabAccessMode>,
+  tab: string,
+): TabAccessMode {
+  if (!Object.keys(modes).length) return "none";
+
+  const normalized = normalizeAdminTabName(tab);
+  const direct = modes[normalized] ?? modes[tab];
+  if (direct === "read" || direct === "edit") return direct;
+
+  // Legacy alias only — do not inherit unrelated tabs.
+  if (
+    normalized === "Business Onboarding" &&
+    (modes["Merchant Registration"] === "read" ||
+      modes["Merchant Registration"] === "edit")
+  ) {
+    return modes["Merchant Registration"];
   }
-  return out;
+
+  return "none";
+}
+
+/**
+ * Resolve access for a tab.
+ * Controllers always get edit.
+ * Everyone else is an explicit allow-list (modes, or legacy tabs as edit).
+ * Missing tab ⇒ none. No inheritance between Merchants / Onboarding / Quick Onboard.
+ */
+export function resolveTabAccess(
+  session: AdminAccessSession | null | undefined,
+  tab: string,
+): TabAccessMode {
+  if (!session) return "none";
+  if (session.role === "controller") return "edit";
+  if (tab === "Manage Admins") return "none";
+  if (tab === "News" || tab === "FinderB E-commerce") return "none";
+
+  return modeFromAllowList(effectiveTabModes(session), tab);
+}
+
+export function canAccessTab(
+  session: AdminAccessSession | null | undefined,
+  tab: string,
+): boolean {
+  return resolveTabAccess(session, tab) !== "none";
+}
+
+export function canEditTab(
+  session: AdminAccessSession | null | undefined,
+  tab: string,
+): boolean {
+  return resolveTabAccess(session, tab) === "edit";
 }

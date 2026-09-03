@@ -88,8 +88,10 @@ async function syncPlaceMerchants(placeId: string, businessIds: string[]) {
 
 export default function TouristPlacesContent({
   merchants,
+  canManage = false,
 }: {
   merchants: TagableMerchant[];
+  canManage?: boolean;
 }) {
   const [places, setPlaces] = useState<TouristPlaceRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -247,6 +249,7 @@ export default function TouristPlacesContent({
     file: File,
     isEditing: boolean,
   ) => {
+    if (!canManage) return;
     try {
       setUploading(true);
       const url = await uploadToCloudinary(file, (progress) => {
@@ -282,6 +285,7 @@ export default function TouristPlacesContent({
   });
 
   const handleCreate = async () => {
+    if (!canManage) return;
     if (!newPlace.name?.trim()) return;
     setSaving(true);
     setError("");
@@ -316,6 +320,7 @@ export default function TouristPlacesContent({
   };
 
   const handleSave = async () => {
+    if (!canManage) return;
     if (!editingPlace?.id || !editingPlace.name?.trim()) return;
     setSaving(true);
     setError("");
@@ -354,6 +359,7 @@ export default function TouristPlacesContent({
   };
 
   const handleDelete = async (id: string, name: string) => {
+    if (!canManage) return;
     if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
     setError("");
     const supabase = createClient();
@@ -394,6 +400,7 @@ export default function TouristPlacesContent({
     place: Partial<TouristPlaceRecord> & { taggedBusinessIds: string[] },
     businessId: string,
   ) => {
+    if (!canManage) return;
     const current = place.taggedBusinessIds || [];
     const next = current.includes(businessId)
       ? current.filter((id) => id !== businessId)
@@ -433,9 +440,10 @@ export default function TouristPlacesContent({
               <button
                 key={m.id}
                 type="button"
+                disabled={!canManage}
                 onClick={() => setTaggedIds(isEditing, place, m.id)}
-                className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-[10px] font-medium text-sky-800 ring-1 ring-sky-200"
-                title="Click to remove"
+                className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-[10px] font-medium text-sky-800 ring-1 ring-sky-200 disabled:cursor-default"
+                title={canManage ? "Click to remove" : undefined}
               >
                 {m.name}
                 <span className="text-sky-500">×</span>
@@ -449,7 +457,8 @@ export default function TouristPlacesContent({
         <input
           value={merchantSearch}
           onChange={(e) => setMerchantSearch(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900"
+          disabled={!canManage}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-900 disabled:bg-slate-50 disabled:text-slate-400"
           placeholder="Search merchants (Tour & Travels first)…"
         />
 
@@ -464,8 +473,9 @@ export default function TouristPlacesContent({
                 <button
                   key={m.id}
                   type="button"
+                  disabled={!canManage}
                   onClick={() => setTaggedIds(isEditing, place, m.id)}
-                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] transition ${
+                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] transition disabled:cursor-default disabled:opacity-60 ${
                     selected
                       ? "bg-sky-100 text-sky-900"
                       : "bg-white text-slate-700 hover:bg-slate-100"
@@ -584,12 +594,16 @@ export default function TouristPlacesContent({
               }
               className="hidden"
               id={`tp-upload-${isEditing ? "edit" : "new"}`}
-              disabled={uploading}
+              disabled={uploading || !canManage}
             />
             <label
               htmlFor={`tp-upload-${isEditing ? "edit" : "new"}`}
-              className={`flex aspect-video w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-slate-50 p-4 text-[10px] text-slate-500 ${
-                uploading ? "border-primary/30" : "border-slate-200 hover:border-primary/30"
+              className={`flex aspect-video w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed bg-slate-50 p-4 text-[10px] text-slate-500 ${
+                canManage
+                  ? uploading
+                    ? "cursor-pointer border-primary/30"
+                    : "cursor-pointer border-slate-200 hover:border-primary/30"
+                  : "cursor-default border-slate-200 opacity-60"
               }`}
             >
               {uploading ? (
@@ -696,14 +710,16 @@ export default function TouristPlacesContent({
         >
           Cancel
         </button>
-        <button
-          type="button"
-          onClick={isEditing ? handleSave : handleCreate}
-          disabled={!place.name || uploading || saving}
-          className="rounded-xl bg-primary px-8 py-2.5 text-[10px] font-medium text-white hover:bg-primary-700 disabled:opacity-50"
-        >
-          {saving ? "Saving…" : isEditing ? "Save Changes" : "Save Place"}
-        </button>
+        {canManage ? (
+          <button
+            type="button"
+            onClick={isEditing ? handleSave : handleCreate}
+            disabled={!place.name || uploading || saving}
+            className="rounded-xl bg-primary px-8 py-2.5 text-[10px] font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+          >
+            {saving ? "Saving…" : isEditing ? "Save Changes" : "Save Place"}
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -717,7 +733,7 @@ export default function TouristPlacesContent({
             Destinations and tagged Tour &amp; Travels partners.
           </p>
         </div>
-        {!isAddingPlace && !editingPlace && (
+        {canManage && !isAddingPlace && !editingPlace && (
           <button
             type="button"
             onClick={() => {
@@ -802,22 +818,24 @@ export default function TouristPlacesContent({
                           No image
                         </div>
                       )}
-                      <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(place)}
-                          className="rounded-md bg-white/95 px-2 py-1 text-xs font-medium text-slate-700 hover:text-teal-700"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(place.id, place.name)}
-                          className="rounded-md bg-white/95 px-2 py-1 text-xs font-medium text-rose-600"
-                        >
-                          Delete
-                        </button>
-                      </div>
+                      {canManage ? (
+                        <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => openEdit(place)}
+                            className="rounded-md bg-white/95 px-2 py-1 text-xs font-medium text-slate-700 hover:text-teal-700"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(place.id, place.name)}
+                            className="rounded-md bg-white/95 px-2 py-1 text-xs font-medium text-rose-600"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                     <div className="p-3">
                       <h3 className="truncate text-sm font-semibold text-slate-900">

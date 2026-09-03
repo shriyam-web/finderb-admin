@@ -45,6 +45,7 @@ type Props = {
   categories: RegistrationCategory[];
   adminSession: AdminSession | null;
   onRegistered?: () => void;
+  canManage?: boolean;
 };
 
 function buildMerchantShareMessage(input: {
@@ -486,6 +487,7 @@ export default function QuickOnboardContent({
   categories,
   adminSession,
   onRegistered,
+  canManage = false,
 }: Props) {
   const { toast } = useAdminToast();
   const [method, setMethod] = useState<OnboardMethod>("link");
@@ -810,6 +812,10 @@ export default function QuickOnboardContent({
   }, [shareMessage, created?.mobile]);
 
   const createMerchant = async () => {
+    if (!canManage) {
+      toast("Read-only — creating merchants requires Edit permission.", "error");
+      return;
+    }
     if (!adminSession?.id) {
       toast("Admin session missing. Please log in again.", "error");
       return;
@@ -1081,6 +1087,11 @@ export default function QuickOnboardContent({
 
   return (
     <div className="qo-page">
+      {!canManage && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Read-only — creating merchants requires Edit permission.
+        </div>
+      )}
       <div className="qo-method-wrap">
         <div
           className={`qo-method-switch qo-method-switch-${method}`}
@@ -2191,9 +2202,9 @@ export default function QuickOnboardContent({
                     </button>
                     <button
                       type="button"
-                      disabled={loading || !validation.ok}
+                      disabled={loading || !validation.ok || !canManage}
                       onClick={() => void createMerchant()}
-                      className="admin-btn-primary !px-5"
+                      className="admin-btn-primary !px-5 disabled:opacity-50"
                     >
                       {loading ? "Creating…" : "Create merchant"}
                     </button>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { hashPassword, verifyPassword } from "../../../../lib/merchantPassword";
+import { normalizeAccessFields } from "../../../../lib/adminTabAccess";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -78,11 +79,21 @@ export async function POST(request: Request) {
     if (error && /display_name/i.test(error.message || "")) {
       const fallback = await supabase
         .from("admins")
-        .select("id, email, password, role, is_disabled, allowed_tabs")
+        .select(baseFields)
         .ilike("email", email)
         .maybeSingle();
       admin = fallback.data as AdminLoginRow | null;
       error = fallback.error;
+    }
+
+    if (error && /allowed_tab_modes/i.test(error.message || "")) {
+      const bare = await supabase
+        .from("admins")
+        .select("id, email, password, role, is_disabled, allowed_tabs")
+        .ilike("email", email)
+        .maybeSingle();
+      admin = bare.data as AdminLoginRow | null;
+      error = bare.error;
     }
 
     if (error) {
@@ -141,6 +152,10 @@ export async function POST(request: Request) {
     }
 
     const displayName = admin.display_name?.trim() || null;
+    const access = normalizeAccessFields(
+      admin.allowed_tabs,
+      admin.allowed_tab_modes,
+    );
 
     return NextResponse.json({
       success: true,
@@ -148,8 +163,9 @@ export async function POST(request: Request) {
         id: admin.id,
         email: admin.email,
         role: admin.role,
-        allowed_tabs: admin.allowed_tabs ?? null,
-        allowed_tab_modes: admin.allowed_tab_modes ?? null,
+        // Always return a synced allow-list (never fat tabs + empty modes).
+        allowed_tabs: access.allowed_tabs,
+        allowed_tab_modes: access.allowed_tab_modes,
         displayName,
       },
     });

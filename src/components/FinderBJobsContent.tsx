@@ -79,9 +79,11 @@ function initials(text: string): string {
 export default function FinderBJobsContent({
   jobs,
   setJobs,
+  canManage = false,
 }: {
   jobs: FinderBJob[];
   setJobs: Dispatch<SetStateAction<FinderBJob[]>>;
+  canManage?: boolean;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<JobStatus | "all">("all");
@@ -143,6 +145,7 @@ export default function FinderBJobsContent({
   };
 
   const handleApprove = async (job: FinderBJob) => {
+    if (!canManage) return;
     const reviewer = getReviewerLabel();
     setIsSaving(true);
 
@@ -184,6 +187,7 @@ export default function FinderBJobsContent({
   };
 
   const handleReject = async () => {
+    if (!canManage) return;
     if (!rejectingJob || !reason.trim()) {
       alert("Please provide a rejection reason.");
       return;
@@ -236,6 +240,7 @@ export default function FinderBJobsContent({
   };
 
   const handleDelete = async (job: FinderBJob) => {
+    if (!canManage) return;
     const label = job.title || "this job";
     if (
       !confirm(
@@ -298,58 +303,14 @@ export default function FinderBJobsContent({
           </svg>
         </button>
 
-        {decided ? (
-          <button
-            type="button"
-            onClick={() => handleDelete(job)}
-            disabled={isSaving}
-            className="w-8 h-8 flex items-center justify-center text-rose-600 hover:bg-rose-50 rounded-lg transition-all border border-slate-100 disabled:opacity-40"
-            title="Delete job"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
-        ) : (
-          <>
+        {canManage &&
+          (decided ? (
             <button
               type="button"
-              onClick={() => handleApprove(job)}
+              onClick={() => handleDelete(job)}
               disabled={isSaving}
-              className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-slate-100 disabled:opacity-40"
-              title="Approve"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2.5"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleOpenReject(job)}
-              disabled={isSaving}
-              className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-lg transition-all border border-slate-100 disabled:opacity-40"
-              title="Reject"
+              className="w-8 h-8 flex items-center justify-center text-rose-600 hover:bg-rose-50 rounded-lg transition-all border border-slate-100 disabled:opacity-40"
+              title="Delete job"
             >
               <svg
                 className="w-4 h-4"
@@ -361,12 +322,57 @@ export default function FinderBJobsContent({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                 />
               </svg>
             </button>
-          </>
-        )}
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => handleApprove(job)}
+                disabled={isSaving}
+                className="w-8 h-8 flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all border border-slate-100 disabled:opacity-40"
+                title="Approve"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.5"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenReject(job)}
+                disabled={isSaving}
+                className="w-8 h-8 flex items-center justify-center text-rose-500 hover:bg-rose-50 rounded-lg transition-all border border-slate-100 disabled:opacity-40"
+                title="Reject"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </>
+          ))}
       </div>
     );
   };
@@ -677,39 +683,40 @@ export default function FinderBJobsContent({
                 Close
               </button>
 
-              {getJobStatus(selectedJob) === "pending" ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedJob(null);
-                      handleOpenReject(selectedJob);
-                    }}
-                    disabled={isSaving}
-                    className="px-6 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all disabled:opacity-40"
-                  >
-                    Reject
-                  </button>
+              {canManage &&
+                (getJobStatus(selectedJob) === "pending" ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedJob(null);
+                        handleOpenReject(selectedJob);
+                      }}
+                      disabled={isSaving}
+                      className="px-6 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 border border-rose-100 rounded-xl transition-all disabled:opacity-40"
+                    >
+                      Reject
+                    </button>
 
+                    <button
+                      type="button"
+                      onClick={() => handleApprove(selectedJob)}
+                      disabled={isSaving}
+                      className="px-8 py-2.5 bg-teal-700 text-white text-sm font-medium rounded-xl hover:bg-teal-800 transition-all disabled:opacity-40"
+                    >
+                      Approve Job
+                    </button>
+                  </>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => handleApprove(selectedJob)}
+                    onClick={() => handleDelete(selectedJob)}
                     disabled={isSaving}
-                    className="px-8 py-2.5 bg-teal-700 text-white text-sm font-medium rounded-xl hover:bg-teal-800 transition-all disabled:opacity-40"
+                    className="px-6 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all disabled:opacity-40"
                   >
-                    Approve Job
+                    Delete job
                   </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleDelete(selectedJob)}
-                  disabled={isSaving}
-                  className="px-6 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all disabled:opacity-40"
-                >
-                  Delete job
-                </button>
-              )}
+                ))}
             </div>
           </div>
         </div>

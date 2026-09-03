@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getPublicSiteUrl } from "../../../../lib/site";
+import { canEditTab } from "../../../../lib/adminTabAccess";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -32,7 +33,49 @@ export async function POST(request: Request) {
       title?: string;
       message?: string;
       audiences?: string[];
+      adminId?: string;
     };
+
+    if (!body.adminId) {
+      return NextResponse.json(
+        { success: false, error: "Admin session required." },
+        { status: 401 },
+      );
+    }
+
+    const supabase = getSupabase();
+
+    const { data: admin, error: adminError } = await supabase
+      .from("admins")
+      .select("id, role, is_disabled, allowed_tabs, allowed_tab_modes")
+      .eq("id", body.adminId)
+      .single();
+
+    if (adminError || !admin || admin.is_disabled) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized admin session." },
+        { status: 401 },
+      );
+    }
+
+    if (
+      !canEditTab(
+        {
+          role: admin.role,
+          allowed_tabs: admin.allowed_tabs,
+          allowed_tab_modes: admin.allowed_tab_modes,
+        },
+        "Broadcasts",
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "You do not have edit permission for Broadcasts.",
+        },
+        { status: 403 },
+      );
+    }
 
     const title = String(body.title || "").trim();
     const message = String(body.message || "").trim();
@@ -50,7 +93,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = getSupabase();
     const { data, error } = await supabase
       .from("broadcasts")
       .insert({

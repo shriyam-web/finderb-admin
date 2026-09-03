@@ -68,7 +68,7 @@ import { computeDashboardStats } from "../../lib/dashboardStats";
 import {
   canAccessTab,
   canEditTab,
-  sanitizeTabModes,
+  normalizeAccessFields,
   type TabAccessMode,
 } from "../../lib/adminTabAccess";
 import {
@@ -1036,31 +1036,26 @@ export default function Dashboard() {
           return;
         }
 
-        // Update session if role or tab access changed
-        const nextModes = sanitizeTabModes(data.allowed_tab_modes);
-        const prevModes = sanitizeTabModes(session.allowed_tab_modes);
-        if (
-          data.role !== session.role ||
-          JSON.stringify(data.allowed_tabs) !==
-            JSON.stringify(session.allowed_tabs) ||
-          JSON.stringify(nextModes) !== JSON.stringify(prevModes)
-        ) {
-          const updatedSession = {
-            ...session,
-            role: data.role,
-            allowed_tabs: data.allowed_tabs,
-            allowed_tab_modes: Object.keys(nextModes).length ? nextModes : null,
-          };
-          localStorage.setItem("admin_session", JSON.stringify(updatedSession));
-          setAdminSession(updatedSession);
-        } else {
-          setAdminSession({
-            ...session,
-            allowed_tab_modes:
-              session.allowed_tab_modes ??
-              (Object.keys(nextModes).length ? nextModes : null),
-          });
-        }
+        // Always rebuild allow-list from DB so stale localStorage cannot
+        // keep old "all tabs" grants after the Controller tightens access.
+        const access = normalizeAccessFields(
+          data.allowed_tabs,
+          data.allowed_tab_modes,
+        );
+        const updatedSession = {
+          ...session,
+          role: data.role,
+          email: data.email ?? session.email,
+          allowed_tabs: access.allowed_tabs,
+          allowed_tab_modes: access.allowed_tab_modes,
+          displayName:
+            (typeof data.display_name === "string" &&
+              data.display_name.trim()) ||
+            session.displayName ||
+            null,
+        };
+        localStorage.setItem("admin_session", JSON.stringify(updatedSession));
+        setAdminSession(updatedSession);
       } catch {
         localStorage.removeItem("admin_session");
         router.push("/");
@@ -1401,13 +1396,10 @@ export default function Dashboard() {
     if (adminSession?.role === "controller") {
       return true;
     }
-    // Manage Admins is controller-only.
-    if (item.name === "Manage Admins") {
+    // Manage Admins + coming-soon placeholders are controller-only.
+    // Never leak News / E-commerce just because some other tab was granted.
+    if (item.name === "Manage Admins" || COMING_SOON_TABS.has(item.name)) {
       return false;
-    }
-    // Coming-soon placeholders only appear once the admin has at least one real tab.
-    if (COMING_SOON_TABS.has(item.name)) {
-      return (adminSession?.allowed_tabs ?? []).length > 0;
     }
     return hasTabAccess(adminSession, item.name);
   });
@@ -1430,16 +1422,14 @@ export default function Dashboard() {
   useEffect(() => {
     if (!adminSession) return;
     if (adminSession.role === "controller") return;
-    if (activeTab === "Manage Admins") {
-      setActiveTab("Dashboard");
+    const firstAllowed =
+      menuItems.find((item) => !COMING_SOON_TABS.has(item.name))?.name;
+    if (activeTab === "Manage Admins" || COMING_SOON_TABS.has(activeTab)) {
+      if (firstAllowed) setActiveTab(firstAllowed);
       return;
     }
-    if (COMING_SOON_TABS.has(activeTab)) return;
-    if (!hasTabAccess(adminSession, activeTab)) {
-      const fallback =
-        menuItems.find((item) => !COMING_SOON_TABS.has(item.name))?.name ||
-        "Dashboard";
-      setActiveTab(fallback);
+    if (!hasTabAccess(adminSession, activeTab) && firstAllowed) {
+      setActiveTab(firstAllowed);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminSession, activeTab, menuItems]);
@@ -1657,6 +1647,10 @@ export default function Dashboard() {
     catName: string,
     updates: Partial<Category>,
   ) => {
+    if (!hasFullTabAccess(adminSession, "Categories")) {
+      toast("You have read-only access to Categories.", "error");
+      return;
+    }
     const supabase = createClient();
 
     // Defensive payload - only send columns that exist
@@ -1711,6 +1705,10 @@ export default function Dashboard() {
   };
 
   const handleCreateCategory = async (category: Partial<Category>) => {
+    if (!hasFullTabAccess(adminSession, "Categories")) {
+      toast("You have read-only access to Categories.", "error");
+      return;
+    }
     const supabase = createClient();
     const { data, error } = await supabase
       .from("categories")
@@ -1758,6 +1756,10 @@ export default function Dashboard() {
   };
 
   const handleCreateMovie = async (movie: Partial<Movie>) => {
+    if (!hasFullTabAccess(adminSession, "Movies")) {
+      toast("You have read-only access to Movies.", "error");
+      return;
+    }
     const supabase = createClient();
     const { data, error } = await supabase
       .from("movies")
@@ -1784,6 +1786,10 @@ export default function Dashboard() {
   };
 
   const handleUpdateMovie = async (movie: Partial<Movie>) => {
+    if (!hasFullTabAccess(adminSession, "Movies")) {
+      toast("You have read-only access to Movies.", "error");
+      return;
+    }
     const supabase = createClient();
     const { error } = await supabase
       .from("movies")
@@ -1809,6 +1815,10 @@ export default function Dashboard() {
   };
 
   const handleDeleteMovie = async (id: string) => {
+    if (!hasFullTabAccess(adminSession, "Movies")) {
+      toast("You have read-only access to Movies.", "error");
+      return;
+    }
     if (confirm("Are you sure you want to remove this movie?")) {
       const supabase = createClient();
       const { error } = await supabase.from("movies").delete().eq("id", id);
@@ -1959,6 +1969,10 @@ export default function Dashboard() {
   };
 
   const handleCreateBlog = async (item: Partial<Blog>) => {
+    if (!hasFullTabAccess(adminSession, "Blogs")) {
+      toast("You have read-only access to Blogs.", "error");
+      return;
+    }
     const supabase = createClient();
     const { data, error } = await supabase
       .from("blogs")
@@ -1991,6 +2005,10 @@ export default function Dashboard() {
   };
 
   const handleUpdateBlog = async (item: Partial<Blog>) => {
+    if (!hasFullTabAccess(adminSession, "Blogs")) {
+      toast("You have read-only access to Blogs.", "error");
+      return;
+    }
     const supabase = createClient();
     const { error } = await supabase
       .from("blogs")
@@ -2024,6 +2042,10 @@ export default function Dashboard() {
   };
 
   const handleDeleteBlog = async (id: string) => {
+    if (!hasFullTabAccess(adminSession, "Blogs")) {
+      toast("You have read-only access to Blogs.", "error");
+      return;
+    }
     const supabase = createClient();
     const { error } = await supabase.from("blogs").delete().eq("id", id);
 
@@ -2106,23 +2128,11 @@ export default function Dashboard() {
           />
         );
       case "Business Onboarding":
-        if (!hasFullTabAccess(adminSession, "Business Onboarding")) {
-          return (
-            <div className="admin-card p-6 max-w-xl">
-              <h2 className="text-base font-semibold text-slate-900">
-                Read-only access
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                You can open Business Onboarding, but registering new merchants
-                requires Edit permission from the Controller.
-              </p>
-            </div>
-          );
-        }
         return (
           <MerchantRegistrationContent
             categories={categories}
             adminSession={adminSession}
+            canManage={hasFullTabAccess(adminSession, "Business Onboarding")}
             onRegistered={async () => {
               const supabase = createClient();
               const { data: merchantData } = await supabase
@@ -2145,26 +2155,14 @@ export default function Dashboard() {
           />
         );
       case "Quick Onboard":
-        if (
-          !hasFullTabAccess(adminSession, "Quick Onboard") &&
-          !hasFullTabAccess(adminSession, "Business Onboarding")
-        ) {
-          return (
-            <div className="admin-card p-6 max-w-xl">
-              <h2 className="text-base font-semibold text-slate-900">
-                Read-only access
-              </h2>
-              <p className="mt-1 text-sm text-slate-600">
-                You can open Quick Onboard, but creating merchants requires Edit
-                permission from the Controller.
-              </p>
-            </div>
-          );
-        }
         return (
           <QuickOnboardContent
             categories={categories}
             adminSession={adminSession}
+            canManage={
+              hasFullTabAccess(adminSession, "Quick Onboard") ||
+              hasFullTabAccess(adminSession, "Business Onboarding")
+            }
             onRegistered={async () => {
               const supabase = createClient();
               const { data: merchantData } = await supabase
@@ -2203,6 +2201,7 @@ export default function Dashboard() {
             onUpdateCategory={handleUpdateCategory}
             onCreateCategory={handleCreateCategory}
             merchants={activeMerchants}
+            canManage={hasFullTabAccess(adminSession, "Categories")}
           />
         );
       case "Movies":
@@ -2213,10 +2212,16 @@ export default function Dashboard() {
             onUpdateMovie={handleUpdateMovie}
             onCreateMovie={handleCreateMovie}
             onDeleteMovie={handleDeleteMovie}
+            canManage={hasFullTabAccess(adminSession, "Movies")}
           />
         );
       case "Tourist Places":
-        return <TouristPlacesContent merchants={activeMerchants} />;
+        return (
+          <TouristPlacesContent
+            merchants={activeMerchants}
+            canManage={hasFullTabAccess(adminSession, "Tourist Places")}
+          />
+        );
       case "News":
         return (
           <ComingSoonContent
@@ -2240,13 +2245,22 @@ export default function Dashboard() {
             onCreateBlog={handleCreateBlog}
             onDeleteBlog={handleDeleteBlog}
             onUploadImage={handleBlogImageUpload}
+            canManage={hasFullTabAccess(adminSession, "Blogs")}
           />
         );
       case "YouTube Playlists":
-        return <YouTubePlaylistsContent />;
+        return (
+          <YouTubePlaylistsContent
+            canManage={hasFullTabAccess(adminSession, "YouTube Playlists")}
+          />
+        );
       case "FinderB Jobs":
         return (
-          <FinderBJobsContent jobs={finderBJobs} setJobs={setFinderBJobs} />
+          <FinderBJobsContent
+            jobs={finderBJobs}
+            setJobs={setFinderBJobs}
+            canManage={hasFullTabAccess(adminSession, "FinderB Jobs")}
+          />
         );
       case "Payments & Subscriptions":
         return canViewFinancialData ? (
@@ -2270,6 +2284,8 @@ export default function Dashboard() {
             setMessage={setBroadcastMessage}
             audiences={broadcastAudiences}
             setAudiences={setBroadcastAudiences}
+            canManage={hasFullTabAccess(adminSession, "Broadcasts")}
+            adminId={adminSession?.id ?? null}
           />
         );
       case "Settings":
@@ -2278,6 +2294,7 @@ export default function Dashboard() {
             settings={settings}
             setSettings={setSettings}
             loginLogs={loginLogs}
+            canManage={hasFullTabAccess(adminSession, "Settings")}
           />
         );
       case "Manage Admins":
@@ -4518,6 +4535,10 @@ function MerchantsContent({
   };
 
   const handleApprove = async (merchant: MerchantRequest) => {
+    if (!canManage) {
+      toast("You have read-only access to Merchants.", "error");
+      return;
+    }
     const supabase = createClient();
     const { error } = await supabase
       .from("Business")
@@ -4563,6 +4584,10 @@ function MerchantsContent({
   };
 
   const handleReject = async (id: string) => {
+    if (!canManage) {
+      toast("You have read-only access to Merchants.", "error");
+      return;
+    }
     if (confirm("Reject this merchant listing?")) {
       const supabase = createClient();
       const { error } = await supabase
@@ -5707,6 +5732,7 @@ function CategoriesContent({
   onUpdateCategory,
   onCreateCategory,
   merchants,
+  canManage = false,
 }: {
   categories: Category[];
   setCategories: Dispatch<SetStateAction<Category[]>>;
@@ -5717,6 +5743,7 @@ function CategoriesContent({
   ) => Promise<void>;
   onCreateCategory: (category: Partial<Category>) => Promise<void>;
   merchants: Merchant[];
+  canManage?: boolean;
 }) {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -5825,6 +5852,7 @@ function CategoriesContent({
   }, [categories, filteredCategories]);
 
   const handleSave = async () => {
+    if (!canManage) return;
     if (editingCategory) {
       await onUpdateCategory(editingCategory.name, editingCategory);
       setEditingCategory(null);
@@ -5832,6 +5860,7 @@ function CategoriesContent({
   };
 
   const handleCreate = async () => {
+    if (!canManage) return;
     if (newCategory.name) {
       await onCreateCategory(newCategory);
       setIsAddingCategory(false);
@@ -5851,6 +5880,7 @@ function CategoriesContent({
     type: "banner" | "symbol",
     isEditing: boolean,
   ) => {
+    if (!canManage) return;
     try {
       setUploading(type);
       setUploadProgress((prev) => ({ ...prev, [type]: 0 }));
@@ -6225,7 +6255,7 @@ function CategoriesContent({
         <button
           type="button"
           onClick={isEditing ? handleSave : handleCreate}
-          disabled={!cat.name || !!uploading}
+          disabled={!canManage || !cat.name || !!uploading}
           className="px-4 py-2 bg-teal-700 text-white text-sm font-medium rounded-lg hover:bg-teal-800 transition-colors disabled:opacity-50"
         >
           {isEditing ? "Save changes" : "Create category"}
@@ -6245,7 +6275,7 @@ function CategoriesContent({
             Manage platform categories and service types.
           </p>
         </div>
-        {!isAddingCategory && !editingCategory && (
+        {!isAddingCategory && !editingCategory && canManage && (
           <button
             type="button"
             onClick={() => setIsAddingCategory(true)}
@@ -6253,6 +6283,11 @@ function CategoriesContent({
           >
             Add category
           </button>
+        )}
+        {!canManage && (
+          <p className="text-xs text-slate-500">
+            View only — ask Controller for Edit on Categories.
+          </p>
         )}
       </div>
 
@@ -6391,6 +6426,7 @@ function CategoriesContent({
                       partnerCount={partnerCountById.get(parent.id) ?? 0}
                       childCount={allChildren.length}
                       onEdit={setEditingCategory}
+                      canManage={canManage}
                       depth="parent"
                     />
                   )}
@@ -6416,6 +6452,7 @@ function CategoriesContent({
                           cat={child}
                           partnerCount={partnerCountById.get(child.id) ?? 0}
                           onEdit={setEditingCategory}
+                          canManage={canManage}
                           depth="child"
                           isLast={index === children.length - 1}
                         />
@@ -6445,6 +6482,7 @@ function CategoriesContent({
                     cat={cat}
                     partnerCount={partnerCountById.get(cat.id) ?? 0}
                     onEdit={setEditingCategory}
+                    canManage={canManage}
                     depth="child"
                     isLast={index === orphanFiltered.length - 1}
                   />
@@ -6462,6 +6500,7 @@ function CategoriesContent({
                       cat={cat}
                       partnerCount={partnerCountById.get(cat.id) ?? 0}
                       onEdit={setEditingCategory}
+                      canManage={canManage}
                       depth="parent"
                       isLast={index === filteredCategories.length - 1}
                     />
@@ -6523,6 +6562,7 @@ function CategoryTreeRow({
   partnerCount,
   childCount,
   isLast,
+  canManage = false,
 }: {
   cat: Category;
   onEdit: (c: Category) => void;
@@ -6530,6 +6570,7 @@ function CategoryTreeRow({
   partnerCount: number;
   childCount?: number;
   isLast?: boolean;
+  canManage?: boolean;
 }) {
   const isParent = depth === "parent";
 
@@ -6603,6 +6644,7 @@ function CategoryTreeRow({
         {cat.status}
       </span>
 
+      {canManage && (
       <button
         type="button"
         onClick={() => onEdit(cat)}
@@ -6623,6 +6665,7 @@ function CategoryTreeRow({
           />
         </svg>
       </button>
+      )}
     </div>
   );
 }
@@ -6633,12 +6676,14 @@ function MoviesContent({
   onUpdateMovie,
   onCreateMovie,
   onDeleteMovie,
+  canManage = false,
 }: {
   movies: Movie[];
   setMovies: Dispatch<SetStateAction<Movie[]>>;
   onUpdateMovie: (movie: Partial<Movie>) => Promise<void>;
   onCreateMovie: (movie: Partial<Movie>) => Promise<void>;
   onDeleteMovie: (id: string) => Promise<void>;
+  canManage?: boolean;
 }) {
   const [editingMovie, setEditingMovie] = useState<Movie | null>(null);
   const [isAddingMovie, setIsAddingMovie] = useState(false);
@@ -6699,6 +6744,7 @@ function MoviesContent({
     );
 
   const handleSave = async () => {
+    if (!canManage) return;
     if (editingMovie) {
       await onUpdateMovie(editingMovie);
       setEditingMovie(null);
@@ -6706,6 +6752,7 @@ function MoviesContent({
   };
 
   const handleCreate = async () => {
+    if (!canManage) return;
     if (newMovie.name) {
       await onCreateMovie(newMovie);
       setIsAddingMovie(false);
@@ -6720,6 +6767,7 @@ function MoviesContent({
   };
 
   const handleImageUpload = async (file: File, isEditing: boolean) => {
+    if (!canManage) return;
     try {
       setUploading(true);
       const url = await uploadToCloudinary(file, (progress) => {
@@ -6899,7 +6947,7 @@ function MoviesContent({
         <button
           type="button"
           onClick={isEditing ? handleSave : handleCreate}
-          disabled={!movie.name || uploading}
+          disabled={!canManage || !movie.name || uploading}
           className="px-4 py-2 bg-teal-700 text-white text-sm font-medium rounded-lg hover:bg-teal-800 disabled:opacity-50"
         >
           {isEditing ? "Save changes" : "Save movie"}
@@ -6923,7 +6971,7 @@ function MoviesContent({
             Manage platform movies and FinderB ratings.
           </p>
         </div>
-        {!isAddingMovie && !editingMovie && (
+        {!isAddingMovie && !editingMovie && canManage && (
           <button
             type="button"
             onClick={() => setIsAddingMovie(true)}
@@ -6931,6 +6979,11 @@ function MoviesContent({
           >
             Add movie
           </button>
+        )}
+        {!canManage && (
+          <p className="text-xs text-slate-500">
+            View only — ask Controller for Edit on Movies.
+          </p>
         )}
       </div>
 
@@ -7019,6 +7072,7 @@ function MoviesContent({
                         </div>
                       )}
                       <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        {canManage && (
                         <button
                           type="button"
                           onClick={() => setEditingMovie(movie)}
@@ -7039,6 +7093,8 @@ function MoviesContent({
                             />
                           </svg>
                         </button>
+                        )}
+                        {canManage && (
                         <button
                           type="button"
                           onClick={() => {
@@ -7063,6 +7119,7 @@ function MoviesContent({
                             />
                           </svg>
                         </button>
+                        )}
                       </div>
                       <div className="absolute bottom-1.5 left-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[11px] font-medium text-white tabular-nums">
                         ★ {movie.finderb_rating?.toFixed(1) || "0.0"}
@@ -7097,7 +7154,7 @@ function MoviesContent({
                   ? "No movies yet"
                   : "No movies match your filters"}
               </p>
-              {movies.length === 0 && (
+              {movies.length === 0 && canManage && (
                 <button
                   type="button"
                   onClick={() => setIsAddingMovie(true)}
@@ -7121,6 +7178,8 @@ function BroadcastsContent({
   setMessage,
   audiences,
   setAudiences,
+  canManage = false,
+  adminId = null,
 }: {
   title: string;
   setTitle: (t: string) => void;
@@ -7128,6 +7187,8 @@ function BroadcastsContent({
   setMessage: (m: string) => void;
   audiences: string[];
   setAudiences: (a: string[]) => void;
+  canManage?: boolean;
+  adminId?: string | null;
 }) {
   const [isSending, setIsSending] = useState(false);
   const [pastBroadcasts, setPastBroadcasts] = useState<any[]>([]);
@@ -7176,6 +7237,7 @@ function BroadcastsContent({
   };
 
   const toggleAudience = (opt: string) => {
+    if (!canManage) return;
     if (audiences.includes(opt)) {
       setAudiences(audiences.filter((a) => a !== opt));
     } else {
@@ -7184,12 +7246,20 @@ function BroadcastsContent({
   };
 
   const canDispatch =
+    canManage &&
     title.trim().length > 0 &&
     message.trim().length > 0 &&
     audiences.length > 0 &&
     !isSending;
 
   const handleDispatch = async () => {
+    if (!canManage) {
+      setDispatchNote({
+        tone: "error",
+        text: "You have read-only access to Broadcasts.",
+      });
+      return;
+    }
     if (!canDispatch) {
       setDispatchNote({
         tone: "error",
@@ -7208,6 +7278,7 @@ function BroadcastsContent({
           title: title.trim(),
           message: message.trim(),
           audiences,
+          adminId,
         }),
       });
       const payload = (await res.json().catch(() => null)) as {
@@ -7296,7 +7367,9 @@ function BroadcastsContent({
               <div>
                 <h2 className="text-sm font-semibold text-slate-900">Compose</h2>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Title, audience, and message
+                  {canManage
+                    ? "Title, audience, and message"
+                    : "View only — ask Controller for Edit on Broadcasts"}
                 </p>
               </div>
               <span className="text-[11px] font-medium text-slate-400 tabular-nums">
@@ -7304,7 +7377,9 @@ function BroadcastsContent({
               </span>
             </div>
 
-            <div className="p-4 space-y-4">
+            <div
+              className={`p-4 space-y-4 ${!canManage ? "opacity-60 pointer-events-none" : ""}`}
+            >
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">
                   Title

@@ -90,7 +90,11 @@ function parseYoutubeVideoUrl(input: string): {
   };
 }
 
-export default function YouTubePlaylistsContent() {
+export default function YouTubePlaylistsContent({
+  canManage = false,
+}: {
+  canManage?: boolean;
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [playlists, setPlaylists] = useState<YoutubePlaylist[]>([]);
@@ -200,6 +204,7 @@ export default function YouTubePlaylistsContent() {
 
   const handleCreatePlaylist = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!canManage) return;
     const title = newPlaylistTitle.trim();
     if (!title) return;
 
@@ -236,6 +241,7 @@ export default function YouTubePlaylistsContent() {
   };
 
   const handleSavePlaylistTitle = async () => {
+    if (!canManage) return;
     if (!selectedId || !editingTitle.trim()) return;
     setBusy(true);
     setError("");
@@ -253,6 +259,7 @@ export default function YouTubePlaylistsContent() {
   };
 
   const handleTogglePlaylistPublished = async () => {
+    if (!canManage) return;
     if (!selectedPlaylist) return;
     setBusy(true);
     setError("");
@@ -273,6 +280,7 @@ export default function YouTubePlaylistsContent() {
   };
 
   const handleDeletePlaylist = async () => {
+    if (!canManage) return;
     if (!selectedPlaylist) return;
     if (
       !window.confirm(
@@ -298,6 +306,7 @@ export default function YouTubePlaylistsContent() {
   };
 
   const handleReorderPlaylist = async (id: string, direction: "up" | "down") => {
+    if (!canManage) return;
     const sorted = [...playlists].sort((a, b) => a.sort_order - b.sort_order);
     const index = sorted.findIndex((p) => p.id === id);
     const swapIndex = direction === "up" ? index - 1 : index + 1;
@@ -329,6 +338,7 @@ export default function YouTubePlaylistsContent() {
 
   const handleAddVideo = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!canManage) return;
     if (!selectedId) return;
 
     const parsed = parseYoutubeVideoUrl(videoUrl);
@@ -377,6 +387,7 @@ export default function YouTubePlaylistsContent() {
   };
 
   const handleToggleVideoPublished = async (video: YoutubeVideo) => {
+    if (!canManage) return;
     setBusy(true);
     setError("");
     const supabase = createClient();
@@ -396,6 +407,7 @@ export default function YouTubePlaylistsContent() {
   };
 
   const handleDeleteVideo = async (video: YoutubeVideo) => {
+    if (!canManage) return;
     if (!window.confirm(`Remove "${video.title}" from this playlist?`)) return;
     setBusy(true);
     setError("");
@@ -414,6 +426,7 @@ export default function YouTubePlaylistsContent() {
   };
 
   const handleReorderVideo = async (id: string, direction: "up" | "down") => {
+    if (!canManage) return;
     if (!selectedId) return;
     const sorted = [...videos].sort((a, b) => a.sort_order - b.sort_order);
     const index = sorted.findIndex((v) => v.id === id);
@@ -467,36 +480,38 @@ export default function YouTubePlaylistsContent() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,20rem)_1fr]">
           <aside className="space-y-4">
-            <form onSubmit={handleCreatePlaylist} className="admin-card p-4">
-              <h2 className="text-sm font-semibold text-slate-900">New playlist</h2>
-              <label className="mt-3 block text-xs font-medium text-slate-500">
-                Title
-                <input
-                  value={newPlaylistTitle}
-                  onChange={(e) => setNewPlaylistTitle(e.target.value)}
-                  required
-                  className="admin-input mt-1 w-full"
-                  placeholder="e.g. Getting started"
-                />
-              </label>
-              <label className="mt-3 block text-xs font-medium text-slate-500">
-                Description (optional)
-                <textarea
-                  value={newPlaylistDescription}
-                  onChange={(e) => setNewPlaylistDescription(e.target.value)}
-                  rows={2}
-                  className="admin-input mt-1 w-full"
-                  placeholder="Shown under the playlist on the homepage"
-                />
-              </label>
-              <button
-                type="submit"
-                disabled={busy || !newPlaylistTitle.trim()}
-                className="admin-btn-primary mt-3 w-full disabled:opacity-50"
-              >
-                {busy ? "Working…" : "Create playlist"}
-              </button>
-            </form>
+            {canManage ? (
+              <form onSubmit={handleCreatePlaylist} className="admin-card p-4">
+                <h2 className="text-sm font-semibold text-slate-900">New playlist</h2>
+                <label className="mt-3 block text-xs font-medium text-slate-500">
+                  Title
+                  <input
+                    value={newPlaylistTitle}
+                    onChange={(e) => setNewPlaylistTitle(e.target.value)}
+                    required
+                    className="admin-input mt-1 w-full"
+                    placeholder="e.g. Getting started"
+                  />
+                </label>
+                <label className="mt-3 block text-xs font-medium text-slate-500">
+                  Description (optional)
+                  <textarea
+                    value={newPlaylistDescription}
+                    onChange={(e) => setNewPlaylistDescription(e.target.value)}
+                    rows={2}
+                    className="admin-input mt-1 w-full"
+                    placeholder="Shown under the playlist on the homepage"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={busy || !newPlaylistTitle.trim()}
+                  className="admin-btn-primary mt-3 w-full disabled:opacity-50"
+                >
+                  {busy ? "Working…" : "Create playlist"}
+                </button>
+              </form>
+            ) : null}
 
             <div className="admin-card overflow-hidden">
               <div className="border-b border-slate-100 px-4 py-3">
@@ -528,24 +543,26 @@ export default function YouTubePlaylistsContent() {
                             {playlist.is_published ? "Published" : "Draft"}
                           </p>
                         </button>
-                        <div className="flex flex-col gap-1">
-                          <button
-                            type="button"
-                            disabled={busy || index === 0}
-                            onClick={() => handleReorderPlaylist(playlist.id, "up")}
-                            className="rounded border border-slate-200 px-1.5 py-0.5 text-xs text-slate-500 hover:bg-white disabled:opacity-30"
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy || index === playlists.length - 1}
-                            onClick={() => handleReorderPlaylist(playlist.id, "down")}
-                            className="rounded border border-slate-200 px-1.5 py-0.5 text-xs text-slate-500 hover:bg-white disabled:opacity-30"
-                          >
-                            ↓
-                          </button>
-                        </div>
+                        {canManage ? (
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              disabled={busy || index === 0}
+                              onClick={() => handleReorderPlaylist(playlist.id, "up")}
+                              className="rounded border border-slate-200 px-1.5 py-0.5 text-xs text-slate-500 hover:bg-white disabled:opacity-30"
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy || index === playlists.length - 1}
+                              onClick={() => handleReorderPlaylist(playlist.id, "down")}
+                              className="rounded border border-slate-200 px-1.5 py-0.5 text-xs text-slate-500 hover:bg-white disabled:opacity-30"
+                            >
+                              ↓
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     </li>
                   ))}
@@ -563,97 +580,120 @@ export default function YouTubePlaylistsContent() {
               <>
                 <div className="admin-card p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <label className="block min-w-0 flex-1 text-xs font-medium text-slate-500">
-                      Playlist title
-                      <input
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        className="admin-input mt-1 w-full max-w-md"
-                      />
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSavePlaylistTitle}
-                        disabled={busy || !editingTitle.trim()}
-                        className="admin-btn-secondary disabled:opacity-50"
-                      >
-                        Save title
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleTogglePlaylistPublished}
-                        disabled={busy}
+                    {canManage ? (
+                      <label className="block min-w-0 flex-1 text-xs font-medium text-slate-500">
+                        Playlist title
+                        <input
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          className="admin-input mt-1 w-full max-w-md"
+                        />
+                      </label>
+                    ) : (
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-slate-500">Playlist title</p>
+                        <p className="mt-1 text-base font-semibold text-slate-900">
+                          {selectedPlaylist.title}
+                        </p>
+                      </div>
+                    )}
+                    {canManage ? (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSavePlaylistTitle}
+                          disabled={busy || !editingTitle.trim()}
+                          className="admin-btn-secondary disabled:opacity-50"
+                        >
+                          Save title
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleTogglePlaylistPublished}
+                          disabled={busy}
+                          className={`rounded-lg px-3 py-2 text-sm font-medium ${
+                            selectedPlaylist.is_published
+                              ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                              : "bg-amber-50 text-amber-800 ring-1 ring-amber-200"
+                          }`}
+                        >
+                          {selectedPlaylist.is_published ? "Published" : "Draft"} — toggle
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDeletePlaylist}
+                          disabled={busy}
+                          className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : (
+                      <span
                         className={`rounded-lg px-3 py-2 text-sm font-medium ${
                           selectedPlaylist.is_published
                             ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
                             : "bg-amber-50 text-amber-800 ring-1 ring-amber-200"
                         }`}
                       >
-                        {selectedPlaylist.is_published ? "Published" : "Draft"} — toggle
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleDeletePlaylist}
-                        disabled={busy}
-                        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                        {selectedPlaylist.is_published ? "Published" : "Draft"}
+                      </span>
+                    )}
                   </div>
                   {selectedPlaylist.description ? (
                     <p className="mt-3 text-sm text-slate-500">{selectedPlaylist.description}</p>
                   ) : null}
                 </div>
 
-                <form onSubmit={handleAddVideo} className="admin-card p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h2 className="text-sm font-semibold text-slate-900">Add video by link</h2>
-                    {videos.length >= SOFT_VIDEO_CAP ? (
-                      <p className="text-xs font-medium text-amber-700">
-                        Tip: homepage shows about {SOFT_VIDEO_CAP} videos per playlist
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <label className="block text-xs font-medium text-slate-500 sm:col-span-2">
-                      YouTube URL
-                      <input
-                        value={videoUrl}
-                        onChange={(e) => setVideoUrl(e.target.value)}
-                        required
-                        className="admin-input mt-1 w-full"
-                        placeholder="https://www.youtube.com/watch?v=…"
-                      />
-                    </label>
-                    <label className="block text-xs font-medium text-slate-500">
-                      Title (optional)
-                      <input
-                        value={videoTitle}
-                        onChange={(e) => setVideoTitle(e.target.value)}
-                        className="admin-input mt-1 w-full"
-                        placeholder="Display title on homepage"
-                      />
-                    </label>
-                    <label className="block text-xs font-medium text-slate-500">
-                      Topic (optional)
-                      <input
-                        value={videoTopic}
-                        onChange={(e) => setVideoTopic(e.target.value)}
-                        className="admin-input mt-1 w-full"
-                        placeholder="e.g. For merchants"
-                      />
-                    </label>
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={busy || !videoUrl.trim()}
-                    className="mt-3 rounded-lg bg-[#ff0033] px-4 py-2 text-sm font-semibold text-white hover:bg-[#e6002f] disabled:opacity-50"
-                  >
-                    {busy ? "Working…" : "Add video"}
-                  </button>
-                </form>
+                {canManage ? (
+                  <form onSubmit={handleAddVideo} className="admin-card p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <h2 className="text-sm font-semibold text-slate-900">Add video by link</h2>
+                      {videos.length >= SOFT_VIDEO_CAP ? (
+                        <p className="text-xs font-medium text-amber-700">
+                          Tip: homepage shows about {SOFT_VIDEO_CAP} videos per playlist
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <label className="block text-xs font-medium text-slate-500 sm:col-span-2">
+                        YouTube URL
+                        <input
+                          value={videoUrl}
+                          onChange={(e) => setVideoUrl(e.target.value)}
+                          required
+                          className="admin-input mt-1 w-full"
+                          placeholder="https://www.youtube.com/watch?v=…"
+                        />
+                      </label>
+                      <label className="block text-xs font-medium text-slate-500">
+                        Title (optional)
+                        <input
+                          value={videoTitle}
+                          onChange={(e) => setVideoTitle(e.target.value)}
+                          className="admin-input mt-1 w-full"
+                          placeholder="Display title on homepage"
+                        />
+                      </label>
+                      <label className="block text-xs font-medium text-slate-500">
+                        Topic (optional)
+                        <input
+                          value={videoTopic}
+                          onChange={(e) => setVideoTopic(e.target.value)}
+                          className="admin-input mt-1 w-full"
+                          placeholder="e.g. For merchants"
+                        />
+                      </label>
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={busy || !videoUrl.trim()}
+                      className="mt-3 rounded-lg bg-[#ff0033] px-4 py-2 text-sm font-semibold text-white hover:bg-[#e6002f] disabled:opacity-50"
+                    >
+                      {busy ? "Working…" : "Add video"}
+                    </button>
+                  </form>
+                ) : null}
 
                 <div className="admin-card overflow-hidden">
                   <div className="border-b border-slate-100 px-4 py-3">
@@ -665,7 +705,9 @@ export default function YouTubePlaylistsContent() {
                     <p className="px-4 py-8 text-center text-sm text-slate-500">Loading videos…</p>
                   ) : videos.length === 0 ? (
                     <p className="px-4 py-8 text-center text-sm text-slate-500">
-                      No videos in this playlist yet. Paste a YouTube link above.
+                      {canManage
+                        ? "No videos in this playlist yet. Paste a YouTube link above."
+                        : "No videos in this playlist yet."}
                     </p>
                   ) : (
                     <ul className="divide-y divide-slate-100">
@@ -694,42 +736,44 @@ export default function YouTubePlaylistsContent() {
                               Open on YouTube
                             </a>
                           </div>
-                          <div className="flex flex-col items-end gap-1">
-                            <div className="flex gap-1">
+                          {canManage ? (
+                            <div className="flex flex-col items-end gap-1">
+                              <div className="flex gap-1">
+                                <button
+                                  type="button"
+                                  disabled={busy || index === 0}
+                                  onClick={() => handleReorderVideo(video.id, "up")}
+                                  className="rounded border border-slate-200 px-1.5 py-0.5 text-xs text-slate-500 disabled:opacity-30"
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={busy || index === videos.length - 1}
+                                  onClick={() => handleReorderVideo(video.id, "down")}
+                                  className="rounded border border-slate-200 px-1.5 py-0.5 text-xs text-slate-500 disabled:opacity-30"
+                                >
+                                  ↓
+                                </button>
+                              </div>
                               <button
                                 type="button"
-                                disabled={busy || index === 0}
-                                onClick={() => handleReorderVideo(video.id, "up")}
-                                className="rounded border border-slate-200 px-1.5 py-0.5 text-xs text-slate-500 disabled:opacity-30"
+                                disabled={busy}
+                                onClick={() => handleToggleVideoPublished(video)}
+                                className="text-xs font-medium text-slate-600 hover:underline"
                               >
-                                ↑
+                                {video.is_published ? "Unpublish" : "Publish"}
                               </button>
                               <button
                                 type="button"
-                                disabled={busy || index === videos.length - 1}
-                                onClick={() => handleReorderVideo(video.id, "down")}
-                                className="rounded border border-slate-200 px-1.5 py-0.5 text-xs text-slate-500 disabled:opacity-30"
+                                disabled={busy}
+                                onClick={() => handleDeleteVideo(video)}
+                                className="text-xs font-medium text-red-600 hover:underline"
                               >
-                                ↓
+                                Remove
                               </button>
                             </div>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => handleToggleVideoPublished(video)}
-                              className="text-xs font-medium text-slate-600 hover:underline"
-                            >
-                              {video.is_published ? "Unpublish" : "Publish"}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busy}
-                              onClick={() => handleDeleteVideo(video)}
-                              className="text-xs font-medium text-red-600 hover:underline"
-                            >
-                              Remove
-                            </button>
-                          </div>
+                          ) : null}
                         </li>
                       ))}
                     </ul>

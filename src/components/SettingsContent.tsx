@@ -19,12 +19,15 @@ export default function SettingsContent({
   settings,
   setSettings,
   loginLogs,
+  canManage = false,
 }: {
   settings: Settings;
   setSettings: Dispatch<SetStateAction<Settings>>;
   loginLogs: LoginLog[];
+  canManage?: boolean;
 }) {
   const toggleSetting = async (key: string) => {
+    if (!canManage) return;
     if (key === "imageCompression" && !settings.imageCompression) {
       alert(
         "Kindly switch to ImageKit CDN storage first to enable the image compression.",
@@ -62,6 +65,11 @@ export default function SettingsContent({
         <p className="admin-page-subtitle">
           Manage platform configurations and global system settings.
         </p>
+        {!canManage && (
+          <p className="text-xs text-amber-700 mt-1">
+            View only — ask Controller for Edit on Settings.
+          </p>
+        )}
       </div>
 
       <div className="admin-card divide-y divide-slate-100 overflow-hidden max-w-xl">
@@ -89,7 +97,8 @@ export default function SettingsContent({
             </div>
             <button
               onClick={() => toggleSetting(item.key)}
-              className={`w-11 h-6 rounded-full relative transition-colors ${settings[item.key] ? "bg-primary" : "bg-slate-200"}`}
+              disabled={!canManage}
+              className={`w-11 h-6 rounded-full relative transition-colors disabled:opacity-50 disabled:pointer-events-none ${settings[item.key] ? "bg-primary" : "bg-slate-200"}`}
             >
               <div
                 className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${settings[item.key] ? "translate-x-5" : "translate-x-0"}`}

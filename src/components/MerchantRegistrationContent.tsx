@@ -92,6 +92,7 @@ type Props = {
   categories: RegistrationCategory[];
   adminSession: AdminSession | null;
   onRegistered?: () => void;
+  canManage?: boolean;
 };
 
 function buildMerchantShareMessage(input: {
@@ -170,6 +171,7 @@ export default function MerchantRegistrationContent({
   categories,
   adminSession,
   onRegistered,
+  canManage = false,
 }: Props) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormState>(INITIAL_FORM);
@@ -385,6 +387,12 @@ export default function MerchantRegistrationContent({
   };
 
   const submit = async () => {
+    if (!canManage) {
+      setErrors({
+        _form: "Read-only — registering merchants requires Edit permission.",
+      });
+      return;
+    }
     if (!adminSession?.id) {
       setErrors({ _form: "Admin session missing. Please log in again." });
       return;
@@ -548,6 +556,12 @@ export default function MerchantRegistrationContent({
           </div>
         </div>
       </div>
+
+      {!canManage && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Read-only — registering merchants requires Edit permission.
+        </div>
+      )}
 
       {errors._form && (
         <div className="admin-alert-error">
@@ -1174,9 +1188,9 @@ export default function MerchantRegistrationContent({
             </button>
             <button
               type="button"
-              disabled={loading}
+              disabled={loading || (step === 2 && !canManage)}
               onClick={goNext}
-              className="admin-btn-primary"
+              className="admin-btn-primary disabled:opacity-50"
             >
               {loading
                 ? "Creating…"
