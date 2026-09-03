@@ -816,6 +816,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [adminSession, setAdminSession] = useState<any>(null);
   const [sessionReady, setSessionReady] = useState(false);
+  const [bootMinElapsed, setBootMinElapsed] = useState(false);
   const { toast } = useAdminToast();
   const [uploadProgress, setUploadProgress] = useState<{
     current: number;
@@ -857,6 +858,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     setColorMode(readAdminColorMode());
+  }, []);
+
+  // Keep the boot screen up briefly so the intro can play out.
+  useEffect(() => {
+    const id = window.setTimeout(() => setBootMinElapsed(true), 4500);
+    return () => window.clearTimeout(id);
   }, []);
 
   // Controller = gold premium. Others = optional neutral dark via switch.
@@ -2309,7 +2316,7 @@ export default function Dashboard() {
     }
   };
 
-  if (!sessionReady || !adminSession) {
+  if (!sessionReady || !adminSession || !bootMinElapsed) {
     return <AdminBootLoader />;
   }
 

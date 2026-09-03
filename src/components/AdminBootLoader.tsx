@@ -17,7 +17,7 @@ export default function AdminBootLoader() {
   useEffect(() => {
     const id = window.setInterval(() => {
       setStepIndex((prev) => (prev + 1) % BOOT_STEPS.length);
-    }, 900);
+    }, 1100);
     return () => window.clearInterval(id);
   }, []);
 
