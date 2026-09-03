@@ -204,6 +204,7 @@ const Tiptap = ({
   onChange: (content: string) => void;
 }) => {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Link.configure({
