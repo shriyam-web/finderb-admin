@@ -1,7 +1,7 @@
 .root {
   position: relative;
   overflow: hidden;
-  min-height: min(34rem, calc(100vh - 12rem));
+  min-height: min(22rem, calc(100vh - 14rem));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -114,10 +114,10 @@
 }
 
 .copy {
-  margin: 0 auto 1.25rem;
-  max-width: 24rem;
-  font-size: 0.9rem;
-  line-height: 1.55;
+  margin: 0 auto 1rem;
+  max-width: 22rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
   color: #64748b;
 }
 
@@ -127,23 +127,15 @@
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  margin: 0 auto 1.35rem;
-  padding: 0.7rem 0.9rem;
+  margin: 0 auto 1.15rem;
+  padding: 0.55rem 0.8rem;
   border-radius: 0.85rem;
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(248, 250, 252, 0.9);
 }
 
-.identityLabel {
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #94a3b8;
-}
-
 .identityValue {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 650;
   color: #0f172a;
 }
@@ -159,53 +151,6 @@
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: capitalize;
-}
-
-.steps {
-  list-style: none;
-  margin: 0 0 1.35rem;
-  padding: 0;
-  display: grid;
-  gap: 0.55rem;
-  text-align: left;
-}
-
-.step {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.7rem;
-  align-items: start;
-  padding: 0.75rem 0.85rem;
-  border-radius: 0.8rem;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.stepNum {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.45rem;
-  height: 1.45rem;
-  border-radius: 0.45rem;
-  background: #0f172a;
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 750;
-}
-
-.stepTitle {
-  margin: 0 0 0.15rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.stepCopy {
-  margin: 0;
-  font-size: 0.72rem;
-  line-height: 1.4;
-  color: #64748b;
 }
 
 .actions {
@@ -254,12 +199,6 @@
 .secondary:hover {
   border-color: rgba(148, 163, 184, 0.55);
   background: #f8fafc;
-}
-
-.footnote {
-  margin: 1rem 0 0;
-  font-size: 0.7rem;
-  color: #94a3b8;
 }
 
 @keyframes rise {
@@ -319,32 +258,23 @@
 
 :global(html[data-admin-theme="dark"]) .title,
 :global(html[data-admin-theme="controller"]) .title,
-:global(html[data-admin-theme="dark"]) .stepTitle,
-:global(html[data-admin-theme="controller"]) .stepTitle,
 :global(html[data-admin-theme="dark"]) .identityValue,
 :global(html[data-admin-theme="controller"]) .identityValue {
   color: #f8fafc;
 }
 
 :global(html[data-admin-theme="dark"]) .copy,
-:global(html[data-admin-theme="controller"]) .copy,
-:global(html[data-admin-theme="dark"]) .stepCopy,
-:global(html[data-admin-theme="controller"]) .stepCopy,
-:global(html[data-admin-theme="dark"]) .footnote,
-:global(html[data-admin-theme="controller"]) .footnote {
+:global(html[data-admin-theme="controller"]) .copy {
   color: #94a3b8;
 }
 
 :global(html[data-admin-theme="dark"]) .identity,
-:global(html[data-admin-theme="controller"]) .identity,
-:global(html[data-admin-theme="dark"]) .step,
-:global(html[data-admin-theme="controller"]) .step {
+:global(html[data-admin-theme="controller"]) .identity {
   border-color: rgba(148, 163, 184, 0.16);
   background: rgba(15, 23, 42, 0.65);
 }
 
-:global(html[data-admin-theme="controller"]) .identity,
-:global(html[data-admin-theme="controller"]) .step {
+:global(html[data-admin-theme="controller"]) .identity {
   background: rgba(28, 25, 23, 0.75);
   border-color: rgba(251, 191, 36, 0.18);
 }
@@ -367,14 +297,4 @@
   background: linear-gradient(180deg, #fde68a 0%, #f59e0b 50%, #d97706 100%);
   color: #1c1917;
   box-shadow: 0 8px 18px rgba(217, 119, 6, 0.28);
-}
-
-:global(html[data-admin-theme="dark"]) .stepNum {
-  background: #14b8a6;
-  color: #042f2e;
-}
-
-:global(html[data-admin-theme="controller"]) .stepNum {
-  background: #f59e0b;
-  color: #1c1917;
 }

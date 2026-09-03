@@ -17,10 +17,7 @@ export default function AccessRestrictedPanel({
   onSignOut,
   onRetry,
 }: AccessRestrictedPanelProps) {
-  const who =
-    displayName?.trim() ||
-    email?.split("@")[0] ||
-    "your account";
+  const who = displayName?.trim() || email || "Signed in";
 
   return (
     <div className={styles.root}>
@@ -48,61 +45,26 @@ export default function AccessRestrictedPanel({
 
         <h2 className={styles.title}>Access Restricted</h2>
         <p className={styles.copy}>
-          Your FinderB console login works, but no tabs are assigned yet.
-          Ask a Controller to grant Read or Edit access so you can start
-          working.
+          No tabs assigned yet. Ask a Controller to grant access, then refresh.
         </p>
 
         <div className={styles.identity}>
-          <span className={styles.identityLabel}>Signed in</span>
           <span className={styles.identityValue}>{who}</span>
-          {email && (
-            <span className={styles.identityValue} style={{ opacity: 0.7 }}>
-              · {email}
-            </span>
-          )}
           {role && (
             <span className={styles.pill}>{role.replace(/_/g, " ")}</span>
           )}
         </div>
 
-        <ol className={styles.steps}>
-          <li className={styles.step}>
-            <span className={styles.stepNum}>1</span>
-            <div>
-              <p className={styles.stepTitle}>Message your Controller</p>
-              <p className={styles.stepCopy}>
-                Share this email and ask them to open Manage Admins → set your
-                tab permissions.
-              </p>
-            </div>
-          </li>
-          <li className={styles.step}>
-            <span className={styles.stepNum}>2</span>
-            <div>
-              <p className={styles.stepTitle}>Wait for tab access</p>
-              <p className={styles.stepCopy}>
-                Once permissions are saved, refresh this page — your console
-                will unlock automatically.
-              </p>
-            </div>
-          </li>
-        </ol>
-
         <div className={styles.actions}>
           {onRetry && (
             <button type="button" className={styles.primary} onClick={onRetry}>
-              Refresh access
+              Refresh
             </button>
           )}
           <button type="button" className={styles.secondary} onClick={onSignOut}>
             Sign out
           </button>
         </div>
-
-        <p className={styles.footnote}>
-          Need help fast? Contact the FinderB Controller or platform owner.
-        </p>
       </div>
     </div>
   );
