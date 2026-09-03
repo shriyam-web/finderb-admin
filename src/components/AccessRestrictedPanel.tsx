@@ -3,32 +3,19 @@
 import styles from "./AccessRestrictedPanel.module.css";
 
 type AccessRestrictedPanelProps = {
-  email?: string | null;
-  role?: string | null;
-  displayName?: string | null;
   onSignOut: () => void;
   onRetry?: () => void;
 };
 
 export default function AccessRestrictedPanel({
-  email,
-  role,
-  displayName,
   onSignOut,
   onRetry,
 }: AccessRestrictedPanelProps) {
-  const who = displayName?.trim() || email || "Signed in";
-
   return (
     <div className={styles.root}>
       <div className={styles.grid} aria-hidden />
 
       <div className={styles.panel}>
-        <span className={styles.badge}>
-          <span className={styles.badgeDot} aria-hidden />
-          Access locked
-        </span>
-
         <div className={styles.iconStage} aria-hidden>
           <div className={styles.iconRing} />
           <div className={styles.icon}>
@@ -45,15 +32,9 @@ export default function AccessRestrictedPanel({
 
         <h2 className={styles.title}>Access Restricted</h2>
         <p className={styles.copy}>
-          No tabs assigned yet. Ask a Controller to grant access, then refresh.
+          Your account is active, but no console tabs are enabled yet. Ask a
+          Controller to assign permissions, then hit Refresh.
         </p>
-
-        <div className={styles.identity}>
-          <span className={styles.identityValue}>{who}</span>
-          {role && (
-            <span className={styles.pill}>{role.replace(/_/g, " ")}</span>
-          )}
-        </div>
 
         <div className={styles.actions}>
           {onRetry && (

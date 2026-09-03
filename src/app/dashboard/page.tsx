@@ -2041,9 +2041,6 @@ export default function Dashboard() {
     ) {
       return (
         <AccessRestrictedPanel
-          email={adminSession.email}
-          role={adminSession.role}
-          displayName={adminSession.displayName}
           onSignOut={handleLogout}
           onRetry={() => window.location.reload()}
         />
