@@ -62,29 +62,33 @@
 
 .iconStage {
   position: relative;
-  width: 5.5rem;
-  height: 5.5rem;
-  margin: 0 auto 1.25rem;
+  width: 5.75rem;
+  height: 5.75rem;
+  margin: 0 auto 1.5rem;
+  /* Keep the spinning ring inside this box so it never covers copy below */
+  overflow: hidden;
+  border-radius: 1.55rem;
 }
 
 .iconRing {
   position: absolute;
-  inset: 0;
-  border-radius: 1.35rem;
+  inset: 0.35rem;
+  border-radius: 1.2rem;
   border: 1px solid rgba(244, 63, 94, 0.2);
   background:
     radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.9), transparent 55%),
     linear-gradient(160deg, #fff1f2 0%, #ffe4e6 100%);
-  box-shadow: 0 14px 30px rgba(225, 29, 72, 0.12);
+  box-shadow: 0 10px 22px rgba(225, 29, 72, 0.1);
 }
 
 .iconRing::after {
   content: "";
   position: absolute;
-  inset: -6px;
-  border-radius: 1.55rem;
-  border: 1px dashed rgba(244, 63, 94, 0.28);
+  inset: -0.2rem;
+  border-radius: 1.35rem;
+  border: 1px dashed rgba(244, 63, 94, 0.32);
   animation: spin 14s linear infinite;
+  pointer-events: none;
 }
 
 .icon {
