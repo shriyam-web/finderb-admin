@@ -877,7 +877,7 @@ body {
   }
 
   .admin-modal-overlay {
-    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+    @apply fixed inset-0 z-[220] flex items-center justify-center p-4;
     background: rgba(17, 24, 39, 0.35);
     backdrop-filter: blur(4px);
   }

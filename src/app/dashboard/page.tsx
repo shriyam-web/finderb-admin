@@ -11,6 +11,7 @@ import {
   useCallback,
   useMemo,
 } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "../../../utils/supabase/client";
 import { uploadToCloudinary } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
@@ -3590,6 +3591,7 @@ function ControllerPasswordModal({
   }, [isOpen]);
 
   if (!isOpen) return null;
+  if (typeof document === "undefined") return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -3626,7 +3628,7 @@ function ControllerPasswordModal({
     }
   };
 
-  return (
+  return createPortal(
     <div className="admin-modal-overlay">
       <div className="admin-modal">
         <div className="admin-card-header">
@@ -3671,7 +3673,8 @@ function ControllerPasswordModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { City, Country, State } from "country-state-city";
 import Image from "next/image";
 import QRCode from "qrcode";
@@ -1009,6 +1010,7 @@ export default function MerchantDetailModal({
   onRevealLoginPassword,
   onHideLoginPassword,
 }: MerchantDetailModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [tab, setTab] = useState<TabId>("overview");
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -1044,6 +1046,10 @@ export default function MerchantDetailModal({
       );
 
   // Block background scrolling while the modal is open.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -1334,10 +1340,13 @@ export default function MerchantDetailModal({
   const reviews = useMemo(() => parseReviews(display.review), [display.review]);
   const defaultReviewReply = formatReviewReply(display.reviewReply);
 
+  if (!mounted) return null;
+
   return (
     <EditModeContext.Provider value={editable}>
-      <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl border border-slate-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+      {createPortal(
+        <div className="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl border border-slate-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
           {/* Header */}
           <div className="px-5 pt-4 pb-0 border-b border-slate-200 shrink-0">
             <div className="flex items-start justify-between gap-4">
@@ -2407,7 +2416,9 @@ export default function MerchantDetailModal({
             </div>
           </div>
         </div>
-      </div>
+      </div>,
+        document.body,
+      )}
     </EditModeContext.Provider>
   );
 }
