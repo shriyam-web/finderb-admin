@@ -1,0 +1,376 @@
+.root {
+  position: relative;
+  overflow: hidden;
+  min-height: min(34rem, calc(100vh - 12rem));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background:
+    radial-gradient(ellipse 70% 55% at 12% 0%, rgba(244, 63, 94, 0.1), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(20, 184, 166, 0.1), transparent 50%),
+    linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: none;
+}
+
+.grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.09) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 75% 70% at 50% 40%, #000 15%, transparent 75%);
+}
+
+.panel {
+  position: relative;
+  z-index: 1;
+  width: min(28rem, 100%);
+  text-align: center;
+  animation: rise 0.4s ease-out;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1.15rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 63, 94, 0.25);
+  background: rgba(255, 241, 242, 0.9);
+  color: #be123c;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.badgeDot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: #e11d48;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.15);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.iconStage {
+  position: relative;
+  width: 5.5rem;
+  height: 5.5rem;
+  margin: 0 auto 1.25rem;
+}
+
+.iconRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 1.35rem;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.9), transparent 55%),
+    linear-gradient(160deg, #fff1f2 0%, #ffe4e6 100%);
+  box-shadow: 0 14px 30px rgba(225, 29, 72, 0.12);
+}
+
+.iconRing::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 1.55rem;
+  border: 1px dashed rgba(244, 63, 94, 0.28);
+  animation: spin 14s linear infinite;
+}
+
+.icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e11d48;
+}
+
+.icon svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.title {
+  margin: 0 0 0.55rem;
+  font-size: 1.45rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  color: #0f172a;
+}
+
+.copy {
+  margin: 0 auto 1.25rem;
+  max-width: 24rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #64748b;
+}
+
+.identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin: 0 auto 1.35rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.identityLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.identityValue {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(13, 148, 136, 0.22);
+  background: rgba(240, 253, 250, 0.95);
+  color: #0f766e;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.steps {
+  list-style: none;
+  margin: 0 0 1.35rem;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+  text-align: left;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.7rem;
+  align-items: start;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.stepNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 0.45rem;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.stepTitle {
+  margin: 0 0 0.15rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.stepCopy {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.35rem;
+  padding: 0.55rem 1rem;
+  border-radius: 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.primary {
+  border: 1px solid #0f766e;
+  background: linear-gradient(180deg, #2dd4bf 0%, #14b8a6 55%, #0d9488 100%);
+  color: #042f2e;
+  box-shadow: 0 8px 18px rgba(13, 148, 136, 0.22);
+}
+
+.primary:hover {
+  transform: translateY(-1px);
+}
+
+.secondary {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #fff;
+  color: #334155;
+}
+
+.secondary:hover {
+  border-color: rgba(148, 163, 184, 0.55);
+  background: #f8fafc;
+}
+
+.footnote {
+  margin: 1rem 0 0;
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .badgeDot,
+  .iconRing::after {
+    animation: none !important;
+  }
+}
+
+/* Dark / controller themes */
+:global(html[data-admin-theme="dark"]) .root,
+:global(html[data-admin-theme="controller"]) .root {
+  border-color: rgba(148, 163, 184, 0.16);
+  background:
+    radial-gradient(ellipse 70% 55% at 12% 0%, rgba(244, 63, 94, 0.16), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(20, 184, 166, 0.12), transparent 50%),
+    linear-gradient(165deg, #0b1220 0%, #111827 100%);
+}
+
+:global(html[data-admin-theme="controller"]) .root {
+  border-color: rgba(251, 191, 36, 0.22);
+  background:
+    radial-gradient(ellipse 70% 55% at 12% 0%, rgba(244, 63, 94, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(245, 158, 11, 0.12), transparent 50%),
+    linear-gradient(165deg, #0c0a09 0%, #1c1917 100%);
+}
+
+:global(html[data-admin-theme="dark"]) .title,
+:global(html[data-admin-theme="controller"]) .title,
+:global(html[data-admin-theme="dark"]) .stepTitle,
+:global(html[data-admin-theme="controller"]) .stepTitle,
+:global(html[data-admin-theme="dark"]) .identityValue,
+:global(html[data-admin-theme="controller"]) .identityValue {
+  color: #f8fafc;
+}
+
+:global(html[data-admin-theme="dark"]) .copy,
+:global(html[data-admin-theme="controller"]) .copy,
+:global(html[data-admin-theme="dark"]) .stepCopy,
+:global(html[data-admin-theme="controller"]) .stepCopy,
+:global(html[data-admin-theme="dark"]) .footnote,
+:global(html[data-admin-theme="controller"]) .footnote {
+  color: #94a3b8;
+}
+
+:global(html[data-admin-theme="dark"]) .identity,
+:global(html[data-admin-theme="controller"]) .identity,
+:global(html[data-admin-theme="dark"]) .step,
+:global(html[data-admin-theme="controller"]) .step {
+  border-color: rgba(148, 163, 184, 0.16);
+  background: rgba(15, 23, 42, 0.65);
+}
+
+:global(html[data-admin-theme="controller"]) .identity,
+:global(html[data-admin-theme="controller"]) .step {
+  background: rgba(28, 25, 23, 0.75);
+  border-color: rgba(251, 191, 36, 0.18);
+}
+
+:global(html[data-admin-theme="dark"]) .secondary,
+:global(html[data-admin-theme="controller"]) .secondary {
+  background: #0b1220;
+  border-color: rgba(148, 163, 184, 0.28);
+  color: #e2e8f0;
+}
+
+:global(html[data-admin-theme="controller"]) .secondary {
+  background: #0c0a09;
+  border-color: rgba(251, 191, 36, 0.3);
+  color: #fde68a;
+}
+
+:global(html[data-admin-theme="controller"]) .primary {
+  border-color: #b45309;
+  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 50%, #d97706 100%);
+  color: #1c1917;
+  box-shadow: 0 8px 18px rgba(217, 119, 6, 0.28);
+}
+
+:global(html[data-admin-theme="dark"]) .stepNum {
+  background: #14b8a6;
+  color: #042f2e;
+}
+
+:global(html[data-admin-theme="controller"]) .stepNum {
+  background: #f59e0b;
+  color: #1c1917;
+}
