@@ -532,6 +532,79 @@ body {
     @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border;
   }
 
+  .admin-role-badge {
+    @apply hidden sm:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold tracking-wide;
+  }
+
+  .admin-role-badge-dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  .admin-role-badge-admin {
+    @apply border-teal-200 bg-teal-50 text-teal-800;
+  }
+
+  .admin-role-badge-admin .admin-role-badge-dot {
+    background: #0d9488;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+  }
+
+  .admin-role-badge-super {
+    @apply border-indigo-200 bg-indigo-50 text-indigo-800;
+  }
+
+  .admin-role-badge-super .admin-role-badge-dot {
+    background: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.16);
+  }
+
+  .admin-role-badge-controller {
+    background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%);
+    border-color: #fbbf24;
+    color: #78350f;
+    font-weight: 800;
+  }
+
+  .admin-role-badge-controller .admin-role-badge-dot {
+    background: #78350f;
+    box-shadow: 0 0 0 3px rgba(120, 53, 15, 0.12);
+  }
+
+  .admin-sign-out {
+    @apply inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-bold text-rose-700 transition-colors;
+  }
+
+  .admin-sign-out:hover {
+    @apply border-rose-300 bg-rose-100 text-rose-800;
+  }
+
+  /* Fully locked console: only theme + sign out + restricted card stay usable */
+  .admin-shell-locked .admin-sidebar,
+  .admin-shell-locked .admin-command-bar,
+  .admin-shell-locked .admin-controller-ribbon {
+    opacity: 0.38;
+    filter: grayscale(0.35);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .admin-shell-locked .admin-topbar .admin-btn-ghost:disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .admin-shell-locked .admin-theme-toggle,
+  .admin-shell-locked .admin-sign-out,
+  .admin-shell-locked .admin-role-badge,
+  .admin-shell-locked .admin-main {
+    opacity: 1;
+    filter: none;
+    pointer-events: auto;
+  }
+
   .admin-kpi-grid {
     @apply grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3;
   }

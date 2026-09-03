@@ -166,11 +166,22 @@ html[data-admin-theme="controller"] .admin-metric-chip strong {
   color: #fde68a !important;
 }
 
-html[data-admin-theme="controller"] .admin-controller-badge {
+html[data-admin-theme="controller"] .admin-controller-badge,
+html[data-admin-theme="controller"] .admin-role-badge-controller {
   background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%) !important;
   color: #78350f !important;
   border-color: #fbbf24 !important;
   font-weight: 800 !important;
+}
+
+html[data-admin-theme="controller"] .admin-sign-out {
+  background: rgba(225, 29, 72, 0.16) !important;
+  border-color: rgba(251, 113, 133, 0.4) !important;
+  color: #fecdd3 !important;
+}
+
+html[data-admin-theme="controller"] .admin-sign-out:hover {
+  background: rgba(225, 29, 72, 0.24) !important;
 }
 
 /* ——— Admin design-system surfaces ——— */

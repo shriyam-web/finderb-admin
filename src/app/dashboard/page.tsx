@@ -1418,6 +1418,10 @@ export default function Dashboard() {
   const canViewListingsQueue =
     hasTabAccess(adminSession, "Dashboard") ||
     hasTabAccess(adminSession, "Merchants");
+  const accessLocked =
+    !!adminSession &&
+    adminSession.role !== "controller" &&
+    menuItems.length === 0;
 
   // Block deep-links / leftover activeTab for tabs this admin cannot open.
   useEffect(() => {
@@ -1436,6 +1440,14 @@ export default function Dashboard() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [adminSession, activeTab, menuItems]);
+
+  useEffect(() => {
+    if (!accessLocked) return;
+    setWhatsNewOpen(false);
+    setIsSidebarOpen(false);
+    setShowAdminProfile(false);
+    setOnboardChooserOpen(false);
+  }, [accessLocked]);
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => !prev);
@@ -2036,8 +2048,7 @@ export default function Dashboard() {
     if (
       sessionReady &&
       adminSession &&
-      adminSession.role !== "controller" &&
-      menuItems.length === 0
+      accessLocked
     ) {
       return (
         <AccessRestrictedPanel
@@ -2305,7 +2316,9 @@ export default function Dashboard() {
     <div
       className={`admin-shell flex min-h-screen ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${
         isController ? "admin-shell-controller" : ""
-      } ${resolvedTheme === "dark" ? "admin-shell-dark" : ""}`}
+      } ${resolvedTheme === "dark" ? "admin-shell-dark" : ""} ${
+        accessLocked ? "admin-shell-locked" : ""
+      }`}
       data-admin-theme={resolvedTheme || undefined}
     >
       {isSidebarOpen && (
@@ -2810,6 +2823,8 @@ export default function Dashboard() {
               <button
                 className="admin-btn-ghost lg:hidden"
                 onClick={() => setIsSidebarOpen(true)}
+                disabled={accessLocked}
+                aria-disabled={accessLocked}
               >
                 <svg
                   className="w-5 h-5"
@@ -2829,6 +2844,8 @@ export default function Dashboard() {
                 type="button"
                 onClick={toggleSidebarCollapsed}
                 className="admin-btn-ghost hidden lg:inline-flex"
+                disabled={accessLocked}
+                aria-disabled={accessLocked}
                 aria-label={
                   sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
                 }
@@ -2853,8 +2870,20 @@ export default function Dashboard() {
                 <span className="text-slate-300">/</span>
                 <span className="admin-breadcrumb-current">{activeTab}</span>
               </div>
+              <span
+                className={`admin-role-badge capitalize ${
+                  adminSession?.role === "controller"
+                    ? "admin-role-badge-controller"
+                    : adminSession?.role === "super_admin"
+                      ? "admin-role-badge-super"
+                      : "admin-role-badge-admin"
+                }`}
+              >
+                <span className="admin-role-badge-dot" aria-hidden />
+                {adminSession?.role?.replace("_", " ") || "Admin"}
+              </span>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-3 shrink-0">
               {canToggleColorMode && (
                 <button
                   type="button"
@@ -2907,20 +2936,25 @@ export default function Dashboard() {
                   </span>
                 </button>
               )}
-              <span
-                className={`hidden md:inline admin-badge capitalize ${
-                  isController
-                    ? "admin-controller-badge"
-                    : "bg-teal-50 text-teal-800 border-teal-100"
-                }`}
-              >
-                {adminSession?.role?.replace("_", " ") || "Admin"}
-              </span>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="admin-btn-secondary text-xs py-1.5 px-3"
+                className="admin-sign-out"
               >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"
+                  />
+                </svg>
                 Sign out
               </button>
             </div>
@@ -3013,7 +3047,7 @@ export default function Dashboard() {
         />
       )}
 
-      {adminSession?.id && (
+      {adminSession?.id && !accessLocked && (
         <WhatsNewPanel
           open={whatsNewOpen}
           onOpen={() => setWhatsNewOpen(true)}
