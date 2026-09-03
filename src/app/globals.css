@@ -297,8 +297,26 @@ body {
     }
   }
 
+  .admin-chrome-sticky {
+    @apply sticky top-0 z-30;
+    background: var(--background);
+  }
+
   .admin-topbar {
-    @apply h-14 border-b border-slate-200/80 flex items-center justify-between px-4 lg:px-6 sticky top-0 z-30 bg-white/90 backdrop-blur-md;
+    @apply h-14 border-b border-slate-200/80 flex items-center justify-between px-4 lg:px-6 bg-white/90 backdrop-blur-md;
+  }
+
+  .admin-controller-ribbon {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 2.25rem;
+    padding: 0.45rem 1rem;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   .admin-whats-new-fab {
@@ -402,13 +420,13 @@ body {
   }
 
   .admin-command-bar {
-    @apply border-b border-slate-200/80 px-4 lg:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-14 z-20;
+    @apply border-b border-slate-200/80 px-4 lg:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3;
     background: var(--command-bar);
     backdrop-filter: blur(10px);
   }
 
   .admin-main {
-    @apply px-4 sm:px-5 lg:px-6 py-5 lg:py-6 w-full;
+    @apply relative z-0 px-4 sm:px-5 lg:px-6 py-5 lg:py-6 w-full;
     animation: admin-rise 0.28s ease-out;
   }
 
@@ -663,7 +681,7 @@ body {
   }
 
   .admin-platform-hero {
-    @apply relative overflow-hidden rounded-xl border border-slate-200/90 bg-white px-5 py-5 sm:px-6 sm:py-6 mb-5 mt-4;
+    @apply relative z-0 overflow-hidden rounded-xl border border-slate-200/90 bg-white px-5 py-5 sm:px-6 sm:py-6 mb-5 mt-0;
     background-image:
       radial-gradient(ellipse 80% 120% at 100% 0%, rgba(13, 148, 136, 0.05), transparent 55%),
       linear-gradient(180deg, #ffffff 0%, #f8fafb 100%);

@@ -1,5 +1,5 @@
-/* Controller premium console — colors only, no layout breakage.
-   Applied via html[data-admin-theme="controller"]. */
+/* Controller premium console — colors only.
+   Sticky layout lives on .admin-chrome-sticky in globals.css. */
 
 html[data-admin-theme="controller"],
 html[data-admin-theme="controller"] body {
@@ -60,24 +60,15 @@ html[data-admin-theme="controller"] .admin-nav-group-label {
   color: #78716c !important;
 }
 
-/* Sticky stack: ribbon → topbar → command bar (prevents overlaps) */
+html[data-admin-theme="controller"] .admin-chrome-sticky {
+  background: #0c0a09 !important;
+  z-index: 40 !important;
+}
+
 html[data-admin-theme="controller"] .admin-controller-ribbon {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  min-height: 2.25rem;
-  padding: 0.45rem 1rem;
   background: linear-gradient(90deg, #78350f 0%, #b45309 40%, #f59e0b 100%) !important;
   color: #fffbeb !important;
   border-bottom: 1px solid rgba(253, 230, 138, 0.4) !important;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 html[data-admin-theme="controller"] .admin-controller-ribbon span {
@@ -88,8 +79,6 @@ html[data-admin-theme="controller"] .admin-controller-ribbon span {
 }
 
 html[data-admin-theme="controller"] .admin-topbar {
-  top: 2.25rem !important;
-  z-index: 35 !important;
   background: #0c0a09 !important;
   border-bottom: 1px solid rgba(251, 191, 36, 0.28) !important;
   color: #fafaf9 !important;
@@ -102,8 +91,6 @@ html[data-admin-theme="controller"] .admin-breadcrumb-current {
 }
 
 html[data-admin-theme="controller"] .admin-command-bar {
-  top: calc(2.25rem + 3.5rem) !important;
-  z-index: 30 !important;
   background: #1c1917 !important;
   border-bottom: 1px solid rgba(251, 191, 36, 0.2) !important;
   color: #e7e5e4 !important;
@@ -121,8 +108,6 @@ html[data-admin-theme="controller"] .admin-metric-chip strong {
 }
 
 html[data-admin-theme="controller"] .admin-main {
-  position: relative;
-  z-index: 1;
   color: #f5f5f4 !important;
 }
 
@@ -147,7 +132,7 @@ html[data-admin-theme="controller"] .admin-platform-hero,
 html[data-admin-theme="controller"] .admin-kpi {
   background: #1c1917 !important;
   border-color: rgba(251, 191, 36, 0.24) !important;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25) !important;
+  box-shadow: none !important;
   color: #f5f5f4 !important;
 }
 

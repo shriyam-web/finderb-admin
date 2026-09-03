@@ -2751,138 +2751,141 @@ export default function Dashboard() {
       </aside>
 
       <div className="admin-content-area flex-1 flex flex-col min-w-0">
-        {adminSession?.role === "controller" && (
-          <div className="admin-controller-ribbon">
-            <strong>Controller access</strong>
-            <span>Full platform authority · premium console</span>
-          </div>
-        )}
-        <header className="admin-topbar">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              className="admin-btn-ghost lg:hidden"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={toggleSidebarCollapsed}
-              className="admin-btn-ghost hidden lg:inline-flex"
-              aria-label={
-                sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
-              }
-              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h10M4 18h16"
-                />
-              </svg>
-            </button>
-            <div className="admin-breadcrumb hidden sm:flex">
-              <span>FinderB</span>
-              <span className="text-slate-300">/</span>
-              <span className="admin-breadcrumb-current">{activeTab}</span>
+        {/* One sticky chrome block — avoids ribbon/topbar/command-bar stacking overlaps */}
+        <div className="admin-chrome-sticky">
+          {adminSession?.role === "controller" && (
+            <div className="admin-controller-ribbon">
+              <strong>Controller access</strong>
+              <span>Full platform authority · premium console</span>
             </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span
-              className={`hidden md:inline admin-badge capitalize ${
-                adminSession?.role === "controller"
-                  ? "admin-controller-badge"
-                  : "bg-teal-50 text-teal-800 border-teal-100"
-              }`}
-            >
-              {adminSession?.role?.replace("_", " ") || "Admin"}
-            </span>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="admin-btn-secondary text-xs py-1.5 px-3"
-            >
-              Sign out
-            </button>
-          </div>
-        </header>
-
-        <div className="admin-command-bar">
-          <div className="flex flex-wrap items-center gap-2">
-            {hasTabAccess(adminSession, "Users") && (
+          )}
+          <header className="admin-topbar">
+            <div className="flex items-center gap-3 min-w-0">
               <button
-                type="button"
-                onClick={() => setActiveTab("Users")}
-                className="admin-metric-chip"
+                className="admin-btn-ghost lg:hidden"
+                onClick={() => setIsSidebarOpen(true)}
               >
-                Users <strong>{users.length.toLocaleString()}</strong>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                </svg>
               </button>
-            )}
-            {hasTabAccess(adminSession, "Merchants") && (
               <button
                 type="button"
-                onClick={() => setActiveTab("Merchants")}
-                className="admin-metric-chip"
+                onClick={toggleSidebarCollapsed}
+                className="admin-btn-ghost hidden lg:inline-flex"
+                aria-label={
+                  sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+                }
+                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
-                Partners{" "}
-                <strong>{activeMerchants.length.toLocaleString()}</strong>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4 6h16M4 12h10M4 18h16"
+                  />
+                </svg>
               </button>
-            )}
-            {hasTabAccess(adminSession, "Merchants") && (
-              <button
-                type="button"
-                onClick={() => setActiveTab("Merchants")}
-                className={`admin-metric-chip ${
-                  merchantRequests.length > 0
-                    ? "!border-amber-200 !bg-amber-50 !text-amber-800"
-                    : ""
+              <div className="admin-breadcrumb hidden sm:flex">
+                <span>FinderB</span>
+                <span className="text-slate-300">/</span>
+                <span className="admin-breadcrumb-current">{activeTab}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span
+                className={`hidden md:inline admin-badge capitalize ${
+                  adminSession?.role === "controller"
+                    ? "admin-controller-badge"
+                    : "bg-teal-50 text-teal-800 border-teal-100"
                 }`}
               >
-                Pending review <strong>{merchantRequests.length}</strong>
-              </button>
-            )}
-            {hasTabAccess(adminSession, "Leads") && (
+                {adminSession?.role?.replace("_", " ") || "Admin"}
+              </span>
               <button
                 type="button"
-                onClick={() => setActiveTab("Leads")}
-                className="admin-metric-chip"
+                onClick={handleLogout}
+                className="admin-btn-secondary text-xs py-1.5 px-3"
               >
-                Leads <strong>{leads.length.toLocaleString()}</strong>
+                Sign out
               </button>
-            )}
-            {(hasTabAccess(adminSession, "Business Onboarding") ||
-              hasTabAccess(adminSession, "Quick Onboard")) && (
-              <button
-                type="button"
-                onClick={() => setOnboardChooserOpen(true)}
-                className="admin-btn-primary !text-xs !py-2 !px-3.5"
-              >
-                Onboard business
-              </button>
-            )}
+            </div>
+          </header>
+
+          <div className="admin-command-bar">
+            <div className="flex flex-wrap items-center gap-2">
+              {hasTabAccess(adminSession, "Users") && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("Users")}
+                  className="admin-metric-chip"
+                >
+                  Users <strong>{users.length.toLocaleString()}</strong>
+                </button>
+              )}
+              {hasTabAccess(adminSession, "Merchants") && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("Merchants")}
+                  className="admin-metric-chip"
+                >
+                  Partners{" "}
+                  <strong>{activeMerchants.length.toLocaleString()}</strong>
+                </button>
+              )}
+              {hasTabAccess(adminSession, "Merchants") && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("Merchants")}
+                  className={`admin-metric-chip ${
+                    merchantRequests.length > 0
+                      ? "!border-amber-200 !bg-amber-50 !text-amber-800"
+                      : ""
+                  }`}
+                >
+                  Pending review <strong>{merchantRequests.length}</strong>
+                </button>
+              )}
+              {hasTabAccess(adminSession, "Leads") && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("Leads")}
+                  className="admin-metric-chip"
+                >
+                  Leads <strong>{leads.length.toLocaleString()}</strong>
+                </button>
+              )}
+              {(hasTabAccess(adminSession, "Business Onboarding") ||
+                hasTabAccess(adminSession, "Quick Onboard")) && (
+                <button
+                  type="button"
+                  onClick={() => setOnboardChooserOpen(true)}
+                  className="admin-btn-primary !text-xs !py-2 !px-3.5"
+                >
+                  Onboard business
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 tabular-nums hidden sm:block font-semibold">
+              {platformDateLabel || "—"}
+            </p>
           </div>
-          <p className="text-xs text-slate-400 tabular-nums hidden sm:block font-semibold">
-            {platformDateLabel || "—"}
-          </p>
         </div>
 
         <main className="admin-main space-y-6">
