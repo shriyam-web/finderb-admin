@@ -4,6 +4,7 @@ import AppProviders from "../components/AppProviders";
 import "./globals.css";
 import "./controller-theme.css";
 import "./dark-theme.css";
+import "./theme-contrast.css";
 
 const inter = Inter({
   subsets: ["latin"],

@@ -2,13 +2,16 @@ export type AdminColorMode = "light" | "dark";
 
 export const ADMIN_COLOR_MODE_KEY = "admin_color_mode";
 
-export function readAdminColorMode(): AdminColorMode {
+export function readAdminColorMode(
+  role?: string | null,
+): AdminColorMode {
   try {
-    return localStorage.getItem(ADMIN_COLOR_MODE_KEY) === "dark"
-      ? "dark"
-      : "light";
+    const stored = localStorage.getItem(ADMIN_COLOR_MODE_KEY);
+    if (stored === "dark" || stored === "light") return stored;
+    // Controllers default to the premium dark console.
+    return role === "controller" ? "dark" : "light";
   } catch {
-    return "light";
+    return role === "controller" ? "dark" : "light";
   }
 }
 

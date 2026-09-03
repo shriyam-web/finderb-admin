@@ -409,16 +409,16 @@ html[data-admin-theme="controller"] .admin-shell .text-zinc-700 {
   color: #e7e5e4 !important;
 }
 
+html[data-admin-theme="controller"] .admin-shell .text-slate-300,
+html[data-admin-theme="controller"] .admin-shell .text-gray-300 {
+  color: #d6d3d1 !important;
+}
+
 html[data-admin-theme="controller"] .admin-shell .text-slate-500,
 html[data-admin-theme="controller"] .admin-shell .text-slate-400,
 html[data-admin-theme="controller"] .admin-shell .text-gray-500,
 html[data-admin-theme="controller"] .admin-shell .text-zinc-500 {
   color: #a8a29e !important;
-}
-
-html[data-admin-theme="controller"] .admin-shell .text-slate-300,
-html[data-admin-theme="controller"] .admin-shell .text-gray-300 {
-  color: #78716c !important;
 }
 
 html[data-admin-theme="controller"] .admin-shell .text-teal-600,

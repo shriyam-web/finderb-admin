@@ -13,6 +13,15 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
+    // Login must stay light — clear leftover dark/controller theme from prior session.
+    const root = document.documentElement;
+    root.removeAttribute("data-admin-theme");
+    root.classList.remove("admin-theme-controller", "admin-theme-dark");
+    document.body.classList.remove(
+      "admin-theme-controller",
+      "admin-theme-dark",
+    );
+
     const session = localStorage.getItem("admin_session");
     if (session) {
       router.push("/dashboard");
@@ -87,17 +96,19 @@ export default function Home() {
         <div className="pointer-events-none absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-cyan-500/15 blur-3xl" />
         <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
           <div>
-            <Image
-              src="/logo1.png"
-              alt="FinderB"
-              width={168}
-              height={48}
-              className="object-contain drop-shadow-[0_0_24px_rgba(45,212,191,0.3)]"
-              priority
-            />
-            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-400/10 px-2.5 py-1 text-[11px] font-medium text-teal-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-300 animate-pulse" />
-              Control deck · secure access
+            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+              <Image
+                src="/logo1.png"
+                alt="FinderB"
+                width={168}
+                height={48}
+                className="object-contain"
+                priority
+              />
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-800">
+                <span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" />
+                Control deck · secure access
+              </div>
             </div>
           </div>
 
@@ -140,7 +151,7 @@ export default function Home() {
 
       <div className="flex flex-1 items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-[420px]">
-          <div className="lg:hidden flex flex-col items-center mb-10 rounded-2xl bg-slate-950 px-6 py-5 border border-slate-800">
+          <div className="lg:hidden flex flex-col items-center mb-10 rounded-2xl bg-white px-6 py-5 border border-slate-200 shadow-sm">
             <Image
               src="/logo1.png"
               alt="FinderB"
@@ -149,7 +160,7 @@ export default function Home() {
               className="object-contain"
               priority
             />
-            <p className="mt-2 text-[11px] font-semibold tracking-[0.16em] uppercase text-teal-200/80">
+            <p className="mt-2 text-[11px] font-semibold tracking-[0.16em] uppercase text-teal-700">
               Control deck
             </p>
           </div>

@@ -841,14 +841,18 @@ export default function Dashboard() {
   } = useWhatsNewUnreadCount(adminSession?.id);
 
   const isController = adminSession?.role === "controller";
-  const canToggleColorMode =
-    !!adminSession &&
-    (adminSession.role === "admin" || adminSession.role === "super_admin");
-  const resolvedTheme = isController
-    ? "controller"
-    : canToggleColorMode && colorMode === "dark"
-      ? "dark"
-      : null;
+  const canToggleColorMode = !!adminSession;
+  // Controllers: dark = gold premium console, light = standard light UI.
+  // Admin / super_admin: dark = teal dark console, light = standard light UI.
+  const resolvedTheme = !adminSession
+    ? null
+    : isController
+      ? colorMode === "light"
+        ? null
+        : "controller"
+      : colorMode === "dark"
+        ? "dark"
+        : null;
 
   // Always start a tab at the top of the page
   useEffect(() => {
@@ -858,8 +862,8 @@ export default function Dashboard() {
   }, [activeTab]);
 
   useEffect(() => {
-    setColorMode(readAdminColorMode());
-  }, []);
+    setColorMode(readAdminColorMode(adminSession?.role));
+  }, [adminSession?.role]);
 
   // Keep the boot screen up briefly so the intro can play out.
   useEffect(() => {
@@ -867,7 +871,7 @@ export default function Dashboard() {
     return () => window.clearTimeout(id);
   }, []);
 
-  // Controller = gold premium. Others = optional neutral dark via switch.
+  // Apply console theme to <html> for dark / controller modes.
   useEffect(() => {
     const root = document.documentElement;
     root.classList.remove("admin-theme-controller", "admin-theme-dark");
@@ -899,7 +903,6 @@ export default function Dashboard() {
   }, [resolvedTheme]);
 
   const toggleColorMode = () => {
-    if (isController) return;
     const next: AdminColorMode = colorMode === "dark" ? "light" : "dark";
     setColorMode(next);
     writeAdminColorMode(next);

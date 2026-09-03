@@ -1,0 +1,194 @@
+/* Shared contrast / visibility fixes for dark + controller themes.
+   Keeps muted text readable and covers common Tailwind utility gaps. */
+
+html[data-admin-theme="dark"] .admin-shell .text-slate-300,
+html[data-admin-theme="dark"] .admin-shell .text-gray-300,
+html[data-admin-theme="dark"] .admin-shell .text-zinc-300,
+html[data-admin-theme="controller"] .admin-shell .text-slate-300,
+html[data-admin-theme="controller"] .admin-shell .text-gray-300,
+html[data-admin-theme="controller"] .admin-shell .text-zinc-300 {
+  color: #cbd5e1 !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-slate-400,
+html[data-admin-theme="dark"] .admin-shell .text-gray-400,
+html[data-admin-theme="dark"] .admin-shell .text-zinc-400,
+html[data-admin-theme="controller"] .admin-shell .text-slate-400,
+html[data-admin-theme="controller"] .admin-shell .text-gray-400,
+html[data-admin-theme="controller"] .admin-shell .text-zinc-400 {
+  color: #94a3b8 !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-slate-500,
+html[data-admin-theme="dark"] .admin-shell .text-gray-500,
+html[data-admin-theme="dark"] .admin-shell .text-zinc-500,
+html[data-admin-theme="controller"] .admin-shell .text-slate-500,
+html[data-admin-theme="controller"] .admin-shell .text-gray-500,
+html[data-admin-theme="controller"] .admin-shell .text-zinc-500 {
+  color: #a8b0bd !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-slate-200,
+html[data-admin-theme="controller"] .admin-shell .text-slate-200 {
+  color: #e2e8f0 !important;
+}
+
+html[data-admin-theme="dark"] .admin-label,
+html[data-admin-theme="controller"] .admin-label,
+html[data-admin-theme="dark"] label,
+html[data-admin-theme="controller"] label {
+  color: #cbd5e1 !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell ::placeholder,
+html[data-admin-theme="controller"] .admin-shell ::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-rose-700,
+html[data-admin-theme="dark"] .admin-shell .text-rose-800,
+html[data-admin-theme="dark"] .admin-shell .text-rose-900,
+html[data-admin-theme="controller"] .admin-shell .text-rose-700,
+html[data-admin-theme="controller"] .admin-shell .text-rose-800,
+html[data-admin-theme="controller"] .admin-shell .text-rose-900 {
+  color: #fda4af !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-emerald-700,
+html[data-admin-theme="dark"] .admin-shell .text-emerald-800,
+html[data-admin-theme="dark"] .admin-shell .text-emerald-900,
+html[data-admin-theme="controller"] .admin-shell .text-emerald-700,
+html[data-admin-theme="controller"] .admin-shell .text-emerald-800,
+html[data-admin-theme="controller"] .admin-shell .text-emerald-900 {
+  color: #6ee7b7 !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-amber-700,
+html[data-admin-theme="dark"] .admin-shell .text-amber-800,
+html[data-admin-theme="dark"] .admin-shell .text-amber-900,
+html[data-admin-theme="controller"] .admin-shell .text-amber-700,
+html[data-admin-theme="controller"] .admin-shell .text-amber-800,
+html[data-admin-theme="controller"] .admin-shell .text-amber-900 {
+  color: #fcd34d !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .text-sky-700,
+html[data-admin-theme="dark"] .admin-shell .text-sky-800,
+html[data-admin-theme="dark"] .admin-shell .text-indigo-700,
+html[data-admin-theme="dark"] .admin-shell .text-indigo-800,
+html[data-admin-theme="controller"] .admin-shell .text-sky-700,
+html[data-admin-theme="controller"] .admin-shell .text-sky-800,
+html[data-admin-theme="controller"] .admin-shell .text-indigo-700,
+html[data-admin-theme="controller"] .admin-shell .text-indigo-800 {
+  color: #93c5fd !important;
+}
+
+html[data-admin-theme="dark"] .admin-alert-error,
+html[data-admin-theme="controller"] .admin-alert-error {
+  background: rgba(225, 29, 72, 0.14) !important;
+  border-color: rgba(251, 113, 133, 0.4) !important;
+  color: #fecdd3 !important;
+}
+
+html[data-admin-theme="dark"] .admin-alert-error .font-medium,
+html[data-admin-theme="dark"] .admin-alert-error p,
+html[data-admin-theme="controller"] .admin-alert-error .font-medium,
+html[data-admin-theme="controller"] .admin-alert-error p {
+  color: #fecdd3 !important;
+}
+
+/* Sidebar profile card + footer text */
+html[data-admin-theme="dark"] .admin-sidebar-footer .text-slate-900,
+html[data-admin-theme="controller"] .admin-sidebar-footer .text-slate-900 {
+  color: #f8fafc !important;
+}
+
+html[data-admin-theme="dark"] .admin-sidebar-footer .text-slate-500,
+html[data-admin-theme="dark"] .admin-sidebar-footer .text-slate-400,
+html[data-admin-theme="controller"] .admin-sidebar-footer .text-slate-500,
+html[data-admin-theme="controller"] .admin-sidebar-footer .text-slate-400 {
+  color: #cbd5e1 !important;
+}
+
+html[data-admin-theme="dark"] .admin-sidebar-footer .text-teal-700,
+html[data-admin-theme="controller"] .admin-sidebar-footer .text-teal-700 {
+  color: #5eead4 !important;
+}
+
+html[data-admin-theme="controller"] .admin-sidebar-footer .text-teal-700 {
+  color: #fde68a !important;
+}
+
+/* Tables / list rows that stay light-on-dark */
+html[data-admin-theme="dark"] .admin-shell thead,
+html[data-admin-theme="controller"] .admin-shell thead {
+  color: inherit !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .hover\:bg-slate-50:hover,
+html[data-admin-theme="dark"] .admin-shell .hover\:bg-slate-100:hover,
+html[data-admin-theme="controller"] .admin-shell .hover\:bg-slate-50:hover,
+html[data-admin-theme="controller"] .admin-shell .hover\:bg-slate-100:hover {
+  background-color: rgba(148, 163, 184, 0.1) !important;
+}
+
+/* Modals / overlays rendered inside shell */
+html[data-admin-theme="dark"] .admin-modal-overlay,
+html[data-admin-theme="controller"] .admin-modal-overlay {
+  background: rgba(2, 6, 23, 0.72) !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .shadow-sm,
+html[data-admin-theme="dark"] .admin-shell .shadow,
+html[data-admin-theme="controller"] .admin-shell .shadow-sm,
+html[data-admin-theme="controller"] .admin-shell .shadow {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Soft tint chips stay readable */
+html[data-admin-theme="dark"] .admin-shell .bg-white\/5,
+html[data-admin-theme="dark"] .admin-shell .bg-white\/10,
+html[data-admin-theme="controller"] .admin-shell .bg-white\/5,
+html[data-admin-theme="controller"] .admin-shell .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+html[data-admin-theme="dark"] .admin-shell .border-white\/10,
+html[data-admin-theme="controller"] .admin-shell .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+/* Ensure SVG icons inheriting muted text stay visible */
+html[data-admin-theme="dark"] .admin-shell svg.text-slate-300,
+html[data-admin-theme="dark"] .admin-shell .text-slate-300 svg,
+html[data-admin-theme="controller"] .admin-shell svg.text-slate-300,
+html[data-admin-theme="controller"] .admin-shell .text-slate-300 svg {
+  color: #cbd5e1 !important;
+}
+
+/* Controllers in light mode: no special attribute — standard light UI.
+   Controllers in dark mode keep gold premium via data-admin-theme=controller. */
+
+html[data-admin-theme="controller"] .admin-theme-toggle {
+  background: #1c1917 !important;
+  border-color: rgba(251, 191, 36, 0.35) !important;
+  color: #fde68a !important;
+}
+
+html[data-admin-theme="controller"] .admin-theme-toggle-track {
+  background: #292524 !important;
+}
+
+html[data-admin-theme="controller"] .admin-theme-toggle-knob {
+  background: #44403c !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+}
+
+html[data-admin-theme="controller"] .admin-theme-toggle.is-dark .admin-theme-toggle-moon {
+  color: #fde68a !important;
+}
+
+html[data-admin-theme="controller"] .admin-theme-toggle.is-light .admin-theme-toggle-sun {
+  color: #fbbf24 !important;
+}
