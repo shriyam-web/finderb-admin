@@ -1,5 +1,42 @@
-/* Controller premium console — colors only.
-   Sticky layout lives on .admin-chrome-sticky in globals.css. */
+/* Controller premium console — full dark/gold surface map.
+   Layout sticky chrome stays in globals.css; this file is colors only. */
+
+html[data-admin-theme="controller"] {
+  --background: #0c0a09;
+  --foreground: #f5f5f4;
+  --sidebar-background: #0c0a09;
+  --sidebar-foreground: #a8a29e;
+  --sidebar-foreground-active: #fffbeb;
+  --sidebar-border: rgba(251, 191, 36, 0.28);
+  --sidebar-hover: rgba(251, 191, 36, 0.1);
+  --sidebar-active: rgba(251, 191, 36, 0.16);
+  --primary: #f59e0b;
+  --primary-50: #292524;
+  --primary-100: #44403c;
+  --primary-200: #57534e;
+  --primary-300: #a8a29e;
+  --primary-400: #fbbf24;
+  --primary-500: #f59e0b;
+  --primary-600: #d97706;
+  --primary-700: #b45309;
+  --primary-800: #92400e;
+  --primary-900: #78350f;
+  --primary-foreground: #1c1917;
+  --secondary: #fbbf24;
+  --secondary-50: #292524;
+  --secondary-100: #44403c;
+  --secondary-500: #f59e0b;
+  --secondary-foreground: #1c1917;
+  --muted: #1c1917;
+  --muted-foreground: #a8a29e;
+  --border: rgba(251, 191, 36, 0.22);
+  --input: rgba(251, 191, 36, 0.3);
+  --ring: #f59e0b;
+  --surface: #1c1917;
+  --surface-muted: #292524;
+  --command-bar: #1c1917;
+  color-scheme: dark;
+}
 
 html[data-admin-theme="controller"],
 html[data-admin-theme="controller"] body {
@@ -9,19 +46,31 @@ html[data-admin-theme="controller"] body {
 
 html[data-admin-theme="controller"] .admin-shell {
   background:
-    radial-gradient(1100px 560px at 90% -10%, rgba(245, 158, 11, 0.22), transparent 55%),
+    radial-gradient(1100px 560px at 90% -10%, rgba(245, 158, 11, 0.18), transparent 55%),
     linear-gradient(165deg, #050403 0%, #1c1917 45%, #0c0a09 100%) !important;
   color: #f5f5f4 !important;
 }
 
+html[data-admin-theme="controller"] .admin-content-area {
+  background: transparent !important;
+}
+
+html[data-admin-theme="controller"] .admin-chrome-sticky {
+  background: #0c0a09 !important;
+  z-index: 40 !important;
+}
+
+/* ——— Sidebar ——— */
 html[data-admin-theme="controller"] .admin-sidebar {
   background: linear-gradient(180deg, #000 0%, #0c0a09 50%, #1c1917 100%) !important;
   border-right: 1px solid rgba(251, 191, 36, 0.35) !important;
+  color: #e7e5e4 !important;
 }
 
-html[data-admin-theme="controller"] .admin-sidebar-header {
+html[data-admin-theme="controller"] .admin-sidebar-header,
+html[data-admin-theme="controller"] .admin-sidebar-footer {
   background: transparent !important;
-  border-bottom-color: rgba(251, 191, 36, 0.25) !important;
+  border-color: rgba(251, 191, 36, 0.25) !important;
 }
 
 html[data-admin-theme="controller"] .admin-brand-splash {
@@ -60,11 +109,16 @@ html[data-admin-theme="controller"] .admin-nav-group-label {
   color: #78716c !important;
 }
 
-html[data-admin-theme="controller"] .admin-chrome-sticky {
-  background: #0c0a09 !important;
-  z-index: 40 !important;
+html[data-admin-theme="controller"] .admin-nav-badge,
+html[data-admin-theme="controller"] .admin-nav-badge-alert,
+html[data-admin-theme="controller"] .admin-nav-badge-new,
+html[data-admin-theme="controller"] .admin-nav-badge-soon {
+  background: rgba(251, 191, 36, 0.14) !important;
+  color: #fde68a !important;
+  border-color: rgba(251, 191, 36, 0.35) !important;
 }
 
+/* ——— Chrome ——— */
 html[data-admin-theme="controller"] .admin-controller-ribbon {
   background: linear-gradient(90deg, #78350f 0%, #b45309 40%, #f59e0b 100%) !important;
   color: #fffbeb !important;
@@ -103,10 +157,23 @@ html[data-admin-theme="controller"] .admin-metric-chip {
   color: #e7e5e4 !important;
 }
 
+html[data-admin-theme="controller"] .admin-metric-chip:hover {
+  background: #44403c !important;
+  border-color: rgba(251, 191, 36, 0.45) !important;
+}
+
 html[data-admin-theme="controller"] .admin-metric-chip strong {
   color: #fde68a !important;
 }
 
+html[data-admin-theme="controller"] .admin-controller-badge {
+  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%) !important;
+  color: #78350f !important;
+  border-color: #fbbf24 !important;
+  font-weight: 800 !important;
+}
+
+/* ——— Admin design-system surfaces ——— */
 html[data-admin-theme="controller"] .admin-main {
   color: #f5f5f4 !important;
 }
@@ -129,16 +196,20 @@ html[data-admin-theme="controller"] .admin-kpi-value {
 
 html[data-admin-theme="controller"] .admin-card,
 html[data-admin-theme="controller"] .admin-platform-hero,
-html[data-admin-theme="controller"] .admin-kpi {
+html[data-admin-theme="controller"] .admin-kpi,
+html[data-admin-theme="controller"] .admin-table-wrap,
+html[data-admin-theme="controller"] .admin-modal,
+html[data-admin-theme="controller"] .admin-modal-lg {
   background: #1c1917 !important;
   border-color: rgba(251, 191, 36, 0.24) !important;
   box-shadow: none !important;
   color: #f5f5f4 !important;
 }
 
-html[data-admin-theme="controller"] .admin-card-header {
+html[data-admin-theme="controller"] .admin-card-header,
+html[data-admin-theme="controller"] .admin-table thead {
   background: #0c0a09 !important;
-  border-bottom-color: rgba(251, 191, 36, 0.16) !important;
+  border-color: rgba(251, 191, 36, 0.16) !important;
 }
 
 html[data-admin-theme="controller"] .admin-platform-hero {
@@ -155,6 +226,30 @@ html[data-admin-theme="controller"] .admin-platform-hero-kicker {
   color: #fbbf24 !important;
 }
 
+html[data-admin-theme="controller"] .admin-kpi:hover {
+  border-color: rgba(251, 191, 36, 0.4) !important;
+  background: #292524 !important;
+}
+
+html[data-admin-theme="controller"] .admin-status-pill,
+html[data-admin-theme="controller"] .admin-badge {
+  background: #292524 !important;
+  border-color: rgba(251, 191, 36, 0.28) !important;
+  color: #fde68a !important;
+}
+
+html[data-admin-theme="controller"] .admin-status-live {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #6ee7b7 !important;
+}
+
+html[data-admin-theme="controller"] .admin-status-warn {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: #fde68a !important;
+}
+
 html[data-admin-theme="controller"] .admin-btn-primary {
   background: linear-gradient(180deg, #fde68a 0%, #f59e0b 50%, #d97706 100%) !important;
   border-color: #b45309 !important;
@@ -169,35 +264,60 @@ html[data-admin-theme="controller"] .admin-btn-ghost {
   color: #fde68a !important;
 }
 
+html[data-admin-theme="controller"] .admin-btn-secondary:hover,
+html[data-admin-theme="controller"] .admin-btn-ghost:hover {
+  background: #292524 !important;
+  border-color: rgba(251, 191, 36, 0.5) !important;
+}
+
 html[data-admin-theme="controller"] .admin-input,
-html[data-admin-theme="controller"] .admin-search {
+html[data-admin-theme="controller"] .admin-search,
+html[data-admin-theme="controller"] select,
+html[data-admin-theme="controller"] textarea,
+html[data-admin-theme="controller"] input[type="text"],
+html[data-admin-theme="controller"] input[type="email"],
+html[data-admin-theme="controller"] input[type="password"],
+html[data-admin-theme="controller"] input[type="number"],
+html[data-admin-theme="controller"] input[type="search"],
+html[data-admin-theme="controller"] input[type="url"],
+html[data-admin-theme="controller"] input[type="tel"],
+html[data-admin-theme="controller"] input[type="date"] {
   background: #0c0a09 !important;
   border-color: rgba(251, 191, 36, 0.3) !important;
   color: #fafaf9 !important;
 }
 
 html[data-admin-theme="controller"] .admin-input:focus,
-html[data-admin-theme="controller"] .admin-search:focus {
+html[data-admin-theme="controller"] .admin-search:focus,
+html[data-admin-theme="controller"] select:focus,
+html[data-admin-theme="controller"] textarea:focus,
+html[data-admin-theme="controller"] input:focus {
   border-color: #f59e0b !important;
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2) !important;
+  outline: none !important;
 }
 
+html[data-admin-theme="controller"] .admin-table th,
 html[data-admin-theme="controller"] th {
   color: #fde68a !important;
   background: #0c0a09 !important;
   border-color: rgba(251, 191, 36, 0.16) !important;
 }
 
+html[data-admin-theme="controller"] .admin-table td,
 html[data-admin-theme="controller"] td {
   color: #e7e5e4 !important;
   border-color: rgba(251, 191, 36, 0.12) !important;
 }
 
-html[data-admin-theme="controller"] .admin-controller-badge {
-  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 100%) !important;
-  color: #78350f !important;
-  border-color: #fbbf24 !important;
-  font-weight: 800 !important;
+html[data-admin-theme="controller"] .admin-table tbody tr:hover {
+  background: rgba(251, 191, 36, 0.06) !important;
+}
+
+html[data-admin-theme="controller"] .admin-alert-error {
+  background: rgba(225, 29, 72, 0.12) !important;
+  border-color: rgba(251, 113, 133, 0.35) !important;
+  color: #fecdd3 !important;
 }
 
 html[data-admin-theme="controller"] .admin-whats-new-fab {
@@ -207,11 +327,135 @@ html[data-admin-theme="controller"] .admin-whats-new-fab {
   z-index: 60;
 }
 
-html[data-admin-theme="controller"] .admin-nav-badge,
-html[data-admin-theme="controller"] .admin-nav-badge-alert,
-html[data-admin-theme="controller"] .admin-nav-badge-new,
-html[data-admin-theme="controller"] .admin-nav-badge-soon {
-  background: rgba(251, 191, 36, 0.14) !important;
+html[data-admin-theme="controller"] .admin-whats-new-panel {
+  background: #1c1917 !important;
+  border-color: rgba(251, 191, 36, 0.28) !important;
+  color: #f5f5f4 !important;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* ——— Hardcoded Tailwind light utilities (dashboard/content panels) ——— */
+html[data-admin-theme="controller"] .admin-shell .bg-white,
+html[data-admin-theme="controller"] .admin-shell .bg-white\/90,
+html[data-admin-theme="controller"] .admin-shell .bg-white\/80,
+html[data-admin-theme="controller"] .admin-shell .bg-slate-50,
+html[data-admin-theme="controller"] .admin-shell .bg-slate-50\/50,
+html[data-admin-theme="controller"] .admin-shell .bg-slate-50\/80,
+html[data-admin-theme="controller"] .admin-shell .bg-slate-50\/90,
+html[data-admin-theme="controller"] .admin-shell .bg-gray-50,
+html[data-admin-theme="controller"] .admin-shell .bg-zinc-50,
+html[data-admin-theme="controller"] .admin-shell .bg-stone-50 {
+  background-color: #1c1917 !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .bg-slate-100,
+html[data-admin-theme="controller"] .admin-shell .bg-gray-100,
+html[data-admin-theme="controller"] .admin-shell .bg-zinc-100,
+html[data-admin-theme="controller"] .admin-shell .bg-stone-100,
+html[data-admin-theme="controller"] .admin-shell .hover\:bg-slate-50:hover,
+html[data-admin-theme="controller"] .admin-shell .hover\:bg-slate-100:hover,
+html[data-admin-theme="controller"] .admin-shell .hover\:bg-white:hover {
+  background-color: #292524 !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .border-slate-100,
+html[data-admin-theme="controller"] .admin-shell .border-slate-200,
+html[data-admin-theme="controller"] .admin-shell .border-slate-200\/80,
+html[data-admin-theme="controller"] .admin-shell .border-slate-200\/90,
+html[data-admin-theme="controller"] .admin-shell .border-gray-200,
+html[data-admin-theme="controller"] .admin-shell .border-zinc-200,
+html[data-admin-theme="controller"] .admin-shell .hover\:border-slate-300:hover {
+  border-color: rgba(251, 191, 36, 0.22) !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .text-slate-900,
+html[data-admin-theme="controller"] .admin-shell .text-slate-800,
+html[data-admin-theme="controller"] .admin-shell .text-gray-900,
+html[data-admin-theme="controller"] .admin-shell .text-zinc-900,
+html[data-admin-theme="controller"] .admin-shell .text-zinc-950,
+html[data-admin-theme="controller"] .admin-shell .text-black {
+  color: #fffbeb !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .text-slate-700,
+html[data-admin-theme="controller"] .admin-shell .text-slate-600,
+html[data-admin-theme="controller"] .admin-shell .text-gray-700,
+html[data-admin-theme="controller"] .admin-shell .text-zinc-700 {
+  color: #e7e5e4 !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .text-slate-500,
+html[data-admin-theme="controller"] .admin-shell .text-slate-400,
+html[data-admin-theme="controller"] .admin-shell .text-gray-500,
+html[data-admin-theme="controller"] .admin-shell .text-zinc-500 {
+  color: #a8a29e !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .text-slate-300,
+html[data-admin-theme="controller"] .admin-shell .text-gray-300 {
+  color: #78716c !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .text-teal-600,
+html[data-admin-theme="controller"] .admin-shell .text-teal-700,
+html[data-admin-theme="controller"] .admin-shell .text-teal-800 {
+  color: #fbbf24 !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .bg-teal-50,
+html[data-admin-theme="controller"] .admin-shell .bg-emerald-50,
+html[data-admin-theme="controller"] .admin-shell .bg-amber-50,
+html[data-admin-theme="controller"] .admin-shell .bg-sky-50,
+html[data-admin-theme="controller"] .admin-shell .bg-rose-50,
+html[data-admin-theme="controller"] .admin-shell .bg-orange-50 {
+  background-color: #292524 !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .border-teal-100,
+html[data-admin-theme="controller"] .admin-shell .border-teal-200,
+html[data-admin-theme="controller"] .admin-shell .border-emerald-100,
+html[data-admin-theme="controller"] .admin-shell .border-emerald-200,
+html[data-admin-theme="controller"] .admin-shell .border-amber-100,
+html[data-admin-theme="controller"] .admin-shell .border-amber-200,
+html[data-admin-theme="controller"] .admin-shell .border-sky-100,
+html[data-admin-theme="controller"] .admin-shell .border-rose-100 {
+  border-color: rgba(251, 191, 36, 0.22) !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+html[data-admin-theme="controller"] .admin-shell .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(251, 191, 36, 0.14) !important;
+}
+
+/* Keep solid accent icon chips readable */
+html[data-admin-theme="controller"] .admin-shell .bg-teal-600,
+html[data-admin-theme="controller"] .admin-shell .bg-emerald-500,
+html[data-admin-theme="controller"] .admin-shell .bg-amber-500,
+html[data-admin-theme="controller"] .admin-shell .bg-rose-500,
+html[data-admin-theme="controller"] .admin-shell .bg-slate-600,
+html[data-admin-theme="controller"] .admin-shell .bg-slate-500,
+html[data-admin-theme="controller"] .admin-shell .bg-slate-700 {
+  color: #fff !important;
+}
+
+/* Pending-review chip stays gold-tinted, not washed white */
+html[data-admin-theme="controller"] .admin-shell .\!bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.16) !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .\!text-amber-800 {
   color: #fde68a !important;
-  border-color: rgba(251, 191, 36, 0.35) !important;
+}
+
+html[data-admin-theme="controller"] .admin-shell .\!border-amber-200 {
+  border-color: rgba(251, 191, 36, 0.4) !important;
+}
+
+/* Quick-onboard / special light pages inside shell */
+html[data-admin-theme="controller"] .admin-shell .qo-hero,
+html[data-admin-theme="controller"] .admin-shell .qo-panel,
+html[data-admin-theme="controller"] .admin-shell .qo-success {
+  background: #1c1917 !important;
+  border-color: rgba(251, 191, 36, 0.24) !important;
+  color: #f5f5f4 !important;
 }
