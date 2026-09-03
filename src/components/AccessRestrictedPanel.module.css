@@ -7,11 +7,11 @@
   justify-content: center;
   padding: 1.25rem;
   border-radius: 1.15rem;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+  border: 1px solid rgba(244, 63, 94, 0.18);
   background:
-    radial-gradient(ellipse 70% 55% at 12% 0%, rgba(244, 63, 94, 0.1), transparent 55%),
-    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(20, 184, 166, 0.1), transparent 50%),
-    linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
+    radial-gradient(ellipse 70% 55% at 12% 0%, rgba(244, 63, 94, 0.12), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 100% 100%, rgba(251, 113, 133, 0.08), transparent 50%),
+    linear-gradient(165deg, #ffffff 0%, #fff1f2 100%);
   box-shadow: none;
 }
 
@@ -240,20 +240,19 @@
 }
 
 /* Dark / controller themes */
-:global(html[data-admin-theme="dark"]) .root,
-:global(html[data-admin-theme="controller"]) .root {
-  border-color: rgba(148, 163, 184, 0.16);
+:global(html[data-admin-theme="dark"]) .root {
+  border-color: rgba(251, 113, 133, 0.22);
   background:
-    radial-gradient(ellipse 70% 55% at 12% 0%, rgba(244, 63, 94, 0.16), transparent 55%),
-    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(20, 184, 166, 0.12), transparent 50%),
+    radial-gradient(ellipse 70% 55% at 12% 0%, rgba(244, 63, 94, 0.18), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 100% 100%, rgba(251, 113, 133, 0.1), transparent 50%),
     linear-gradient(165deg, #0b1220 0%, #111827 100%);
 }
 
 :global(html[data-admin-theme="controller"]) .root {
-  border-color: rgba(251, 191, 36, 0.22);
+  border-color: rgba(251, 113, 133, 0.24);
   background:
-    radial-gradient(ellipse 70% 55% at 12% 0%, rgba(244, 63, 94, 0.14), transparent 55%),
-    radial-gradient(ellipse 60% 50% at 100% 100%, rgba(245, 158, 11, 0.12), transparent 50%),
+    radial-gradient(ellipse 70% 55% at 12% 0%, rgba(244, 63, 94, 0.16), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 100% 100%, rgba(251, 113, 133, 0.08), transparent 50%),
     linear-gradient(165deg, #0c0a09 0%, #1c1917 100%);
 }
 

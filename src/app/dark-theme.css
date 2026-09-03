@@ -316,9 +316,31 @@ html[data-admin-theme="dark"] .admin-whats-new-panel {
 
 /* Theme toggle control */
 html[data-admin-theme="dark"] .admin-theme-toggle {
-  background: #1e293b !important;
+  background: #0b1220 !important;
   border-color: rgba(148, 163, 184, 0.28) !important;
   color: #e2e8f0 !important;
+}
+
+html[data-admin-theme="dark"] .admin-theme-toggle:hover {
+  background: #111827 !important;
+  border-color: rgba(148, 163, 184, 0.4) !important;
+}
+
+html[data-admin-theme="dark"] .admin-theme-toggle-track {
+  background: #1e293b !important;
+}
+
+html[data-admin-theme="dark"] .admin-theme-toggle-knob {
+  background: #334155 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+}
+
+html[data-admin-theme="dark"] .admin-theme-toggle.is-dark .admin-theme-toggle-moon {
+  color: #a5b4fc !important;
+}
+
+html[data-admin-theme="dark"] .admin-theme-toggle.is-light .admin-theme-toggle-sun {
+  color: #fbbf24 !important;
 }
 
 /* ——— Hardcoded Tailwind light utilities ——— */
