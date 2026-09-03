@@ -180,14 +180,15 @@
 }
 
 .primary {
-  border: 1px solid #0f766e;
-  background: linear-gradient(180deg, #2dd4bf 0%, #14b8a6 55%, #0d9488 100%);
-  color: #042f2e;
-  box-shadow: 0 8px 18px rgba(13, 148, 136, 0.22);
+  border: 1px solid #be123c;
+  background: linear-gradient(180deg, #fb7185 0%, #e11d48 55%, #be123c 100%);
+  color: #fff1f2;
+  box-shadow: 0 8px 18px rgba(225, 29, 72, 0.28);
 }
 
 .primary:hover {
   transform: translateY(-1px);
+  filter: brightness(1.04);
 }
 
 .secondary {
@@ -290,11 +291,4 @@
   background: #0c0a09;
   border-color: rgba(251, 191, 36, 0.3);
   color: #fde68a;
-}
-
-:global(html[data-admin-theme="controller"]) .primary {
-  border-color: #b45309;
-  background: linear-gradient(180deg, #fde68a 0%, #f59e0b 50%, #d97706 100%);
-  color: #1c1917;
-  box-shadow: 0 8px 18px rgba(217, 119, 6, 0.28);
 }
