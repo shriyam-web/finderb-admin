@@ -837,6 +837,23 @@ export default function Dashboard() {
     document.body.scrollTop = 0;
   }, [activeTab]);
 
+  // Whole-console premium theme for Controller accounts
+  useEffect(() => {
+    const root = document.documentElement;
+    const isController = adminSession?.role === "controller";
+    if (isController) {
+      root.setAttribute("data-admin-theme", "controller");
+      document.body.classList.add("admin-theme-controller");
+    } else {
+      root.removeAttribute("data-admin-theme");
+      document.body.classList.remove("admin-theme-controller");
+    }
+    return () => {
+      root.removeAttribute("data-admin-theme");
+      document.body.classList.remove("admin-theme-controller");
+    };
+  }, [adminSession?.role]);
+
   useEffect(() => {
     try {
       const storedWidth = Number(localStorage.getItem(SIDEBAR_WIDTH_KEY));
@@ -2241,6 +2258,18 @@ export default function Dashboard() {
       className={`admin-shell flex min-h-screen ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${
         adminSession?.role === "controller" ? "admin-shell-controller" : ""
       }`}
+      data-admin-theme={
+        adminSession?.role === "controller" ? "controller" : undefined
+      }
+      style={
+        adminSession?.role === "controller"
+          ? {
+              background:
+                "radial-gradient(1100px 560px at 90% -10%, rgba(245,158,11,0.28), transparent 55%), linear-gradient(165deg, #050403 0%, #1c1917 45%, #0c0a09 100%)",
+              color: "#f5f5f4",
+            }
+          : undefined
+      }
     >
       {isSidebarOpen && (
         <div
