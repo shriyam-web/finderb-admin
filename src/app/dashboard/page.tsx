@@ -2238,7 +2238,9 @@ export default function Dashboard() {
 
   return (
     <div
-      className={`admin-shell flex min-h-screen ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}
+      className={`admin-shell flex min-h-screen ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${
+        adminSession?.role === "controller" ? "admin-shell-controller" : ""
+      }`}
     >
       {isSidebarOpen && (
         <div
@@ -2285,8 +2287,16 @@ export default function Dashboard() {
                 />
                 {!sidebarCollapsed && (
                   <div className="space-y-0.5 px-0.5">
-                    <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-teal-200">
-                      Control deck
+                    <p
+                      className={`text-[11px] font-semibold tracking-[0.16em] uppercase ${
+                        adminSession?.role === "controller"
+                          ? "text-amber-200"
+                          : "text-teal-200"
+                      }`}
+                    >
+                      {adminSession?.role === "controller"
+                        ? "Controller suite"
+                        : "Control deck"}
                     </p>
                     <p className="text-[11px] text-slate-200 leading-snug">
                       Signed in as{" "}
@@ -2771,7 +2781,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="hidden md:inline admin-badge bg-teal-50 text-teal-800 border-teal-100 capitalize">
+            <span
+              className={`hidden md:inline admin-badge capitalize ${
+                adminSession?.role === "controller"
+                  ? "admin-controller-badge"
+                  : "bg-teal-50 text-teal-800 border-teal-100"
+              }`}
+            >
               {adminSession?.role?.replace("_", " ") || "Admin"}
             </span>
             <button
