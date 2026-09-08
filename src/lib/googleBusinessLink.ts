@@ -16,7 +16,12 @@ export const WEEKDAYS = [
   "Sunday",
 ] as const;
 
-export type DayHours = { isClosed: boolean; open: string; close: string };
+export type DayHours = {
+  isClosed: boolean;
+  open: string;
+  close: string;
+  is24Hours?: boolean;
+};
 export type WeekTimings = Record<(typeof WEEKDAYS)[number], DayHours>;
 
 export type GoogleBusinessExtract = {
@@ -399,6 +404,7 @@ export function googleOpeningHoursToTimings(
         isClosed: false,
         open: "00:00",
         close: "23:59",
+        is24Hours: true,
       };
       continue;
     }

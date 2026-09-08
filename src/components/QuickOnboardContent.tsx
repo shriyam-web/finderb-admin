@@ -16,10 +16,8 @@ import {
   type QuickOnboardDraft,
 } from "../lib/quickOnboard";
 import { getBusinessLoginUrl, getBusinessProfileUrl } from "../lib/site";
-import {
-  WEEKDAYS,
-  type WeekTimings,
-} from "../lib/googleBusinessLink";
+import { emptyWeekTimings } from "../lib/workingHours";
+import WorkingHoursEditor from "./WorkingHoursEditor";
 import { AiJsonArt, MapsImportArt } from "./OnboardHeroArt";
 import PaymentModesCheckboxes from "./PaymentModesCheckboxes";
 
@@ -291,75 +289,6 @@ function GoogleFetchTheater({
             {FETCH_LOG_LINES[logIndex]}
           </span>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function formatTimeAmPm(value: string): string {
-  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!match) return value;
-  let hour = Number(match[1]);
-  const minute = match[2];
-  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return value;
-  const period = hour >= 12 ? "PM" : "AM";
-  hour = hour % 12;
-  if (hour === 0) hour = 12;
-  return `${hour}:${minute} ${period}`;
-}
-
-function formatHoursSlot(slot: {
-  isClosed: boolean;
-  open: string;
-  close: string;
-}) {
-  if (slot.isClosed) return "Closed";
-  return `${formatTimeAmPm(slot.open)} – ${formatTimeAmPm(slot.close)}`;
-}
-
-function ImportedHoursPanel({
-  timings,
-  onClear,
-}: {
-  timings: WeekTimings;
-  onClear: () => void;
-}) {
-  return (
-    <div className="qo-hours-panel">
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div>
-          <span className="admin-label">Working hours</span>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Auto-fetched from Google · shown in AM/PM
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="qo-hours-badge">Imported</span>
-          <button
-            type="button"
-            className="text-[11px] font-semibold text-slate-500 hover:text-rose-600"
-            onClick={onClear}
-          >
-            Clear
-          </button>
-        </div>
-      </div>
-      <div className="qo-hours-grid">
-        {WEEKDAYS.map((day) => {
-          const slot = timings[day];
-          const closed = slot?.isClosed;
-          return (
-            <div
-              key={day}
-              className={`qo-hours-row ${closed ? "qo-hours-row-closed" : ""}`}
-            >
-              <span className="qo-hours-day">{day.slice(0, 3)}</span>
-              <span className="qo-hours-slot">
-                {slot ? formatHoursSlot(slot) : "—"}
-              </span>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
@@ -2021,20 +1950,12 @@ export default function QuickOnboardContent({
                       />
                     </label>
 
-                    {draft.timings ? (
-                      <ImportedHoursPanel
-                        timings={draft.timings}
-                        onClear={() => patchDraft({ timings: null })}
-                      />
-                    ) : method === "link" ? (
-                      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/70 px-3 py-3">
-                        <span className="admin-label">Working hours</span>
-                        <p className="mt-1 text-[12px] text-slate-500">
-                          No opening hours came back from Google for this
-                          place. Add them later on the merchant profile.
-                        </p>
-                      </div>
-                    ) : null}
+                    <WorkingHoursEditor
+                      value={draft.timings || emptyWeekTimings()}
+                      onChange={(next) => patchDraft({ timings: next })}
+                      onClear={() => patchDraft({ timings: null })}
+                      heading="Working hours"
+                    />
 
                     {draft.rating != null && (
                       <div className="qo-google-rating">

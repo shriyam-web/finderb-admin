@@ -31,6 +31,8 @@ import { getBusinessProfileUrl } from "../lib/site";
 import { isPlaceholderEmail } from "../lib/placeholderEmail";
 import type { CategoryRef } from "../lib/categoryLabel";
 import { PAYMENT_MODE_OPTIONS } from "../lib/paymentModes";
+import WorkingHoursEditor from "./WorkingHoursEditor";
+import { normalizeWeekTimings } from "../lib/workingHours";
 import {
   CategoryLabelDisplay,
   CategorySubcategoryPicker,
@@ -158,14 +160,12 @@ const WEEKDAYS = [
   "Sunday",
 ] as const;
 
-type DayHours = { isClosed: boolean; open: string; close: string };
-type WeekTimings = Record<(typeof WEEKDAYS)[number], DayHours>;
-
-const DEFAULT_DAY: DayHours = {
-  isClosed: false,
-  open: "09:00",
-  close: "18:00",
-};
+type WeekTimings = Record<(typeof WEEKDAYS)[number], {
+  isClosed: boolean;
+  open: string;
+  close: string;
+  is24Hours?: boolean;
+}>;
 
 const DISCOUNT_OPTIONS = [
   "Up to 10%",
@@ -185,47 +185,6 @@ function splitList(value: string | null | undefined): string[] | null {
     .map((item) => item.trim())
     .filter(Boolean);
   return items.length ? items : null;
-}
-
-function normalizeTimings(timings: unknown): WeekTimings {
-  const source =
-    timings && typeof timings === "object"
-      ? (timings as Record<string, unknown>)
-      : {};
-
-  return WEEKDAYS.reduce((acc, day) => {
-    const slot = source[day];
-    if (!slot || slot === "Closed") {
-      acc[day] = { isClosed: true, open: "09:00", close: "18:00" };
-      return acc;
-    }
-    if (typeof slot === "string") {
-      const match = slot.match(
-        /(\d{1,2}:\d{2})\s*[–\-—to]+\s*(\d{1,2}:\d{2})/i,
-      );
-      if (match) {
-        acc[day] = { isClosed: false, open: match[1], close: match[2] };
-      } else {
-        acc[day] = { ...DEFAULT_DAY };
-      }
-      return acc;
-    }
-    if (typeof slot === "object" && slot !== null) {
-      const parsed = slot as {
-        isClosed?: boolean;
-        open?: string;
-        close?: string;
-      };
-      acc[day] = {
-        isClosed: Boolean(parsed.isClosed),
-        open: parsed.open || "09:00",
-        close: parsed.close || "18:00",
-      };
-      return acc;
-    }
-    acc[day] = { ...DEFAULT_DAY };
-    return acc;
-  }, {} as WeekTimings);
 }
 
 function formatStatusLabel(value: string | null | undefined): string {
@@ -270,9 +229,11 @@ function formatTimeAmPm(value: string): string {
 
 function formatTimings(timings: unknown): string {
   if (!timings || typeof timings !== "object") return "—";
+  const week = normalizeWeekTimings(timings);
   return WEEKDAYS.map((day) => {
-    const slot = normalizeTimings(timings)[day];
+    const slot = week[day];
     if (slot.isClosed) return `${day}: Closed`;
+    if (slot.is24Hours) return `${day}: Open 24 hours`;
     return `${day}: ${formatTimeAmPm(slot.open)} – ${formatTimeAmPm(slot.close)}`;
   }).join("\n");
 }
@@ -864,88 +825,17 @@ function TimingsEditor({
   editing: boolean;
   onChange: (next: WeekTimings) => void;
 }) {
-  const timings = normalizeTimings(value);
-
   if (!editing) {
     return <BlockRow label="Business hours" value={formatTimings(value)} />;
   }
 
-  const patchDay = (
-    day: (typeof WEEKDAYS)[number],
-    patch: Partial<DayHours>,
-  ) => {
-    onChange({
-      ...timings,
-      [day]: { ...timings[day], ...patch },
-    });
-  };
-
-  const applyWeekdays = () => {
-    const template = timings.Monday;
-    onChange({
-      ...timings,
-      Tuesday: { ...template },
-      Wednesday: { ...template },
-      Thursday: { ...template },
-      Friday: { ...template },
-    });
-  };
-
   return (
-    <div className="px-3 py-2 space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-slate-500">Business hours</span>
-        <button
-          type="button"
-          onClick={applyWeekdays}
-          className="text-[10px] font-medium text-teal-700 hover:underline"
-        >
-          Copy Mon → Fri
-        </button>
-      </div>
-      <div className="space-y-1.5">
-        {WEEKDAYS.map((day) => {
-          const slot = timings[day];
-          return (
-            <div
-              key={day}
-              className="flex flex-wrap items-center gap-2 rounded-md border border-slate-100 bg-slate-50/70 px-2 py-1.5"
-            >
-              <span className="w-16 text-[11px] font-medium text-slate-700">
-                {day.slice(0, 3)}
-              </span>
-              <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={slot.isClosed}
-                  onChange={(e) =>
-                    patchDay(day, { isClosed: e.target.checked })
-                  }
-                  className="rounded border-slate-300"
-                />
-                Closed
-              </label>
-              {!slot.isClosed && (
-                <>
-                  <input
-                    type="time"
-                    value={slot.open}
-                    onChange={(e) => patchDay(day, { open: e.target.value })}
-                    className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-900"
-                  />
-                  <span className="text-[11px] text-slate-400">to</span>
-                  <input
-                    type="time"
-                    value={slot.close}
-                    onChange={(e) => patchDay(day, { close: e.target.value })}
-                    className="rounded-md border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-900"
-                  />
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
+    <div className="px-3 py-2">
+      <WorkingHoursEditor
+        value={value}
+        onChange={onChange}
+        heading="Business hours"
+      />
     </div>
   );
 }
@@ -1235,7 +1125,7 @@ export default function MerchantDetailModal({
         facebookUrl: draft.facebookUrl,
         youtubeUrl: draft.youtubeUrl,
         paymentModes: draft.paymentModes,
-        timings: normalizeTimings(draft.timings),
+        timings: normalizeWeekTimings(draft.timings),
         profileQrLink: getBusinessProfileUrl({
           id: draft.id,
           businessName: draft.businessName,

@@ -19,6 +19,7 @@ export type RegistrationCategory = {
   id: string;
   name: string;
   parent_id?: string | null;
+  level?: number | null;
 };
 
 type AdminSession = {
@@ -37,6 +38,7 @@ type FormState = {
   displayName: string;
   categoryId: string;
   subcategoryId: string;
+  nestedSubcategoryId: string;
   addressLine1: string;
   addressLine2: string;
   countryCode: string;
@@ -63,6 +65,7 @@ const INITIAL_FORM: FormState = {
   displayName: "",
   categoryId: "",
   subcategoryId: "",
+  nestedSubcategoryId: "",
   addressLine1: "",
   addressLine2: "",
   countryCode: "IN",
@@ -223,6 +226,17 @@ export default function MerchantRegistrationContent({
     [categories, form.categoryId],
   );
 
+  const nestedSubcategories = useMemo(
+    () =>
+      categories
+        .filter((c) => c.parent_id === form.subcategoryId)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [categories, form.subcategoryId],
+  );
+
+  const selectedRoot = topCategories.find((c) => c.id === form.categoryId);
+  const rootIsGroup = Boolean(selectedRoot && selectedRoot.level === 0);
+
   const countryOptions = useMemo(
     () =>
       Country.getAllCountries().map((c) => ({
@@ -267,10 +281,15 @@ export default function MerchantRegistrationContent({
   };
 
   const resolveCategoryLabel = () => {
-    const parent = topCategories.find((c) => c.id === form.categoryId);
-    if (!parent) return "";
+    const root = topCategories.find((c) => c.id === form.categoryId);
+    if (!root) return "";
     const child = subcategories.find((c) => c.id === form.subcategoryId);
-    return child ? `${parent.name} › ${child.name}` : parent.name;
+    const leaf = nestedSubcategories.find((c) => c.id === form.nestedSubcategoryId);
+    if (root.level === 0) {
+      if (!child) return "";
+      return leaf ? `${child.name} › ${leaf.name}` : child.name;
+    }
+    return child ? `${root.name} › ${child.name}` : root.name;
   };
 
   const copyText = async (value: string, kind: "password" | "message") => {
@@ -328,7 +347,12 @@ export default function MerchantRegistrationContent({
     if (!form.categoryId)
       next.categoryId = "Please select a business category.";
     if (subcategories.length > 0 && !form.subcategoryId) {
-      next.subcategoryId = "Please select a subcategory.";
+      next.subcategoryId = rootIsGroup
+        ? "Please select a category."
+        : "Please select a subcategory.";
+    }
+    if (nestedSubcategories.length > 0 && !form.nestedSubcategoryId) {
+      next.nestedSubcategoryId = "Please select a subcategory.";
     }
     if (
       !form.addressLine1.trim() ||
@@ -783,7 +807,11 @@ export default function MerchantRegistrationContent({
                     className="admin-input"
                     value={form.categoryId}
                     onChange={(e) =>
-                      patch({ categoryId: e.target.value, subcategoryId: "" })
+                      patch({
+                        categoryId: e.target.value,
+                        subcategoryId: "",
+                        nestedSubcategoryId: "",
+                      })
                     }
                   >
                     <option value="">Select category</option>
@@ -797,17 +825,47 @@ export default function MerchantRegistrationContent({
                 {subcategories.length > 0 && (
                   <Field
                     id="subcategoryId"
-                    label="Subcategory *"
+                    label={rootIsGroup ? "Category *" : "Subcategory *"}
                     error={errors.subcategoryId}
                   >
                     <select
                       id="subcategoryId"
                       className="admin-input"
                       value={form.subcategoryId}
-                      onChange={(e) => patch({ subcategoryId: e.target.value })}
+                      onChange={(e) =>
+                        patch({
+                          subcategoryId: e.target.value,
+                          nestedSubcategoryId: "",
+                        })
+                      }
+                    >
+                      <option value="">
+                        {rootIsGroup ? "Select category" : "Select subcategory"}
+                      </option>
+                      {subcategories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
+                {nestedSubcategories.length > 0 && (
+                  <Field
+                    id="nestedSubcategoryId"
+                    label="Subcategory *"
+                    error={errors.nestedSubcategoryId}
+                  >
+                    <select
+                      id="nestedSubcategoryId"
+                      className="admin-input"
+                      value={form.nestedSubcategoryId}
+                      onChange={(e) =>
+                        patch({ nestedSubcategoryId: e.target.value })
+                      }
                     >
                       <option value="">Select subcategory</option>
-                      {subcategories.map((c) => (
+                      {nestedSubcategories.map((c) => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>

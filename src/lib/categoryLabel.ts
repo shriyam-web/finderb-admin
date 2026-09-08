@@ -5,7 +5,19 @@ export type CategoryRef = {
   name: string;
   parent_id?: string | null;
   symbol?: string | null;
+  level?: number | null;
 };
+
+export function inferCategoryLevel(
+  cat: CategoryRef,
+  all: CategoryRef[],
+): 0 | 1 | 2 {
+  if (cat.level === 0) return 0;
+  if (!cat.parent_id) return 1;
+  const parent = all.find((item) => item.id === cat.parent_id);
+  if (parent?.level === 0) return 1;
+  return 2;
+}
 
 export function parseCategoryLabel(label: string | null | undefined): {
   parent: string;
@@ -84,13 +96,33 @@ export function countPartnersForCategory(
   allCategories: CategoryRef[],
 ): number {
   const parentsById = new Map(allCategories.map((c) => [c.id, c]));
+  const kind = inferCategoryLevel(cat, allCategories);
 
   return merchants.filter((m) => {
     const parsed = parseCategoryLabel(m.category);
     if (!parsed.parent) return false;
 
-    if (cat.parent_id) {
-      const parent = parentsById.get(cat.parent_id);
+    if (kind === 0) {
+      const categoryChildren = allCategories.filter((c) => c.parent_id === cat.id);
+      const categoryNames = new Set(
+        categoryChildren.map((c) => c.name.trim().toLowerCase()),
+      );
+      const subNames = new Set(
+        allCategories
+          .filter((c) => categoryChildren.some((mid) => mid.id === c.parent_id))
+          .map((c) => c.name.trim().toLowerCase()),
+      );
+      const parentNorm = parsed.parent.toLowerCase();
+      const childNorm = (parsed.child || "").toLowerCase();
+      if (categoryNames.has(parentNorm)) return true;
+      if (subNames.has(parentNorm) || (childNorm && subNames.has(childNorm))) {
+        return true;
+      }
+      return false;
+    }
+
+    if (kind === 2) {
+      const parent = cat.parent_id ? parentsById.get(cat.parent_id) : null;
       if (!parent) return false;
       if (parsed.child) {
         return (
@@ -98,18 +130,14 @@ export function countPartnersForCategory(
           namesEqual(parsed.child, cat.name)
         );
       }
-      // Legacy child-only label
       return namesEqual(parsed.parent, cat.name);
     }
 
-    // Parent card: any merchant under this parent tree
+    // Category (level 1)
     if (namesEqual(parsed.parent, cat.name)) return true;
-
-    // Legacy: merchant stored only child name belonging to this parent
     if (!parsed.child) {
       return allCategories.some(
-        (c) =>
-          c.parent_id === cat.id && namesEqual(c.name, parsed.parent),
+        (c) => c.parent_id === cat.id && namesEqual(c.name, parsed.parent),
       );
     }
     return false;

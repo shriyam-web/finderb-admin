@@ -277,6 +277,7 @@ interface Category {
   banner: string;
   symbol: string;
   parent_id?: string | null;
+  level?: number;
   fixedSlots: number;
   type: "Merchant" | "Service";
   position_1_business_id?: string | null;
@@ -285,6 +286,14 @@ interface Category {
   position_4_business_id?: string | null;
   position_5_business_id?: string | null;
   position?: number;
+}
+
+function inferCategoryLevel(cat: Category, all: Category[]): 0 | 1 | 2 {
+  if (cat.level === 0) return 0;
+  if (!cat.parent_id) return 1;
+  const parent = all.find((item) => item.id === cat.parent_id);
+  if (parent?.level === 0) return 1;
+  return 2;
 }
 
 function getCategoryConfiguredSlots(cat: Category) {
@@ -1116,6 +1125,7 @@ export default function Dashboard() {
               banner: c.banner || "Not Set",
               symbol: c.symbol || "Not Set",
               parent_id: c.parent_id,
+              level: typeof c.level === "number" ? c.level : undefined,
               fixedSlots: c.fixed_slots || 0,
               type: c.type || "Merchant",
               position_1_business_id: c.position_1_business_id,
@@ -1658,6 +1668,7 @@ export default function Dashboard() {
     const safeUpdate: any = {
       banner: updates.banner,
       parent_id: updates.parent_id,
+      level: updates.level,
       position_1_business_id: updates.position_1_business_id,
       position_2_business_id: updates.position_2_business_id,
       position_3_business_id: updates.position_3_business_id,
@@ -1668,6 +1679,9 @@ export default function Dashboard() {
       fixed_slots: updates.fixedSlots,
       position: updates.position,
     };
+    if (updates.name !== undefined) {
+      safeUpdate.name = updates.name;
+    }
 
     // Only include symbol if it exists in update
     if ("symbol" in updates && updates.symbol !== undefined) {
@@ -1721,8 +1735,14 @@ export default function Dashboard() {
           banner: category.banner || "Not Set",
           symbol: category.symbol || "Not Set",
           parent_id: category.parent_id || null,
+          level: category.level ?? (category.parent_id ? 2 : 1),
           fixed_slots: category.fixedSlots || 0,
           position: category.position || 0,
+          position_1_business_id: category.position_1_business_id || null,
+          position_2_business_id: category.position_2_business_id || null,
+          position_3_business_id: category.position_3_business_id || null,
+          position_4_business_id: category.position_4_business_id || null,
+          position_5_business_id: category.position_5_business_id || null,
         },
       ])
       .select();
@@ -1745,6 +1765,7 @@ export default function Dashboard() {
             banner: newCat.banner || "Not Set",
             symbol: newCat.symbol || "Not Set",
             parent_id: newCat.parent_id,
+            level: newCat.level,
             fixedSlots: newCat.fixed_slots || 0,
             type: newCat.type || "Merchant",
             position: newCat.position || 0,
@@ -5757,6 +5778,7 @@ function CategoriesContent({
     banner: "Not Set",
     symbol: "Not Set",
     fixedSlots: 0,
+    level: 1,
   });
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{
@@ -5874,6 +5896,7 @@ function CategoriesContent({
         banner: "Not Set",
         symbol: "Not Set",
         fixedSlots: 0,
+        level: 1,
       });
     }
   };
@@ -6007,17 +6030,79 @@ function CategoriesContent({
                 </select>
               </div>
               <div>
-                <label className={fieldLabel}>Parent</label>
+                <label className={fieldLabel}>Kind</label>
+                <select
+                  value={String(
+                    inferCategoryLevel(cat as Category, categories),
+                  )}
+                  onChange={(e) => {
+                    const nextLevel = Number(e.target.value) as 0 | 1 | 2;
+                    const parentOptions =
+                      nextLevel === 1
+                        ? categories.filter(
+                            (c) =>
+                              c.id !== cat.id &&
+                              inferCategoryLevel(c, categories) === 0,
+                          )
+                        : nextLevel === 2
+                          ? categories.filter(
+                              (c) =>
+                                c.id !== cat.id &&
+                                inferCategoryLevel(c, categories) === 1,
+                            )
+                          : [];
+                    setCat({
+                      ...cat,
+                      level: nextLevel,
+                      parent_id:
+                        nextLevel === 0
+                          ? null
+                          : parentOptions.some((p) => p.id === cat.parent_id)
+                            ? cat.parent_id
+                            : null,
+                    });
+                  }}
+                  className={fieldInput}
+                >
+                  <option value="0">Parent category</option>
+                  <option value="1">Category</option>
+                  <option value="2">Subcategory</option>
+                </select>
+              </div>
+              <div>
+                <label className={fieldLabel}>
+                  {inferCategoryLevel(cat as Category, categories) === 2
+                    ? "Parent category (Category)"
+                    : inferCategoryLevel(cat as Category, categories) === 1
+                      ? "Parent category (optional grouping)"
+                      : "Parent"}
+                </label>
                 <select
                   value={cat.parent_id || ""}
+                  disabled={
+                    inferCategoryLevel(cat as Category, categories) === 0
+                  }
                   onChange={(e) =>
                     setCat({ ...cat, parent_id: e.target.value || null })
                   }
                   className={fieldInput}
                 >
-                  <option value="">None — top level</option>
+                  <option value="">
+                    {inferCategoryLevel(cat as Category, categories) === 0
+                      ? "None — top-level parent"
+                      : inferCategoryLevel(cat as Category, categories) === 1
+                        ? "None — ungrouped category"
+                        : "Select category"}
+                  </option>
                   {categories
-                    .filter((c) => c.id !== cat.id && !c.parent_id)
+                    .filter((c) => {
+                      if (c.id === cat.id) return false;
+                      const kind = inferCategoryLevel(cat as Category, categories);
+                      const optionKind = inferCategoryLevel(c, categories);
+                      if (kind === 1) return optionKind === 0;
+                      if (kind === 2) return optionKind === 1;
+                      return false;
+                    })
                     .map((parent) => (
                       <option key={parent.id} value={parent.id}>
                         {parent.name}
@@ -6369,14 +6454,33 @@ function CategoriesContent({
           <div className="flex items-center gap-2 text-xs text-slate-500 px-0.5">
             <span className="tabular-nums">
               <span className="font-medium text-slate-700">
-                {filteredTopLevel.length}
+                {
+                  filteredCategories.filter(
+                    (c) => inferCategoryLevel(c, categories) === 0,
+                  ).length
+                }
               </span>{" "}
-              parents
+              parent categories
             </span>
             <span className="text-slate-300">·</span>
             <span className="tabular-nums">
               <span className="font-medium text-slate-700">
-                {filteredCategories.filter((c) => c.parent_id).length}
+                {
+                  filteredCategories.filter(
+                    (c) => inferCategoryLevel(c, categories) === 1,
+                  ).length
+                }
+              </span>{" "}
+              categories
+            </span>
+            <span className="text-slate-300">·</span>
+            <span className="tabular-nums">
+              <span className="font-medium text-slate-700">
+                {
+                  filteredCategories.filter(
+                    (c) => inferCategoryLevel(c, categories) === 2,
+                  ).length
+                }
               </span>{" "}
               subcategories
             </span>
@@ -6449,17 +6553,58 @@ function CategoriesContent({
 
                   {children.length > 0 && (
                     <div className="bg-slate-50/40">
-                      {children.map((child, index) => (
-                        <CategoryTreeRow
-                          key={child.id}
-                          cat={child}
-                          partnerCount={partnerCountById.get(child.id) ?? 0}
-                          onEdit={setEditingCategory}
-                          canManage={canManage}
-                          depth="child"
-                          isLast={index === children.length - 1}
-                        />
-                      ))}
+                      {children.map((child, index) => {
+                        const grandchildren = categories.filter(
+                          (c) => c.parent_id === child.id,
+                        );
+                        const visibleGrandchildren = grandchildren.filter((c) => {
+                          if (
+                            !categorySearch.trim() &&
+                            slotsFilter === "All" &&
+                            infoFilter === "All" &&
+                            statusFilter === "All"
+                          ) {
+                            return true;
+                          }
+                          return matchesFilters(c);
+                        });
+                        const childDepth =
+                          inferCategoryLevel(parent, categories) === 0
+                            ? "mid"
+                            : "child";
+                        return (
+                          <div key={child.id}>
+                            <CategoryTreeRow
+                              cat={child}
+                              partnerCount={partnerCountById.get(child.id) ?? 0}
+                              childCount={grandchildren.length}
+                              onEdit={setEditingCategory}
+                              canManage={canManage}
+                              depth={childDepth}
+                              isLast={
+                                index === children.length - 1 &&
+                                visibleGrandchildren.length === 0
+                              }
+                            />
+                            {visibleGrandchildren.map((grand, grandIndex) => (
+                              <CategoryTreeRow
+                                key={grand.id}
+                                cat={grand}
+                                partnerCount={
+                                  partnerCountById.get(grand.id) ?? 0
+                                }
+                                onEdit={setEditingCategory}
+                                canManage={canManage}
+                                depth="child"
+                                isLast={
+                                  index === children.length - 1 &&
+                                  grandIndex === visibleGrandchildren.length - 1
+                                }
+                              />
+                            ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -6569,13 +6714,14 @@ function CategoryTreeRow({
 }: {
   cat: Category;
   onEdit: (c: Category) => void;
-  depth: "parent" | "child";
+  depth: "parent" | "mid" | "child";
   partnerCount: number;
   childCount?: number;
   isLast?: boolean;
   canManage?: boolean;
 }) {
   const isParent = depth === "parent";
+  const isMid = depth === "mid";
 
   return (
     <div
@@ -6609,7 +6755,17 @@ function CategoryTreeRow({
           </h3>
           {isParent && (
             <span className="shrink-0 text-[11px] font-medium text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">
-              Parent
+              {cat.level === 0 ? "Parent" : "Category"}
+            </span>
+          )}
+          {isMid && (
+            <span className="shrink-0 text-[11px] font-medium text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded">
+              Category
+            </span>
+          )}
+          {depth === "child" && (
+            <span className="shrink-0 text-[11px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+              Sub
             </span>
           )}
           {!isCategoryInfoComplete(cat) && (
@@ -6621,6 +6777,9 @@ function CategoryTreeRow({
         <p className="text-xs text-slate-500 mt-0.5 tabular-nums truncate">
           {partnerCount} partner{partnerCount === 1 ? "" : "s"}
           {isParent && typeof childCount === "number"
+            ? ` · ${childCount} ${cat.level === 0 ? "categor" : "sub"}${childCount === 1 ? (cat.level === 0 ? "y" : "") : cat.level === 0 ? "ies" : "s"}`
+            : ""}
+          {isMid && typeof childCount === "number"
             ? ` · ${childCount} sub${childCount === 1 ? "" : "s"}`
             : ""}
           {" · "}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  inferCategoryLevel,
   matchCategoriesFromLabel,
   resolveCategoryLabel,
   type CategoryRef,
@@ -185,15 +186,16 @@ export function CategorySubcategoryPicker({
 
   const [parentId, setParentId] = useState(matched.parent?.id || "");
   const [childId, setChildId] = useState(matched.child?.id || "");
+  const [leafId, setLeafId] = useState("");
 
-  // Re-sync when external value changes (e.g. cancel edit / switch merchant)
   useEffect(() => {
     const next = matchCategoriesFromLabel(value, categories);
     setParentId(next.parent?.id || "");
     setChildId(next.child?.id || "");
+    setLeafId("");
   }, [value, categories]);
 
-  const parents = useMemo(
+  const roots = useMemo(
     () =>
       categories
         .filter((c) => !c.parent_id)
@@ -211,56 +213,109 @@ export function CategorySubcategoryPicker({
     [categories, parentId],
   );
 
-  const selectedParent = parents.find((p) => p.id === parentId) || null;
-  const selectedChild = children.find((c) => c.id === childId) || null;
+  const leaves = useMemo(
+    () =>
+      categories
+        .filter((c) => c.parent_id === childId)
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [categories, childId],
+  );
 
-  const emit = (parent: CategoryRef | null, child: CategoryRef | null) => {
-    if (!parent) {
+  const selectedRoot = roots.find((p) => p.id === parentId) || null;
+  const selectedChild = children.find((c) => c.id === childId) || null;
+  const selectedLeaf = leaves.find((c) => c.id === leafId) || null;
+  const rootIsGroup = selectedRoot
+    ? inferCategoryLevel(selectedRoot, categories) === 0
+    : false;
+
+  const emit = (
+    root: CategoryRef | null,
+    mid: CategoryRef | null,
+    leaf: CategoryRef | null,
+  ) => {
+    if (!root) {
       onChange("");
       return;
     }
-    onChange(resolveCategoryLabel(parent.name, child?.name));
+    if (inferCategoryLevel(root, categories) === 0) {
+      if (!mid) {
+        onChange("");
+        return;
+      }
+      onChange(resolveCategoryLabel(mid.name, leaf?.name));
+      return;
+    }
+    onChange(resolveCategoryLabel(root.name, mid?.name));
   };
 
   return (
     <div className="px-3 py-2 space-y-2.5">
       <DropdownSelect
-        label="Category"
-        value={selectedParent}
+        label={rootIsGroup || roots.some((r) => inferCategoryLevel(r, categories) === 0) ? "Parent category" : "Category"}
+        value={selectedRoot}
         placeholder="Select category"
-        options={parents}
+        options={roots}
         onChange={(parent) => {
           setParentId(parent?.id || "");
           setChildId("");
-          emit(parent, null);
+          setLeafId("");
+          emit(parent, null, null);
         }}
       />
       {parentId && children.length > 0 && (
         <DropdownSelect
-          label="Subcategory"
+          label={rootIsGroup ? "Category" : "Subcategory"}
           value={selectedChild}
-          placeholder="Select subcategory"
+          placeholder={rootIsGroup ? "Select category" : "Select subcategory"}
           options={children}
           onChange={(child) => {
             setChildId(child?.id || "");
-            emit(selectedParent, child);
+            setLeafId("");
+            emit(selectedRoot, child, null);
           }}
         />
       )}
-      {selectedParent && (
+      {childId && leaves.length > 0 && (
+        <DropdownSelect
+          label="Subcategory"
+          value={selectedLeaf}
+          placeholder="Select subcategory"
+          options={leaves}
+          onChange={(leaf) => {
+            setLeafId(leaf?.id || "");
+            emit(selectedRoot, selectedChild, leaf);
+          }}
+        />
+      )}
+      {(selectedChild || (selectedRoot && !rootIsGroup)) && (
         <div className="flex items-center gap-2 pt-0.5">
           <SymbolThumb
-            symbol={selectedChild?.symbol || selectedParent.symbol}
-            name={selectedChild?.name || selectedParent.name}
+            symbol={
+              selectedLeaf?.symbol ||
+              selectedChild?.symbol ||
+              selectedRoot?.symbol
+            }
+            name={
+              selectedLeaf?.name ||
+              selectedChild?.name ||
+              selectedRoot?.name ||
+              ""
+            }
             size="sm"
           />
           <p className="text-[10px] text-slate-500 truncate">
             Saves as{" "}
             <span className="font-medium text-slate-700">
-              {resolveCategoryLabel(
-                selectedParent.name,
-                selectedChild?.name,
-              )}
+              {rootIsGroup
+                ? resolveCategoryLabel(
+                    selectedChild?.name || "",
+                    selectedLeaf?.name,
+                  )
+                : resolveCategoryLabel(
+                    selectedRoot?.name || "",
+                    selectedChild?.name,
+                  )}
             </span>
           </p>
         </div>

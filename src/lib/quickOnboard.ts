@@ -10,6 +10,7 @@ import {
   type MerchantRegistrationPayload,
 } from "./merchantRegistration";
 import type { WeekTimings } from "./googleBusinessLink";
+import { normalizeWeekTimings } from "./workingHours";
 import { DEFAULT_ONBOARDING_PAYMENT_MODES } from "./paymentModes";
 
 /** Strict schema keys the AI must return. */
@@ -278,7 +279,7 @@ function asStringArray(value: unknown): string[] {
 
 function asTimings(value: unknown): WeekTimings | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  return value as WeekTimings;
+  return normalizeWeekTimings(value);
 }
 
 function digitsPhone(value: string): string {
