@@ -10,6 +10,7 @@ import {
   type WhatsNewEntry,
 } from "../lib/whatsNew";
 import { useAdminToast } from "./AdminToast";
+import AdminOverlay from "./AdminOverlay";
 
 type Props = {
   open: boolean;
@@ -151,7 +152,7 @@ export default function WhatsNewPanel({
       )}
 
       {open && (
-        <div className="fixed inset-0 z-[80]" role="dialog" aria-modal="true">
+        <AdminOverlay className="" role="dialog">
           <button
             type="button"
             className="absolute inset-0 bg-slate-900/25"
@@ -249,7 +250,7 @@ export default function WhatsNewPanel({
                 ))}
             </div>
           </aside>
-        </div>
+        </AdminOverlay>
       )}
     </>
   );

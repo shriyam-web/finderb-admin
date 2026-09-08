@@ -23,6 +23,8 @@ export async function fetchWhatsNewEntries(
   supabase: SupabaseClient,
   adminId: string,
 ): Promise<{ entries: WhatsNewEntry[]; unreadCount: number; error: string | null }> {
+  await ensureWhatsNewSeeds(supabase).catch(() => undefined);
+
   const [{ data: items, error: itemsError }, { data: reads, error: readsError }] =
     await Promise.all([
       supabase
@@ -70,6 +72,40 @@ export async function fetchWhatsNewEntries(
     unreadCount: entries.filter((entry) => !entry.isRead).length,
     error: null,
   };
+}
+
+const WHATS_NEW_SEEDS: Array<{
+  title: string;
+  body: string;
+  published_at: string;
+}> = [
+  {
+    title: "Category catalog: Parent → Category → Subcategory",
+    body: "Categories now have three clear levels. Parent Category is a grouping folder (violet). Category is what merchants join (teal). Subcategory is a more specific type under a Category (amber).\n\nSubcategories sit in an accordion that starts collapsed. The add/edit form uses three cards instead of a Kind dropdown, shows the path preview, and lets you add a Category or Subcategory from the tree.",
+    published_at: "2026-09-09T00:30:00+05:30",
+  },
+  {
+    title: "Working hours match the merchant panel",
+    body: "Merchant detail and Quick Onboard now use the same working-hours editor as the merchant dashboard: Open 24 hours, Closed, and Apply same to all days from Monday.",
+    published_at: "2026-09-09T00:32:00+05:30",
+  },
+  {
+    title: "Tab access and other dialogs stay on top",
+    body: "The Manage Admins tab-access dialog, profile, jobs review, What's New, and onboard chooser now render above the sidebar and sticky header so they are no longer hidden behind chrome.",
+    published_at: "2026-09-09T00:34:00+05:30",
+  },
+];
+
+async function ensureWhatsNewSeeds(
+  supabase: SupabaseClient,
+): Promise<void> {
+  const { data } = await supabase.from("admin_whats_new").select("title");
+  const existing = new Set(
+    ((data || []) as Array<{ title: string }>).map((row) => row.title),
+  );
+  const missing = WHATS_NEW_SEEDS.filter((item) => !existing.has(item.title));
+  if (!missing.length) return;
+  await supabase.from("admin_whats_new").insert(missing);
 }
 
 export async function markWhatsNewRead(

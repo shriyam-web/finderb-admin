@@ -2,6 +2,7 @@
 
 import { Dispatch, SetStateAction, useMemo, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
+import AdminOverlay from "./AdminOverlay";
 import {
   ListSearchInput,
   ListSelect,
@@ -576,7 +577,7 @@ export default function FinderBJobsContent({
       </div>
 
       {selectedJob && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+        <AdminOverlay className="flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div>
@@ -719,11 +720,11 @@ export default function FinderBJobsContent({
                 ))}
             </div>
           </div>
-        </div>
+        </AdminOverlay>
       )}
 
       {rejectingJob && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+        <AdminOverlay className="flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-3xl w-full max-w-xl overflow-hidden">
             <div className="px-8 py-6 border-b border-slate-100 bg-slate-50/50">
               <h2 className="admin-page-title">Reject Job</h2>
@@ -775,7 +776,7 @@ export default function FinderBJobsContent({
               </button>
             </div>
           </div>
-        </div>
+        </AdminOverlay>
       )}
     </div>
   );

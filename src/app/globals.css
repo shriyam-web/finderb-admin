@@ -321,7 +321,7 @@ body {
 
   .admin-whats-new-fab {
     position: fixed;
-    z-index: 70;
+    z-index: 190;
     right: 0;
     top: 50%;
     display: inline-flex;

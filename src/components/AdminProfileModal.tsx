@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
+import AdminOverlay from "./AdminOverlay";
 
 type AdminSession = {
   id: string;
@@ -153,7 +154,7 @@ export default function AdminProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[120] bg-slate-900/45 backdrop-blur-sm flex items-center justify-center p-4">
+    <AdminOverlay>
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
         <div className="relative overflow-hidden bg-slate-950 px-5 pt-5 pb-6 text-white">
           <div
@@ -317,6 +318,6 @@ export default function AdminProfileModal({
           </div>
         </div>
       </div>
-    </div>
+    </AdminOverlay>
   );
 }
