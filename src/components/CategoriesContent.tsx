@@ -50,44 +50,48 @@ const KIND_META: Record<
     hint: string;
     livesUnder: string;
     createLabel: string;
-    bar: string;
-    card: string;
+    plural: string;
+    listTitle: string;
+    dot: string;
     badge: string;
-    chevron: string;
+    rail: string;
   }
 > = {
   0: {
-    label: "Parent Category",
+    label: "Parent category",
     short: "Parent",
-    hint: "A grouping folder only. Merchants are never saved on this name.",
+    hint: "A folder for grouping. Merchants are never saved on this name.",
     livesUnder: "Stays at the top. Nothing sits above it.",
     createLabel: "Create parent category",
-    bar: "bg-violet-500",
-    card: "bg-violet-50/80 border-violet-200",
-    badge: "bg-violet-600 text-white",
-    chevron: "text-violet-700",
+    plural: "parents",
+    listTitle: "Parent categories",
+    dot: "bg-slate-500",
+    badge: "text-slate-600",
+    rail: "border-l-[3px] border-l-slate-400",
   },
   1: {
     label: "Category",
     short: "Category",
     hint: "Merchants attach here. This is what people browse on FinderB.",
-    livesUnder: "Optional: nest it under a Parent Category folder.",
+    livesUnder: "Optional: nest it under a parent category.",
     createLabel: "Create category",
-    bar: "bg-teal-600",
-    card: "bg-teal-50/50 border-teal-200",
-    badge: "bg-teal-700 text-white",
-    chevron: "text-teal-800",
+    plural: "categories",
+    listTitle: "Categories",
+    dot: "bg-teal-600",
+    badge: "text-teal-700",
+    rail: "border-l-[3px] border-l-teal-600/80",
   },
   2: {
     label: "Subcategory",
     short: "Subcategory",
-    hint: "A more specific type under a Category, e.g. Restaurants → Fine Dining.",
-    livesUnder: "Must sit under a Category.",
+    hint: "A more specific type under a category, e.g. Restaurants → Fine Dining.",
+    livesUnder: "Must sit under a category.",
     createLabel: "Create subcategory",
-    bar: "bg-amber-500",
-    card: "bg-amber-50/70 border-amber-200",
-    badge: "bg-amber-600 text-white",
-    chevron: "text-amber-800",
+    plural: "subcategories",
+    listTitle: "Subcategories",
+    dot: "bg-indigo-400",
+    badge: "text-indigo-700",
+    rail: "border-l-[3px] border-l-indigo-400/80",
   },
 };
 
@@ -140,12 +144,27 @@ function slotSummary(cat: AdminCategory, partnerCount: number) {
   return `${booked}/${configured} slots · ${free} free`;
 }
 
+function ancestryPath(cat: AdminCategory, all: AdminCategory[]) {
+  const parts: string[] = [];
+  let current: AdminCategory | undefined = cat;
+  const seen = new Set<string>();
+  while (current?.parent_id && !seen.has(current.id)) {
+    seen.add(current.id);
+    const parent = all.find((c) => c.id === current?.parent_id);
+    if (!parent) break;
+    parts.unshift(parent.name);
+    current = parent;
+  }
+  return parts.join(" › ");
+}
+
 function KindBadge({ kind }: { kind: Kind }) {
   const meta = KIND_META[kind];
   return (
     <span
-      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${meta.badge}`}
+      className={`inline-flex shrink-0 items-center gap-1.5 text-[11px] font-medium ${meta.badge}`}
     >
+      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
       {meta.short}
     </span>
   );
@@ -248,6 +267,7 @@ export default function CategoriesContent({
     "All" | "Active" | "Inactive"
   >("All");
   const [kindFilter, setKindFilter] = useState<"All" | Kind>("All");
+  const [listKind, setListKind] = useState<Kind | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
 
   const partnerCountById = useMemo(() => {
@@ -267,7 +287,7 @@ export default function CategoriesContent({
   );
 
   const matchesFilters = useCallback(
-    (cat: AdminCategory) => {
+    (cat: AdminCategory, opts?: { ignoreKind?: boolean }) => {
       const q = categorySearch.trim().toLowerCase();
       if (q) {
         const parentName = cat.parent_id
@@ -277,7 +297,11 @@ export default function CategoriesContent({
         if (!haystack.includes(q)) return false;
       }
       if (statusFilter !== "All" && cat.status !== statusFilter) return false;
-      if (kindFilter !== "All" && kindOf(cat, categories) !== kindFilter) {
+      if (
+        !opts?.ignoreKind &&
+        kindFilter !== "All" &&
+        kindOf(cat, categories) !== kindFilter
+      ) {
         return false;
       }
 
@@ -307,9 +331,44 @@ export default function CategoriesContent({
   );
 
   const filteredCategories = useMemo(
-    () => categories.filter(matchesFilters),
+    () => categories.filter((cat) => matchesFilters(cat)),
     [categories, matchesFilters],
   );
+
+  const kindLists = useMemo(() => {
+    const base = categories.filter((cat) =>
+      matchesFilters(cat, { ignoreKind: true }),
+    );
+    const sortByName = (a: AdminCategory, b: AdminCategory) =>
+      a.name.localeCompare(b.name);
+    return {
+      0: base
+        .filter((c) => kindOf(c, categories) === 0)
+        .slice()
+        .sort(sortByName),
+      1: base
+        .filter((c) => kindOf(c, categories) === 1)
+        .slice()
+        .sort(sortByName),
+      2: base
+        .filter((c) => kindOf(c, categories) === 2)
+        .slice()
+        .sort(sortByName),
+    } as Record<Kind, AdminCategory[]>;
+  }, [categories, matchesFilters]);
+
+  const openKindList = (kind: Kind) => {
+    setListKind((prev) => (prev === kind ? null : kind));
+    setKindFilter("All");
+  };
+
+  const startEdit = (cat: AdminCategory) => {
+    setIsAddingCategory(false);
+    setEditingCategory({
+      ...cat,
+      level: kindOf(cat, categories),
+    });
+  };
 
   const matchingIds = useMemo(
     () => new Set(filteredCategories.map((c) => c.id)),
@@ -484,8 +543,8 @@ export default function CategoriesContent({
     ].filter(Boolean);
 
     return (
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className={`flex items-center justify-between gap-3 border-b px-5 py-3.5 ${meta.card}`}>
+      <div className="admin-card overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-3.5">
           <div className="min-w-0">
             <p className="text-[11px] font-medium text-slate-500">
               {isEditing ? "Editing" : "Adding"} · {meta.label}
@@ -519,7 +578,7 @@ export default function CategoriesContent({
                   Pick one. Parent Category is only a folder. Category is what merchants join. Subcategory sits under a Category.
                 </p>
               </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-3 rounded-lg border border-slate-200 bg-slate-50 p-0.5">
                 {([0, 1, 2] as Kind[]).map((nextLevel) => {
                   const item = KIND_META[nextLevel];
                   const selected = safeKind === nextLevel;
@@ -554,23 +613,20 @@ export default function CategoriesContent({
                                 : null,
                         });
                       }}
-                      className={`rounded-xl border p-3 text-left transition-colors ${
+                      className={`rounded-md px-2 py-2 text-center text-[13px] font-medium transition-colors ${
                         selected
-                          ? `${item.card} ring-2 ring-offset-1 ring-slate-300`
-                          : "border-slate-200 bg-white hover:border-slate-300"
+                          ? "bg-white text-slate-900 shadow-sm"
+                          : "text-slate-500 hover:text-slate-800"
                       }`}
                     >
-                      <span className={`mb-2 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${item.badge}`}>
-                        {item.short}
-                      </span>
-                      <p className="text-sm font-semibold text-slate-900">{item.label}</p>
-                      <p className="mt-1 text-[11px] leading-snug text-slate-500">
-                        {item.hint}
-                      </p>
+                      {item.short}
                     </button>
                   );
                 })}
               </div>
+              <p className="text-[12px] leading-relaxed text-slate-500">
+                {meta.hint}
+              </p>
             </section>
 
             <section className="space-y-3">
@@ -595,7 +651,7 @@ export default function CategoriesContent({
               </div>
 
               {safeKind === 0 ? (
-                <p className="rounded-lg border border-violet-100 bg-violet-50 px-3 py-2 text-xs text-violet-800">
+                <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                   {KIND_META[0].livesUnder}
                 </p>
               ) : (
@@ -790,10 +846,10 @@ export default function CategoriesContent({
 
           <div className="space-y-3 lg:col-span-2">
             {safeKind === 0 ? (
-              <div className="rounded-lg border border-violet-100 bg-violet-50 p-4 text-xs leading-relaxed text-violet-800">
-                Parent Categories do not get partner pins. Add Categories inside
-                this folder, then pin merchants on those Categories or their
-                Subcategories.
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-xs leading-relaxed text-slate-600">
+                Parent categories do not get partner pins. Add categories inside
+                this folder, then pin merchants on those categories or their
+                subcategories.
               </div>
             ) : (
               <>
@@ -954,38 +1010,39 @@ export default function CategoriesContent({
     const hasSubs = opts.subs.length > 0;
 
     return (
-      <div className={`overflow-hidden rounded-lg border ${KIND_META[1].card}`}>
-        <div className="flex items-center gap-2.5 px-3 py-2.5">
-          <span className={`h-9 w-1.5 shrink-0 rounded-full ${KIND_META[1].bar}`} />
+      <div className="border-b border-slate-100 last:border-b-0">
+        <div
+          className={`flex items-center gap-2.5 px-3 py-2.5 ${KIND_META[1].rail} bg-white hover:bg-teal-50/30`}
+        >
           {hasSubs ? (
             <button
               type="button"
               onClick={() => toggleExpanded(cat.id)}
-              className={`rounded-md p-1 ${KIND_META[1].chevron} hover:bg-white/70`}
+              className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
               aria-expanded={open}
               aria-label={open ? "Collapse subcategories" : "Expand subcategories"}
             >
               <Chevron open={open} />
             </button>
           ) : (
-            <span className="w-6" />
+            <span className="w-7" />
           )}
           <CategorySymbol cat={cat} />
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-2">
-              <h3 className="truncate text-sm font-semibold text-slate-900">
+              <h3 className="truncate text-sm font-medium text-slate-900">
                 {cat.name}
               </h3>
               <KindBadge kind={1} />
               {!isCategoryInfoComplete(cat) && (
-                <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
+                <span className="shrink-0 text-[11px] font-medium text-amber-700">
                   Missing info
                 </span>
               )}
             </div>
             <p className="mt-0.5 truncate text-xs tabular-nums text-slate-500">
               {partners} partner{partners === 1 ? "" : "s"}
-              {hasSubs ? ` · ${opts.subs.length} subcategor${opts.subs.length === 1 ? "y" : "ies"}` : " · no subcategories"}
+              {hasSubs ? ` · ${opts.subs.length} subcategor${opts.subs.length === 1 ? "y" : "ies"}` : ""}
               {" · "}
               {slotSummary(cat, partners)}
             </p>
@@ -993,22 +1050,16 @@ export default function CategoriesContent({
           <StatusPill status={cat.status} />
           {canManage && (
             <RowActions
-              onEdit={() => {
-                setIsAddingCategory(false);
-                setEditingCategory({
-                  ...cat,
-                  level: kindOf(cat, categories),
-                });
-              }}
+              onEdit={() => startEdit(cat)}
               extra={
                 <button
                   type="button"
                   onClick={() =>
                     openCreate({ level: 2, parent_id: cat.id })
                   }
-                  className="rounded-md px-2 py-1 text-[11px] font-medium text-amber-800 hover:bg-amber-100"
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                 >
-                  + Subcategory
+                  Add subcategory
                 </button>
               }
             />
@@ -1016,33 +1067,23 @@ export default function CategoriesContent({
         </div>
 
         {hasSubs && open && (
-          <div className="border-t border-teal-100 bg-amber-50/40 px-3 py-2">
-            <p className="mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
-              Subcategories
-            </p>
-            <div className="space-y-1.5">
-              {opts.visibleSubs.length === 0 ? (
-                <p className="px-1 py-1 text-xs text-slate-400">
-                  No subcategories match filters
-                </p>
-              ) : (
-                opts.visibleSubs.map((sub) => (
-                  <SubcategoryRow
-                    key={sub.id}
-                    cat={sub}
-                    partnerCount={partnerCountById.get(sub.id) ?? 0}
-                    canManage={canManage}
-                    onEdit={() => {
-                      setIsAddingCategory(false);
-                      setEditingCategory({
-                        ...sub,
-                        level: kindOf(sub, categories),
-                      });
-                    }}
-                  />
-                ))
-              )}
-            </div>
+          <div className="relative ml-6 mr-3 mb-2 mt-0 rounded-md border border-indigo-100/70 bg-indigo-50/25 py-1.5 pl-3 pr-2">
+            <div className="pointer-events-none absolute bottom-2 left-[-13px] top-0 w-px bg-slate-200" />
+            {opts.visibleSubs.length === 0 ? (
+              <p className="px-1 py-1 text-xs text-slate-400">
+                No subcategories match filters
+              </p>
+            ) : (
+              opts.visibleSubs.map((sub) => (
+                <SubcategoryRow
+                  key={sub.id}
+                  cat={sub}
+                  partnerCount={partnerCountById.get(sub.id) ?? 0}
+                  canManage={canManage}
+                  onEdit={() => startEdit(sub)}
+                />
+              ))
+            )}
           </div>
         )}
 
@@ -1050,12 +1091,12 @@ export default function CategoriesContent({
           <button
             type="button"
             onClick={() => toggleExpanded(cat.id)}
-            className="flex w-full items-center justify-between border-t border-teal-100 bg-amber-50/30 px-3 py-1.5 text-left text-[11px] font-medium text-amber-800 hover:bg-amber-50"
+            className="flex w-full items-center gap-2 border-t border-slate-50 bg-indigo-50/20 px-3 py-1.5 pl-[3.25rem] text-left text-[11px] text-indigo-800/70 hover:bg-indigo-50/40 hover:text-indigo-900"
           >
-            <span>
-              {opts.subs.length} subcategor{opts.subs.length === 1 ? "y" : "ies"} hidden — click to expand
-            </span>
             <Chevron open={false} />
+            <span>
+              {opts.subs.length} subcategor{opts.subs.length === 1 ? "y" : "ies"}
+            </span>
           </button>
         )}
       </div>
@@ -1075,9 +1116,9 @@ export default function CategoriesContent({
           <button
             type="button"
             onClick={() => openCreate({ level: 1 })}
-            className="rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-teal-800"
+            className="admin-btn-primary"
           >
-            Add item
+            Add
           </button>
         )}
         {!canManage && (
@@ -1087,16 +1128,17 @@ export default function CategoriesContent({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600">
-        <span className="font-medium text-slate-500">Legend</span>
-        {([0, 1, 2] as Kind[]).map((k) => (
-          <span key={k} className="inline-flex items-center gap-1.5">
-            <span className={`h-2.5 w-2.5 rounded-sm ${KIND_META[k].bar}`} />
-            <KindBadge kind={k} />
-            <span className="text-slate-500">{KIND_META[k].hint.split(".")[0]}</span>
-          </span>
-        ))}
-      </div>
+      <p className="px-0.5 text-[12px] text-slate-500">
+        <KindBadge kind={0} />
+        <span className="mx-2 text-slate-300">·</span>
+        <KindBadge kind={1} />
+        <span className="mx-2 text-slate-300">·</span>
+        <KindBadge kind={2} />
+        <span className="ml-2 text-slate-400">
+          Subcategories stay collapsed until you open them. Click a count to
+          open that list.
+        </span>
+      </p>
 
       {categoryError && (
         <div className="rounded-lg border border-amber-100 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
@@ -1189,10 +1231,16 @@ export default function CategoriesContent({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 px-0.5 text-xs text-slate-500">
-            <CountChip color="bg-violet-500" label="parent categories" value={filteredCategories.filter((c) => kindOf(c, categories) === 0).length} />
-            <CountChip color="bg-teal-600" label="categories" value={filteredCategories.filter((c) => kindOf(c, categories) === 1).length} />
-            <CountChip color="bg-amber-500" label="subcategories" value={filteredCategories.filter((c) => kindOf(c, categories) === 2).length} />
-            {filtersActive && (
+            {([0, 1, 2] as Kind[]).map((kind) => (
+              <CountChip
+                key={kind}
+                kind={kind}
+                value={kindLists[kind].length}
+                active={listKind === kind}
+                onClick={() => openKindList(kind)}
+              />
+            ))}
+            {(filtersActive || listKind !== null) && (
               <button
                 type="button"
                 onClick={() => {
@@ -1201,6 +1249,7 @@ export default function CategoriesContent({
                   setInfoFilter("All");
                   setStatusFilter("All");
                   setKindFilter("All");
+                  setListKind(null);
                 }}
                 className="ml-auto font-medium text-teal-700 hover:underline"
               >
@@ -1209,6 +1258,23 @@ export default function CategoriesContent({
             )}
           </div>
 
+          {listKind !== null ? (
+            <KindListPanel
+              kind={listKind}
+              items={kindLists[listKind]}
+              all={categories}
+              partnerCountById={partnerCountById}
+              canManage={canManage}
+              onBack={() => setListKind(null)}
+              onEdit={startEdit}
+              onCreate={() =>
+                openCreate({
+                  level: listKind,
+                  parent_id: listKind === 0 ? null : undefined,
+                })
+              }
+            />
+          ) : (
           <div className="space-y-4">
             {visibleParentGroups.map((parent) => {
               const mids = childrenOf(categories, parent.id);
@@ -1224,49 +1290,43 @@ export default function CategoriesContent({
               return (
                 <section
                   key={parent.id}
-                  className={`overflow-hidden rounded-xl border ${KIND_META[0].card}`}
+                  className={`admin-card overflow-hidden ${KIND_META[0].rail}`}
                 >
-                  <div className="flex items-center gap-3 px-3 py-3">
-                    <span className={`h-10 w-1.5 shrink-0 rounded-full ${KIND_META[0].bar}`} />
+                  <div className="flex items-center gap-3 border-b border-slate-200/80 bg-slate-50/80 px-4 py-3">
                     <CategorySymbol cat={parent} />
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-center gap-2">
-                        <h2 className="truncate text-base font-semibold text-slate-900">
+                        <h2 className="truncate text-[15px] font-semibold tracking-tight text-slate-900">
                           {parent.name}
                         </h2>
                         <KindBadge kind={0} />
                       </div>
-                      <p className="mt-0.5 text-xs text-slate-600">
-                        Grouping folder · {mids.length} categor{mids.length === 1 ? "y" : "ies"} · {parentPartners} partner{parentPartners === 1 ? "" : "s"}
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {mids.length} categor{mids.length === 1 ? "y" : "ies"} · {parentPartners} partner{parentPartners === 1 ? "" : "s"}
                       </p>
                     </div>
                     <StatusPill status={parent.status} />
                     {canManage && (
                       <RowActions
-                        onEdit={() => {
-                          setIsAddingCategory(false);
-                          setEditingCategory({
-                            ...parent,
-                            level: kindOf(parent, categories),
-                          });
-                        }}
+                        onEdit={() => startEdit(parent)}
                         extra={
                           <button
                             type="button"
                             onClick={() =>
                               openCreate({ level: 1, parent_id: parent.id })
                             }
-                            className="rounded-md px-2 py-1 text-[11px] font-medium text-teal-800 hover:bg-teal-100"
+                            className="rounded-md px-2 py-1 text-[11px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                           >
-                            + Category
+                            Add category
                           </button>
                         }
                       />
                     )}
                   </div>
-                  <div className="space-y-2 border-t border-violet-100 bg-white/70 p-2.5">
+                  <div className="relative bg-slate-50/40 pl-3">
+                    <div className="pointer-events-none absolute bottom-4 left-[7px] top-3 w-px bg-slate-200" />
                     {visibleMids.length === 0 ? (
-                      <p className="px-2 py-3 text-xs text-slate-400">
+                      <p className="px-4 py-6 text-xs text-slate-400">
                         No categories in this folder yet
                       </p>
                     ) : (
@@ -1276,7 +1336,7 @@ export default function CategoriesContent({
                           ? subs.filter((s) => matchingIds.has(s.id))
                           : subs;
                         return (
-                          <div key={mid.id}>
+                          <div key={mid.id} className="ml-1">
                             {renderCategoryRow(mid, {
                               subs,
                               visibleSubs,
@@ -1293,14 +1353,16 @@ export default function CategoriesContent({
             {visibleUngrouped.length > 0 && (
               <section className="space-y-2">
                 <div className="flex items-center gap-2 px-0.5">
-                  <span className={`h-2.5 w-2.5 rounded-sm ${KIND_META[1].bar}`} />
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Ungrouped categories
                   </h2>
                   <span className="text-[11px] text-slate-400">
-                    Not inside a Parent Category folder
+                    Not inside a parent category
                   </span>
                 </div>
+                <div
+                  className={`admin-card overflow-hidden ${KIND_META[1].rail}`}
+                >
                 {visibleUngrouped.map((cat) => {
                   const subs = childrenOf(categories, cat.id);
                   const visibleSubs = filtersActive
@@ -1315,6 +1377,7 @@ export default function CategoriesContent({
                     </div>
                   );
                 })}
+                </div>
               </section>
             )}
 
@@ -1323,21 +1386,19 @@ export default function CategoriesContent({
                 <h2 className="px-0.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Other
                 </h2>
+                <div
+                  className={`admin-card overflow-hidden ${KIND_META[2].rail}`}
+                >
                 {orphanFiltered.map((cat) => (
                   <SubcategoryRow
                     key={cat.id}
                     cat={cat}
                     partnerCount={partnerCountById.get(cat.id) ?? 0}
                     canManage={canManage}
-                    onEdit={() => {
-                      setIsAddingCategory(false);
-                      setEditingCategory({
-                        ...cat,
-                        level: kindOf(cat, categories),
-                      });
-                    }}
+                    onEdit={() => startEdit(cat)}
                   />
                 ))}
+                </div>
               </section>
             )}
 
@@ -1356,6 +1417,7 @@ export default function CategoriesContent({
               </div>
             )}
           </div>
+          )}
         </div>
       )}
     </div>
@@ -1363,20 +1425,139 @@ export default function CategoriesContent({
 }
 
 function CountChip({
-  color,
-  label,
+  kind,
   value,
+  active,
+  onClick,
 }: {
-  color: string;
-  label: string;
+  kind: Kind;
   value: number;
+  active: boolean;
+  onClick: () => void;
 }) {
+  const meta = KIND_META[kind];
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`h-2 w-2 rounded-sm ${color}`} />
-      <span className="font-medium tabular-nums text-slate-700">{value}</span>
-      {label}
-    </span>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
+        active
+          ? "border-slate-300 bg-white text-slate-800"
+          : "border-transparent text-slate-500 hover:border-slate-200 hover:bg-white hover:text-slate-700"
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+      <span className="text-sm font-semibold tabular-nums text-slate-800">
+        {value}
+      </span>
+      <span>{meta.plural}</span>
+    </button>
+  );
+}
+
+function KindListPanel({
+  kind,
+  items,
+  all,
+  partnerCountById,
+  canManage,
+  onBack,
+  onEdit,
+  onCreate,
+}: {
+  kind: Kind;
+  items: AdminCategory[];
+  all: AdminCategory[];
+  partnerCountById: Map<string, number>;
+  canManage: boolean;
+  onBack: () => void;
+  onEdit: (cat: AdminCategory) => void;
+  onCreate: () => void;
+}) {
+  const meta = KIND_META[kind];
+  return (
+    <section className={`admin-card overflow-hidden ${meta.rail}`}>
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-200/80 bg-slate-50/70 px-4 py-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-[15px] font-semibold tracking-tight text-slate-900">
+              {meta.listTitle}
+            </h2>
+            <KindBadge kind={kind} />
+          </div>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {items.length} in this list
+            {canManage ? " — open a row to edit" : ""}.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-md px-2.5 py-1.5 text-[12px] font-medium text-slate-600 hover:bg-white hover:text-slate-900"
+        >
+          Back to tree
+        </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={onCreate}
+            className="rounded-md bg-teal-700 px-2.5 py-1.5 text-[12px] font-medium text-white hover:bg-teal-800"
+          >
+            Add
+          </button>
+        )}
+      </div>
+      {items.length === 0 ? (
+        <p className="px-4 py-10 text-center text-sm text-slate-400">
+          Nothing matches this filter
+        </p>
+      ) : (
+        <div>
+          {items.map((cat) => {
+            const partners = partnerCountById.get(cat.id) ?? 0;
+            const path = ancestryPath(cat, all);
+            return (
+              <div
+                key={cat.id}
+                className="flex items-center gap-2.5 border-b border-slate-100 px-3 py-2.5 last:border-b-0 hover:bg-slate-50/80"
+              >
+                <CategorySymbol cat={cat} size={kind === 2 ? "sm" : "md"} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h3 className="truncate text-sm font-medium text-slate-900">
+                      {cat.name}
+                    </h3>
+                    <KindBadge kind={kind} />
+                    {!isCategoryInfoComplete(cat) && (
+                      <span className="shrink-0 text-[11px] font-medium text-amber-700">
+                        Missing info
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-slate-500">
+                    {path ? `${path} · ` : ""}
+                    {partners} partner{partners === 1 ? "" : "s"}
+                    {kind !== 0 ? ` · ${slotSummary(cat, partners)}` : ""}
+                  </p>
+                </div>
+                <StatusPill status={cat.status} />
+                {canManage && (
+                  <RowActions
+                    onEdit={() => onEdit(cat)}
+                    extra={
+                      <span className="pr-0.5 text-[11px] font-medium text-slate-500">
+                        Edit
+                      </span>
+                    }
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1435,17 +1616,18 @@ function SubcategoryRow({
   onEdit: () => void;
 }) {
   return (
-    <div className={`flex items-center gap-2.5 rounded-md border px-2.5 py-2 ${KIND_META[2].card}`}>
-      <span className={`h-7 w-1 shrink-0 rounded-full ${KIND_META[2].bar}`} />
+    <div
+      className={`flex items-center gap-2.5 rounded-md px-2 py-1.5 ${KIND_META[2].rail} bg-white/70 hover:bg-white`}
+    >
       <CategorySymbol cat={cat} size="sm" />
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">
-          <h4 className="truncate text-sm font-medium text-slate-900">
+          <h4 className="truncate text-sm text-slate-800">
             {cat.name}
           </h4>
           <KindBadge kind={2} />
           {!isCategoryInfoComplete(cat) && (
-            <span className="shrink-0 rounded bg-white/80 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">
+            <span className="shrink-0 text-[11px] font-medium text-amber-700">
               Missing info
             </span>
           )}
