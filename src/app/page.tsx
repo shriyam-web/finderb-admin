@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import SuspiciousLoginModal from "../components/SuspiciousLoginModal";
 
 export default function Home() {
   const [username, setUsername] = useState("");
@@ -11,7 +10,6 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [lockoutOpen, setLockoutOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -77,12 +75,6 @@ export default function Home() {
           loginEnabled: result.admin.loginEnabled === true,
         }),
       );
-
-      if (result.admin.loginEnabled !== true) {
-        setLockoutOpen(true);
-        setIsLoading(false);
-        return;
-      }
 
       router.push("/dashboard");
     } catch {
@@ -286,15 +278,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-      {lockoutOpen && (
-        <SuspiciousLoginModal
-          onLogout={() => {
-            localStorage.removeItem("admin_session");
-            setLockoutOpen(false);
-            setIsLoading(false);
-          }}
-        />
-      )}
     </div>
   );
 }

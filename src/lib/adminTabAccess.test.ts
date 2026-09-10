@@ -16,6 +16,11 @@ import {
   effectiveTabModes,
   type AdminAccessSession,
 } from "./adminTabAccess";
+import {
+  clampLockoutSeconds,
+  formatLockModalBody,
+  DEFAULT_LOCKOUT_SECONDS,
+} from "./lockModal";
 
 const ALL_TABS = [
   "Dashboard",
@@ -274,5 +279,13 @@ assert.equal(isConsoleLoginUnlocked("super_admin", false), false);
 assert.equal(isConsoleLoginUnlocked("super_admin", true), true);
 assert.equal(isConsoleLoginUnlocked("admin", undefined), false);
 assert.equal(isConsoleLoginUnlocked("controller", false), false);
+
+assert.equal(DEFAULT_LOCKOUT_SECONDS, 60);
+assert.equal(clampLockoutSeconds(60), 60);
+assert.equal(clampLockoutSeconds(5), 10);
+assert.equal(
+  formatLockModalBody("You'll be auto logged out in {countdown}.", 60),
+  "You'll be auto logged out in 60 seconds.",
+);
 
 console.log("adminTabAccess tests: all passed");

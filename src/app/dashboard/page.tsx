@@ -77,6 +77,12 @@ import {
   type TabAccessMode,
 } from "../../lib/adminTabAccess";
 import {
+  DEFAULT_LOCK_MODAL_COPY,
+  LOCK_MODAL_ROW_ID,
+  lockModalCopyFromRow,
+  type LockModalCopy,
+} from "../../lib/lockModal";
+import {
   readAdminColorMode,
   writeAdminColorMode,
   type AdminColorMode,
@@ -787,6 +793,10 @@ export default function Dashboard() {
   const [adminSession, setAdminSession] = useState<any>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [bootMinElapsed, setBootMinElapsed] = useState(false);
+  const [lockModalCopy, setLockModalCopy] = useState<LockModalCopy>(
+    DEFAULT_LOCK_MODAL_COPY,
+  );
+  const [showLockModal, setShowLockModal] = useState(false);
   const { toast } = useAdminToast();
   const [uploadProgress, setUploadProgress] = useState<{
     current: number;
@@ -812,6 +822,9 @@ export default function Dashboard() {
   const isDeveloper = adminSession?.role === "developer";
   const isController = adminSession?.role === "controller";
   const isPremiumConsole = isPremiumConsoleRole(adminSession?.role);
+  const isLoginLocked =
+    !!adminSession &&
+    !isConsoleLoginUnlocked(adminSession.role, adminSession.loginEnabled);
   const canToggleColorMode = !!adminSession;
   // Developer / controller: dark = gold premium console, light = standard light UI.
   // Admin / super_admin: dark = teal dark console, light = standard light UI.
@@ -1047,6 +1060,33 @@ export default function Dashboard() {
     setAdminSession(null);
     router.push("/");
   }, [router]);
+
+  useEffect(() => {
+    if (!isLoginLocked) return;
+    let cancelled = false;
+    const load = async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("admin_lock_modal")
+        .select("eyebrow, title, body, footer, logout_seconds")
+        .eq("id", LOCK_MODAL_ROW_ID)
+        .maybeSingle();
+      if (!cancelled) setLockModalCopy(lockModalCopyFromRow(data));
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoginLocked]);
+
+  useEffect(() => {
+    if (!sessionReady || !bootMinElapsed || !isLoginLocked) {
+      setShowLockModal(false);
+      return;
+    }
+    const id = window.setTimeout(() => setShowLockModal(true), 900);
+    return () => window.clearTimeout(id);
+  }, [sessionReady, bootMinElapsed, isLoginLocked]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -2316,10 +2356,6 @@ export default function Dashboard() {
     }
   };
 
-  if (sessionReady && adminSession && !isConsoleLoginUnlocked(adminSession.role, adminSession.loginEnabled)) {
-    return <SuspiciousLoginModal onLogout={handleLogout} />;
-  }
-
   if (!sessionReady || !adminSession || !bootMinElapsed) {
     return <AdminBootLoader />;
   }
@@ -3158,6 +3194,10 @@ export default function Dashboard() {
             </div>
           </div>
         </AdminOverlay>
+      )}
+
+      {showLockModal && (
+        <SuspiciousLoginModal copy={lockModalCopy} onLogout={handleLogout} />
       )}
     </div>
   );

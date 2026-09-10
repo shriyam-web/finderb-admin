@@ -1,33 +1,47 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AdminPortal } from "./AdminOverlay";
-
-const LOCKOUT_SECONDS = 30;
+import { createPortal } from "react-dom";
+import {
+  DEFAULT_LOCK_MODAL_COPY,
+  formatLockModalBody,
+  type LockModalCopy,
+} from "../lib/lockModal";
 
 type Props = {
-  seconds?: number;
+  copy?: LockModalCopy;
   onLogout: () => void;
 };
 
 export default function SuspiciousLoginModal({
-  seconds = LOCKOUT_SECONDS,
+  copy = DEFAULT_LOCK_MODAL_COPY,
   onLogout,
 }: Props) {
+  const seconds = copy.logoutSeconds;
   const [left, setLeft] = useState(seconds);
+  const [mounted, setMounted] = useState(false);
   const done = useRef(false);
 
   useEffect(() => {
-    const prev = document.body.style.overflow;
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setLeft(seconds);
+    done.current = false;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.body.style.overscrollBehavior;
     document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
     const id = window.setInterval(() => {
       setLeft((n) => (n <= 1 ? 0 : n - 1));
     }, 1000);
     return () => {
       window.clearInterval(id);
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevOverflow;
+      document.body.style.overscrollBehavior = prevOverscroll;
     };
-  }, []);
+  }, [seconds]);
 
   useEffect(() => {
     if (left > 0 || done.current) return;
@@ -35,26 +49,29 @@ export default function SuspiciousLoginModal({
     onLogout();
   }, [left, onLogout]);
 
-  return (
-    <AdminPortal>
-      <div
-        className="fixed inset-0 z-[400] flex items-center justify-center px-4"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="suspicious-login-title"
-        aria-describedby="suspicious-login-copy"
-      >
-        <div className="absolute inset-0 bg-[#140608]/90 backdrop-blur-sm" />
-        <div className="relative w-full max-w-[28rem] overflow-hidden rounded-2xl border border-rose-500/40 bg-[#1a0b0e] shadow-[0_24px_80px_rgba(127,29,29,0.55)]">
-          <div className="h-1 w-full bg-gradient-to-r from-rose-700 via-amber-400 to-rose-700" />
-          <div className="px-6 py-7 sm:px-8 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/10 text-rose-300">
+  if (!mounted) return null;
+
+  const body = formatLockModalBody(copy.body, left);
+
+  return createPortal(
+    <div
+      className="admin-lock-modal-root"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="suspicious-login-title"
+      aria-describedby="suspicious-login-copy"
+    >
+      <div className="admin-lock-modal-backdrop" />
+      <div className="admin-lock-modal-frame">
+        <div className="admin-lock-modal-card">
+          <div className="admin-lock-modal-accent" />
+          <div className="admin-lock-modal-body">
+            <div className="admin-lock-modal-icon" aria-hidden>
               <svg
                 className="h-7 w-7"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
-                aria-hidden
               >
                 <path
                   strokeLinecap="round"
@@ -64,37 +81,28 @@ export default function SuspiciousLoginModal({
                 />
               </svg>
             </div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-rose-300">
-              Security alert
-            </p>
-            <h2
-              id="suspicious-login-title"
-              className="mt-2 text-2xl font-bold tracking-tight text-white"
-            >
-              Suspicious activity detected
+            {copy.eyebrow ? (
+              <p className="admin-lock-modal-kicker">{copy.eyebrow}</p>
+            ) : null}
+            <h2 id="suspicious-login-title" className="admin-lock-modal-title">
+              {copy.title}
             </h2>
-            <p
-              id="suspicious-login-copy"
-              className="mt-3 text-sm leading-relaxed text-rose-100/80"
-            >
-              You&apos;ll be auto logged out in{" "}
-              <span className="font-semibold tabular-nums text-amber-300">
-                {left} {left === 1 ? "second" : "seconds"}
-              </span>
-              .
+            <p id="suspicious-login-copy" className="admin-lock-modal-text">
+              {body}
             </p>
-            <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="admin-lock-modal-track">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-amber-300 to-rose-500 transition-[width] duration-1000 ease-linear"
+                className="admin-lock-modal-bar"
                 style={{ width: `${(left / seconds) * 100}%` }}
               />
             </div>
-            <p className="mt-4 text-[11px] text-rose-200/50">
-              This session cannot continue. Contact a Developer to enable login.
-            </p>
+            {copy.footer ? (
+              <p className="admin-lock-modal-footer">{copy.footer}</p>
+            ) : null}
           </div>
         </div>
       </div>
-    </AdminPortal>
+    </div>,
+    document.body,
   );
 }
