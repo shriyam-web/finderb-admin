@@ -64,8 +64,14 @@ import CategoriesContent from "../../components/CategoriesContent";
 import {
   formatActivityDate,
   formatActivityTime,
+  formatDateTimeInr,
   parseFinderbTimestamp,
 } from "../../lib/formatDateTime";
+import {
+  DEFAULT_BROADCAST_CTA_LABEL,
+  resolveBroadcastCta,
+  sanitizeBroadcastCtaUrl,
+} from "../../lib/broadcastFields";
 import { mergePaymentHistory } from "../../lib/paymentUtils";
 import { computeDashboardStats } from "../../lib/dashboardStats";
 import {
@@ -350,6 +356,10 @@ interface Broadcast {
   message: string;
   target_audience: string[];
   created_at: string;
+  cta_url?: string | null;
+  cta_label?: string | null;
+  show_datetime?: boolean | null;
+  read_count?: number;
 }
 
 interface Activity {
@@ -6292,7 +6302,11 @@ function BroadcastsContent({
   adminId?: string | null;
 }) {
   const [isSending, setIsSending] = useState(false);
-  const [pastBroadcasts, setPastBroadcasts] = useState<any[]>([]);
+  const [pastBroadcasts, setPastBroadcasts] = useState<Broadcast[]>([]);
+  const [ctaUrl, setCtaUrl] = useState("");
+  const [ctaLabel, setCtaLabel] = useState("");
+  const [showDatetime, setShowDatetime] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [dispatchNote, setDispatchNote] = useState<{
     tone: "success" | "error";
     text: string;
@@ -6322,19 +6336,32 @@ function BroadcastsContent({
 
   useEffect(() => {
     fetchPastBroadcasts();
-    // Drop legacy "Service Providers" from draft if present
     setAudiences(audiences.filter((a) => a === "Users" || a === "Merchants"));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPastBroadcasts = async () => {
+    if (adminId) {
+      const res = await fetch(
+        `/api/admin/broadcasts?adminId=${encodeURIComponent(adminId)}`,
+        { headers: { Accept: "application/json" } },
+      );
+      const payload = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        broadcasts?: Broadcast[];
+      } | null;
+      if (payload?.success && Array.isArray(payload.broadcasts)) {
+        setPastBroadcasts(payload.broadcasts);
+        return;
+      }
+    }
     const supabase = createClient();
     const { data, error } = await supabase
       .from("broadcasts")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(12);
-    if (!error && data) setPastBroadcasts(data);
+      .limit(40);
+    if (!error && data) setPastBroadcasts(data as Broadcast[]);
   };
 
   const toggleAudience = (opt: string) => {
@@ -6353,6 +6380,19 @@ function BroadcastsContent({
     audiences.length > 0 &&
     !isSending;
 
+  const previewCta = resolveBroadcastCta({
+    cta_url: ctaUrl,
+    cta_label: ctaLabel,
+  });
+
+  const resetCompose = () => {
+    setTitle("");
+    setMessage("");
+    setCtaUrl("");
+    setCtaLabel("");
+    setShowDatetime(true);
+  };
+
   const handleDispatch = async () => {
     if (!canManage) {
       setDispatchNote({
@@ -6368,6 +6408,13 @@ function BroadcastsContent({
       });
       return;
     }
+    if (ctaUrl.trim() && !sanitizeBroadcastCtaUrl(ctaUrl)) {
+      setDispatchNote({
+        tone: "error",
+        text: "Link must be a valid http or https URL.",
+      });
+      return;
+    }
 
     try {
       setIsSending(true);
@@ -6380,6 +6427,9 @@ function BroadcastsContent({
           message: message.trim(),
           audiences,
           adminId,
+          ctaUrl: ctaUrl.trim() || undefined,
+          ctaLabel: ctaLabel.trim() || undefined,
+          showDatetime,
         }),
       });
       const payload = (await res.json().catch(() => null)) as {
@@ -6396,8 +6446,7 @@ function BroadcastsContent({
         tone: "success",
         text: payload.message || "Broadcast dispatched successfully.",
       });
-      setTitle("");
-      setMessage("");
+      resetCompose();
       fetchPastBroadcasts();
     } catch (err: any) {
       setDispatchNote({
@@ -6406,6 +6455,38 @@ function BroadcastsContent({
       });
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleDelete = async (broadcast: Broadcast) => {
+    if (!canManage || !adminId) return;
+    const ok = window.confirm(
+      `Delete “${broadcast.title}”? This removes it from the website, app inbox, and merchant alerts.`,
+    );
+    if (!ok) return;
+
+    try {
+      setDeletingId(broadcast.id);
+      const res = await fetch("/api/admin/broadcasts", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ id: broadcast.id, adminId }),
+      });
+      const payload = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        error?: string;
+      } | null;
+      if (!res.ok || !payload?.success) {
+        throw new Error(payload?.error || "Failed to delete broadcast.");
+      }
+      setPastBroadcasts((rows) => rows.filter((row) => row.id !== broadcast.id));
+    } catch (err: any) {
+      setDispatchNote({
+        tone: "error",
+        text: err.message || "Failed to delete broadcast.",
+      });
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -6469,7 +6550,7 @@ function BroadcastsContent({
                 <h2 className="text-sm font-semibold text-slate-900">Compose</h2>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {canManage
-                    ? "Title, audience, and message"
+                    ? "Required: title, audience, message. Optional: link, button text, date/time."
                     : "View only — ask Controller for Edit on Broadcasts"}
                 </p>
               </div>
@@ -6482,8 +6563,11 @@ function BroadcastsContent({
               className={`p-4 space-y-4 ${!canManage ? "opacity-60 pointer-events-none" : ""}`}
             >
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
                   Title
+                  <span className="ml-1.5 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-600">
+                    Required
+                  </span>
                 </label>
                 <input
                   type="text"
@@ -6495,8 +6579,11 @@ function BroadcastsContent({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
                   Audience
+                  <span className="ml-1.5 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-600">
+                    Required
+                  </span>
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {AUDIENCE_OPTIONS.map((opt) => {
@@ -6559,8 +6646,11 @@ function BroadcastsContent({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">
+                <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
                   Message
+                  <span className="ml-1.5 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-600">
+                    Required
+                  </span>
                 </label>
                 <textarea
                   value={message}
@@ -6569,6 +6659,77 @@ function BroadcastsContent({
                   rows={7}
                   className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 resize-y min-h-[140px]"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
+                    CTA link
+                    <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Optional
+                    </span>
+                  </label>
+                  <input
+                    type="url"
+                    value={ctaUrl}
+                    onChange={(e) => setCtaUrl(e.target.value)}
+                    placeholder="https://finderb.in/offers"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Leave empty if this announcement has no button. Must start with http:// or https://.
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
+                    CTA button text
+                    <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Optional
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={ctaLabel}
+                    onChange={(e) => setCtaLabel(e.target.value)}
+                    placeholder={DEFAULT_BROADCAST_CTA_LABEL}
+                    maxLength={40}
+                    disabled={!ctaUrl.trim()}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 disabled:bg-slate-50 disabled:text-slate-400"
+                  />
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Used only when a link is set. Defaults to “{DEFAULT_BROADCAST_CTA_LABEL}”.
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
+                    Date & time on notification
+                    <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Optional
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowDatetime((value) => !value)}
+                    className={`flex w-full items-center justify-between rounded-lg border px-3.5 py-2.5 text-sm ${
+                      showDatetime
+                        ? "border-teal-500/40 bg-teal-50/70 text-slate-900"
+                        : "border-slate-200 bg-white text-slate-700"
+                    }`}
+                  >
+                    <span>{showDatetime ? "Show date & time" : "Hide date & time"}</span>
+                    <span
+                      className={`relative h-5 w-9 rounded-full ${
+                        showDatetime ? "bg-teal-600" : "bg-slate-300"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                          showDatetime ? "translate-x-4" : "translate-x-0.5"
+                        }`}
+                      />
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {dispatchNote && (
@@ -6647,6 +6808,18 @@ function BroadcastsContent({
                   {message.trim() ||
                     "Your message preview will show up here as you type."}
                 </p>
+                {previewCta ? (
+                  <span className="inline-flex items-center justify-center rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-semibold text-white">
+                    {previewCta.label}
+                  </span>
+                ) : null}
+                {showDatetime ? (
+                  <p className="text-[11px] text-slate-400">
+                    {formatDateTimeInr(new Date())}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400">Date & time hidden</p>
+                )}
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {(audiences.length ? audiences : ["No audience"]).map((a) => (
                     <span
@@ -6667,32 +6840,66 @@ function BroadcastsContent({
                 <h2 className="text-sm font-semibold text-slate-900">
                   Dispatch history
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">Latest sends</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Latest sends · signed-in reads
+                </p>
               </div>
             </div>
-            <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
+            <div className="divide-y divide-slate-100 max-h-[520px] overflow-y-auto">
               {pastBroadcasts.length > 0 ? (
-                pastBroadcasts.map((b) => (
-                  <div
-                    key={b.id}
-                    className="px-4 py-3.5 hover:bg-slate-50/80 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-1">
-                      <h3 className="text-sm font-semibold text-slate-900 leading-snug">
-                        {b.title}
-                      </h3>
-                      <span className="shrink-0 text-[11px] text-slate-400 tabular-nums">
-                        {new Date(b.created_at).toLocaleString()}
-                      </span>
+                pastBroadcasts.map((b) => {
+                  const cta = resolveBroadcastCta({
+                    cta_url: b.cta_url,
+                    cta_label: b.cta_label,
+                  });
+                  const reads = Number(b.read_count || 0);
+                  return (
+                    <div
+                      key={b.id}
+                      className="px-4 py-3.5 hover:bg-slate-50/80 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-1">
+                        <h3 className="text-sm font-semibold text-slate-900 leading-snug">
+                          {b.title}
+                        </h3>
+                        <span className="shrink-0 text-[11px] text-slate-400 tabular-nums">
+                          {formatDateTimeInr(b.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2">
+                        {b.message}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                        <p className="text-[11px] font-medium text-teal-700">
+                          {formatAudience(b.target_audience)}
+                        </p>
+                        <p className="text-[11px] font-medium tabular-nums text-slate-600">
+                          {reads} read{reads === 1 ? "" : "s"}
+                        </p>
+                        {b.show_datetime === false ? (
+                          <span className="text-[11px] text-slate-400">
+                            Date hidden
+                          </span>
+                        ) : null}
+                        {cta ? (
+                          <span className="text-[11px] text-slate-500 truncate max-w-[140px]">
+                            {cta.label}
+                          </span>
+                        ) : null}
+                        {canManage ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(b)}
+                            disabled={deletingId === b.id}
+                            className="ml-auto text-[11px] font-semibold text-rose-600 hover:text-rose-700 disabled:opacity-50"
+                          >
+                            {deletingId === b.id ? "Deleting…" : "Delete"}
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2">
-                      {b.message}
-                    </p>
-                    <p className="text-[11px] font-medium text-teal-700">
-                      {formatAudience(b.target_audience)}
-                    </p>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="px-4 py-12 text-center text-sm text-slate-400">
                   No broadcasts yet
@@ -6705,7 +6912,6 @@ function BroadcastsContent({
     </div>
   );
 }
-
 
 function NewsContent({
   news,
