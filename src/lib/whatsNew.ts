@@ -80,6 +80,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Controller actions auto-revoked after unlisted IP change",
+    body: "Controller credentials were changed from an unlisted IP address. Controller actions have been automatically revoked.",
+    published_at: "2026-09-10T21:00:00+05:30",
+  },
+  {
     title: "Category catalog: Parent → Category → Subcategory",
     body: "Categories now have three clear levels. Parent Category is a grouping folder (violet). Category is what merchants join (teal). Subcategory is a more specific type under a Category (amber).\n\nSubcategories sit in an accordion that starts collapsed. The add/edit form uses three cards instead of a Kind dropdown, shows the path preview, and lets you add a Category or Subcategory from the tree.",
     published_at: "2026-09-09T00:30:00+05:30",
