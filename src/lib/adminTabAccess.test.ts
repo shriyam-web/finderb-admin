@@ -8,6 +8,7 @@ import {
   canEditTab,
   canManageAdmins,
   isConsoleLoginUnlocked,
+  isPremiumConsoleRole,
   normalizeAccessFields,
   resolveTabAccess,
   sanitizeTabModes,
@@ -71,6 +72,9 @@ assert.equal(resolveTabAccess({ role: "controller" }, "News"), "edit");
 assert.equal(resolveTabAccess({ role: "controller" }, "Blogs"), "edit");
 assert.equal(canManageAdmins("controller"), false);
 assert.equal(menuFor({ role: "controller" }).includes("Manage Admins"), false);
+assert.equal(isPremiumConsoleRole("developer"), true);
+assert.equal(isPremiumConsoleRole("controller"), false);
+assert.equal(isPremiumConsoleRole("super_admin"), false);
 
 // Exactly 2 granted tabs — nothing else
 {

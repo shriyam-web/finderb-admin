@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import AppProviders from "../components/AppProviders";
 import "./globals.css";
 import "./controller-theme.css";
+import "./silver-theme.css";
 import "./dark-theme.css";
 import "./theme-contrast.css";
 

@@ -8,7 +8,7 @@ export function readAdminColorMode(
   try {
     const stored = localStorage.getItem(ADMIN_COLOR_MODE_KEY);
     if (stored === "dark" || stored === "light") return stored;
-    // Controllers default to the premium dark console.
+    // Developer and Controller default to dark (gold vs silver).
     return role === "developer" || role === "controller" ? "dark" : "light";
   } catch {
     return role === "developer" || role === "controller" ? "dark" : "light";

@@ -78,7 +78,6 @@ import {
   canAccessTab,
   canEditTab,
   isConsoleLoginUnlocked,
-  isPremiumConsoleRole,
   normalizeAccessFields,
   type TabAccessMode,
 } from "../../lib/adminTabAccess";
@@ -831,22 +830,26 @@ export default function Dashboard() {
 
   const isDeveloper = adminSession?.role === "developer";
   const isController = adminSession?.role === "controller";
-  const isPremiumConsole = isPremiumConsoleRole(adminSession?.role);
   const isLoginLocked =
     !!adminSession &&
     !isConsoleLoginUnlocked(adminSession.role, adminSession.loginEnabled);
   const canToggleColorMode = !!adminSession;
-  // Developer / controller: dark = gold premium console, light = standard light UI.
+  // Developer: dark = gold premium console, light = standard light UI.
+  // Controller: dark = silver console, light = standard light UI.
   // Admin / super_admin: dark = teal dark console, light = standard light UI.
   const resolvedTheme = !adminSession
     ? null
-    : isPremiumConsole
+    : isDeveloper
       ? colorMode === "light"
         ? null
         : "controller"
-      : colorMode === "dark"
-        ? "dark"
-        : null;
+      : isController
+        ? colorMode === "light"
+          ? null
+          : "silver"
+        : colorMode === "dark"
+          ? "dark"
+          : null;
 
   // Always start a tab at the top of the page
   useEffect(() => {
@@ -865,34 +868,35 @@ export default function Dashboard() {
     return () => window.clearTimeout(id);
   }, []);
 
-  // Apply console theme to <html> for dark / controller modes.
+  // Apply console theme to <html> for dark / gold / silver modes.
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove("admin-theme-controller", "admin-theme-dark");
+    const themeClasses = [
+      "admin-theme-controller",
+      "admin-theme-dark",
+      "admin-theme-silver",
+    ] as const;
+    root.classList.remove(...themeClasses);
+    document.body.classList.remove(...themeClasses);
     if (resolvedTheme === "controller") {
       root.setAttribute("data-admin-theme", "controller");
       root.classList.add("admin-theme-controller");
       document.body.classList.add("admin-theme-controller");
-      document.body.classList.remove("admin-theme-dark");
+    } else if (resolvedTheme === "silver") {
+      root.setAttribute("data-admin-theme", "silver");
+      root.classList.add("admin-theme-silver");
+      document.body.classList.add("admin-theme-silver");
     } else if (resolvedTheme === "dark") {
       root.setAttribute("data-admin-theme", "dark");
       root.classList.add("admin-theme-dark");
       document.body.classList.add("admin-theme-dark");
-      document.body.classList.remove("admin-theme-controller");
     } else {
       root.removeAttribute("data-admin-theme");
-      document.body.classList.remove(
-        "admin-theme-controller",
-        "admin-theme-dark",
-      );
     }
     return () => {
       root.removeAttribute("data-admin-theme");
-      root.classList.remove("admin-theme-controller", "admin-theme-dark");
-      document.body.classList.remove(
-        "admin-theme-controller",
-        "admin-theme-dark",
-      );
+      root.classList.remove(...themeClasses);
+      document.body.classList.remove(...themeClasses);
     };
   }, [resolvedTheme]);
 
@@ -2364,7 +2368,11 @@ export default function Dashboard() {
   return (
     <div
       className={`admin-shell flex min-h-screen ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${
-        isPremiumConsole ? "admin-shell-controller" : ""
+        isDeveloper
+          ? "admin-shell-controller"
+          : isController
+            ? "admin-shell-silver"
+            : ""
       } ${resolvedTheme === "dark" ? "admin-shell-dark" : ""} ${
         accessLocked ? "admin-shell-locked" : ""
       }`}
@@ -2417,7 +2425,11 @@ export default function Dashboard() {
                   <div className="space-y-0.5 px-0.5">
                     <p
                       className={`text-[11px] font-semibold tracking-[0.16em] uppercase ${
-                        isPremiumConsole ? "text-amber-200" : "text-teal-200"
+                        isDeveloper
+                          ? "text-amber-200"
+                          : isController
+                            ? "text-slate-300"
+                            : "text-teal-200"
                       }`}
                     >
                       {isDeveloper
@@ -2861,7 +2873,7 @@ export default function Dashboard() {
       <div className="admin-content-area flex-1 flex flex-col min-w-0">
         {/* One sticky chrome block — avoids ribbon/topbar/command-bar stacking overlaps */}
         <div className="admin-chrome-sticky">
-          {isPremiumConsole && (
+          {(isDeveloper || isController) && (
             <div className="admin-controller-ribbon">
               {isDeveloper ? (
                 <>

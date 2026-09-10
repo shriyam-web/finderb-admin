@@ -16,10 +16,15 @@ export default function Home() {
     // Login must stay light — clear leftover dark/controller theme from prior session.
     const root = document.documentElement;
     root.removeAttribute("data-admin-theme");
-    root.classList.remove("admin-theme-controller", "admin-theme-dark");
+    root.classList.remove(
+      "admin-theme-controller",
+      "admin-theme-dark",
+      "admin-theme-silver",
+    );
     document.body.classList.remove(
       "admin-theme-controller",
       "admin-theme-dark",
+      "admin-theme-silver",
     );
 
     const session = localStorage.getItem("admin_session");

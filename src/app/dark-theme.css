@@ -1,5 +1,5 @@
 /* Optional dark theme for admin / super_admin (and other non-controller roles).
-   Keeps teal accents — NOT the Controller gold premium look. */
+   Keeps teal accents — NOT the Developer gold premium look. */
 
 html[data-admin-theme="dark"] {
   --background: #0f172a;

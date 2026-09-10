@@ -1,5 +1,5 @@
-/* Controller premium console — full dark/gold surface map.
-   Layout sticky chrome stays in globals.css; this file is colors only. */
+/* Developer gold premium console — full dark/gold surface map.
+   Controller uses silver-theme.css. Layout sticky chrome stays in globals.css. */
 
 html[data-admin-theme="controller"] {
   --background: #0c0a09;

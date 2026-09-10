@@ -33,9 +33,9 @@ export function isConsoleLoginUnlocked(
   return loginEnabled === true;
 }
 
-/** Gold premium console: developer and controller. */
+/** Gold premium console: Developer only. Controller uses the silver console. */
 export function isPremiumConsoleRole(role?: string | null): boolean {
-  return isDeveloperRole(role) || isControllerRole(role);
+  return isDeveloperRole(role);
 }
 
 export const TAB_ACCESS_MODES: Exclude<TabAccessMode, "none">[] = [
