@@ -2871,7 +2871,7 @@ export default function Dashboard() {
               ) : (
                 <>
                   <strong>Controller access</strong>
-                  <span>Operational console · Manage Admins is on the Developer account</span>
+                  <span>Operational console</span>
                 </>
               )}
             </div>
