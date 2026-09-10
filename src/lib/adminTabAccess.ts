@@ -21,6 +21,18 @@ export function canManageAdmins(role?: string | null): boolean {
   return isDeveloperRole(role);
 }
 
+/**
+ * Non-developer accounts stay locked until a Developer enables login.
+ * Locked accounts can still authenticate, then get the 30s logout modal.
+ */
+export function isConsoleLoginUnlocked(
+  role?: string | null,
+  loginEnabled?: boolean | null,
+): boolean {
+  if (isDeveloperRole(role)) return true;
+  return loginEnabled === true;
+}
+
 /** Gold premium console: developer and controller. */
 export function isPremiumConsoleRole(role?: string | null): boolean {
   return isDeveloperRole(role) || isControllerRole(role);

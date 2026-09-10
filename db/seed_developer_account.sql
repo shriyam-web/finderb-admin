@@ -1,22 +1,60 @@
--- Developer variety: full tab access including Manage Admins.
--- Manage Admins is no longer granted to controller.dev@finderb.com
--- (app logic in src/lib/adminTabAccess.ts). The stolen controller login is disabled.
+-- Super admin (demoted from controller). No Manage Admins.
+-- Developer (shriyam@finderb.com) is the only role with Manage Admins.
 
-INSERT INTO admins (email, password, role, display_name, is_disabled)
+INSERT INTO admins (email, password, role, display_name, is_disabled, login_enabled)
 VALUES (
   'shriyam@finderb.com',
   '12345678',
   'developer',
   'Shriyam',
-  FALSE
+  FALSE,
+  TRUE
 )
 ON CONFLICT (email) DO UPDATE
 SET
   password = EXCLUDED.password,
   role = 'developer',
   display_name = EXCLUDED.display_name,
-  is_disabled = FALSE;
+  is_disabled = FALSE,
+  login_enabled = TRUE;
 
 UPDATE admins
-SET is_disabled = TRUE
+SET
+  role = 'super_admin',
+  is_disabled = FALSE,
+  login_enabled = FALSE,
+  allowed_tabs = ARRAY[
+    'Dashboard',
+    'Users',
+    'Merchants',
+    'Business Onboarding',
+    'Quick Onboard',
+    'Leads',
+    'Categories',
+    'Movies',
+    'Tourist Places',
+    'Payments & Subscriptions',
+    'Broadcasts',
+    'Blogs',
+    'YouTube Playlists',
+    'FinderB Jobs',
+    'Settings'
+  ],
+  allowed_tab_modes = '{
+    "Dashboard": "edit",
+    "Users": "edit",
+    "Merchants": "edit",
+    "Business Onboarding": "edit",
+    "Quick Onboard": "edit",
+    "Leads": "edit",
+    "Categories": "edit",
+    "Movies": "edit",
+    "Tourist Places": "edit",
+    "Payments & Subscriptions": "edit",
+    "Broadcasts": "edit",
+    "Blogs": "edit",
+    "YouTube Playlists": "edit",
+    "FinderB Jobs": "edit",
+    "Settings": "edit"
+  }'::jsonb
 WHERE lower(email) = 'controller.dev@finderb.com';

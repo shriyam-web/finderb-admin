@@ -24,6 +24,7 @@ export type AdminProfile = {
   password?: string;
   role: string;
   is_disabled: boolean;
+  login_enabled?: boolean | null;
   allowed_tabs: string[] | null;
   allowed_tab_modes?: Record<string, TabAccessMode> | null;
   created_at: string;
@@ -134,7 +135,10 @@ export default function ManageAdminsContent({
     const disabled = admins.filter((a) => a.is_disabled).length;
     const developers = admins.filter((a) => a.role === "developer").length;
     const controllers = admins.filter((a) => a.role === "controller").length;
-    return { total: admins.length, active, disabled, developers, controllers };
+    const loginLocked = admins.filter(
+      (a) => a.role !== "developer" && a.login_enabled !== true,
+    ).length;
+    return { total: admins.length, active, disabled, developers, controllers, loginLocked };
   }, [admins]);
 
   const filtered = useMemo(() => {
@@ -169,6 +173,7 @@ export default function ManageAdminsContent({
             email: newEmail.toLowerCase().trim(),
             password: newPassword,
             role: "admin",
+            login_enabled: false,
           },
         ])
         .select();
@@ -257,6 +262,40 @@ export default function ManageAdminsContent({
           ),
         );
         flash(`Admin ${action}d`);
+      }
+    } finally {
+      setActionBusyId(null);
+    }
+  };
+
+  const handleToggleLoginEnabled = async (admin: AdminProfile) => {
+    if (!canManage) return flash("Only Developer can perform this action.");
+    if (admin.role === "developer") return;
+    const enable = admin.login_enabled !== true;
+    if (
+      !enable &&
+      !confirm(
+        `Lock login for ${admin.email}? They will be auto logged out 30 seconds after signing in.`,
+      )
+    ) {
+      return;
+    }
+    setActionBusyId(admin.id);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("admins")
+        .update({ login_enabled: enable })
+        .eq("id", admin.id)
+        .select();
+      if (error) flash(error.message);
+      else if (data?.[0]) {
+        setAdmins((prev) =>
+          prev.map((a) =>
+            a.id === admin.id ? { ...a, login_enabled: enable } : a,
+          ),
+        );
+        flash(enable ? "Login enabled" : "Login locked");
       }
     } finally {
       setActionBusyId(null);
@@ -357,7 +396,7 @@ export default function ManageAdminsContent({
 
   const grantedCount = countGrantedTabs(draftModes);
 
-  const colSpan = canManage ? 7 : 4;
+  const colSpan = canManage ? 8 : 4;
 
   return (
     <div className="space-y-4">
@@ -407,6 +446,9 @@ export default function ManageAdminsContent({
         </span>
         <span className="admin-metric-chip">
           Controllers <strong>{stats.controllers}</strong>
+        </span>
+        <span className="admin-metric-chip">
+          Login locked <strong>{stats.loginLocked}</strong>
         </span>
       </div>
 
@@ -539,6 +581,7 @@ export default function ManageAdminsContent({
                 <th>Role</th>
                 {canManage && <th>Password</th>}
                 {canManage && <th>Access</th>}
+                {canManage && <th>Login</th>}
                 <th>Status</th>
                 <th>Joined</th>
                 <th className="text-right">Actions</th>
@@ -638,6 +681,50 @@ export default function ManageAdminsContent({
                           >
                             {admin.allowed_tabs?.length || 0} tabs
                           </button>
+                        )}
+                      </td>
+                    )}
+                    {canManage && (
+                      <td>
+                        {admin.role === "developer" ? (
+                          <span className="text-xs text-slate-500">
+                            Always on
+                          </span>
+                        ) : (
+                          <div className="space-y-1">
+                            <span
+                              className={`inline-flex items-center gap-1.5 text-xs font-medium ${
+                                admin.login_enabled
+                                  ? "text-emerald-700"
+                                  : "text-rose-700"
+                              }`}
+                            >
+                              <span
+                                className={`h-1.5 w-1.5 rounded-full ${
+                                  admin.login_enabled
+                                    ? "bg-emerald-500"
+                                    : "bg-rose-500"
+                                }`}
+                              />
+                              {admin.login_enabled ? "Enabled" : "Locked"}
+                            </span>
+                            {canMutate && (
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => handleToggleLoginEnabled(admin)}
+                                className={`block text-[11px] font-semibold disabled:opacity-40 ${
+                                  admin.login_enabled
+                                    ? "text-slate-500 hover:text-rose-700"
+                                    : "text-primary hover:underline"
+                                }`}
+                              >
+                                {admin.login_enabled
+                                  ? "Lock login"
+                                  : "Enable login"}
+                              </button>
+                            )}
+                          </div>
                         )}
                       </td>
                     )}
@@ -793,6 +880,18 @@ export default function ManageAdminsContent({
                 )}
                 {canMutate && (
                   <>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleToggleLoginEnabled(admin)}
+                      className={`!px-2.5 !py-1.5 !text-[11px] disabled:opacity-40 ${
+                        admin.login_enabled
+                          ? "admin-btn-secondary"
+                          : "admin-btn-primary"
+                      }`}
+                    >
+                      {admin.login_enabled ? "Lock login" : "Enable login"}
+                    </button>
                     {canChangeOperatorRole && (
                       <button
                         type="button"

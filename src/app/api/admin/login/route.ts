@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { hashPassword, verifyPassword } from "../../../../lib/merchantPassword";
-import { normalizeAccessFields } from "../../../../lib/adminTabAccess";
+import {
+  isConsoleLoginUnlocked,
+  normalizeAccessFields,
+} from "../../../../lib/adminTabAccess";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
     const supabase = getSupabase();
 
     const baseFields =
-      "id, email, password, role, is_disabled, allowed_tabs, allowed_tab_modes";
+      "id, email, password, role, is_disabled, allowed_tabs, allowed_tab_modes, login_enabled";
 
     type AdminLoginRow = {
       id: string;
@@ -50,6 +53,7 @@ export async function POST(request: Request) {
       allowed_tabs: string[] | null;
       allowed_tab_modes?: Record<string, string> | null;
       display_name?: string | null;
+      login_enabled?: boolean | null;
     };
 
     // Prefer display_name when the column exists (db/add_admin_display_name.sql).
@@ -64,6 +68,18 @@ export async function POST(request: Request) {
         .maybeSingle();
       admin = primary.data as AdminLoginRow | null;
       error = primary.error;
+    }
+
+    if (error && /login_enabled/i.test(error.message || "")) {
+      const withoutLogin = await supabase
+        .from("admins")
+        .select(
+          "id, email, password, role, is_disabled, allowed_tabs, allowed_tab_modes, display_name",
+        )
+        .ilike("email", email)
+        .maybeSingle();
+      admin = withoutLogin.data as AdminLoginRow | null;
+      error = withoutLogin.error;
     }
 
     if (error && /allowed_tab_modes/i.test(error.message || "")) {
@@ -167,6 +183,7 @@ export async function POST(request: Request) {
         allowed_tabs: access.allowed_tabs,
         allowed_tab_modes: access.allowed_tab_modes,
         displayName,
+        loginEnabled: isConsoleLoginUnlocked(admin.role, admin.login_enabled),
       },
     });
   } catch (error) {

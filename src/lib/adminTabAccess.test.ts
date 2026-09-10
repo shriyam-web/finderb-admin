@@ -7,6 +7,7 @@ import {
   canAccessTab,
   canEditTab,
   canManageAdmins,
+  isConsoleLoginUnlocked,
   normalizeAccessFields,
   resolveTabAccess,
   sanitizeTabModes,
@@ -266,5 +267,12 @@ assert.deepEqual(
   assert.equal(canAccessTab(session, "Movies"), true);
   assert.equal(canEditTab(session, "Movies"), false);
 }
+
+assert.equal(isConsoleLoginUnlocked("developer", false), true);
+assert.equal(isConsoleLoginUnlocked("developer", null), true);
+assert.equal(isConsoleLoginUnlocked("super_admin", false), false);
+assert.equal(isConsoleLoginUnlocked("super_admin", true), true);
+assert.equal(isConsoleLoginUnlocked("admin", undefined), false);
+assert.equal(isConsoleLoginUnlocked("controller", false), false);
 
 console.log("adminTabAccess tests: all passed");

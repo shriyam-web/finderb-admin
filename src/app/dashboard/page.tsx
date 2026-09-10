@@ -39,6 +39,7 @@ import { useAdminToast } from "../../components/AdminToast";
 import MerchantRegistrationContent from "../../components/MerchantRegistrationContent";
 import QuickOnboardContent from "../../components/QuickOnboardContent";
 import ManageAdminsContent from "../../components/ManageAdminsContent";
+import SuspiciousLoginModal from "../../components/SuspiciousLoginModal";
 import AdminOverlay from "../../components/AdminOverlay";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
 import { planLabel, MERCHANT_PLAN_PRESETS, resolvePlanPresetId } from "../../lib/merchantPlanAdmin";
@@ -70,6 +71,7 @@ import { computeDashboardStats } from "../../lib/dashboardStats";
 import {
   canAccessTab,
   canEditTab,
+  isConsoleLoginUnlocked,
   isPremiumConsoleRole,
   normalizeAccessFields,
   type TabAccessMode,
@@ -116,6 +118,7 @@ interface AdminSession {
   allowed_tabs?: string[];
   allowed_tab_modes?: Record<string, TabAccessMode> | null;
   displayName?: string | null;
+  loginEnabled?: boolean;
 }
 
 /**
@@ -329,6 +332,7 @@ interface AdminProfile {
   password?: string;
   role: string;
   is_disabled: boolean;
+  login_enabled?: boolean | null;
   allowed_tabs: string[] | null;
   allowed_tab_modes?: Record<string, TabAccessMode> | null;
   created_at: string;
@@ -1020,6 +1024,10 @@ export default function Dashboard() {
               data.display_name.trim()) ||
             session.displayName ||
             null,
+          loginEnabled: isConsoleLoginUnlocked(
+            data.role,
+            data.login_enabled,
+          ),
         };
         localStorage.setItem("admin_session", JSON.stringify(updatedSession));
         setAdminSession(updatedSession);
@@ -1034,11 +1042,11 @@ export default function Dashboard() {
     validateSession();
   }, [router]);
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("admin_session");
     setAdminSession(null);
     router.push("/");
-  };
+  }, [router]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -2307,6 +2315,10 @@ export default function Dashboard() {
         );
     }
   };
+
+  if (sessionReady && adminSession && !isConsoleLoginUnlocked(adminSession.role, adminSession.loginEnabled)) {
+    return <SuspiciousLoginModal onLogout={handleLogout} />;
+  }
 
   if (!sessionReady || !adminSession || !bootMinElapsed) {
     return <AdminBootLoader />;
