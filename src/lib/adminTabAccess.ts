@@ -8,6 +8,24 @@ export type AdminAccessSession = {
   allowed_tab_modes?: Record<string, TabAccessMode> | null;
 };
 
+export function isDeveloperRole(role?: string | null): boolean {
+  return role === "developer";
+}
+
+export function isControllerRole(role?: string | null): boolean {
+  return role === "controller";
+}
+
+/** Developer is the platform owner: every tab, including Manage Admins. */
+export function canManageAdmins(role?: string | null): boolean {
+  return isDeveloperRole(role);
+}
+
+/** Gold premium console: developer and controller. */
+export function isPremiumConsoleRole(role?: string | null): boolean {
+  return isDeveloperRole(role) || isControllerRole(role);
+}
+
 export const TAB_ACCESS_MODES: Exclude<TabAccessMode, "none">[] = [
   "read",
   "edit",
@@ -134,7 +152,8 @@ function modeFromAllowList(
 
 /**
  * Resolve access for a tab.
- * Controllers always get edit.
+ * Developer always gets edit (including Manage Admins).
+ * Controller gets edit on every tab except Manage Admins.
  * Everyone else is an explicit allow-list (modes, or legacy tabs as edit).
  * Missing tab ⇒ none. No inheritance between Merchants / Onboarding / Quick Onboard.
  */
@@ -143,8 +162,9 @@ export function resolveTabAccess(
   tab: string,
 ): TabAccessMode {
   if (!session) return "none";
-  if (session.role === "controller") return "edit";
+  if (isDeveloperRole(session.role)) return "edit";
   if (tab === "Manage Admins") return "none";
+  if (isControllerRole(session.role)) return "edit";
   if (tab === "News" || tab === "FinderB E-commerce") return "none";
 
   return modeFromAllowList(effectiveTabModes(session), tab);

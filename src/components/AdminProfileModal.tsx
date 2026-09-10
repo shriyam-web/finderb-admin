@@ -278,9 +278,15 @@ export default function AdminProfileModal({
 
               <div className="rounded-xl border border-slate-200 px-3 py-2.5">
                 <p className="text-[11px] text-slate-500 mb-1.5">Access</p>
-                {role === "controller" || role === "super_admin" ? (
+                {role === "developer" || role === "controller" ? (
                   <p className="text-sm font-medium text-slate-800">
-                    Full console access
+                    {role === "developer"
+                      ? "Full console access including Manage Admins"
+                      : "All tabs except Manage Admins"}
+                  </p>
+                ) : role === "super_admin" ? (
+                  <p className="text-sm font-medium text-slate-800">
+                    Tab access is assigned by a Developer
                   </p>
                 ) : tabs && tabs.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5">

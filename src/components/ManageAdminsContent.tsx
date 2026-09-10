@@ -10,6 +10,7 @@ import {
 import { createClient } from "../../utils/supabase/client";
 import {
   allowedTabsFromModes,
+  canManageAdmins,
   countGrantedTabs,
   normalizeAccessFields,
   sanitizeTabModes,
@@ -34,7 +35,7 @@ type AdminSession = {
   role: string;
 };
 
-/** Tabs controllers can assign (excludes Manage Admins). */
+/** Tabs developers can assign (excludes Manage Admins). */
 export const ASSIGNABLE_ADMIN_TABS = [
   "Dashboard",
   "Users",
@@ -59,13 +60,15 @@ type Props = {
   adminSession: AdminSession | null;
 };
 
-type RoleFilter = "all" | "controller" | "super_admin" | "admin";
+type RoleFilter = "all" | "developer" | "controller" | "super_admin" | "admin";
 
 function roleLabel(role: string) {
   return role.replace(/_/g, " ");
 }
 
 function roleBadgeClass(role: string) {
+  if (role === "developer")
+    return "admin-badge bg-teal-700 text-white border-teal-800";
   if (role === "controller")
     return "admin-badge bg-slate-900 text-white border-slate-900";
   if (role === "super_admin")
@@ -91,7 +94,7 @@ export default function ManageAdminsContent({
   setAdmins,
   adminSession,
 }: Props) {
-  const isController = adminSession?.role === "controller";
+  const canManage = canManageAdmins(adminSession?.role);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [showCreate, setShowCreate] = useState(false);
@@ -129,8 +132,9 @@ export default function ManageAdminsContent({
   const stats = useMemo(() => {
     const active = admins.filter((a) => !a.is_disabled).length;
     const disabled = admins.filter((a) => a.is_disabled).length;
+    const developers = admins.filter((a) => a.role === "developer").length;
     const controllers = admins.filter((a) => a.role === "controller").length;
-    return { total: admins.length, active, disabled, controllers };
+    return { total: admins.length, active, disabled, developers, controllers };
   }, [admins]);
 
   const filtered = useMemo(() => {
@@ -145,7 +149,7 @@ export default function ManageAdminsContent({
       })
       .sort((a, b) => {
         const rank = (r: string) =>
-          r === "controller" ? 0 : r === "super_admin" ? 1 : 2;
+          r === "developer" ? 0 : r === "controller" ? 1 : r === "super_admin" ? 2 : 3;
         const byRole = rank(a.role) - rank(b.role);
         if (byRole !== 0) return byRole;
         return a.email.localeCompare(b.email);
@@ -186,7 +190,7 @@ export default function ManageAdminsContent({
   };
 
   const handlePromoteToSuperAdmin = async (admin: AdminProfile) => {
-    if (!isController) return flash("Only Controller can perform this action.");
+    if (!canManage) return flash("Only Developer can perform this action.");
     if (!confirm(`Promote ${admin.email} to super admin?`)) return;
     setActionBusyId(admin.id);
     try {
@@ -211,7 +215,7 @@ export default function ManageAdminsContent({
   };
 
   const handleDemoteToAdmin = async (admin: AdminProfile) => {
-    if (!isController) return flash("Only Controller can perform this action.");
+    if (!canManage) return flash("Only Developer can perform this action.");
     if (!confirm(`Demote ${admin.email} to admin?`)) return;
     setActionBusyId(admin.id);
     try {
@@ -234,7 +238,7 @@ export default function ManageAdminsContent({
   };
 
   const handleToggleDisable = async (admin: AdminProfile) => {
-    if (!isController) return flash("Only Controller can perform this action.");
+    if (!canManage) return flash("Only Developer can perform this action.");
     const action = admin.is_disabled ? "enable" : "disable";
     if (!confirm(`Are you sure you want to ${action} ${admin.email}?`)) return;
     setActionBusyId(admin.id);
@@ -269,7 +273,7 @@ export default function ManageAdminsContent({
   };
 
   const handleSaveTabs = async () => {
-    if (!isController || !permissionsAdmin) return;
+    if (!canManage || !permissionsAdmin) return;
     setSavingTabs(true);
     try {
       // Strict allow-list: only read/edit keys are persisted. Empty = zero tabs.
@@ -316,7 +320,11 @@ export default function ManageAdminsContent({
   };
 
   const handleDeleteAdmin = async (admin: AdminProfile) => {
-    if (admin.role === "super_admin" || admin.email === "admin@finderb.com") {
+    if (
+      admin.role === "developer" ||
+      admin.role === "super_admin" ||
+      admin.email === "admin@finderb.com"
+    ) {
       flash("This admin cannot be deleted.");
       return;
     }
@@ -349,7 +357,7 @@ export default function ManageAdminsContent({
 
   const grantedCount = countGrantedTabs(draftModes);
 
-  const colSpan = isController ? 7 : 4;
+  const colSpan = canManage ? 7 : 4;
 
   return (
     <div className="space-y-4">
@@ -372,7 +380,7 @@ export default function ManageAdminsContent({
               can open.
             </p>
           </div>
-          {isController && (
+          {canManage && (
             <button
               type="button"
               onClick={() => setShowCreate((v) => !v)}
@@ -395,11 +403,14 @@ export default function ManageAdminsContent({
           Disabled <strong>{stats.disabled}</strong>
         </span>
         <span className="admin-metric-chip">
+          Developers <strong>{stats.developers}</strong>
+        </span>
+        <span className="admin-metric-chip">
           Controllers <strong>{stats.controllers}</strong>
         </span>
       </div>
 
-      {showCreate && isController && (
+      {showCreate && canManage && (
         <form onSubmit={handleCreateAdmin} className="admin-card">
           <div className="admin-card-header">
             <div>
@@ -498,6 +509,7 @@ export default function ManageAdminsContent({
           {(
             [
               ["all", "All"],
+              ["developer", "Developer"],
               ["controller", "Controller"],
               ["super_admin", "Super"],
               ["admin", "Admin"],
@@ -525,8 +537,8 @@ export default function ManageAdminsContent({
               <tr>
                 <th>Admin</th>
                 <th>Role</th>
-                {isController && <th>Password</th>}
-                {isController && <th>Access</th>}
+                {canManage && <th>Password</th>}
+                {canManage && <th>Access</th>}
                 <th>Status</th>
                 <th>Joined</th>
                 <th className="text-right">Actions</th>
@@ -535,7 +547,10 @@ export default function ManageAdminsContent({
             <tbody>
               {filtered.map((admin) => {
                 const busy = actionBusyId === admin.id;
-                const canMutate = isController && admin.role !== "controller";
+                const canMutate = canManage && admin.role !== "developer";
+                const canChangeOperatorRole =
+                  canMutate &&
+                  (admin.role === "admin" || admin.role === "super_admin");
                 const isYou = adminSession?.email === admin.email;
                 return (
                   <tr
@@ -564,7 +579,7 @@ export default function ManageAdminsContent({
                         <span className={roleBadgeClass(admin.role)}>
                           {roleLabel(admin.role)}
                         </span>
-                        {canMutate && (
+                        {canChangeOperatorRole && (
                           <button
                             type="button"
                             disabled={busy}
@@ -582,7 +597,7 @@ export default function ManageAdminsContent({
                         )}
                       </div>
                     </td>
-                    {isController && (
+                    {canManage && (
                       <td>
                         <div className="flex items-center gap-2">
                           <span className="admin-mono text-[11px] bg-slate-50 border border-slate-200 rounded px-2 py-1 min-w-[76px]">
@@ -605,11 +620,15 @@ export default function ManageAdminsContent({
                         </div>
                       </td>
                     )}
-                    {isController && (
+                    {canManage && (
                       <td>
-                        {admin.role === "controller" ? (
+                        {admin.role === "developer" ? (
                           <span className="text-xs text-slate-500">
                             Full access
+                          </span>
+                        ) : admin.role === "controller" ? (
+                          <span className="text-xs text-slate-500">
+                            All tabs except Manage Admins
                           </span>
                         ) : (
                           <button
@@ -703,7 +722,10 @@ export default function ManageAdminsContent({
       <div className="lg:hidden space-y-2">
         {filtered.map((admin) => {
           const busy = actionBusyId === admin.id;
-          const canMutate = isController && admin.role !== "controller";
+          const canMutate = canManage && admin.role !== "developer";
+          const canChangeOperatorRole =
+            canMutate &&
+            (admin.role === "admin" || admin.role === "super_admin");
           return (
             <article
               key={admin.id}
@@ -735,7 +757,7 @@ export default function ManageAdminsContent({
                 </div>
               </div>
 
-              {isController && (
+              {canManage && (
                 <div className="flex items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2">
                   <span className="admin-mono text-[11px] text-slate-700">
                     {visiblePasswords[admin.id]
@@ -758,7 +780,9 @@ export default function ManageAdminsContent({
               )}
 
               <div className="flex flex-wrap gap-1.5">
-                {isController && admin.role !== "controller" && (
+                {canManage &&
+                  admin.role !== "developer" &&
+                  admin.role !== "controller" && (
                   <button
                     type="button"
                     onClick={() => openPermissions(admin)}
@@ -769,18 +793,20 @@ export default function ManageAdminsContent({
                 )}
                 {canMutate && (
                   <>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        admin.role === "super_admin"
-                          ? handleDemoteToAdmin(admin)
-                          : handlePromoteToSuperAdmin(admin)
-                      }
-                      className="admin-btn-secondary !px-2.5 !py-1.5 !text-[11px] disabled:opacity-40"
-                    >
-                      {admin.role === "super_admin" ? "Demote" : "Promote"}
-                    </button>
+                    {canChangeOperatorRole && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          admin.role === "super_admin"
+                            ? handleDemoteToAdmin(admin)
+                            : handlePromoteToSuperAdmin(admin)
+                        }
+                        className="admin-btn-secondary !px-2.5 !py-1.5 !text-[11px] disabled:opacity-40"
+                      >
+                        {admin.role === "super_admin" ? "Demote" : "Promote"}
+                      </button>
+                    )}
                     <button
                       type="button"
                       disabled={busy}

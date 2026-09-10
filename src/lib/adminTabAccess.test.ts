@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   canAccessTab,
   canEditTab,
+  canManageAdmins,
   normalizeAccessFields,
   resolveTabAccess,
   sanitizeTabModes,
@@ -44,16 +45,26 @@ function accessible(session: Parameters<typeof canAccessTab>[0]) {
 
 function menuFor(session: AdminAccessSession) {
   return ALL_TABS.filter((name) => {
-    if (session.role === "controller") return true;
+    if (session.role === "developer") return true;
+    if (session.role === "controller") return name !== "Manage Admins";
     if (name === "Manage Admins" || COMING_SOON.has(name)) return false;
     return canAccessTab(session, name);
   });
 }
 
-// Controllers see everything including Manage Admins / coming soon via role check
-assert.equal(resolveTabAccess({ role: "controller" }, "Manage Admins"), "edit");
+// Developer owns every tab, including Manage Admins (taken from controller)
+assert.equal(resolveTabAccess({ role: "developer" }, "Manage Admins"), "edit");
+assert.equal(resolveTabAccess({ role: "developer" }, "News"), "edit");
+assert.equal(resolveTabAccess({ role: "developer" }, "Blogs"), "edit");
+assert.equal(canManageAdmins("developer"), true);
+assert.deepEqual(menuFor({ role: "developer" }).includes("Manage Admins"), true);
+
+// Controller keeps operational tabs but not Manage Admins
+assert.equal(resolveTabAccess({ role: "controller" }, "Manage Admins"), "none");
 assert.equal(resolveTabAccess({ role: "controller" }, "News"), "edit");
 assert.equal(resolveTabAccess({ role: "controller" }, "Blogs"), "edit");
+assert.equal(canManageAdmins("controller"), false);
+assert.equal(menuFor({ role: "controller" }).includes("Manage Admins"), false);
 
 // Exactly 2 granted tabs — nothing else
 {

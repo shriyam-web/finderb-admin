@@ -70,6 +70,7 @@ import { computeDashboardStats } from "../../lib/dashboardStats";
 import {
   canAccessTab,
   canEditTab,
+  isPremiumConsoleRole,
   normalizeAccessFields,
   type TabAccessMode,
 } from "../../lib/adminTabAccess";
@@ -118,7 +119,8 @@ interface AdminSession {
 }
 
 /**
- * Edit access for a tab (approve/delete/save). Controllers always edit.
+ * Edit access for a tab (approve/delete/save).
+ * Developers always edit. Controllers edit every tab except Manage Admins.
  * Legacy allowed_tabs without modes still mean edit.
  */
 function hasFullTabAccess(session: AdminSession | null, tab: string): boolean {
@@ -803,13 +805,15 @@ export default function Dashboard() {
     setUnreadCount: setWhatsNewUnreadCount,
   } = useWhatsNewUnreadCount(adminSession?.id);
 
+  const isDeveloper = adminSession?.role === "developer";
   const isController = adminSession?.role === "controller";
+  const isPremiumConsole = isPremiumConsoleRole(adminSession?.role);
   const canToggleColorMode = !!adminSession;
-  // Controllers: dark = gold premium console, light = standard light UI.
+  // Developer / controller: dark = gold premium console, light = standard light UI.
   // Admin / super_admin: dark = teal dark console, light = standard light UI.
   const resolvedTheme = !adminSession
     ? null
-    : isController
+    : isPremiumConsole
       ? colorMode === "light"
         ? null
         : "controller"
@@ -1356,11 +1360,15 @@ export default function Dashboard() {
   ]);
 
   const menuItems = ALL_MENU_ITEMS.filter((item) => {
-    // Controllers always see every tab, including coming soon.
-    if (adminSession?.role === "controller") {
+    // Developer sees every tab, including Manage Admins and coming soon.
+    if (isDeveloper) {
       return true;
     }
-    // Manage Admins + coming-soon placeholders are controller-only.
+    // Controller keeps operational tabs but not Manage Admins.
+    if (isController) {
+      return item.name !== "Manage Admins";
+    }
+    // Manage Admins + coming-soon placeholders stay off the allow-list.
     // Never leak News / E-commerce just because some other tab was granted.
     if (item.name === "Manage Admins" || COMING_SOON_TABS.has(item.name)) {
       return false;
@@ -1377,18 +1385,15 @@ export default function Dashboard() {
   const canViewListingsQueue =
     hasTabAccess(adminSession, "Dashboard") ||
     hasTabAccess(adminSession, "Merchants");
-  const accessLocked =
-    !!adminSession &&
-    adminSession.role !== "controller" &&
-    menuItems.length === 0;
+  const accessLocked = !!adminSession && menuItems.length === 0;
 
   // Block deep-links / leftover activeTab for tabs this admin cannot open.
   useEffect(() => {
     if (!adminSession) return;
-    if (adminSession.role === "controller") return;
+    if (isDeveloper) return;
     const firstAllowed =
       menuItems.find((item) => !COMING_SOON_TABS.has(item.name))?.name;
-    if (activeTab === "Manage Admins" || COMING_SOON_TABS.has(activeTab)) {
+    if (activeTab === "Manage Admins" || (!isController && COMING_SOON_TABS.has(activeTab))) {
       if (firstAllowed) setActiveTab(firstAllowed);
       return;
     }
@@ -1396,7 +1401,7 @@ export default function Dashboard() {
       setActiveTab(firstAllowed);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adminSession, activeTab, menuItems]);
+  }, [adminSession, activeTab, menuItems, isDeveloper, isController]);
 
   useEffect(() => {
     if (!accessLocked) return;
@@ -2310,7 +2315,7 @@ export default function Dashboard() {
   return (
     <div
       className={`admin-shell flex min-h-screen ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${
-        isController ? "admin-shell-controller" : ""
+        isPremiumConsole ? "admin-shell-controller" : ""
       } ${resolvedTheme === "dark" ? "admin-shell-dark" : ""} ${
         accessLocked ? "admin-shell-locked" : ""
       }`}
@@ -2363,14 +2368,14 @@ export default function Dashboard() {
                   <div className="space-y-0.5 px-0.5">
                     <p
                       className={`text-[11px] font-semibold tracking-[0.16em] uppercase ${
-                        adminSession?.role === "controller"
-                          ? "text-amber-200"
-                          : "text-teal-200"
+                        isPremiumConsole ? "text-amber-200" : "text-teal-200"
                       }`}
                     >
-                      {adminSession?.role === "controller"
-                        ? "Controller suite"
-                        : "Control deck"}
+                      {isDeveloper
+                        ? "Developer suite"
+                        : isController
+                          ? "Controller suite"
+                          : "Control deck"}
                     </p>
                     <p className="text-[11px] text-slate-200 leading-snug">
                       Signed in as{" "}
@@ -2807,10 +2812,19 @@ export default function Dashboard() {
       <div className="admin-content-area flex-1 flex flex-col min-w-0">
         {/* One sticky chrome block — avoids ribbon/topbar/command-bar stacking overlaps */}
         <div className="admin-chrome-sticky">
-          {adminSession?.role === "controller" && (
+          {isPremiumConsole && (
             <div className="admin-controller-ribbon">
-              <strong>Controller access</strong>
-              <span>Full platform authority · premium console</span>
+              {isDeveloper ? (
+                <>
+                  <strong>Developer access</strong>
+                  <span>Full platform authority · Manage Admins · premium console</span>
+                </>
+              ) : (
+                <>
+                  <strong>Controller access</strong>
+                  <span>Operational console · Manage Admins is on the Developer account</span>
+                </>
+              )}
             </div>
           )}
           <header className="admin-topbar">
@@ -2876,11 +2890,13 @@ export default function Dashboard() {
             <div className="admin-topbar-actions">
               <span
                 className={`admin-role-badge capitalize ${
-                  adminSession?.role === "controller"
-                    ? "admin-role-badge-controller"
-                    : adminSession?.role === "super_admin"
-                      ? "admin-role-badge-super"
-                      : "admin-role-badge-admin"
+                  isDeveloper
+                    ? "admin-role-badge-developer"
+                    : isController
+                      ? "admin-role-badge-controller"
+                      : adminSession?.role === "super_admin"
+                        ? "admin-role-badge-super"
+                        : "admin-role-badge-admin"
                 }`}
               >
                 <span className="admin-role-badge-dot" aria-hidden />

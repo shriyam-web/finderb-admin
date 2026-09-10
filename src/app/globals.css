@@ -697,6 +697,18 @@ body {
     box-shadow: 0 0 0 3px rgba(120, 53, 15, 0.12);
   }
 
+  .admin-role-badge-developer {
+    background: linear-gradient(180deg, #5eead4 0%, #0f766e 100%);
+    border-color: #14b8a6;
+    color: #042f2e;
+    font-weight: 800;
+  }
+
+  .admin-role-badge-developer .admin-role-badge-dot {
+    background: #042f2e;
+    box-shadow: 0 0 0 3px rgba(4, 47, 46, 0.16);
+  }
+
   .admin-sign-out {
     display: inline-flex;
     align-items: center;

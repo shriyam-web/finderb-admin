@@ -115,7 +115,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: "Your account has been disabled. Please contact the Controller.",
+          error: "Your account has been disabled. Please contact a Developer.",
         },
         { status: 403 },
       );
