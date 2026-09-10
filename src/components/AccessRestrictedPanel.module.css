@@ -297,3 +297,27 @@
   border-color: rgba(251, 191, 36, 0.3);
   color: #fde68a;
 }
+
+:global(html[data-admin-theme="dark"]) .badge,
+:global(html[data-admin-theme="controller"]) .badge,
+:global(html[data-admin-theme="silver"]) .badge {
+  background: rgba(127, 29, 29, 0.45);
+  border-color: rgba(251, 113, 133, 0.35);
+  color: #fecdd3;
+}
+
+:global(html[data-admin-theme="dark"]) .pill,
+:global(html[data-admin-theme="controller"]) .pill,
+:global(html[data-admin-theme="silver"]) .pill {
+  background: rgba(15, 118, 110, 0.22);
+  border-color: rgba(45, 212, 191, 0.35);
+  color: #99f6e4;
+}
+
+:global(html[data-admin-theme="dark"]) .iconRing,
+:global(html[data-admin-theme="controller"]) .iconRing,
+:global(html[data-admin-theme="silver"]) .iconRing {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.08), transparent 55%),
+    linear-gradient(160deg, #1f2937 0%, #111827 100%);
+}

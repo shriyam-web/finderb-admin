@@ -1,0 +1,370 @@
+/* Dark / gold / silver: keep copy, inputs, and panels readable on every tab.
+   Tailwind v4 utilities and @apply both use --color-* tokens, so remapping
+   those tokens fixes light-theme class names that otherwise stay dark-on-dark.
+   Login clears data-admin-theme, so this never affects the sign-in screen. */
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) {
+  --admin-fg: var(--foreground);
+  --admin-fg-strong: #f8fafc;
+  --admin-fg-muted: #94a3b8;
+  --admin-canvas: var(--surface);
+
+  /* @apply bg-white / bg-slate-50 → theme surface */
+  --color-white: var(--surface);
+  --color-slate-50: var(--surface-muted);
+  --color-slate-100: var(--surface-muted);
+  --color-gray-50: var(--surface-muted);
+  --color-gray-100: var(--surface-muted);
+  --color-zinc-50: var(--surface-muted);
+  --color-zinc-100: var(--surface-muted);
+  --color-neutral-50: var(--surface-muted);
+  --color-neutral-100: var(--surface-muted);
+  --color-stone-50: var(--surface-muted);
+  --color-stone-100: var(--surface-muted);
+
+  /* Muted labels stay visible on dark canvases */
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #a8b0bd;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #a8b0bd;
+  --color-zinc-400: #94a3b8;
+  --color-zinc-500: #a8b0bd;
+  --color-neutral-400: #94a3b8;
+  --color-neutral-500: #a8b0bd;
+  --color-stone-400: #94a3b8;
+  --color-stone-500: #a8b0bd;
+
+  /* Dark text tokens → light (covers text-slate-900 AND @apply text-slate-900) */
+  --color-slate-600: #cbd5e1;
+  --color-slate-700: #e2e8f0;
+  --color-slate-800: #f1f5f9;
+  --color-slate-900: #f8fafc;
+  --color-slate-950: #f8fafc;
+  --color-gray-600: #cbd5e1;
+  --color-gray-700: #e2e8f0;
+  --color-gray-800: #f1f5f9;
+  --color-gray-900: #f8fafc;
+  --color-gray-950: #f8fafc;
+  --color-zinc-600: #cbd5e1;
+  --color-zinc-700: #e2e8f0;
+  --color-zinc-800: #f1f5f9;
+  --color-zinc-900: #f8fafc;
+  --color-zinc-950: #f8fafc;
+  --color-neutral-600: #cbd5e1;
+  --color-neutral-700: #e2e8f0;
+  --color-neutral-800: #f1f5f9;
+  --color-neutral-900: #f8fafc;
+  --color-neutral-950: #f8fafc;
+  --color-stone-600: #cbd5e1;
+  --color-stone-700: #e2e8f0;
+  --color-stone-800: #f1f5f9;
+  --color-stone-900: #f8fafc;
+  --color-stone-950: #f8fafc;
+
+  /* Pale tint chips would otherwise stay near-white with light text */
+  --color-teal-50: #134e4a;
+  --color-emerald-50: #064e3b;
+  --color-amber-50: #422006;
+  --color-orange-50: #431407;
+  --color-rose-50: #4c0519;
+  --color-sky-50: #0c4a6e;
+  --color-indigo-50: #1e1b4b;
+  --color-violet-50: #2e1065;
+  --color-yellow-50: #422006;
+
+  /* hover:text-teal-900 / text-teal-800 on dark surfaces */
+  --color-teal-700: #5eead4;
+  --color-teal-800: #99f6e4;
+  --color-teal-900: #ccfbf1;
+  --color-teal-950: #ecfdf5;
+  --color-emerald-700: #6ee7b7;
+  --color-emerald-800: #a7f3d0;
+  --color-emerald-900: #d1fae5;
+  --color-amber-700: #fcd34d;
+  --color-amber-800: #fde68a;
+  --color-amber-900: #fef3c7;
+  --color-rose-700: #fda4af;
+  --color-rose-800: #fecdd3;
+  --color-rose-900: #ffe4e6;
+  --color-sky-700: #7dd3fc;
+  --color-sky-800: #bae6fd;
+  --color-sky-900: #e0f2fe;
+  --color-indigo-700: #a5b4fc;
+  --color-indigo-800: #c7d2fe;
+  --color-indigo-900: #e0e7ff;
+}
+
+html[data-admin-theme="controller"] {
+  --admin-fg-strong: #fffbeb;
+  --color-slate-900: #fffbeb;
+  --color-slate-800: #fef3c7;
+}
+
+/* White copy / icons must not follow the remapped --color-white surface. */
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+)
+  :is(
+    [class*="text-white"],
+    [class*="fill-white"],
+    [class*="stroke-white"],
+    [class*="caret-white"],
+    [class*="decoration-white"]
+  ) {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  caret-color: #ffffff !important;
+}
+
+/* Keep intentional dark chips, terminals, and overlays actually dark. */
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+)
+  :is(
+    [class*="bg-slate-950"],
+    [class*="bg-gray-950"],
+    [class*="bg-zinc-950"],
+    [class*="bg-neutral-950"],
+    [class*="bg-black"]:not([class*="bg-black/"])
+  ) {
+  background-color: #020617 !important;
+  color: #f8fafc !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+)
+  :is(
+    [class*="bg-slate-900"]:not([class*="bg-slate-900/"]),
+    [class*="bg-gray-900"]:not([class*="bg-gray-900/"]),
+    [class*="bg-zinc-900"]:not([class*="bg-zinc-900/"]),
+    [class*="hover\:bg-slate-800"]:hover,
+    [class*="hover\:bg-slate-900"]:hover
+  ) {
+  background-color: #0b1220 !important;
+  color: #f8fafc !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+)
+  :is(
+    [class*="bg-slate-800"]:not([class*="bg-slate-800/"]),
+    [class*="bg-gray-800"]:not([class*="bg-gray-800/"]),
+    [class*="bg-zinc-800"]:not([class*="bg-zinc-800/"])
+  ) {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+)
+  :is(
+    [class*="bg-slate-900/"],
+    [class*="bg-gray-900/"],
+    [class*="bg-zinc-900/"],
+    [class*="bg-black/"]
+  ) {
+  background-color: rgba(2, 6, 23, 0.55) !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+)
+  :is(
+    [class*="border-slate-900"],
+    [class*="border-gray-900"],
+    [class*="border-zinc-900"],
+    [class*="border-black"]
+  ) {
+  border-color: #1e293b !important;
+}
+
+/* Hardcoded light panels in globals.css that do not use --color-white. */
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+)
+  :is(
+    .admin-whats-new-panel,
+    .admin-whats-new-fab-badge,
+    .qo-method-glider,
+    .qo-panel-paste,
+    .qo-create-bar,
+    .qo-success-header,
+    .qo-empty
+  ) {
+  background: var(--surface) !important;
+  background-image: none !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .qo-panel-paste {
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(160deg, #5eead4, #64748b 45%, #fde68a) border-box !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .qo-method-tab-title {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .qo-method-tab-active .qo-method-tab-title {
+  color: var(--admin-fg-strong) !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .qo-method-tab-hint {
+  color: rgba(204, 251, 241, 0.7) !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .qo-method-tab-active .qo-method-tab-hint {
+  color: var(--admin-fg-muted) !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) [class*="text-black"] {
+  color: #e2e8f0 !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .qo-terminal,
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .qo-terminal-bar {
+  background-color: #020617 !important;
+  border-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .qo-paste-area {
+  color: #e2e8f0 !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .admin-kpi:hover,
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .admin-metric-chip:hover {
+  background: var(--surface-muted) !important;
+}
+
+/* Forms, tables, editors — including portaled overlays outside .admin-shell. */
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+)
+  :is(
+    input,
+    textarea,
+    select,
+    option,
+    .ProseMirror,
+    .tiptap,
+    [contenteditable="true"]
+  ) {
+  color: var(--foreground);
+  background-color: inherit;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+)
+  :is(input, textarea, select)::placeholder {
+  color: var(--admin-fg-muted) !important;
+  opacity: 1 !important;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+)
+  :is(th, td, label, legend, caption, figcaption, dt, dd) {
+  color: inherit;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) svg[class*="text-"],
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) [class*="text-"] svg {
+  color: inherit;
+}
+
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) .admin-bar-chart-grid,
+html:is(
+  [data-admin-theme="dark"],
+  [data-admin-theme="controller"],
+  [data-admin-theme="silver"]
+) svg line[stroke="#e2e8f0"] {
+  stroke: rgba(148, 163, 184, 0.28);
+}

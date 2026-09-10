@@ -6,6 +6,7 @@ import "./controller-theme.css";
 import "./silver-theme.css";
 import "./dark-theme.css";
 import "./theme-contrast.css";
+import "./theme-visibility.css";
 
 const inter = Inter({
   subsets: ["latin"],
