@@ -1277,20 +1277,6 @@ export default function Dashboard() {
           }
         }
 
-        console.log("🚀 Fetching login logs from Supabase...");
-        const { data: logData, error: logError } = await supabase
-          .from("admin_login_logs")
-          .select("*")
-          .order("login_time", { ascending: false })
-          .limit(50);
-
-        if (logError) {
-          console.error("❌ Login logs fetch error:", logError);
-        } else {
-          console.log("✅ Login logs fetched:", logData?.length || 0);
-          if (logData) setLoginLogs(logData);
-        }
-
         console.log("🚀 Fetching users from Supabase...");
         const { data: userData, error: userError } = await supabase
           .from("User")
@@ -1389,26 +1375,28 @@ export default function Dashboard() {
     };
 
     const fetchLoginLogs = async () => {
-      if (activeTab === "Settings") {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("admin_login_logs")
-          .select("*")
-          .order("login_time", { ascending: false })
-          .limit(100);
+      if (!isDeveloper) {
+        setLoginLogs([]);
+        return;
+      }
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("admin_login_logs")
+        .select("*")
+        .order("login_time", { ascending: false })
+        .limit(100);
 
-        if (error) {
-          console.error("Error fetching login logs:", error);
-        } else {
-          setLoginLogs(data || []);
-        }
+      if (error) {
+        console.error("Error fetching login logs:", error);
+      } else {
+        setLoginLogs(data || []);
       }
     };
 
     fetchAdmins();
     fetchUsers();
     fetchLoginLogs();
-  }, [activeTab]);
+  }, [activeTab, isDeveloper]);
 
   const [broadcastTitle, setBroadcastTitle] = useState("");
   const [broadcastMessage, setBroadcastMessage] = useState("");
@@ -2140,6 +2128,7 @@ export default function Dashboard() {
             canAccessTab={(tab) => hasTabAccess(adminSession, tab)}
             canEditListings={canEditListings}
             canViewListingsQueue={canViewListingsQueue}
+            canViewLoginLogs={isDeveloper}
           />
         );
       case "Users":
@@ -2333,6 +2322,7 @@ export default function Dashboard() {
             setSettings={setSettings}
             loginLogs={loginLogs}
             canManage={hasFullTabAccess(adminSession, "Settings")}
+            canViewLoginLogs={isDeveloper}
           />
         );
       case "Manage Admins":
@@ -2361,6 +2351,7 @@ export default function Dashboard() {
             canAccessTab={(tab) => hasTabAccess(adminSession, tab)}
             canEditListings={canEditListings}
             canViewListingsQueue={canViewListingsQueue}
+            canViewLoginLogs={isDeveloper}
           />
         );
     }

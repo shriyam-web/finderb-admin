@@ -20,11 +20,13 @@ export default function SettingsContent({
   setSettings,
   loginLogs,
   canManage = false,
+  canViewLoginLogs = false,
 }: {
   settings: Settings;
   setSettings: Dispatch<SetStateAction<Settings>>;
   loginLogs: LoginLog[];
   canManage?: boolean;
+  canViewLoginLogs?: boolean;
 }) {
   const toggleSetting = async (key: string) => {
     if (!canManage) return;
@@ -108,6 +110,7 @@ export default function SettingsContent({
         ))}
       </div>
 
+      {canViewLoginLogs && (
       <div className="space-y-4">
         <div className="flex flex-col gap-1.5 px-1">
           <h2 className="text-lg font-semibold text-slate-900">
@@ -179,6 +182,7 @@ export default function SettingsContent({
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }

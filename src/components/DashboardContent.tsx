@@ -165,6 +165,7 @@ export default function DashboardContent({
   canAccessTab,
   canEditListings,
   canViewListingsQueue,
+  canViewLoginLogs,
 }: {
   setActiveTab: (tab: string) => void;
   merchantRequests: MerchantRequest[];
@@ -181,6 +182,7 @@ export default function DashboardContent({
   canAccessTab: (tab: string) => boolean;
   canEditListings: boolean;
   canViewListingsQueue: boolean;
+  canViewLoginLogs: boolean;
 }) {
   const [showRevenue, setShowRevenue] = useState(false);
   const [activityFilter, setActivityFilter] = useState<
@@ -651,7 +653,7 @@ export default function DashboardContent({
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
         {/* Verification queue */}
         {canViewListingsQueue && (
-        <div className="xl:col-span-5 admin-card flex flex-col overflow-hidden">
+        <div className={`${canViewLoginLogs ? "xl:col-span-5" : "xl:col-span-8"} admin-card flex flex-col overflow-hidden`}>
           <div className="admin-card-header">
             <div>
               <h3 className="admin-card-title flex items-center gap-2">
@@ -771,7 +773,7 @@ export default function DashboardContent({
         </div>
         )}
 
-        {/* Admin logins */}
+        {canViewLoginLogs && (
         <div
           className={`${canViewListingsQueue ? "xl:col-span-3" : "xl:col-span-4"} admin-card overflow-hidden`}
         >
@@ -817,9 +819,10 @@ export default function DashboardContent({
             )}
           </div>
         </div>
+        )}
 
         {/* Platform health */}
-        <div className="xl:col-span-4 admin-card p-4">
+        <div className={`${canViewLoginLogs || canViewListingsQueue ? "xl:col-span-4" : "xl:col-span-12"} admin-card p-4`}>
           <h3 className="admin-card-title flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-teal-700" />
             Platform health
