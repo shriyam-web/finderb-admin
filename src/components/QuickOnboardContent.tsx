@@ -7,6 +7,7 @@ import {
   type RegistrationCategory,
 } from "./MerchantRegistrationContent";
 import { isPlaceholderEmail } from "../lib/placeholderEmail";
+import { extractIndianMobileDigits } from "../lib/indianPhone";
 import {
   buildQuickOnboardPrompt,
   draftFromAiFields,
@@ -20,6 +21,11 @@ import { emptyWeekTimings } from "../lib/workingHours";
 import WorkingHoursEditor from "./WorkingHoursEditor";
 import { AiJsonArt, MapsImportArt } from "./OnboardHeroArt";
 import PaymentModesCheckboxes from "./PaymentModesCheckboxes";
+import { CategorySubcategoryPicker } from "./CategorySubcategoryPicker";
+import {
+  primaryBusinessCategory,
+  splitBusinessCategories,
+} from "../lib/categoryLabel";
 
 type AdminSession = {
   id: string;
@@ -495,34 +501,6 @@ export default function QuickOnboardContent({
       window.clearTimeout(t3);
     };
   }, [created, createdPassword]);
-
-  const topCategories = useMemo(
-    () =>
-      categories
-        .filter((c) => !c.parent_id)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [categories],
-  );
-
-  const categoryChoices = useMemo(() => {
-    const rows: { label: string; value: string }[] = [];
-    for (const parent of topCategories) {
-      const children = categories
-        .filter((c) => c.parent_id === parent.id)
-        .sort((a, b) => a.name.localeCompare(b.name));
-      if (children.length === 0) {
-        rows.push({ label: parent.name, value: parent.name });
-      } else {
-        for (const child of children) {
-          rows.push({
-            label: `${parent.name} › ${child.name}`,
-            value: `${parent.name} › ${child.name}`,
-          });
-        }
-      }
-    }
-    return rows;
-  }, [categories, topCategories]);
 
   const promptText = useMemo(
     () => buildQuickOnboardPrompt(categories),
@@ -1759,39 +1737,41 @@ export default function QuickOnboardContent({
                         }
                       />
                     </label>
-                    <div className="space-y-1">
-                      <span className="admin-label">Category</span>
-                      <select
-                        className="admin-input"
-                        value={
-                          draft.categoryMatched ? draft.resolvedCategory : ""
-                        }
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          const parts = value.split(/\s*›\s*/);
-                          patchDraft({
-                            resolvedCategory: value,
-                            category: parts[0] || value,
-                            subcategory: parts[1] || "",
-                            categoryMatched: Boolean(value),
-                          });
-                        }}
-                      >
-                        <option value="">
-                          {draft.category
-                            ? `AI suggested: ${
-                                draft.subcategory
-                                  ? `${draft.category} › ${draft.subcategory}`
-                                  : draft.category
-                              } — pick match`
-                            : "Select category"}
-                        </option>
-                        {categoryChoices.map((c) => (
-                          <option key={c.value} value={c.value}>
-                            {c.label}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="space-y-1 md:col-span-2">
+                      <span className="admin-label">Categories</span>
+                      <div className="rounded-lg border border-slate-200 bg-white">
+                        <CategorySubcategoryPicker
+                          categories={categories}
+                          value={
+                            draft.categoryMatched ? draft.resolvedCategory : ""
+                          }
+                          onChange={(value) => {
+                            const labels = splitBusinessCategories(value);
+                            const primary = primaryBusinessCategory(value);
+                            const parts = primary.split(/\s*›\s*/);
+                            patchDraft({
+                              resolvedCategory: value,
+                              category: parts[0] || primary,
+                              subcategory: parts[1] || "",
+                              categoryMatched: labels.length > 0,
+                            });
+                          }}
+                        />
+                      </div>
+                      {!draft.categoryMatched && draft.category ? (
+                        <p className="text-[11px] text-amber-700">
+                          AI suggested:{" "}
+                          {draft.subcategory
+                            ? `${draft.category} › ${draft.subcategory}`
+                            : draft.category}{" "}
+                          — add matching FinderB categories above.
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-slate-500">
+                          Map multiple categories so this partner shows in each
+                          listing.
+                        </p>
+                      )}
                     </div>
                     <label className="space-y-1 md:col-span-2">
                       <span className="admin-label">Address line 1</span>
@@ -1836,9 +1816,7 @@ export default function QuickOnboardContent({
                         value={draft.mobile}
                         onChange={(e) =>
                           patchDraft({
-                            mobile: e.target.value
-                              .replace(/\D/g, "")
-                              .slice(0, 10),
+                            mobile: extractIndianMobileDigits(e.target.value),
                           })
                         }
                         inputMode="numeric"
@@ -1851,9 +1829,9 @@ export default function QuickOnboardContent({
                         value={draft.publicPhone}
                         onChange={(e) =>
                           patchDraft({
-                            publicPhone: e.target.value
-                              .replace(/\D/g, "")
-                              .slice(0, 10),
+                            publicPhone: extractIndianMobileDigits(
+                              e.target.value,
+                            ),
                           })
                         }
                         inputMode="numeric"

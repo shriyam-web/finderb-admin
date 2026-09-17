@@ -3,6 +3,7 @@ import {
   extractGoogleBusinessFromUrl,
   googleBusinessToAiFields,
 } from "../../../../lib/googleBusinessLink";
+import { resolveGalleryImages } from "../../../../lib/rehostRemoteImage";
 
 export async function POST(request: Request) {
   try {
@@ -16,6 +17,29 @@ export async function POST(request: Request) {
     }
 
     const extract = await extractGoogleBusinessFromUrl(rawUrl);
+
+    // Re-host Place Photo URLs immediately so the Quick Onboard preview (and
+    // later create) use durable CDN images — browser <img> cannot reliably load
+    // keyed maps.googleapis.com/place/photo URLs.
+    if (extract.photos?.length) {
+      const hosted = await resolveGalleryImages(extract.photos, 5);
+      if (hosted.length) {
+        extract.photos = hosted;
+        extract.notes = [
+          ...(extract.notes || []).filter(
+            (n) => !/^Fetched \d+ photo/i.test(n),
+          ),
+          `Fetched and saved ${hosted.length} photo(s).`,
+        ];
+      } else {
+        extract.notes = [
+          ...(extract.notes || []),
+          "Photos were found on Google but could not be saved — try again or add images manually.",
+        ];
+        extract.photos = [];
+      }
+    }
+
     const fields = googleBusinessToAiFields(extract);
 
     if (!fields.businessName && !fields.addressLine1) {

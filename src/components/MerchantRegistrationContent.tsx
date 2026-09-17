@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { City, Country, State } from "country-state-city";
-import { indianMobileValidationError } from "../lib/indianPhone";
+import { indianMobileValidationError, extractIndianMobileDigits } from "../lib/indianPhone";
 import { validateRegistrationPassword } from "../lib/merchantPasswordPolicy";
 import {
   REGISTRATION_EMAIL_REGEX,
@@ -14,6 +14,8 @@ import { getBusinessLoginUrl, getBusinessProfileUrl } from "../lib/site";
 import { isPlaceholderEmail } from "../lib/placeholderEmail";
 import { FormOnboardArt } from "./OnboardHeroArt";
 import PaymentModesCheckboxes from "./PaymentModesCheckboxes";
+import { CategorySubcategoryPicker } from "./CategorySubcategoryPicker";
+import { splitBusinessCategories } from "../lib/categoryLabel";
 
 export type RegistrationCategory = {
   id: string;
@@ -36,9 +38,7 @@ type FormState = {
   mobile: string;
   businessName: string;
   displayName: string;
-  categoryId: string;
-  subcategoryId: string;
-  nestedSubcategoryId: string;
+  mappedCategories: string;
   addressLine1: string;
   addressLine2: string;
   countryCode: string;
@@ -63,9 +63,7 @@ const INITIAL_FORM: FormState = {
   mobile: "",
   businessName: "",
   displayName: "",
-  categoryId: "",
-  subcategoryId: "",
-  nestedSubcategoryId: "",
+  mappedCategories: "",
   addressLine1: "",
   addressLine2: "",
   countryCode: "IN",
@@ -210,33 +208,6 @@ export default function MerchantRegistrationContent({
     loginUrl,
   ]);
 
-  const topCategories = useMemo(
-    () =>
-      categories
-        .filter((c) => !c.parent_id)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [categories],
-  );
-
-  const subcategories = useMemo(
-    () =>
-      categories
-        .filter((c) => c.parent_id === form.categoryId)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [categories, form.categoryId],
-  );
-
-  const nestedSubcategories = useMemo(
-    () =>
-      categories
-        .filter((c) => c.parent_id === form.subcategoryId)
-        .sort((a, b) => a.name.localeCompare(b.name)),
-    [categories, form.subcategoryId],
-  );
-
-  const selectedRoot = topCategories.find((c) => c.id === form.categoryId);
-  const rootIsGroup = Boolean(selectedRoot && selectedRoot.level === 0);
-
   const countryOptions = useMemo(
     () =>
       Country.getAllCountries().map((c) => ({
@@ -278,18 +249,6 @@ export default function MerchantRegistrationContent({
       delete next._form;
       return next;
     });
-  };
-
-  const resolveCategoryLabel = () => {
-    const root = topCategories.find((c) => c.id === form.categoryId);
-    if (!root) return "";
-    const child = subcategories.find((c) => c.id === form.subcategoryId);
-    const leaf = nestedSubcategories.find((c) => c.id === form.nestedSubcategoryId);
-    if (root.level === 0) {
-      if (!child) return "";
-      return leaf ? `${child.name} › ${leaf.name}` : child.name;
-    }
-    return child ? `${root.name} › ${child.name}` : root.name;
   };
 
   const copyText = async (value: string, kind: "password" | "message") => {
@@ -344,15 +303,8 @@ export default function MerchantRegistrationContent({
     ) {
       next.displayName = "Display name must be at least 2 characters.";
     }
-    if (!form.categoryId)
-      next.categoryId = "Please select a business category.";
-    if (subcategories.length > 0 && !form.subcategoryId) {
-      next.subcategoryId = rootIsGroup
-        ? "Please select a category."
-        : "Please select a subcategory.";
-    }
-    if (nestedSubcategories.length > 0 && !form.nestedSubcategoryId) {
-      next.nestedSubcategoryId = "Please select a subcategory.";
+    if (!splitBusinessCategories(form.mappedCategories).length) {
+      next.mappedCategories = "Please add at least one business category.";
     }
     if (
       !form.addressLine1.trim() ||
@@ -365,6 +317,7 @@ export default function MerchantRegistrationContent({
     if (!form.city.trim()) next.city = "Please select your city.";
     const phoneError = indianMobileValidationError(form.publicPhone, {
       label: "display phone number",
+      allowLandline: true,
     });
     if (phoneError) next.publicPhone = phoneError;
     return next;
@@ -378,8 +331,7 @@ export default function MerchantRegistrationContent({
       "mobile",
       "businessName",
       "displayName",
-      "categoryId",
-      "subcategoryId",
+      "mappedCategories",
       "addressLine1",
       "country",
       "state",
@@ -445,7 +397,7 @@ export default function MerchantRegistrationContent({
           mobile: form.mobile,
           businessName: form.businessName,
           displayName: form.displayName,
-          category: resolveCategoryLabel(),
+          category: form.mappedCategories,
           city: form.city,
           state: form.state,
           country: form.country,
@@ -684,9 +636,7 @@ export default function MerchantRegistrationContent({
                       value={form.mobile}
                       onChange={(e) =>
                         patch({
-                          mobile: e.target.value
-                            .replace(/\D/g, "")
-                            .slice(0, 10),
+                          mobile: extractIndianMobileDigits(e.target.value),
                         })
                       }
                       placeholder="98XXXXXXXX"
@@ -798,81 +748,23 @@ export default function MerchantRegistrationContent({
                   />
                 </Field>
                 <Field
-                  id="categoryId"
-                  label="Category *"
-                  error={errors.categoryId}
+                  id="mappedCategories"
+                  label="Categories *"
+                  error={errors.mappedCategories}
+                  className="md:col-span-2"
                 >
-                  <select
-                    id="categoryId"
-                    className="admin-input"
-                    value={form.categoryId}
-                    onChange={(e) =>
-                      patch({
-                        categoryId: e.target.value,
-                        subcategoryId: "",
-                        nestedSubcategoryId: "",
-                      })
-                    }
-                  >
-                    <option value="">Select category</option>
-                    {topCategories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="rounded-lg border border-slate-200 bg-white">
+                    <CategorySubcategoryPicker
+                      categories={categories}
+                      value={form.mappedCategories}
+                      onChange={(label) => patch({ mappedCategories: label })}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-slate-500">
+                    Add multiple categories or subcategories so this merchant
+                    appears in each listing.
+                  </p>
                 </Field>
-                {subcategories.length > 0 && (
-                  <Field
-                    id="subcategoryId"
-                    label={rootIsGroup ? "Category *" : "Subcategory *"}
-                    error={errors.subcategoryId}
-                  >
-                    <select
-                      id="subcategoryId"
-                      className="admin-input"
-                      value={form.subcategoryId}
-                      onChange={(e) =>
-                        patch({
-                          subcategoryId: e.target.value,
-                          nestedSubcategoryId: "",
-                        })
-                      }
-                    >
-                      <option value="">
-                        {rootIsGroup ? "Select category" : "Select subcategory"}
-                      </option>
-                      {subcategories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                )}
-                {nestedSubcategories.length > 0 && (
-                  <Field
-                    id="nestedSubcategoryId"
-                    label="Subcategory *"
-                    error={errors.nestedSubcategoryId}
-                  >
-                    <select
-                      id="nestedSubcategoryId"
-                      className="admin-input"
-                      value={form.nestedSubcategoryId}
-                      onChange={(e) =>
-                        patch({ nestedSubcategoryId: e.target.value })
-                      }
-                    >
-                      <option value="">Select subcategory</option>
-                      {nestedSubcategories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                )}
               </div>
 
               <div className="border-t border-slate-100 pt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -991,12 +883,10 @@ export default function MerchantRegistrationContent({
                       value={form.publicPhone}
                       onChange={(e) =>
                         patch({
-                          publicPhone: e.target.value
-                            .replace(/\D/g, "")
-                            .slice(0, 10),
+                          publicPhone: extractIndianMobileDigits(e.target.value),
                         })
                       }
-                      placeholder="98XXXXXXXX"
+                      placeholder="Mobile or landline"
                       inputMode="numeric"
                     />
                   </div>

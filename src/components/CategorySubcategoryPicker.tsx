@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   inferCategoryLevel,
+  joinBusinessCategories,
   matchCategoriesFromLabel,
   resolveCategoryLabel,
+  splitBusinessCategories,
   type CategoryRef,
 } from "../lib/categoryLabel";
 
@@ -179,21 +181,14 @@ export function CategorySubcategoryPicker({
   value: string;
   onChange: (label: string) => void;
 }) {
-  const matched = useMemo(
-    () => matchCategoriesFromLabel(value, categories),
-    [value, categories],
+  const selectedLabels = useMemo(
+    () => splitBusinessCategories(value),
+    [value],
   );
 
-  const [parentId, setParentId] = useState(matched.parent?.id || "");
-  const [childId, setChildId] = useState(matched.child?.id || "");
+  const [parentId, setParentId] = useState("");
+  const [childId, setChildId] = useState("");
   const [leafId, setLeafId] = useState("");
-
-  useEffect(() => {
-    const next = matchCategoriesFromLabel(value, categories);
-    setParentId(next.parent?.id || "");
-    setChildId(next.child?.id || "");
-    setLeafId("");
-  }, [value, categories]);
 
   const roots = useMemo(
     () =>
@@ -229,30 +224,90 @@ export function CategorySubcategoryPicker({
     ? inferCategoryLevel(selectedRoot, categories) === 0
     : false;
 
-  const emit = (
-    root: CategoryRef | null,
-    mid: CategoryRef | null,
-    leaf: CategoryRef | null,
-  ) => {
-    if (!root) {
-      onChange("");
-      return;
+  const draftLabel = useMemo(() => {
+    if (!selectedRoot) return "";
+    if (inferCategoryLevel(selectedRoot, categories) === 0) {
+      if (!selectedChild) return "";
+      return resolveCategoryLabel(selectedChild.name, selectedLeaf?.name);
     }
-    if (inferCategoryLevel(root, categories) === 0) {
-      if (!mid) {
-        onChange("");
-        return;
-      }
-      onChange(resolveCategoryLabel(mid.name, leaf?.name));
-      return;
+    return resolveCategoryLabel(selectedRoot.name, selectedChild?.name);
+  }, [categories, selectedChild, selectedLeaf, selectedRoot]);
+
+  const canAdd =
+    Boolean(draftLabel) &&
+    !selectedLabels.some(
+      (label) => label.toLowerCase() === draftLabel.toLowerCase(),
+    );
+
+  // Selection is "complete" when there are no further child levels to pick.
+  const draftComplete = Boolean(
+    draftLabel &&
+      ((rootIsGroup && selectedChild && (leaves.length === 0 || selectedLeaf)) ||
+        (!rootIsGroup &&
+          selectedRoot &&
+          (children.length === 0 || selectedChild) &&
+          (leaves.length === 0 || selectedLeaf || !childId))),
+  );
+
+  useEffect(() => {
+    if (!draftComplete || !canAdd || !draftLabel) return;
+    // Auto-set the first mapping so existing single-category flows stay one-tap.
+    if (selectedLabels.length === 0) {
+      onChange(draftLabel);
+      setParentId("");
+      setChildId("");
+      setLeafId("");
     }
-    onChange(resolveCategoryLabel(root.name, mid?.name));
+  }, [canAdd, draftComplete, draftLabel, onChange, selectedLabels.length]);
+
+  const addDraft = () => {
+    if (!canAdd || !draftLabel) return;
+    onChange(joinBusinessCategories([...selectedLabels, draftLabel]));
+    setParentId("");
+    setChildId("");
+    setLeafId("");
+  };
+
+  const removeLabel = (label: string) => {
+    onChange(
+      joinBusinessCategories(
+        selectedLabels.filter(
+          (item) => item.toLowerCase() !== label.toLowerCase(),
+        ),
+      ),
+    );
   };
 
   return (
     <div className="px-3 py-2 space-y-2.5">
+      {selectedLabels.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedLabels.map((label) => (
+            <span
+              key={label}
+              className="inline-flex items-center gap-1 max-w-full rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-[11px] font-medium text-teal-900"
+            >
+              <span className="truncate">{label}</span>
+              <button
+                type="button"
+                onClick={() => removeLabel(label)}
+                className="shrink-0 text-teal-700/70 hover:text-teal-900"
+                aria-label={`Remove ${label}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       <DropdownSelect
-        label={rootIsGroup || roots.some((r) => inferCategoryLevel(r, categories) === 0) ? "Parent category" : "Category"}
+        label={
+          rootIsGroup ||
+          roots.some((r) => inferCategoryLevel(r, categories) === 0)
+            ? "Parent category"
+            : "Category"
+        }
         value={selectedRoot}
         placeholder="Select category"
         options={roots}
@@ -260,7 +315,6 @@ export function CategorySubcategoryPicker({
           setParentId(parent?.id || "");
           setChildId("");
           setLeafId("");
-          emit(parent, null, null);
         }}
       />
       {parentId && children.length > 0 && (
@@ -272,7 +326,6 @@ export function CategorySubcategoryPicker({
           onChange={(child) => {
             setChildId(child?.id || "");
             setLeafId("");
-            emit(selectedRoot, child, null);
           }}
         />
       )}
@@ -284,11 +337,11 @@ export function CategorySubcategoryPicker({
           options={leaves}
           onChange={(leaf) => {
             setLeafId(leaf?.id || "");
-            emit(selectedRoot, selectedChild, leaf);
           }}
         />
       )}
-      {(selectedChild || (selectedRoot && !rootIsGroup)) && (
+
+      {draftLabel ? (
         <div className="flex items-center gap-2 pt-0.5">
           <SymbolThumb
             symbol={
@@ -304,21 +357,24 @@ export function CategorySubcategoryPicker({
             }
             size="sm"
           />
-          <p className="text-[10px] text-slate-500 truncate">
-            Saves as{" "}
-            <span className="font-medium text-slate-700">
-              {rootIsGroup
-                ? resolveCategoryLabel(
-                    selectedChild?.name || "",
-                    selectedLeaf?.name,
-                  )
-                : resolveCategoryLabel(
-                    selectedRoot?.name || "",
-                    selectedChild?.name,
-                  )}
-            </span>
+          <p className="text-[10px] text-slate-500 truncate flex-1">
+            {selectedLabels.length ? "Add as" : "Saves as"}{" "}
+            <span className="font-medium text-slate-700">{draftLabel}</span>
           </p>
+          <button
+            type="button"
+            disabled={!canAdd}
+            onClick={addDraft}
+            className="shrink-0 rounded-md bg-teal-600 px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
+          >
+            {selectedLabels.length ? "Add" : "Set"}
+          </button>
         </div>
+      ) : (
+        <p className="text-[10px] text-slate-400">
+          Pick a category (and subcategory if needed), then add it. You can map
+          multiple categories.
+        </p>
       )}
     </div>
   );
@@ -331,29 +387,35 @@ export function CategoryLabelDisplay({
   label: string;
   categories: CategoryRef[];
 }) {
-  const { parent, child } = useMemo(
-    () => matchCategoriesFromLabel(label, categories),
-    [label, categories],
-  );
+  const labels = useMemo(() => splitBusinessCategories(label), [label]);
 
-  if (!label) return <RowFallback value="—" />;
-
-  const display = parent
-    ? resolveCategoryLabel(parent.name, child?.name)
-    : label;
+  if (!labels.length) return <RowFallback value="—" />;
 
   return (
-    <div className="flex items-center justify-between gap-4 px-3 py-1.5">
-      <span className="text-xs text-slate-500 shrink-0">Category</span>
-      <div className="flex items-center gap-2 min-w-0 justify-end">
-        <SymbolThumb
-          symbol={child?.symbol || parent?.symbol}
-          name={child?.name || parent?.name || label}
-          size="sm"
-        />
-        <span className="text-xs font-medium text-slate-900 truncate text-right">
-          {display}
-        </span>
+    <div className="flex items-start justify-between gap-4 px-3 py-1.5">
+      <span className="text-xs text-slate-500 shrink-0 pt-0.5">Categories</span>
+      <div className="flex flex-col items-end gap-1 min-w-0">
+        {labels.map((entry) => {
+          const { parent, child } = matchCategoriesFromLabel(entry, categories);
+          const display = parent
+            ? resolveCategoryLabel(parent.name, child?.name)
+            : entry;
+          return (
+            <div
+              key={entry}
+              className="flex items-center gap-2 min-w-0 justify-end"
+            >
+              <SymbolThumb
+                symbol={child?.symbol || parent?.symbol}
+                name={child?.name || parent?.name || entry}
+                size="sm"
+              />
+              <span className="text-xs font-medium text-slate-900 truncate text-right">
+                {display}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

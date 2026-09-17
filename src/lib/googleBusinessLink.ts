@@ -4,6 +4,11 @@ import {
   type MapCoordinates,
 } from "./googleMapsCoordinates";
 import type { QuickOnboardAiFields } from "./quickOnboard";
+import {
+  extractIndianMobileDigits,
+  isValidIndianLandlineDigits,
+  isValidIndianMobileDigits,
+} from "./indianPhone";
 
 const SHORT_MAP_HOST = "maps.app.goo.gl";
 export const WEEKDAYS = [
@@ -55,18 +60,11 @@ export type GoogleBusinessExtract = {
 };
 
 function digitsPhone(value: string): string {
-  let digits = value.replace(/\D/g, "");
-  if (digits.startsWith("91") && digits.length >= 12) {
-    digits = digits.slice(2);
-  } else if (digits.length === 11 && digits.startsWith("0")) {
-    digits = digits.slice(1);
-  }
-  if (digits.length > 10) digits = digits.slice(-10);
-  return digits.slice(0, 10);
+  return extractIndianMobileDigits(value);
 }
 
-function isLikelyIndianMobile(digits: string): boolean {
-  return /^[6-9]\d{9}$/.test(digits);
+function isUsableIndianPhone(digits: string): boolean {
+  return isValidIndianMobileDigits(digits) || isValidIndianLandlineDigits(digits);
 }
 
 /** Decode `/place/Business+Name/` slug from a Maps URL. */
@@ -632,10 +630,10 @@ export async function extractGoogleBusinessFromUrl(
           details.formatted_phone_number ||
           "";
         const parsedPhone = digitsPhone(rawPhone);
-        phone = isLikelyIndianMobile(parsedPhone) ? parsedPhone : "";
+        phone = isUsableIndianPhone(parsedPhone) ? parsedPhone : "";
         if (rawPhone && !phone) {
           notes.push(
-            "Listed phone is not a standard Indian mobile — enter mobile manually.",
+            "Listed phone could not be normalized — enter mobile or landline manually.",
           );
         }
         website = details.website || "";
@@ -723,7 +721,7 @@ export async function extractGoogleBusinessFromUrl(
 
   // Only mandatory create fields — optional extras (about, photos, social, hours,
   // owner) must not appear in "Still needed".
-  const usablePhone = isLikelyIndianMobile(digitsPhone(phone))
+  const usablePhone = isUsableIndianPhone(digitsPhone(phone))
     ? digitsPhone(phone)
     : "";
   if (!name) missingHints.push("business name");
@@ -791,7 +789,7 @@ export function googleBusinessToAiFields(
     ownerFullName: "",
     loginEmail: "",
     emailUnavailable: true,
-    mobile: isLikelyIndianMobile(phone) ? phone : "",
+    mobile: isValidIndianMobileDigits(phone) ? phone : "",
     businessName: extract.name || "",
     displayName: extract.name || "",
     category: extract.categoryHint || "",
@@ -801,7 +799,7 @@ export function googleBusinessToAiFields(
     city: extract.city || "",
     state: extract.state || "",
     country: extract.country || "India",
-    publicPhone: isLikelyIndianMobile(phone) ? phone : "",
+    publicPhone: isUsableIndianPhone(phone) ? phone : "",
     activateImmediately: false,
     notes: noteParts.join(" · "),
     about: extract.about || "",

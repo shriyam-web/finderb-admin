@@ -149,6 +149,7 @@ export function validateAndNormalizeMerchantRegistration(
 
   const publicPhoneError = indianMobileValidationError(data.publicPhone ?? "", {
     label: "display phone number",
+    allowLandline: true,
   });
   if (publicPhoneError) return { ok: false, error: publicPhoneError };
 

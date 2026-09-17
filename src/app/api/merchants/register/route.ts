@@ -14,6 +14,7 @@ import {
   type MerchantRegistrationPayload,
 } from "../../../../lib/merchantRegistration";
 import { canEditTab } from "../../../../lib/adminTabAccess";
+import { resolveGalleryImages } from "../../../../lib/rehostRemoteImage";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -75,47 +76,6 @@ async function generateUniquePlaceholderEmail(
     businessName,
     `${randomPlaceholderEmailDigits()}${crypto.randomUUID().replace(/\D/g, "").slice(0, 6)}`,
   );
-}
-
-/** Re-host Google Place photo URLs on Cloudinary for permanent gallery storage. */
-async function uploadImageUrlToCloudinary(
-  imageUrl: string,
-): Promise<string | null> {
-  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-  if (!cloudName || !uploadPreset || !imageUrl.trim()) return null;
-
-  try {
-    const form = new FormData();
-    form.append("file", imageUrl);
-    form.append("upload_preset", uploadPreset);
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      {
-        method: "POST",
-        body: form,
-        signal: AbortSignal.timeout(30000),
-      },
-    );
-    if (!res.ok) return null;
-    const json = (await res.json()) as { secure_url?: string };
-    return json.secure_url || null;
-  } catch {
-    return null;
-  }
-}
-
-async function resolveGalleryImages(photoUrls: string[]): Promise<string[]> {
-  const out: string[] = [];
-  for (const url of photoUrls.slice(0, 5)) {
-    const hosted = await uploadImageUrlToCloudinary(url);
-    if (hosted) out.push(hosted);
-    else if (url.startsWith("https://") && !url.includes("maps.googleapis.com")) {
-      // Keep non-Google https URLs as-is if Cloudinary upload fails
-      out.push(url);
-    }
-  }
-  return out;
 }
 
 export async function POST(request: Request) {
