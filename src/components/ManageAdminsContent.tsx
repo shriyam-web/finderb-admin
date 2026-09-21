@@ -49,6 +49,7 @@ export const ASSIGNABLE_ADMIN_TABS = [
   "Dashboard",
   "Users",
   "Merchants",
+  "Merchant Support Login",
   "Business Onboarding",
   "Quick Onboard",
   "Leads",

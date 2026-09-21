@@ -176,6 +176,11 @@ export function resolveTabAccess(
   if (!session) return "none";
   if (isDeveloperRole(session.role)) return "edit";
   if (tab === "Manage Admins") return "none";
+  // Sensitive support impersonation: never auto-grant to controllers.
+  // Developer grants explicitly via Manage Admins allow-list.
+  if (tab === "Merchant Support Login") {
+    return modeFromAllowList(effectiveTabModes(session), tab);
+  }
   if (isControllerRole(session.role)) return "edit";
   if (tab === "News" || tab === "FinderB E-commerce") return "none";
 

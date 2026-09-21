@@ -38,6 +38,7 @@ import {
 import { useAdminToast } from "../../components/AdminToast";
 import MerchantRegistrationContent from "../../components/MerchantRegistrationContent";
 import QuickOnboardContent from "../../components/QuickOnboardContent";
+import MerchantSupportLoginContent from "../../components/MerchantSupportLoginContent";
 import ManageAdminsContent from "../../components/ManageAdminsContent";
 import SuspiciousLoginModal from "../../components/SuspiciousLoginModal";
 import AdminOverlay from "../../components/AdminOverlay";
@@ -449,6 +450,24 @@ const ALL_MENU_ITEMS = [
     ),
   },
   {
+    name: "Merchant Support Login",
+    icon: (
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+        />
+      </svg>
+    ),
+  },
+  {
     name: "Business Onboarding",
     icon: (
       <svg
@@ -771,6 +790,7 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
           { name: "Quick Onboard", label: "Quick Onboard" },
         ],
       },
+      "Merchant Support Login",
       "Leads",
     ],
   },
@@ -1415,9 +1435,12 @@ export default function Dashboard() {
     if (isDeveloper) {
       return true;
     }
-    // Controller keeps operational tabs but not Manage Admins.
+    // Controller keeps operational tabs but not Manage Admins / Support Login.
     if (isController) {
-      return item.name !== "Manage Admins";
+      return (
+        item.name !== "Manage Admins" &&
+        item.name !== "Merchant Support Login"
+      );
     }
     // Manage Admins + coming-soon placeholders stay off the allow-list.
     // Never leak News / E-commerce just because some other tab was granted.
@@ -1444,7 +1467,12 @@ export default function Dashboard() {
     if (isDeveloper) return;
     const firstAllowed =
       menuItems.find((item) => !COMING_SOON_TABS.has(item.name))?.name;
-    if (activeTab === "Manage Admins" || (!isController && COMING_SOON_TABS.has(activeTab))) {
+    if (
+      activeTab === "Manage Admins" ||
+      (activeTab === "Merchant Support Login" &&
+        !hasTabAccess(adminSession, "Merchant Support Login")) ||
+      (!isController && COMING_SOON_TABS.has(activeTab))
+    ) {
       if (firstAllowed) setActiveTab(firstAllowed);
       return;
     }
@@ -2319,6 +2347,13 @@ export default function Dashboard() {
             setAudiences={setBroadcastAudiences}
             canManage={hasFullTabAccess(adminSession, "Broadcasts")}
             adminId={adminSession?.id ?? null}
+          />
+        );
+      case "Merchant Support Login":
+        return (
+          <MerchantSupportLoginContent
+            adminSession={adminSession}
+            canManage={hasFullTabAccess(adminSession, "Merchant Support Login")}
           />
         );
       case "Settings":

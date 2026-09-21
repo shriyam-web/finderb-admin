@@ -27,6 +27,7 @@ const ALL_TABS = [
   "Dashboard",
   "Users",
   "Merchants",
+  "Merchant Support Login",
   "Business Onboarding",
   "Quick Onboard",
   "Leads",
@@ -53,7 +54,9 @@ function accessible(session: Parameters<typeof canAccessTab>[0]) {
 function menuFor(session: AdminAccessSession) {
   return ALL_TABS.filter((name) => {
     if (session.role === "developer") return true;
-    if (session.role === "controller") return name !== "Manage Admins";
+    if (session.role === "controller") {
+      return name !== "Manage Admins" && name !== "Merchant Support Login";
+    }
     if (name === "Manage Admins" || COMING_SOON.has(name)) return false;
     return canAccessTab(session, name);
   });
@@ -66,12 +69,20 @@ assert.equal(resolveTabAccess({ role: "developer" }, "Blogs"), "edit");
 assert.equal(canManageAdmins("developer"), true);
 assert.deepEqual(menuFor({ role: "developer" }).includes("Manage Admins"), true);
 
-// Controller keeps operational tabs but not Manage Admins
+// Controller keeps operational tabs but not Manage Admins / Support Login
 assert.equal(resolveTabAccess({ role: "controller" }, "Manage Admins"), "none");
+assert.equal(
+  resolveTabAccess({ role: "controller" }, "Merchant Support Login"),
+  "none",
+);
 assert.equal(resolveTabAccess({ role: "controller" }, "News"), "edit");
 assert.equal(resolveTabAccess({ role: "controller" }, "Blogs"), "edit");
 assert.equal(canManageAdmins("controller"), false);
 assert.equal(menuFor({ role: "controller" }).includes("Manage Admins"), false);
+assert.equal(
+  menuFor({ role: "controller" }).includes("Merchant Support Login"),
+  false,
+);
 assert.equal(isPremiumConsoleRole("developer"), true);
 assert.equal(isPremiumConsoleRole("controller"), false);
 assert.equal(isPremiumConsoleRole("super_admin"), false);
