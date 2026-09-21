@@ -15,6 +15,7 @@ import {
 } from "../../../../lib/merchantRegistration";
 import { canEditTab } from "../../../../lib/adminTabAccess";
 import { resolveGalleryImages } from "../../../../lib/rehostRemoteImage";
+import { notifyListingLiveOnSite } from "../../../../lib/notifyListingLive";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -278,6 +279,12 @@ export async function POST(request: Request) {
         { success: false, error: error.message },
         { status: 500 },
       );
+    }
+
+    if (String(business?.status || "").toLowerCase() === "active") {
+      void notifyListingLiveOnSite(String(business.id)).catch((notifyError) => {
+        console.warn("[admin-register] listing-live notify failed", notifyError);
+      });
     }
 
     return NextResponse.json({ success: true, business });

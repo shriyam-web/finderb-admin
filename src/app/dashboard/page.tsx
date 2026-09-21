@@ -51,6 +51,7 @@ import {
 import { isPlaceholderEmail } from "../../lib/placeholderEmail";
 import type { MerchantRequest } from "../../lib/merchantRequest";
 import { getBusinessProfileUrl } from "../../lib/site";
+import { requestListingLiveEmail } from "../../lib/requestListingLiveEmail";
 import { diffAuditChanges, logMerchantAudit } from "../../lib/merchantAudit";
 import {
   CATEGORY_LEAD_BADGE,
@@ -1517,6 +1518,7 @@ export default function Dashboard() {
       summary: "Approved merchant listing",
       changes: diffAuditChanges({ status: "Pending" }, { status: "Active" }),
     });
+    void requestListingLiveEmail(adminSession?.id, req.id);
     toast(`${req.name} is now live on the public listing.`, "success");
   };
 
@@ -4639,6 +4641,7 @@ function MerchantsContent({
       summary: "Approved merchant listing",
       changes: diffAuditChanges({ status: "Pending" }, { status: "Active" }),
     });
+    void requestListingLiveEmail(adminSession?.id, merchant.id);
     toast("Merchant listing approved", "success");
   };
 
@@ -4710,6 +4713,9 @@ function MerchantsContent({
         { status: newStatus },
       ),
     });
+    if (newStatus === "Active") {
+      void requestListingLiveEmail(adminSession?.id, id);
+    }
     toast(`Listing status changed to ${newStatus}`, "success");
   };
 
@@ -4840,6 +4846,7 @@ function MerchantsContent({
   const handleSaveMerchant = async (updates: Partial<BusinessData>) => {
     if (!canManage || !selectedBusiness) return;
 
+    const previousStatus = String(selectedBusiness.status || "");
     const supabase = createClient();
     const payload = {
       fullName: updates.fullName,
@@ -4908,6 +4915,13 @@ function MerchantsContent({
       ),
     });
     toast("Merchant saved", "success");
+
+    const becameActive =
+      String(data.status || "").toLowerCase() === "active" &&
+      previousStatus.toLowerCase() !== "active";
+    if (becameActive) {
+      void requestListingLiveEmail(adminSession?.id, data.id);
+    }
 
     if (isManagedPartner(data.status)) {
       setMerchantRequests((prev) => prev.filter((m) => m.id !== data.id));
