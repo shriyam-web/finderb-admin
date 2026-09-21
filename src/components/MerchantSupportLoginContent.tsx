@@ -38,6 +38,7 @@ export default function MerchantSupportLoginContent({
   const [password, setPassword] = useState("");
   const [reason, setReason] = useState("");
   const [opening, setOpening] = useState(false);
+  const [lastRedeemUrl, setLastRedeemUrl] = useState("");
 
   const canOpen = useMemo(
     () => Boolean(canManage && selected && password.trim() && adminSession?.id),
@@ -74,6 +75,7 @@ export default function MerchantSupportLoginContent({
   const handleOpen = async () => {
     if (!canOpen || !selected || !adminSession?.id) return;
     setOpening(true);
+    setLastRedeemUrl("");
     try {
       const res = await fetch("/api/admin/support-login", {
         method: "POST",
@@ -91,7 +93,15 @@ export default function MerchantSupportLoginContent({
         return;
       }
       setPassword("");
-      window.open(json.redeemUrl, "_blank", "noopener,noreferrer");
+      setLastRedeemUrl(String(json.redeemUrl));
+      const popup = window.open(String(json.redeemUrl), "_blank");
+      if (!popup) {
+        toast(
+          "Popup blocked — use the link below (or allow popups for Admin).",
+          "error",
+        );
+        return;
+      }
       toast(
         `Opened ${selected.displayName || selected.businessName}. Session ends after 15 minutes of inactivity.`,
         "success",
@@ -241,6 +251,43 @@ export default function MerchantSupportLoginContent({
           >
             {opening ? "Opening…" : "Open merchant panel (15 min idle)"}
           </button>
+
+          {lastRedeemUrl ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Support link (opens for ~2 minutes, one-time use)
+              </p>
+              <a
+                href={lastRedeemUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 block break-all text-sm font-medium text-teal-700 underline"
+              >
+                {lastRedeemUrl}
+              </a>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="admin-btn"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(lastRedeemUrl);
+                    toast("Link copied.", "success");
+                  }}
+                >
+                  Copy link
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn"
+                  onClick={() => {
+                    window.location.assign(lastRedeemUrl);
+                  }}
+                >
+                  Open in this tab
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
