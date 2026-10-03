@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         .is("totp_confirmed_at", null)
         .select("id");
       if (saveError || !saved?.length) {
-        console.error("[admin totp] save failed:", saveError.message);
+        console.error("[admin totp] save failed:", saveError?.message || "no row updated");
         return NextResponse.json(
           { success: false, error: "Could not save the authenticator. Try signing in again." },
           { status: 500 },
