@@ -1435,12 +1435,17 @@ export default function Dashboard() {
     if (isDeveloper) {
       return true;
     }
-    // Controller keeps operational tabs but not Manage Admins / Support Login.
-    if (isController) {
+    // Controller without a saved allow-list keeps operational tabs.
+    // A saved allow-list from the Developer replaces that.
+    if (isController && adminSession?.allowed_tab_modes == null) {
       return (
         item.name !== "Manage Admins" &&
         item.name !== "Merchant Support Login"
       );
+    }
+    if (isController) {
+      if (item.name === "Manage Admins") return false;
+      return hasTabAccess(adminSession, item.name);
     }
     // Manage Admins + coming-soon placeholders stay off the allow-list.
     // Never leak News / E-commerce just because some other tab was granted.

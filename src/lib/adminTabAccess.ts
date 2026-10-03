@@ -181,7 +181,14 @@ export function resolveTabAccess(
   if (tab === "Merchant Support Login") {
     return modeFromAllowList(effectiveTabModes(session), tab);
   }
-  if (isControllerRole(session.role)) return "edit";
+  if (isControllerRole(session.role)) {
+    // No saved allow-list means the controller still has every operational tab.
+    // Once a Developer saves tab access, that list is what the controller can open.
+    if (session.allowed_tab_modes === null || session.allowed_tab_modes === undefined) {
+      return "edit";
+    }
+    return modeFromAllowList(effectiveTabModes(session), tab);
+  }
   if (tab === "News" || tab === "FinderB E-commerce") return "none";
 
   return modeFromAllowList(effectiveTabModes(session), tab);

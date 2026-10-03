@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { readAdminChallenge, verifyTotp } from "../../../../../lib/adminTotp";
+import {
+  consumeAdminLoginCode,
+  readLoginChallenge,
+  sendAdminLoginCode,
+  signLoginChallenge,
+} from "../../../../../lib/adminLoginOtp";
 import { isConsoleLoginUnlocked, normalizeAccessFields } from "../../../../../lib/adminTabAccess";
 
 function getSupabase() {
@@ -17,13 +22,16 @@ function getSupabase() {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { challenge?: string; code?: string };
-    const challenge = readAdminChallenge(body.challenge || "");
-    const code = String(body.code || "").replace(/\D/g, "");
-    if (!challenge || code.length !== 6) {
+    const body = (await request.json()) as {
+      challenge?: string;
+      code?: string;
+      resend?: boolean;
+    };
+    const challenge = readLoginChallenge(body.challenge || "");
+    if (!challenge) {
       return NextResponse.json(
-        { success: false, error: "Enter the 6-digit code from your authenticator app." },
-        { status: 400 },
+        { success: false, error: "This sign-in step expired. Enter your password again." },
+        { status: 401 },
       );
     }
 
@@ -31,7 +39,7 @@ export async function POST(request: Request) {
     const { data: admin, error } = await supabase
       .from("admins")
       .select(
-        "id, email, role, is_disabled, allowed_tabs, allowed_tab_modes, login_enabled, display_name, totp_secret, totp_confirmed_at",
+        "id, email, role, is_disabled, allowed_tabs, allowed_tab_modes, login_enabled, display_name",
       )
       .eq("id", challenge.adminId)
       .maybeSingle();
@@ -49,39 +57,30 @@ export async function POST(request: Request) {
       );
     }
 
-    const storedSecret = String(admin.totp_secret || "");
-    const alreadyEnrolled = Boolean(storedSecret && admin.totp_confirmed_at);
-    const secret = challenge.mode === "enroll" ? challenge.pendingSecret || "" : storedSecret;
-    if (challenge.mode === "enroll" && alreadyEnrolled) {
+    if (body.resend) {
+      const sent = await sendAdminLoginCode(admin.email);
+      if (!sent.ok) {
+        return NextResponse.json({ success: false, error: sent.error }, { status: 503 });
+      }
+      return NextResponse.json({
+        success: true,
+        step: "email",
+        challenge: signLoginChallenge(admin.id),
+      });
+    }
+
+    const code = String(body.code || "").replace(/\D/g, "");
+    if (code.length !== 6) {
       return NextResponse.json(
-        { success: false, error: "This authenticator is already set up. Enter the current code." },
+        { success: false, error: "Enter the 6-digit code from your email." },
         { status: 400 },
       );
     }
-    if (!verifyTotp(secret, code)) {
+    if (!(await consumeAdminLoginCode(admin.email, code))) {
       return NextResponse.json(
-        { success: false, error: "That code is not valid. Use the current code from your authenticator app." },
+        { success: false, error: "That code is invalid or expired. Request a new one." },
         { status: 401 },
       );
-    }
-
-    if (challenge.mode === "enroll") {
-      const { data: saved, error: saveError } = await supabase
-        .from("admins")
-        .update({
-          totp_secret: secret,
-          totp_confirmed_at: new Date().toISOString(),
-        })
-        .eq("id", admin.id)
-        .is("totp_confirmed_at", null)
-        .select("id");
-      if (saveError || !saved?.length) {
-        console.error("[admin totp] save failed:", saveError?.message || "no row updated");
-        return NextResponse.json(
-          { success: false, error: "Could not save the authenticator. Try signing in again." },
-          { status: 500 },
-        );
-      }
     }
 
     const { error: logError } = await supabase.from("admin_login_logs").insert([
@@ -103,9 +102,9 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error("[admin totp] unexpected:", error);
+    console.error("[admin email otp] unexpected:", error);
     return NextResponse.json(
-      { success: false, error: "Could not finish two-factor sign-in." },
+      { success: false, error: "Could not finish email sign-in." },
       { status: 500 },
     );
   }

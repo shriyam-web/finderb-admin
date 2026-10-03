@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { hashPassword, verifyPassword } from "../../../../lib/merchantPassword";
-import {
-  generateTotpSecret,
-  signAdminChallenge,
-  totpQrDataUrl,
-} from "../../../../lib/adminTotp";
+import { sendAdminLoginCode, signLoginChallenge } from "../../../../lib/adminLoginOtp";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -157,41 +153,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const totpLookup = await supabase
-      .from("admins")
-      .select("totp_secret, totp_confirmed_at")
-      .eq("id", admin.id)
-      .maybeSingle();
-    if (totpLookup.error) {
-      console.error("[admin login] totp lookup failed:", totpLookup.error.message);
-      return NextResponse.json(
-        { success: false, error: "Two-factor sign-in is not ready yet. Please try again shortly." },
-        { status: 500 },
-      );
-    }
-
-    const enrolled = Boolean(totpLookup.data?.totp_secret && totpLookup.data?.totp_confirmed_at);
-    if (!enrolled) {
-      const pendingSecret = generateTotpSecret();
-      const challenge = signAdminChallenge({
-        adminId: admin.id,
-        mode: "enroll",
-        pendingSecret,
-      });
-      const qrDataUrl = await totpQrDataUrl(admin.email, pendingSecret);
-      return NextResponse.json({
-        success: true,
-        step: "enroll",
-        challenge,
-        qrDataUrl,
-        manualKey: pendingSecret,
-      });
+    const sent = await sendAdminLoginCode(admin.email);
+    if (!sent.ok) {
+      return NextResponse.json({ success: false, error: sent.error }, { status: 503 });
     }
 
     return NextResponse.json({
       success: true,
-      step: "verify",
-      challenge: signAdminChallenge({ adminId: admin.id, mode: "verify" }),
+      step: "email",
+      challenge: signLoginChallenge(admin.id),
     });
   } catch (error) {
     console.error("[admin login] unexpected:", error);

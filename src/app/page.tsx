@@ -10,11 +10,10 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState<"password" | "enroll" | "verify">("password");
+  const [step, setStep] = useState<"password" | "email">("password");
   const [challenge, setChallenge] = useState("");
   const [otpCode, setOtpCode] = useState("");
-  const [qrDataUrl, setQrDataUrl] = useState("");
-  const [manualKey, setManualKey] = useState("");
+  const [resendIn, setResendIn] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -37,6 +36,12 @@ export default function Home() {
       router.push("/dashboard");
     }
   }, [router]);
+
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = window.setTimeout(() => setResendIn((value) => value - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendIn]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,23 +72,17 @@ export default function Home() {
         };
       };
 
-      const twoFactor = result as {
-        step?: "enroll" | "verify";
-        challenge?: string;
-        qrDataUrl?: string;
-        manualKey?: string;
-      };
-      if (twoFactor.step === "enroll" || twoFactor.step === "verify") {
+      const twoFactor = result as { step?: "email"; challenge?: string };
+      if (twoFactor.step === "email") {
         if (!twoFactor.challenge) {
-          setError("Could not start two-factor sign-in.");
+          setError("Could not start email verification.");
           setIsLoading(false);
           return;
         }
         setChallenge(twoFactor.challenge);
-        setQrDataUrl(twoFactor.qrDataUrl || "");
-        setManualKey(twoFactor.manualKey || "");
         setOtpCode("");
-        setStep(twoFactor.step);
+        setResendIn(90);
+        setStep("email");
         setIsLoading(false);
         return;
       }
@@ -138,12 +137,12 @@ export default function Home() {
     router.push("/dashboard");
   };
 
-  const handleTotp = async (event: React.FormEvent) => {
+  const handleEmailCode = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
     setIsLoading(true);
     try {
-      const response = await fetch("/api/admin/login/totp", {
+      const response = await fetch("/api/admin/login/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ challenge, code: otpCode }),
@@ -169,6 +168,36 @@ export default function Home() {
       finishSession(result.admin);
     } catch {
       setError("Could not check that code.");
+      setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resendIn > 0 || isLoading) return;
+    setError("");
+    setIsLoading(true);
+    setOtpCode("");
+    try {
+      const response = await fetch("/api/admin/login/otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge, resend: true }),
+      });
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        challenge?: string;
+      };
+      if (!response.ok || !result.success || !result.challenge) {
+        setError(result.error || "Could not resend the code.");
+        setIsLoading(false);
+        return;
+      }
+      setChallenge(result.challenge);
+      setResendIn(90);
+      setIsLoading(false);
+    } catch {
+      setError("Could not resend the code.");
       setIsLoading(false);
     }
   };
@@ -260,40 +289,21 @@ export default function Home() {
           <div className="admin-card p-8">
             <div className="mb-7">
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                {step === "password" ? "Sign in" : "Two-factor code"}
+                {step === "password" ? "Sign in" : "Email code"}
               </h1>
               <p className="mt-1.5 text-sm text-slate-500 font-medium">
-                {step === "enroll"
-                  ? "Scan this once in Google Authenticator, Microsoft Authenticator, or Authy. Then enter the 6-digit code."
-                  : step === "verify"
-                    ? "Enter the current 6-digit code from your authenticator app."
-                    : "Use your authorized admin credentials"}
+                {step === "email"
+                  ? `Enter the 6-digit code sent to ${username.trim() || "your email"}.`
+                  : "Use your authorized admin credentials"}
               </p>
             </div>
 
-            {step !== "password" ? (
-              <form onSubmit={handleTotp} className="space-y-5">
+            {step === "email" ? (
+              <form onSubmit={handleEmailCode} className="space-y-5">
                 {error && <div className="admin-alert-error">{error}</div>}
-                {step === "enroll" && qrDataUrl ? (
-                  <div className="flex flex-col items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={qrDataUrl}
-                      alt="Authenticator setup QR code"
-                      width={220}
-                      height={220}
-                      className="rounded-xl border border-slate-200 bg-white p-2"
-                    />
-                    {manualKey ? (
-                      <p className="break-all text-center text-xs text-slate-500">
-                        Or enter this key manually: <span className="font-semibold text-slate-800">{manualKey}</span>
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
                 <div>
                   <label htmlFor="otp" className="admin-label block mb-1.5">
-                    Authenticator code
+                    Email code
                   </label>
                   <input
                     id="otp"
@@ -312,13 +322,22 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
+                  disabled={isLoading || resendIn > 0}
+                  onClick={() => void handleResend()}
+                  className="w-full text-sm font-semibold text-slate-500 disabled:opacity-50"
+                >
+                  {resendIn > 0
+                    ? `Resend in ${Math.floor(resendIn / 60)}:${String(resendIn % 60).padStart(2, "0")}`
+                    : "Resend code"}
+                </button>
+                <button
+                  type="button"
                   className="w-full text-sm font-semibold text-slate-500"
                   onClick={() => {
                     setStep("password");
                     setChallenge("");
                     setOtpCode("");
-                    setQrDataUrl("");
-                    setManualKey("");
+                    setResendIn(0);
                     setError("");
                   }}
                 >

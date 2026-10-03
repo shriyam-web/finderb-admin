@@ -80,6 +80,20 @@ assert.equal(resolveTabAccess({ role: "controller" }, "Blogs"), "edit");
 assert.equal(canManageAdmins("controller"), false);
 assert.equal(menuFor({ role: "controller" }).includes("Manage Admins"), false);
 assert.equal(
+  resolveTabAccess(
+    { role: "controller", allowed_tab_modes: { Blogs: "read" } },
+    "Blogs",
+  ),
+  "read",
+);
+assert.equal(
+  resolveTabAccess(
+    { role: "controller", allowed_tab_modes: { Blogs: "read" } },
+    "Merchants",
+  ),
+  "none",
+);
+assert.equal(
   menuFor({ role: "controller" }).includes("Merchant Support Login"),
   false,
 );

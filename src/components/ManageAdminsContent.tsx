@@ -366,6 +366,16 @@ export default function ManageAdminsContent({
 
   const openPermissions = (admin: AdminProfile) => {
     setPermissionsAdmin(admin);
+    const unrestrictedController =
+      admin.role === "controller" &&
+      admin.allowed_tab_modes == null &&
+      (admin.allowed_tabs == null || admin.allowed_tabs.length === 0);
+    if (unrestrictedController) {
+      const all: Record<string, TabAccessMode> = {};
+      for (const tab of ASSIGNABLE_ADMIN_TABS) all[tab] = "edit";
+      setDraftModes(all);
+      return;
+    }
     const { allowed_tab_modes } = normalizeAccessFields(
       admin.allowed_tabs,
       admin.allowed_tab_modes,
@@ -421,12 +431,8 @@ export default function ManageAdminsContent({
   };
 
   const handleDeleteAdmin = async (admin: AdminProfile) => {
-    if (
-      admin.role === "developer" ||
-      admin.role === "super_admin" ||
-      admin.email === "admin@finderb.com"
-    ) {
-      flash("This admin cannot be deleted.");
+    if (admin.role === "developer" || admin.id === adminSession?.id) {
+      flash("The developer account cannot be deleted.");
       return;
     }
     if (!confirm(`Delete admin ${admin.email}? This cannot be undone.`)) return;
@@ -826,17 +832,16 @@ export default function ManageAdminsContent({
                           <span className="text-xs text-slate-500">
                             Full access
                           </span>
-                        ) : admin.role === "controller" ? (
-                          <span className="text-xs text-slate-500">
-                            All tabs except Manage Admins
-                          </span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => openPermissions(admin)}
                             className="text-[12px] font-medium text-primary hover:underline"
                           >
-                            {admin.allowed_tabs?.length || 0} tabs
+                            {admin.role === "controller" &&
+                            admin.allowed_tab_modes == null
+                              ? "All tabs"
+                              : `${admin.allowed_tabs?.length || 0} tabs`}
                           </button>
                         )}
                       </td>
@@ -921,7 +926,7 @@ export default function ManageAdminsContent({
                       </span>
                     </td>
                     <td className="text-right">
-                      {canMutate && admin.email !== "admin@finderb.com" && (
+                      {canMutate && (
                         <button
                           type="button"
                           disabled={busy}
@@ -1024,15 +1029,15 @@ export default function ManageAdminsContent({
               )}
 
               <div className="flex flex-wrap gap-1.5">
-                {canManage &&
-                  admin.role !== "developer" &&
-                  admin.role !== "controller" && (
+                {canManage && admin.role !== "developer" && (
                   <button
                     type="button"
                     onClick={() => openPermissions(admin)}
                     className="admin-btn-secondary !px-2.5 !py-1.5 !text-[11px]"
                   >
-                    {admin.allowed_tabs?.length || 0} tabs
+                    {admin.role === "controller" && admin.allowed_tab_modes == null
+                      ? "All tabs"
+                      : `${admin.allowed_tabs?.length || 0} tabs`}
                   </button>
                 )}
                 {canMutate && (
@@ -1071,16 +1076,14 @@ export default function ManageAdminsContent({
                     >
                       {admin.is_disabled ? "Enable" : "Disable"}
                     </button>
-                    {admin.email !== "admin@finderb.com" && (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => handleDeleteAdmin(admin)}
-                        className="admin-btn-danger !px-2.5 !py-1.5 !text-[11px] disabled:opacity-40"
-                      >
-                        Delete
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => handleDeleteAdmin(admin)}
+                      className="admin-btn-danger !px-2.5 !py-1.5 !text-[11px] disabled:opacity-40"
+                    >
+                      Delete
+                    </button>
                   </>
                 )}
               </div>
