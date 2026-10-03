@@ -80,6 +80,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Your account access is restored",
+    body: "You can now use your account again.",
+    published_at: "2026-09-11T00:03:00+05:30",
+  },
+  {
     title: "Controller actions auto-revoked after unlisted IP change",
     body: "Controller credentials were changed from an unlisted IP address. Controller actions have been automatically revoked.",
     published_at: "2026-09-10T21:00:00+05:30",
