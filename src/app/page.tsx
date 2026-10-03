@@ -10,6 +10,11 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<"password" | "enroll" | "verify">("password");
+  const [challenge, setChallenge] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [manualKey, setManualKey] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -62,6 +67,27 @@ export default function Home() {
         };
       };
 
+      const twoFactor = result as {
+        step?: "enroll" | "verify";
+        challenge?: string;
+        qrDataUrl?: string;
+        manualKey?: string;
+      };
+      if (twoFactor.step === "enroll" || twoFactor.step === "verify") {
+        if (!twoFactor.challenge) {
+          setError("Could not start two-factor sign-in.");
+          setIsLoading(false);
+          return;
+        }
+        setChallenge(twoFactor.challenge);
+        setQrDataUrl(twoFactor.qrDataUrl || "");
+        setManualKey(twoFactor.manualKey || "");
+        setOtpCode("");
+        setStep(twoFactor.step);
+        setIsLoading(false);
+        return;
+      }
+
       if (!response.ok || !result.success || !result.admin) {
         setError(result.error || "Incorrect email or password. Please try again.");
         setIsLoading(false);
@@ -84,6 +110,65 @@ export default function Home() {
       router.push("/dashboard");
     } catch {
       setError("An error occurred during login.");
+      setIsLoading(false);
+    }
+  };
+
+  const finishSession = (admin: {
+    id: string;
+    email: string;
+    role: string;
+    allowed_tabs: string[] | null;
+    allowed_tab_modes?: Record<string, string> | null;
+    displayName?: string | null;
+    loginEnabled?: boolean;
+  }) => {
+    localStorage.setItem(
+      "admin_session",
+      JSON.stringify({
+        email: admin.email,
+        role: admin.role,
+        id: admin.id,
+        allowed_tabs: admin.allowed_tabs,
+        allowed_tab_modes: admin.allowed_tab_modes ?? null,
+        displayName: admin.displayName ?? null,
+        loginEnabled: admin.loginEnabled === true,
+      }),
+    );
+    router.push("/dashboard");
+  };
+
+  const handleTotp = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/admin/login/totp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge, code: otpCode }),
+      });
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        admin?: {
+          id: string;
+          email: string;
+          role: string;
+          allowed_tabs: string[] | null;
+          allowed_tab_modes?: Record<string, string> | null;
+          displayName?: string | null;
+          loginEnabled?: boolean;
+        };
+      };
+      if (!response.ok || !result.success || !result.admin) {
+        setError(result.error || "That code was not accepted.");
+        setIsLoading(false);
+        return;
+      }
+      finishSession(result.admin);
+    } catch {
+      setError("Could not check that code.");
       setIsLoading(false);
     }
   };
@@ -175,13 +260,72 @@ export default function Home() {
           <div className="admin-card p-8">
             <div className="mb-7">
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                Sign in
+                {step === "password" ? "Sign in" : "Two-factor code"}
               </h1>
               <p className="mt-1.5 text-sm text-slate-500 font-medium">
-                Use your authorized admin credentials
+                {step === "enroll"
+                  ? "Scan this once in Google Authenticator, Microsoft Authenticator, or Authy. Then enter the 6-digit code."
+                  : step === "verify"
+                    ? "Enter the current 6-digit code from your authenticator app."
+                    : "Use your authorized admin credentials"}
               </p>
             </div>
 
+            {step !== "password" ? (
+              <form onSubmit={handleTotp} className="space-y-5">
+                {error && <div className="admin-alert-error">{error}</div>}
+                {step === "enroll" && qrDataUrl ? (
+                  <div className="flex flex-col items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={qrDataUrl}
+                      alt="Authenticator setup QR code"
+                      width={220}
+                      height={220}
+                      className="rounded-xl border border-slate-200 bg-white p-2"
+                    />
+                    {manualKey ? (
+                      <p className="break-all text-center text-xs text-slate-500">
+                        Or enter this key manually: <span className="font-semibold text-slate-800">{manualKey}</span>
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div>
+                  <label htmlFor="otp" className="admin-label block mb-1.5">
+                    Authenticator code
+                  </label>
+                  <input
+                    id="otp"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    required
+                    value={otpCode}
+                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="admin-input tracking-[0.3em]"
+                    placeholder="6-digit code"
+                  />
+                </div>
+                <button type="submit" disabled={isLoading || otpCode.length !== 6} className="admin-btn-primary w-full py-2.5">
+                  {isLoading ? "Checking code..." : "Continue"}
+                </button>
+                <button
+                  type="button"
+                  className="w-full text-sm font-semibold text-slate-500"
+                  onClick={() => {
+                    setStep("password");
+                    setChallenge("");
+                    setOtpCode("");
+                    setQrDataUrl("");
+                    setManualKey("");
+                    setError("");
+                  }}
+                >
+                  Use a different account
+                </button>
+              </form>
+            ) : (
             <form onSubmit={handleLogin} className="space-y-5">
               {error && <div className="admin-alert-error">{error}</div>}
 
@@ -280,6 +424,7 @@ export default function Home() {
                 {isLoading ? "Authenticating..." : "Sign in"}
               </button>
             </form>
+            )}
           </div>
         </div>
       </div>

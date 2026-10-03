@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { hashPassword, verifyPassword } from "../../../../lib/merchantPassword";
 import {
-  isConsoleLoginUnlocked,
-  normalizeAccessFields,
-} from "../../../../lib/adminTabAccess";
+  generateTotpSecret,
+  signAdminChallenge,
+  totpQrDataUrl,
+} from "../../../../lib/adminTotp";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -156,35 +157,41 @@ export async function POST(request: Request) {
       }
     }
 
-    const { error: logError } = await supabase.from("admin_login_logs").insert([
-      {
-        admin_id: admin.id,
-        admin_email: admin.email,
-      },
-    ]);
-
-    if (logError) {
-      console.error("[admin login] log failed:", logError.message);
+    const totpLookup = await supabase
+      .from("admins")
+      .select("totp_secret, totp_confirmed_at")
+      .eq("id", admin.id)
+      .maybeSingle();
+    if (totpLookup.error) {
+      console.error("[admin login] totp lookup failed:", totpLookup.error.message);
+      return NextResponse.json(
+        { success: false, error: "Two-factor sign-in is not ready yet. Please try again shortly." },
+        { status: 500 },
+      );
     }
 
-    const displayName = admin.display_name?.trim() || null;
-    const access = normalizeAccessFields(
-      admin.allowed_tabs,
-      admin.allowed_tab_modes,
-    );
+    const enrolled = Boolean(totpLookup.data?.totp_secret && totpLookup.data?.totp_confirmed_at);
+    if (!enrolled) {
+      const pendingSecret = generateTotpSecret();
+      const challenge = signAdminChallenge({
+        adminId: admin.id,
+        mode: "enroll",
+        pendingSecret,
+      });
+      const qrDataUrl = await totpQrDataUrl(admin.email, pendingSecret);
+      return NextResponse.json({
+        success: true,
+        step: "enroll",
+        challenge,
+        qrDataUrl,
+        manualKey: pendingSecret,
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      admin: {
-        id: admin.id,
-        email: admin.email,
-        role: admin.role,
-        // Always return a synced allow-list (never fat tabs + empty modes).
-        allowed_tabs: access.allowed_tabs,
-        allowed_tab_modes: access.allowed_tab_modes,
-        displayName,
-        loginEnabled: isConsoleLoginUnlocked(admin.role, admin.login_enabled),
-      },
+      step: "verify",
+      challenge: signAdminChallenge({ adminId: admin.id, mode: "verify" }),
     });
   } catch (error) {
     console.error("[admin login] unexpected:", error);
