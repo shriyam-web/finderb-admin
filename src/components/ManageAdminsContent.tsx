@@ -127,6 +127,7 @@ export default function ManageAdminsContent({
   const [lockCopy, setLockCopy] = useState<LockModalCopy>(DEFAULT_LOCK_MODAL_COPY);
   const [lockDraft, setLockDraft] = useState<LockModalCopy>(DEFAULT_LOCK_MODAL_COPY);
   const [lockSaving, setLockSaving] = useState(false);
+  const [lockSectionOpen, setLockSectionOpen] = useState(false);
 
   const flash = (message: string) => {
     setToast(message);
@@ -498,101 +499,6 @@ export default function ManageAdminsContent({
           )}
         </div>
       </div>
-
-      {canManage && (
-        <form
-          className="admin-card"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void handleSaveLockCopy();
-          }}
-        >
-          <div className="admin-card-header">
-            <div>
-              <h2 className="admin-card-title">Locked login screen</h2>
-              <p className="admin-card-description">
-                This copy appears after the console loads for accounts without
-                login enabled. Use {"{countdown}"} or {"{seconds}"} for the timer.
-              </p>
-            </div>
-            <button
-              type="submit"
-              disabled={lockSaving || JSON.stringify(lockDraft) === JSON.stringify(lockCopy)}
-              className="admin-btn-primary self-start"
-            >
-              {lockSaving ? "Saving…" : "Save message"}
-            </button>
-          </div>
-          <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Eyebrow
-              </span>
-              <input
-                className="admin-input"
-                value={lockDraft.eyebrow}
-                onChange={(e) =>
-                  setLockDraft((prev) => ({ ...prev, eyebrow: e.target.value }))
-                }
-              />
-            </label>
-            <label className="space-y-1.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Logout after (seconds)
-              </span>
-              <input
-                className="admin-input"
-                type="number"
-                min={10}
-                max={600}
-                value={lockDraft.logoutSeconds}
-                onChange={(e) =>
-                  setLockDraft((prev) => ({
-                    ...prev,
-                    logoutSeconds: clampLockoutSeconds(e.target.value),
-                  }))
-                }
-              />
-            </label>
-            <label className="space-y-1.5 sm:col-span-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Title
-              </span>
-              <input
-                className="admin-input"
-                value={lockDraft.title}
-                onChange={(e) =>
-                  setLockDraft((prev) => ({ ...prev, title: e.target.value }))
-                }
-              />
-            </label>
-            <label className="space-y-1.5 sm:col-span-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Message
-              </span>
-              <textarea
-                className="admin-input min-h-[88px] py-2"
-                value={lockDraft.body}
-                onChange={(e) =>
-                  setLockDraft((prev) => ({ ...prev, body: e.target.value }))
-                }
-              />
-            </label>
-            <label className="space-y-1.5 sm:col-span-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Footer
-              </span>
-              <textarea
-                className="admin-input min-h-[72px] py-2"
-                value={lockDraft.footer}
-                onChange={(e) =>
-                  setLockDraft((prev) => ({ ...prev, footer: e.target.value }))
-                }
-              />
-            </label>
-          </div>
-        </form>
-      )}
 
       <div className="flex flex-wrap gap-2">
         <span className="admin-metric-chip">
@@ -1076,14 +982,16 @@ export default function ManageAdminsContent({
                     >
                       {admin.is_disabled ? "Enable" : "Disable"}
                     </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => handleDeleteAdmin(admin)}
-                      className="admin-btn-danger !px-2.5 !py-1.5 !text-[11px] disabled:opacity-40"
-                    >
-                      Delete
-                    </button>
+                    {admin.email !== "admin@finderb.com" && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => handleDeleteAdmin(admin)}
+                        className="admin-btn-danger !px-2.5 !py-1.5 !text-[11px] disabled:opacity-40"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -1098,6 +1006,114 @@ export default function ManageAdminsContent({
           </div>
         )}
       </div>
+
+      {canManage && (
+        <form
+          className="admin-card"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSaveLockCopy();
+          }}
+        >
+          <div className="admin-card-header">
+            <div>
+              <h2 className="admin-card-title">Locked login screen</h2>
+              <p className="admin-card-description">
+                This copy appears after the console loads for accounts without
+                login enabled. Use {"{countdown}"} or {"{seconds}"} for the timer.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setLockSectionOpen((open) => !open)}
+                className="admin-btn-ghost self-start"
+              >
+                {lockSectionOpen ? "Hide" : "Show"}
+              </button>
+              {lockSectionOpen ? (
+                <button
+                  type="submit"
+                  disabled={lockSaving || JSON.stringify(lockDraft) === JSON.stringify(lockCopy)}
+                  className="admin-btn-primary self-start"
+                >
+                  {lockSaving ? "Saving…" : "Save message"}
+                </button>
+              ) : null}
+            </div>
+          </div>
+          {lockSectionOpen ? (
+            <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="space-y-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Eyebrow
+                </span>
+                <input
+                  className="admin-input"
+                  value={lockDraft.eyebrow}
+                  onChange={(e) =>
+                    setLockDraft((prev) => ({ ...prev, eyebrow: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Logout after (seconds)
+                </span>
+                <input
+                  className="admin-input"
+                  type="number"
+                  min={10}
+                  max={600}
+                  value={lockDraft.logoutSeconds}
+                  onChange={(e) =>
+                    setLockDraft((prev) => ({
+                      ...prev,
+                      logoutSeconds: clampLockoutSeconds(e.target.value),
+                    }))
+                  }
+                />
+              </label>
+              <label className="space-y-1.5 sm:col-span-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Title
+                </span>
+                <input
+                  className="admin-input"
+                  value={lockDraft.title}
+                  onChange={(e) =>
+                    setLockDraft((prev) => ({ ...prev, title: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="space-y-1.5 sm:col-span-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Message
+                </span>
+                <textarea
+                  className="admin-input min-h-[88px] py-2"
+                  value={lockDraft.body}
+                  onChange={(e) =>
+                    setLockDraft((prev) => ({ ...prev, body: e.target.value }))
+                  }
+                />
+              </label>
+              <label className="space-y-1.5 sm:col-span-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  Footer
+                </span>
+                <textarea
+                  className="admin-input min-h-[72px] py-2"
+                  value={lockDraft.footer}
+                  onChange={(e) =>
+                    setLockDraft((prev) => ({ ...prev, footer: e.target.value }))
+                  }
+                />
+              </label>
+            </div>
+          ) : null}
+        </form>
+      )}
 
       {permissionsAdmin && (
         <AdminOverlay className="flex items-end justify-center p-0 sm:items-center sm:p-4">

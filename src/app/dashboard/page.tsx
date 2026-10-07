@@ -43,6 +43,7 @@ import ManageAdminsContent from "../../components/ManageAdminsContent";
 import SuspiciousLoginModal from "../../components/SuspiciousLoginModal";
 import AdminOverlay from "../../components/AdminOverlay";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
+import { reportAdminSession } from "../../lib/adminSessionActivity";
 import { planLabel, MERCHANT_PLAN_PRESETS, resolvePlanPresetId } from "../../lib/merchantPlanAdmin";
 import {
   classifyStoredPassword,
@@ -381,6 +382,8 @@ export interface LoginLog {
   admin_id: string;
   admin_email: string;
   login_time: string;
+  logout_at?: string | null;
+  last_seen_at?: string | null;
 }
 
 const COMING_SOON_TABS = new Set(["News", "FinderB E-commerce"]);
@@ -1125,10 +1128,28 @@ export default function Dashboard() {
   }, [router]);
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem("admin_session");
-    setAdminSession(null);
-    router.push("/");
+    void reportAdminSession("end").finally(() => {
+      localStorage.removeItem("admin_session");
+      setAdminSession(null);
+      router.push("/");
+    });
   }, [router]);
+
+  useEffect(() => {
+    if (!adminSession?.id || !adminSession?.loginLogId) return;
+    void reportAdminSession("heartbeat");
+    const timer = window.setInterval(() => {
+      void reportAdminSession("heartbeat");
+    }, 45_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void reportAdminSession("heartbeat");
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [adminSession?.id, adminSession?.loginLogId]);
 
   useEffect(() => {
     if (!isLoginLocked) return;
@@ -1439,11 +1460,26 @@ export default function Dashboard() {
         return;
       }
       const supabase = createClient();
-      const { data, error } = await supabase
+      const query = supabase
         .from("admin_login_logs")
-        .select("*")
+        .select("id, admin_id, admin_email, login_time, logout_at, last_seen_at")
         .order("login_time", { ascending: false })
-        .limit(100);
+        .limit(500);
+      let { data, error } = await query;
+
+      if (error && /logout_at|last_seen_at/i.test(error.message || "")) {
+        const fallback = await supabase
+          .from("admin_login_logs")
+          .select("id, admin_id, admin_email, login_time")
+          .order("login_time", { ascending: false })
+          .limit(500);
+        data = (fallback.data || []).map((row) => ({
+          ...row,
+          logout_at: null,
+          last_seen_at: null,
+        }));
+        error = fallback.error;
+      }
 
       if (error) {
         console.error("Error fetching login logs:", error);

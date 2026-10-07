@@ -1,8 +1,15 @@
 "use client";
 
-import { Dispatch, SetStateAction } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
 import type { SiteMode } from "../lib/siteRuntime";
+import {
+  ADMIN_SESSION_ACTIVE_MS,
+  formatDateTimeInr,
+  formatDurationShort,
+  parseFinderbTimestamp,
+} from "../lib/formatDateTime";
+import { PaginationControls, useClientPage } from "./AdminListControls";
 import SiteModePanel from "./SiteModePanel";
 
 export interface Settings {
@@ -13,8 +20,47 @@ export interface Settings {
 
 export interface LoginLog {
   id: string;
+  admin_id?: string;
   admin_email: string;
   login_time: string;
+  logout_at?: string | null;
+  last_seen_at?: string | null;
+}
+
+function loginSessionView(log: LoginLog, now = Date.now()) {
+  const loginAt = parseFinderbTimestamp(log.login_time)?.getTime() ?? null;
+  const logoutAt = parseFinderbTimestamp(log.logout_at)?.getTime() ?? null;
+  const lastSeenAt = parseFinderbTimestamp(log.last_seen_at)?.getTime() ?? null;
+
+  if (logoutAt && loginAt) {
+    return {
+      status: "Signed out",
+      statusClass: "admin-badge bg-slate-50 text-slate-600 border-slate-200",
+      duration: formatDurationShort(logoutAt - loginAt),
+    };
+  }
+
+  if (lastSeenAt && now - lastSeenAt <= ADMIN_SESSION_ACTIVE_MS && loginAt) {
+    return {
+      status: "Active",
+      statusClass: "admin-badge bg-emerald-50 text-emerald-700 border-emerald-200",
+      duration: formatDurationShort(now - loginAt),
+    };
+  }
+
+  if (lastSeenAt && loginAt) {
+    return {
+      status: "Ended",
+      statusClass: "admin-badge bg-slate-50 text-slate-600 border-slate-200",
+      duration: formatDurationShort(lastSeenAt - loginAt),
+    };
+  }
+
+  return {
+    status: "Successful",
+    statusClass: "admin-badge bg-emerald-50 text-emerald-700 border-emerald-200",
+    duration: "—",
+  };
 }
 
 export default function SettingsContent({
@@ -36,6 +82,14 @@ export default function SettingsContent({
   adminId?: string;
   onSiteModeChange?: (mode: SiteMode) => void;
 }) {
+  const [now, setNow] = useState(() => Date.now());
+  const loginPage = useClientPage(loginLogs, 10, String(loginLogs.length));
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   const toggleSetting = async (key: string) => {
     if (!canManage) return;
     if (key === "imageCompression" && !settings.imageCompression) {
@@ -128,69 +182,77 @@ export default function SettingsContent({
             Login Activity
           </h2>
           <p className="admin-page-subtitle">
-            Recent administrator login history and system access logs.
+            Administrator sign-ins, session length, and when each session ended.
           </p>
         </div>
 
-        <div className="admin-card">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Admin email</th>
-                <th>Login time</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loginLogs.length === 0 ? (
+        <div className="admin-card space-y-3">
+          <div className="overflow-x-auto">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <td colSpan={3} className="admin-empty !py-10">
-                    No login logs found. Sign out and sign in again — if logs
-                    still don&apos;t appear, run{" "}
-                    <code className="admin-mono">
-                      db/update_admin_login_logs_rls.sql
-                    </code>{" "}
-                    in Supabase.
-                  </td>
+                  <th>Admin email</th>
+                  <th>Logged in</th>
+                  <th>Duration</th>
+                  <th>Status</th>
                 </tr>
-              ) : (
-                loginLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        <div className="admin-avatar">
-                          {log.admin_email[0]?.toUpperCase()}
-                        </div>
-                        <span className="text-sm font-medium text-slate-900">
-                          {log.admin_email}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <p className="text-sm text-slate-600 tabular-nums">
-                        {new Date(log.login_time).toLocaleDateString([], {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </p>
-                      <p className="text-xs text-slate-400 tabular-nums mt-0.5">
-                        {new Date(log.login_time).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </td>
-                    <td>
-                      <span className="admin-badge bg-emerald-50 text-emerald-700 border-emerald-200">
-                        Successful
-                      </span>
+              </thead>
+              <tbody>
+                {loginLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="admin-empty !py-10">
+                      No login logs found. Sign out and sign in again — if logs
+                      still don&apos;t appear, run{" "}
+                      <code className="admin-mono">
+                        db/admin_login_session_duration.sql
+                      </code>{" "}
+                      in Supabase.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  loginPage.pageItems.map((log) => {
+                    const view = loginSessionView(log, now);
+                    return (
+                      <tr key={log.id}>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <div className="admin-avatar">
+                              {log.admin_email[0]?.toUpperCase()}
+                            </div>
+                            <span className="text-sm font-medium text-slate-900">
+                              {log.admin_email}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <p className="text-sm text-slate-600 tabular-nums">
+                            {formatDateTimeInr(log.login_time)}
+                          </p>
+                        </td>
+                        <td>
+                          <p className="text-sm font-medium text-slate-800 tabular-nums">
+                            {view.duration}
+                          </p>
+                        </td>
+                        <td>
+                          <span className={view.statusClass}>{view.status}</span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-4 pb-4">
+            <PaginationControls
+              page={loginPage.page}
+              totalPages={loginPage.totalPages}
+              total={loginPage.total}
+              pageSize={loginPage.pageSize}
+              onPageChange={loginPage.setPage}
+            />
+          </div>
         </div>
       </div>
       )}

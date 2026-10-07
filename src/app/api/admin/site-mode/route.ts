@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { consumeAdminSiteModeCode } from "../../../../lib/adminLoginOtp";
 import { isDeveloperRole } from "../../../../lib/adminTabAccess";
-import { verifyPassword } from "../../../../lib/merchantPassword";
 import {
   DEFAULT_MAINTENANCE_MESSAGE,
   SITE_RUNTIME_ID,
@@ -54,7 +53,6 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       adminId?: string;
-      password?: string;
       mode?: string;
       message?: string;
       until?: string;
@@ -62,11 +60,10 @@ export async function POST(request: Request) {
     };
 
     const adminId = body.adminId?.trim() || "";
-    const password = body.password ?? "";
     const mode = body.mode;
-    if (!adminId || !password) {
+    if (!adminId) {
       return NextResponse.json(
-        { success: false, error: "Admin password is required." },
+        { success: false, error: "Admin session is required." },
         { status: 400 },
       );
     }
@@ -77,16 +74,24 @@ export async function POST(request: Request) {
       );
     }
 
+    const code = String(body.code || "").replace(/\D/g, "");
+    if (code.length !== 6) {
+      return NextResponse.json(
+        { success: false, error: "Enter the 6-digit email code to change website mode." },
+        { status: 400 },
+      );
+    }
+
     const supabase = getSupabase();
     const { data: admin, error } = await supabase
       .from("admins")
-      .select("id, email, role, password, is_disabled")
+      .select("id, email, role, is_disabled")
       .eq("id", adminId)
       .maybeSingle();
 
     if (error || !admin) {
       return NextResponse.json(
-        { success: false, error: "Incorrect admin password." },
+        { success: false, error: "Could not verify this admin account." },
         { status: 401 },
       );
     }
@@ -103,10 +108,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const verification = await verifyPassword(password, String(admin.password || ""));
-    if (!verification.valid) {
+    if (!(await consumeAdminSiteModeCode(String(admin.email), code))) {
       return NextResponse.json(
-        { success: false, error: "Incorrect admin password." },
+        { success: false, error: "That code is invalid or expired. Request a new one." },
         { status: 401 },
       );
     }
@@ -134,19 +138,6 @@ export async function POST(request: Request) {
       }
       until = new Date(untilTime).toISOString();
       startedAt = nowIso;
-      const code = String(body.code || "").replace(/\D/g, "");
-      if (code.length !== 6) {
-        return NextResponse.json(
-          { success: false, error: "Enter the 6-digit email code to turn on maintenance." },
-          { status: 400 },
-        );
-      }
-      if (!(await consumeAdminSiteModeCode(String(admin.email), code))) {
-        return NextResponse.json(
-          { success: false, error: "That code is invalid or expired. Request a new one." },
-          { status: 401 },
-        );
-      }
     }
 
     const payload = {

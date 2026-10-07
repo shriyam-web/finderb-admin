@@ -85,3 +85,16 @@ export function formatActivityTime(value: string | Date | null | undefined): str
 
   return `${formatted} IST`;
 }
+
+export const ADMIN_SESSION_ACTIVE_MS = 3 * 60 * 1000;
+
+export function formatDurationShort(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "—";
+  const totalMinutes = Math.max(0, Math.round(ms / 60_000));
+  if (totalMinutes < 1) return "Under 1 min";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes} min`;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}

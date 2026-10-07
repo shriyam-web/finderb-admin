@@ -2,7 +2,21 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendAdminSiteModeCode } from "../../../../../lib/adminLoginOtp";
 import { isDeveloperRole } from "../../../../../lib/adminTabAccess";
-import { verifyPassword } from "../../../../../lib/merchantPassword";
+
+const otpWindow = new Map<string, number[]>();
+
+function allowOtpSend(adminId: string) {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000;
+  const stamps = (otpWindow.get(adminId) || []).filter((time) => now - time < windowMs);
+  if (stamps.length >= 5) {
+    otpWindow.set(adminId, stamps);
+    return false;
+  }
+  stamps.push(now);
+  otpWindow.set(adminId, stamps);
+  return true;
+}
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -20,27 +34,31 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       adminId?: string;
-      password?: string;
     };
     const adminId = body.adminId?.trim() || "";
-    const password = body.password ?? "";
-    if (!adminId || !password) {
+    if (!adminId) {
       return NextResponse.json(
-        { success: false, error: "Admin password is required." },
+        { success: false, error: "Admin session is required." },
         { status: 400 },
+      );
+    }
+    if (!allowOtpSend(adminId)) {
+      return NextResponse.json(
+        { success: false, error: "Please wait before requesting another code." },
+        { status: 429 },
       );
     }
 
     const supabase = getSupabase();
     const { data: admin, error } = await supabase
       .from("admins")
-      .select("id, email, role, password, is_disabled")
+      .select("id, email, role, is_disabled")
       .eq("id", adminId)
       .maybeSingle();
 
     if (error || !admin) {
       return NextResponse.json(
-        { success: false, error: "Incorrect admin password." },
+        { success: false, error: "Could not verify this admin account." },
         { status: 401 },
       );
     }
@@ -52,16 +70,8 @@ export async function POST(request: Request) {
     }
     if (!isDeveloperRole(admin.role)) {
       return NextResponse.json(
-        { success: false, error: "Only the Developer can turn on maintenance mode." },
+        { success: false, error: "Only the Developer can change FinderB website mode." },
         { status: 403 },
-      );
-    }
-
-    const verification = await verifyPassword(password, String(admin.password || ""));
-    if (!verification.valid) {
-      return NextResponse.json(
-        { success: false, error: "Incorrect admin password." },
-        { status: 401 },
       );
     }
 

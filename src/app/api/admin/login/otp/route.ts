@@ -83,14 +83,43 @@ export async function POST(request: Request) {
       );
     }
 
-    const { error: logError } = await supabase.from("admin_login_logs").insert([
-      { admin_id: admin.id, admin_email: admin.email },
-    ]);
-    if (logError) console.error("[admin login] log failed:", logError.message);
+    const forwarded = request.headers.get("x-forwarded-for") || "";
+    const ipAddress = forwarded.split(",")[0]?.trim() || request.headers.get("x-real-ip") || null;
+    const userAgent = request.headers.get("user-agent");
+    const nowIso = new Date().toISOString();
+    let logRow: { id: string } | null = null;
+    const withDuration = await supabase
+      .from("admin_login_logs")
+      .insert([
+        {
+          admin_id: admin.id,
+          admin_email: admin.email,
+          login_time: nowIso,
+          last_seen_at: nowIso,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        },
+      ])
+      .select("id")
+      .maybeSingle();
+    if (withDuration.error && /last_seen_at|ip_address|user_agent/i.test(withDuration.error.message)) {
+      const basic = await supabase
+        .from("admin_login_logs")
+        .insert([{ admin_id: admin.id, admin_email: admin.email }])
+        .select("id")
+        .maybeSingle();
+      logRow = basic.data;
+      if (basic.error) console.error("[admin login] log failed:", basic.error.message);
+    } else if (withDuration.error) {
+      console.error("[admin login] log failed:", withDuration.error.message);
+    } else {
+      logRow = withDuration.data;
+    }
 
     const access = normalizeAccessFields(admin.allowed_tabs, admin.allowed_tab_modes);
     return NextResponse.json({
       success: true,
+      loginLogId: logRow?.id ?? null,
       admin: {
         id: admin.id,
         email: admin.email,

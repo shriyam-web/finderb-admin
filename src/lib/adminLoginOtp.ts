@@ -169,11 +169,11 @@ async function sendSiteModeCodeEmail(to: string, code: string): Promise<boolean>
     body: JSON.stringify({
       from,
       to: [to],
-      subject: `${code} is your FinderB maintenance code`,
+      subject: `${code} is your FinderB website mode code`,
       text: [
         "FinderB Admin",
         "",
-        "Enter this code to turn on website maintenance mode.",
+        "Enter this code to change FinderB website mode.",
         "",
         code,
         "",

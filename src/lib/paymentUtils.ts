@@ -250,9 +250,8 @@ export function mergePaymentHistory(
   for (const legacy of legacyItems) {
     const alreadyRecorded = merged.some(
       (item) =>
-        (legacy.paymentId && item.paymentId === legacy.paymentId) ||
-        (legacy.orderId && item.orderId === legacy.orderId) ||
-        (legacy.subscriptionId && item.subscriptionId === legacy.subscriptionId),
+        Boolean(legacy.paymentId && item.paymentId === legacy.paymentId) ||
+        Boolean(legacy.orderId && item.orderId === legacy.orderId),
     );
     if (!alreadyRecorded) merged.push(legacy);
   }

@@ -113,15 +113,18 @@ export default function Home() {
     }
   };
 
-  const finishSession = (admin: {
-    id: string;
-    email: string;
-    role: string;
-    allowed_tabs: string[] | null;
-    allowed_tab_modes?: Record<string, string> | null;
-    displayName?: string | null;
-    loginEnabled?: boolean;
-  }) => {
+  const finishSession = (
+    admin: {
+      id: string;
+      email: string;
+      role: string;
+      allowed_tabs: string[] | null;
+      allowed_tab_modes?: Record<string, string> | null;
+      displayName?: string | null;
+      loginEnabled?: boolean;
+    },
+    loginLogId?: string | null,
+  ) => {
     localStorage.setItem(
       "admin_session",
       JSON.stringify({
@@ -132,6 +135,7 @@ export default function Home() {
         allowed_tab_modes: admin.allowed_tab_modes ?? null,
         displayName: admin.displayName ?? null,
         loginEnabled: admin.loginEnabled === true,
+        loginLogId: loginLogId || null,
       }),
     );
     router.push("/dashboard");
@@ -150,6 +154,7 @@ export default function Home() {
       const result = (await response.json()) as {
         success?: boolean;
         error?: string;
+        loginLogId?: string | null;
         admin?: {
           id: string;
           email: string;
@@ -165,7 +170,7 @@ export default function Home() {
         setIsLoading(false);
         return;
       }
-      finishSession(result.admin);
+      finishSession(result.admin, result.loginLogId);
     } catch {
       setError("Could not check that code.");
       setIsLoading(false);

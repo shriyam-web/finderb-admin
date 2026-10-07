@@ -495,6 +495,20 @@ export default function PaymentsContent({
     setError(null);
 
     try {
+      try {
+        const sessionRaw = localStorage.getItem("admin_session");
+        const session = sessionRaw ? (JSON.parse(sessionRaw) as { id?: string; role?: string }) : null;
+        if (session?.id) {
+          await fetch("/api/admin/payments/ensure-trails", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ adminId: session.id }),
+          });
+        }
+      } catch {
+        /* keep loading even if trail backfill is unavailable */
+      }
+
       const supabase = createClient();
       const { data: paymentRows, error: paymentError } = await supabase
         .from("merchant_payments")
