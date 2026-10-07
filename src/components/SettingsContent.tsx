@@ -2,6 +2,8 @@
 
 import { Dispatch, SetStateAction } from "react";
 import { createClient } from "../../utils/supabase/client";
+import type { SiteMode } from "../lib/siteRuntime";
+import SiteModePanel from "./SiteModePanel";
 
 export interface Settings {
   maintenance: boolean;
@@ -21,12 +23,18 @@ export default function SettingsContent({
   loginLogs,
   canManage = false,
   canViewLoginLogs = false,
+  isDeveloper = false,
+  adminId = "",
+  onSiteModeChange,
 }: {
   settings: Settings;
   setSettings: Dispatch<SetStateAction<Settings>>;
   loginLogs: LoginLog[];
   canManage?: boolean;
   canViewLoginLogs?: boolean;
+  isDeveloper?: boolean;
+  adminId?: string;
+  onSiteModeChange?: (mode: SiteMode) => void;
 }) {
   const toggleSetting = async (key: string) => {
     if (!canManage) return;
@@ -74,13 +82,16 @@ export default function SettingsContent({
         )}
       </div>
 
+      {isDeveloper && adminId ? (
+        <SiteModePanel adminId={adminId} onModeChange={onSiteModeChange} />
+      ) : (
+        <p className="text-xs text-slate-500 px-1">
+          FinderB website mode (live, text only, maintenance) can only be changed by the Developer.
+        </p>
+      )}
+
       <div className="admin-card divide-y divide-slate-100 overflow-hidden max-w-xl">
         {[
-          {
-            key: "maintenance",
-            label: "Maintenance Mode",
-            desc: "Enable maintenance mode to restrict access to the platform.",
-          },
           {
             key: "imageCompression",
             label: "Image Compression",

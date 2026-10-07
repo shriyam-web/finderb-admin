@@ -104,6 +104,113 @@ export async function consumeAdminLoginCode(email: string, code: string): Promis
   return Boolean(removed?.length);
 }
 
+const SITE_MODE_PURPOSE = "admin-site-mode";
+
+function hashSiteModeCode(email: string, code: string): string {
+  return createHmac("sha256", signingSecret())
+    .update(`admin-site-mode:${email}:${code}`)
+    .digest("hex");
+}
+
+async function storeSiteModeCode(email: string, code: string): Promise<void> {
+  const client = db();
+  if (!client) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+  const subject = email.trim().toLowerCase();
+  await client.from("otp_challenges").delete().lt("expires_at", new Date().toISOString());
+  await client.from("otp_challenges").delete().eq("purpose", SITE_MODE_PURPOSE).eq("subject", subject);
+  const { error } = await client.from("otp_challenges").insert({
+    purpose: SITE_MODE_PURPOSE,
+    subject,
+    code_hash: hashSiteModeCode(subject, code),
+    expires_at: new Date(Date.now() + OTP_TTL_MS).toISOString(),
+  });
+  if (error) throw new Error("Could not store the confirmation code.");
+}
+
+export async function consumeAdminSiteModeCode(email: string, code: string): Promise<boolean> {
+  const digits = String(code || "").replace(/\D/g, "");
+  if (digits.length !== 6) return false;
+  const client = db();
+  if (!client) return false;
+  const subject = email.trim().toLowerCase();
+  await client.from("otp_challenges").delete().lt("expires_at", new Date().toISOString());
+  const { data } = await client
+    .from("otp_challenges")
+    .select("id, code_hash, expires_at")
+    .eq("purpose", SITE_MODE_PURPOSE)
+    .eq("subject", subject)
+    .maybeSingle();
+  if (!data?.id) return false;
+  const expiresAt = Date.parse(String(data.expires_at || ""));
+  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+    await client.from("otp_challenges").delete().eq("id", data.id);
+    return false;
+  }
+  if (!same(String(data.code_hash || ""), hashSiteModeCode(subject, digits))) return false;
+  const { data: removed } = await client
+    .from("otp_challenges")
+    .delete()
+    .eq("id", data.id)
+    .eq("code_hash", data.code_hash)
+    .select("id");
+  return Boolean(removed?.length);
+}
+
+async function sendSiteModeCodeEmail(to: string, code: string): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.EMAIL_FROM?.trim() || "FinderB <support@finderb.com>";
+  if (!key) return false;
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject: `${code} is your FinderB maintenance code`,
+      text: [
+        "FinderB Admin",
+        "",
+        "Enter this code to turn on website maintenance mode.",
+        "",
+        code,
+        "",
+        "It expires in 15 minutes. If you did not request this, ignore this email.",
+      ].join("\n"),
+    }),
+  });
+  return response.ok;
+}
+
+export async function sendAdminSiteModeCode(
+  email: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const normalized = email.trim().toLowerCase();
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  try {
+    await storeSiteModeCode(normalized, code);
+  } catch (error) {
+    console.error("[admin-site-mode-otp] store failed", error instanceof Error ? error.message : "error");
+    return { ok: false, error: "Could not prepare the confirmation code. Please try again." };
+  }
+  const sent = await sendSiteModeCodeEmail(normalized, code);
+  if (!sent) {
+    const client = db();
+    await client
+      ?.from("otp_challenges")
+      .delete()
+      .eq("purpose", SITE_MODE_PURPOSE)
+      .eq("subject", normalized);
+    return {
+      ok: false,
+      error: "Could not email the confirmation code. Add RESEND_API_KEY on the admin server and try again.",
+    };
+  }
+  return { ok: true };
+}
+
 async function sendLoginCodeEmail(to: string, code: string): Promise<boolean> {
   const key = process.env.RESEND_API_KEY?.trim();
   const from = process.env.EMAIL_FROM?.trim() || "FinderB <support@finderb.com>";

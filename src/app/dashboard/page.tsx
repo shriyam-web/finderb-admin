@@ -94,6 +94,11 @@ import {
   writeAdminColorMode,
   type AdminColorMode,
 } from "../../lib/adminColorMode";
+import {
+  effectiveSiteMode,
+  siteModeLabel,
+  type SiteMode,
+} from "../../lib/siteRuntime";
 
 interface User {
   id: string;
@@ -1008,6 +1013,35 @@ export default function Dashboard() {
     maintenance: false,
     imageCompression: false,
   });
+  const [siteMode, setSiteMode] = useState<SiteMode>("normal");
+  const handleSiteModeChange = useCallback((mode: SiteMode) => {
+    setSiteMode(mode);
+    setSettings((current) => ({ ...current, maintenance: mode === "maintenance" }));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/admin/site-mode", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: { runtime?: { mode?: SiteMode; until?: string | null; startedAt?: string | null; updatedAt?: string | null; message?: string; effectiveMode?: SiteMode } }) => {
+        if (cancelled || !data?.runtime) return;
+        const mode =
+          data.runtime.effectiveMode ||
+          effectiveSiteMode({
+            id: "finderb",
+            mode: data.runtime.mode || "normal",
+            message: data.runtime.message || "",
+            until: data.runtime.until || null,
+            startedAt: data.runtime.startedAt || null,
+            updatedAt: data.runtime.updatedAt || null,
+          });
+        handleSiteModeChange(mode);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [handleSiteModeChange]);
 
   const [users, setUsers] = useState<User[]>([]);
   const [activeMerchants, setActiveMerchants] = useState<Merchant[]>([]);
@@ -2162,7 +2196,7 @@ export default function Dashboard() {
             platformDateLabel={platformDateLabel}
             platformTimeLabel={platformTimeLabel}
             loginLogs={loginLogs}
-            maintenanceMode={settings.maintenance}
+            maintenanceMode={siteMode === "maintenance"}
             canViewFinancialData={canViewFinancialData}
             canAccessTab={(tab) => hasTabAccess(adminSession, tab)}
             canEditListings={canEditListings}
@@ -2369,6 +2403,9 @@ export default function Dashboard() {
             loginLogs={loginLogs}
             canManage={hasFullTabAccess(adminSession, "Settings")}
             canViewLoginLogs={isDeveloper}
+            isDeveloper={isDeveloper}
+            adminId={adminSession?.id || ""}
+            onSiteModeChange={handleSiteModeChange}
           />
         );
       case "Manage Admins":
@@ -2392,7 +2429,7 @@ export default function Dashboard() {
             platformDateLabel={platformDateLabel}
             platformTimeLabel={platformTimeLabel}
             loginLogs={loginLogs}
-            maintenanceMode={settings.maintenance}
+            maintenanceMode={siteMode === "maintenance"}
             canViewFinancialData={canViewFinancialData}
             canAccessTab={(tab) => hasTabAccess(adminSession, tab)}
             canEditListings={canEditListings}
@@ -2555,12 +2592,12 @@ export default function Dashboard() {
             <>
               <div className="mt-2.5 flex items-center justify-between gap-2 px-0.5">
                 <span
-                  className={`admin-status-pill ${settings.maintenance ? "admin-status-warn" : "admin-status-live"} !text-[9px] !py-0.5 !px-1.5`}
+                  className={`admin-status-pill ${siteMode === "normal" ? "admin-status-live" : "admin-status-warn"} !text-[9px] !py-0.5 !px-1.5`}
                 >
-                  {!settings.maintenance && (
+                  {siteMode === "normal" && (
                     <span className="admin-status-dot !w-1 !h-1" />
                   )}
-                  {settings.maintenance ? "Maintenance" : "Live"}
+                  {siteModeLabel(siteMode)}
                 </span>
                 <span className="text-[10px] text-slate-400 tabular-nums font-semibold">
                   {platformTimeLabel || "—"}

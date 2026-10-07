@@ -1,4 +1,4 @@
-import { formatDateTimeInr, parseFinderbTimestamp } from "./formatDateTime";
+import { FINDERB_TIMEZONE, formatDateTimeInr, parseFinderbTimestamp } from "./formatDateTime";
 
 export type PaymentRecord = {
   id: string;
@@ -271,14 +271,31 @@ export function formatDateTime(value: string | null): string {
   return formatDateTimeInr(value);
 }
 
+export type SubscriptionLifecycle = "active" | "expired" | "pending";
+
+export type RevenueBucket = {
+  key: string;
+  label: string;
+  amountPaise: number;
+  count: number;
+};
+
 export type PaymentAnalytics = {
   totalRevenuePaise: number;
+  todayRevenuePaise: number;
+  todayCount: number;
+  weekRevenuePaise: number;
+  weekCount: number;
   mtdRevenuePaise: number;
+  mtdCount: number;
   completedCount: number;
   pendingCount: number;
   failedCount: number;
   activeSubscriptions: number;
+  expiredSubscriptions: number;
+  pendingSubscriptions: number;
   autoDebitEnabled: number;
+  autoDebitActive: number;
   expiring7d: number;
   expiring30d: number;
   expiredPlans: number;
@@ -287,13 +304,106 @@ export type PaymentAnalytics = {
   avgTransactionPaise: number;
   opensCount: number;
   planBreakdown: { starter: number; growthMonthly: number; proAnnual: number };
+  activePlanBreakdown: { starter: number; growthMonthly: number; proAnnual: number };
 };
 
-function daysUntilExpiry(planExpiresAt: string | null): number | null {
+function daysUntilExpiry(planExpiresAt: string | null, now = Date.now()): number | null {
   const expiry = parseFinderbTimestamp(planExpiresAt);
   if (!expiry) return null;
-  const now = new Date();
-  return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.ceil((expiry.getTime() - now) / (1000 * 60 * 60 * 24));
+}
+
+function istParts(date: Date) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: FINDERB_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value || "";
+  return {
+    year: Number(get("year")),
+    month: Number(get("month")),
+    day: Number(get("day")),
+    weekday: get("weekday"),
+  };
+}
+
+export function istDayKey(date: Date): string {
+  const { year, month, day } = istParts(date);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export function istMonthKey(date: Date): string {
+  const { year, month } = istParts(date);
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function istMidnightUtc(dayKey: string): Date {
+  return new Date(`${dayKey}T00:00:00+05:30`);
+}
+
+export function istRangeStart(kind: "today" | "week" | "month", now = new Date()): Date {
+  const dayKey = istDayKey(now);
+  if (kind === "today") return istMidnightUtc(dayKey);
+  if (kind === "month") {
+    const { year, month } = istParts(now);
+    return istMidnightUtc(`${year}-${String(month).padStart(2, "0")}-01`);
+  }
+  const weekdayOffset: Record<string, number> = {
+    Mon: 0,
+    Tue: 1,
+    Wed: 2,
+    Thu: 3,
+    Fri: 4,
+    Sat: 5,
+    Sun: 6,
+  };
+  const offset = weekdayOffset[istParts(now).weekday] ?? 0;
+  return new Date(istMidnightUtc(dayKey).getTime() - offset * 86_400_000);
+}
+
+export function paymentInRange(
+  createdAt: string,
+  start: Date,
+  end?: Date,
+): boolean {
+  const created = parseFinderbTimestamp(createdAt);
+  if (!created) return false;
+  if (created < start) return false;
+  if (end && created >= end) return false;
+  return true;
+}
+
+export function subscriptionLifecycle(
+  sub: Pick<SubscriptionRecord, "paymentStatus" | "planExpiresAt">,
+  now = Date.now(),
+): SubscriptionLifecycle {
+  const days = daysUntilExpiry(sub.planExpiresAt, now);
+  const paid = sub.paymentStatus === "completed";
+  if (paid) {
+    if (days === null || days >= 0) return "active";
+    return "expired";
+  }
+  if (days !== null && days < 0) return "expired";
+  return "pending";
+}
+
+export function lifecycleLabel(lifecycle: SubscriptionLifecycle): string {
+  if (lifecycle === "active") return "Active";
+  if (lifecycle === "expired") return "Expired";
+  return "Pending";
+}
+
+function sumRange(payments: PaymentRecord[], start: Date) {
+  const rows = payments.filter(
+    (payment) => payment.status === "completed" && paymentInRange(payment.createdAt, start),
+  );
+  return {
+    amountPaise: rows.reduce((sum, payment) => sum + payment.amountPaise, 0),
+    count: rows.length,
+  };
 }
 
 export function computePaymentAnalytics(
@@ -305,16 +415,11 @@ export function computePaymentAnalytics(
   const failed = payments.filter((p) => p.status === "failed");
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const today = sumRange(completed, istRangeStart("today", now));
+  const week = sumRange(completed, istRangeStart("week", now));
+  const month = sumRange(completed, istRangeStart("month", now));
 
   const totalRevenuePaise = completed.reduce((sum, p) => sum + p.amountPaise, 0);
-  const mtdRevenuePaise = completed
-    .filter((p) => {
-      const created = parseFinderbTimestamp(p.createdAt);
-      return created && created >= monthStart;
-    })
-    .reduce((sum, p) => sum + p.amountPaise, 0);
-
   const monthlyRevenuePaise = completed
     .filter((p) => p.billingCycle === "monthly")
     .reduce((sum, p) => sum + p.amountPaise, 0);
@@ -322,52 +427,71 @@ export function computePaymentAnalytics(
     .filter((p) => p.billingCycle === "annual")
     .reduce((sum, p) => sum + p.amountPaise, 0);
 
-  const activeSubscriptions = subscriptions.filter(
-    (s) => s.paymentStatus === "completed" && s.subscriptionStatus === "active",
-  ).length;
-  const autoDebitEnabled = subscriptions.filter((s) => s.autoRenewEnabled).length;
-
+  let activeSubscriptions = 0;
+  let expiredSubscriptions = 0;
+  let pendingSubscriptions = 0;
+  let autoDebitEnabled = 0;
+  let autoDebitActive = 0;
   let expiring7d = 0;
   let expiring30d = 0;
-  let expiredPlans = 0;
+  const planBreakdown = { starter: 0, growthMonthly: 0, proAnnual: 0 };
+  const activePlanBreakdown = { starter: 0, growthMonthly: 0, proAnnual: 0 };
+
   for (const sub of subscriptions) {
-    const days = daysUntilExpiry(sub.planExpiresAt);
-    if (days === null) continue;
-    if (days < 0) expiredPlans += 1;
-    else if (days <= 7) expiring7d += 1;
-    else if (days <= 30) expiring30d += 1;
+    const lifecycle = subscriptionLifecycle(sub, now.getTime());
+    if (lifecycle === "active") activeSubscriptions += 1;
+    else if (lifecycle === "expired") expiredSubscriptions += 1;
+    else pendingSubscriptions += 1;
+    if (sub.autoRenewEnabled) {
+      autoDebitEnabled += 1;
+      if (lifecycle === "active") autoDebitActive += 1;
+    }
+    const days = daysUntilExpiry(sub.planExpiresAt, now.getTime());
+    if (days !== null) {
+      if (days < 0) {
+        /* counted via expiredSubscriptions */
+      } else if (days <= 7) expiring7d += 1;
+      else if (days <= 30) expiring30d += 1;
+    }
+    const bucket =
+      sub.planName === "Starter"
+        ? "starter"
+        : sub.billingCycle === "annual"
+          ? "proAnnual"
+          : "growthMonthly";
+    planBreakdown[bucket] += 1;
+    if (lifecycle === "active") activePlanBreakdown[bucket] += 1;
   }
 
   const mandatePending = subscriptions.filter(
     (s) => s.mandateStatus === "pending" || s.mandateStatus === "created",
   ).length;
 
-  const planBreakdown = { starter: 0, growthMonthly: 0, proAnnual: 0 };
-  for (const sub of subscriptions) {
-    if (sub.planName === "Starter") planBreakdown.starter += 1;
-    else if (sub.billingCycle === "annual") planBreakdown.proAnnual += 1;
-    else planBreakdown.growthMonthly += 1;
-  }
-
-  const opensCount =
-    pending.length + failed.length + expiring7d + mandatePending;
-
   return {
     totalRevenuePaise,
-    mtdRevenuePaise,
+    todayRevenuePaise: today.amountPaise,
+    todayCount: today.count,
+    weekRevenuePaise: week.amountPaise,
+    weekCount: week.count,
+    mtdRevenuePaise: month.amountPaise,
+    mtdCount: month.count,
     completedCount: completed.length,
     pendingCount: pending.length,
     failedCount: failed.length,
     activeSubscriptions,
+    expiredSubscriptions,
+    pendingSubscriptions,
     autoDebitEnabled,
+    autoDebitActive,
     expiring7d,
     expiring30d,
-    expiredPlans,
+    expiredPlans: expiredSubscriptions,
     monthlyRevenuePaise,
     annualRevenuePaise,
     avgTransactionPaise: completed.length ? Math.round(totalRevenuePaise / completed.length) : 0,
-    opensCount,
+    opensCount: pending.length + failed.length + expiring7d + mandatePending,
     planBreakdown,
+    activePlanBreakdown,
   };
 }
 
@@ -393,17 +517,18 @@ export function buildRevenueChart(payments: PaymentRecord[], days = 7): RevenueC
   const result: RevenueChartDay[] = [];
 
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
-    const dateKey = d.toDateString();
-    const label = d.toLocaleDateString("en-IN", { weekday: "short", day: "numeric" });
-
+    const cursor = new Date(now.getTime() - i * 86_400_000);
+    const dateKey = istDayKey(cursor);
+    const label = cursor.toLocaleDateString("en-IN", {
+      timeZone: FINDERB_TIMEZONE,
+      weekday: "short",
+      day: "numeric",
+    });
     const dayPayments = payments.filter((p) => {
       if (p.status !== "completed") return false;
       const created = parseFinderbTimestamp(p.createdAt);
-      return created && created.toDateString() === dateKey;
+      return created ? istDayKey(created) === dateKey : false;
     });
-
     result.push({
       label,
       amountPaise: dayPayments.reduce((sum, p) => sum + p.amountPaise, 0),
@@ -412,6 +537,80 @@ export function buildRevenueChart(payments: PaymentRecord[], days = 7): RevenueC
   }
 
   return result;
+}
+
+export function buildWeekWiseRevenue(payments: PaymentRecord[], weeks = 8): RevenueBucket[] {
+  const now = new Date();
+  const thisWeekStart = istRangeStart("week", now);
+  const result: RevenueBucket[] = [];
+
+  for (let i = weeks - 1; i >= 0; i--) {
+    const start = new Date(thisWeekStart.getTime() - i * 7 * 86_400_000);
+    const end = new Date(start.getTime() + 7 * 86_400_000);
+    const rows = payments.filter(
+      (p) => p.status === "completed" && paymentInRange(p.createdAt, start, end),
+    );
+    result.push({
+      key: istDayKey(start),
+      label: start.toLocaleDateString("en-IN", {
+        timeZone: FINDERB_TIMEZONE,
+        day: "numeric",
+        month: "short",
+      }),
+      amountPaise: rows.reduce((sum, p) => sum + p.amountPaise, 0),
+      count: rows.length,
+    });
+  }
+
+  return result;
+}
+
+export function buildMonthWiseRevenue(payments: PaymentRecord[], months = 12): RevenueBucket[] {
+  const now = new Date();
+  const { year, month } = istParts(now);
+  const result: RevenueBucket[] = [];
+
+  for (let i = months - 1; i >= 0; i--) {
+    let monthNumber = month - i;
+    let yearNumber = year;
+    while (monthNumber <= 0) {
+      monthNumber += 12;
+      yearNumber -= 1;
+    }
+    const key = `${yearNumber}-${String(monthNumber).padStart(2, "0")}`;
+    const start = istMidnightUtc(`${key}-01`);
+    const nextMonth = monthNumber === 12 ? 1 : monthNumber + 1;
+    const nextYear = monthNumber === 12 ? yearNumber + 1 : yearNumber;
+    const end = istMidnightUtc(`${nextYear}-${String(nextMonth).padStart(2, "0")}-01`);
+    const rows = payments.filter(
+      (p) => p.status === "completed" && paymentInRange(p.createdAt, start, end),
+    );
+    result.push({
+      key,
+      label: start.toLocaleDateString("en-IN", {
+        timeZone: FINDERB_TIMEZONE,
+        month: "short",
+        year: "2-digit",
+      }),
+      amountPaise: rows.reduce((sum, p) => sum + p.amountPaise, 0),
+      count: rows.length,
+    });
+  }
+
+  return result;
+}
+
+export function paymentsForBusiness(
+  payments: PaymentRecord[],
+  businessId: string,
+): PaymentRecord[] {
+  return payments
+    .filter((payment) => payment.businessId === businessId)
+    .sort((a, b) => {
+      const aTime = parseFinderbTimestamp(a.createdAt)?.getTime() ?? 0;
+      const bTime = parseFinderbTimestamp(b.createdAt)?.getTime() ?? 0;
+      return bTime - aTime;
+    });
 }
 
 export function sumCompletedRevenue(payments: PaymentRecord[]): number {

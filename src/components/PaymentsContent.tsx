@@ -25,17 +25,24 @@ import {
 import { createClient } from "../../utils/supabase/client";
 import { parseFinderbTimestamp } from "../lib/formatDateTime";
 import {
+  buildMonthWiseRevenue,
   buildRevenueChart,
   buildSubscriptionFromBusiness,
+  buildWeekWiseRevenue,
   computePaymentAnalytics,
   daysUntilExpiry,
   formatAmountInr,
   formatDateTime,
-  getExpiryUrgency,
+  istRangeStart,
+  lifecycleLabel,
   mergePaymentHistory,
+  paymentInRange,
+  paymentsForBusiness,
   paymentTypeLabel,
+  subscriptionLifecycle,
   sumCompletedRevenue,
   type PaymentRecord,
+  type SubscriptionLifecycle,
   type SubscriptionRecord,
 } from "../lib/paymentUtils";
 import AdminBarChart from "./AdminBarChart";
@@ -70,11 +77,20 @@ type BillingFilter = "all" | "monthly" | "annual";
 type PlanFilter = "all" | "starter" | "growth_monthly" | "pro_annual";
 type TypeFilter =
   "all" | "one_time" | "subscription_auth" | "subscription_renewal";
-type DateFilter = "all" | "7d" | "30d" | "90d" | "mtd";
+type DateFilter =
+  | "all"
+  | "today"
+  | "this_week"
+  | "7d"
+  | "this_month"
+  | "30d"
+  | "90d"
+  | "mtd";
 type ExpiryFilter = "all" | "expiring_7d" | "expiring_30d" | "expired";
 type AutoDebitFilter = "all" | "enabled" | "off";
 type MandateFilter = "all" | "active" | "pending" | "none";
 type SubStatusFilter = "all" | "active" | "cancelled" | "pending" | "none";
+type LifecycleFilter = "all" | SubscriptionLifecycle;
 
 const PLAN_OPTIONS: { value: PlanFilter; label: string }[] = [
   { value: "all", label: "All plans" },
@@ -93,18 +109,6 @@ function statusBadgeClass(status: string) {
   return "bg-slate-500/10 text-slate-600 border-slate-200/80";
 }
 
-function expiryBadgeClass(urgency: ReturnType<typeof getExpiryUrgency>) {
-  if (urgency === "expired")
-    return "bg-rose-500/10 text-rose-700 border-rose-200/80";
-  if (urgency === "critical")
-    return "bg-orange-500/10 text-orange-700 border-orange-200/80";
-  if (urgency === "warning")
-    return "bg-amber-500/10 text-amber-800 border-amber-200/80";
-  if (urgency === "ok")
-    return "bg-emerald-500/10 text-emerald-700 border-emerald-200/80";
-  return "bg-slate-500/10 text-slate-500 border-slate-200/80";
-}
-
 function matchesPlanFilter(
   planName: string,
   billingCycle: string,
@@ -121,17 +125,26 @@ function matchesPlanFilter(
 
 function matchesDateFilter(createdAt: string, filter: DateFilter): boolean {
   if (filter === "all") return true;
+  const now = new Date();
+  if (filter === "today") return paymentInRange(createdAt, istRangeStart("today", now));
+  if (filter === "this_week") return paymentInRange(createdAt, istRangeStart("week", now));
+  if (filter === "this_month" || filter === "mtd") {
+    return paymentInRange(createdAt, istRangeStart("month", now));
+  }
   const created = parseFinderbTimestamp(createdAt);
   if (!created) return false;
-  const now = new Date();
-  if (filter === "mtd") {
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    return created >= monthStart;
-  }
   const days = filter === "7d" ? 7 : filter === "30d" ? 30 : 90;
   const cutoff = new Date(now);
   cutoff.setDate(cutoff.getDate() - days);
   return created >= cutoff;
+}
+
+function lifecycleBadgeClass(lifecycle: SubscriptionLifecycle) {
+  if (lifecycle === "active")
+    return "bg-emerald-500/10 text-emerald-700 border-emerald-200/80";
+  if (lifecycle === "expired")
+    return "bg-rose-500/10 text-rose-700 border-rose-200/80";
+  return "bg-amber-500/10 text-amber-800 border-amber-200/80";
 }
 
 function matchesExpiryFilter(
@@ -339,6 +352,64 @@ function SelectFilter({
   );
 }
 
+function PaymentTrail({
+  payments,
+}: {
+  payments: PaymentRecord[];
+}) {
+  if (payments.length === 0) {
+    return (
+      <p className="text-[11px] text-slate-500">No payment records yet for this merchant.</p>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {payments.map((payment) => (
+        <div
+          key={payment.id}
+          className="rounded-xl border border-slate-100 bg-white px-3 py-2.5"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold text-slate-900">
+                {formatDateTime(payment.createdAt)}
+              </p>
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                {paymentTypeLabel(payment.paymentType)} · {payment.planName}
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-[12px] font-bold tabular-nums text-slate-900">
+                {payment.amountDisplay}
+              </p>
+              <span
+                className={`inline-flex mt-1 px-1.5 py-0.5 rounded border text-[9px] font-semibold capitalize ${statusBadgeClass(payment.status)}`}
+              >
+                {payment.status}
+              </span>
+            </div>
+          </div>
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-1.5 text-[10px]">
+            <div>
+              <p className="text-slate-400 uppercase tracking-wider text-[9px]">Payment ID</p>
+              <CopyableId value={payment.paymentId} label="payment ID" />
+            </div>
+            <div>
+              <p className="text-slate-400 uppercase tracking-wider text-[9px]">Order ID</p>
+              <CopyableId value={payment.orderId} label="order ID" />
+            </div>
+            <div>
+              <p className="text-slate-400 uppercase tracking-wider text-[9px]">Subscription ID</p>
+              <CopyableId value={payment.subscriptionId} label="subscription ID" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function PaymentsContent({
   businesses = [],
 }: {
@@ -374,6 +445,8 @@ export default function PaymentsContent({
   const [mandateFilter, setMandateFilter] = useState<MandateFilter>("all");
   const [subStatusFilter, setSubStatusFilter] =
     useState<SubStatusFilter>("all");
+  const [lifecycleFilter, setLifecycleFilter] =
+    useState<LifecycleFilter>("all");
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -386,6 +459,7 @@ export default function PaymentsContent({
     if (autoDebitFilter !== "all") count += 1;
     if (mandateFilter !== "all") count += 1;
     if (subStatusFilter !== "all") count += 1;
+    if (lifecycleFilter !== "all") count += 1;
     if (search.trim()) count += 1;
     return count;
   }, [
@@ -398,6 +472,7 @@ export default function PaymentsContent({
     autoDebitFilter,
     mandateFilter,
     subStatusFilter,
+    lifecycleFilter,
     search,
   ]);
 
@@ -412,6 +487,7 @@ export default function PaymentsContent({
     setAutoDebitFilter("all");
     setMandateFilter("all");
     setSubStatusFilter("all");
+    setLifecycleFilter("all");
   };
 
   const loadPayments = useCallback(async () => {
@@ -510,6 +586,14 @@ export default function PaymentsContent({
     () => buildRevenueChart(payments, 7),
     [payments],
   );
+  const weekRevenueChart = useMemo(
+    () => buildWeekWiseRevenue(payments, 8),
+    [payments],
+  );
+  const monthRevenueChart = useMemo(
+    () => buildMonthWiseRevenue(payments, 12),
+    [payments],
+  );
 
   const statusTotal =
     analytics.completedCount + analytics.pendingCount + analytics.failedCount;
@@ -585,6 +669,8 @@ export default function PaymentsContent({
         sub.mandateStatus
       )
         return false;
+      if (lifecycleFilter !== "all" && subscriptionLifecycle(sub) !== lifecycleFilter)
+        return false;
       if (subStatusFilter !== "all") {
         const status = sub.subscriptionStatus || "none";
         if (subStatusFilter !== status) return false;
@@ -613,6 +699,7 @@ export default function PaymentsContent({
     autoDebitFilter,
     mandateFilter,
     subStatusFilter,
+    lifecycleFilter,
     matchesSearch,
   ]);
 
@@ -789,6 +876,45 @@ export default function PaymentsContent({
             />
           </div>
 
+          <div className="flex flex-wrap gap-2">
+            <FilterChip
+              label="Active now"
+              active={lifecycleFilter === "active"}
+              onClick={() => {
+                setLifecycleFilter("active");
+                setActiveTab("subscriptions");
+              }}
+              count={analytics.activeSubscriptions}
+            />
+            <FilterChip
+              label="Expired"
+              active={lifecycleFilter === "expired"}
+              onClick={() => {
+                setLifecycleFilter("expired");
+                setActiveTab("subscriptions");
+              }}
+              count={analytics.expiredSubscriptions}
+            />
+            <FilterChip
+              label="Pending payment"
+              active={lifecycleFilter === "pending"}
+              onClick={() => {
+                setLifecycleFilter("pending");
+                setActiveTab("subscriptions");
+              }}
+              count={analytics.pendingSubscriptions}
+            />
+            <FilterChip
+              label="Monthly auto-debit"
+              active={autoDebitFilter === "enabled"}
+              onClick={() => {
+                setAutoDebitFilter(autoDebitFilter === "enabled" ? "all" : "enabled");
+                setActiveTab("subscriptions");
+              }}
+              count={analytics.autoDebitEnabled}
+            />
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             <SelectFilter
               label="Billing"
@@ -823,6 +949,9 @@ export default function PaymentsContent({
               onChange={(v) => setDateFilter(v as DateFilter)}
               options={[
                 { value: "all", label: "All time" },
+                { value: "today", label: "Today" },
+                { value: "this_week", label: "This week" },
+                { value: "this_month", label: "This month" },
                 { value: "7d", label: "Last 7 days" },
                 { value: "30d", label: "Last 30 days" },
                 { value: "90d", label: "Last 90 days" },
@@ -862,12 +991,23 @@ export default function PaymentsContent({
               ]}
             />
             <SelectFilter
-              label="Subscription"
+              label="Access now"
+              value={lifecycleFilter}
+              onChange={(v) => setLifecycleFilter(v as LifecycleFilter)}
+              options={[
+                { value: "all", label: "All merchants" },
+                { value: "active", label: "Active now" },
+                { value: "expired", label: "Expired" },
+                { value: "pending", label: "Pending payment" },
+              ]}
+            />
+            <SelectFilter
+              label="Razorpay status"
               value={subStatusFilter}
               onChange={(v) => setSubStatusFilter(v as SubStatusFilter)}
               options={[
-                { value: "all", label: "Any status" },
-                { value: "active", label: "Active" },
+                { value: "all", label: "Any Razorpay status" },
+                { value: "active", label: "Razorpay active" },
                 { value: "cancelled", label: "Cancelled" },
                 { value: "pending", label: "Pending" },
                 { value: "none", label: "Not set" },
@@ -896,7 +1036,7 @@ export default function PaymentsContent({
             </div>
             <h1 className="admin-page-title">Payments & Subscriptions</h1>
             <p className="admin-page-subtitle">
-              Revenue, mandates, subscriptions, and Razorpay audit trail.
+              Company collections, who is Active vs Expired, and every merchant payment trail.
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
               <span className="admin-metric-chip">
@@ -1012,39 +1152,51 @@ export default function PaymentsContent({
       {/* KPI grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
-          label="Total revenue"
-          value={formatAmountInr(analytics.totalRevenuePaise)}
-          sub={`MTD ${formatAmountInr(analytics.mtdRevenuePaise)}`}
+          label="Today"
+          value={formatAmountInr(analytics.todayRevenuePaise)}
+          sub={`${analytics.todayCount} payment${analytics.todayCount === 1 ? "" : "s"} · IST`}
           icon={Wallet}
           accent="primary"
-          onClick={() => setActiveTab("overview")}
-        />
-        <StatCard
-          label="Completed"
-          value={analytics.completedCount}
-          sub={`Avg ${formatAmountInr(analytics.avgTransactionPaise)} / txn`}
-          icon={TrendingUp}
-          accent="emerald"
           onClick={() => {
+            setDateFilter("today");
             setStatusFilter("completed");
             setActiveTab("transactions");
           }}
         />
         <StatCard
-          label="Active subscriptions"
-          value={analytics.activeSubscriptions}
-          sub={`${analytics.autoDebitEnabled} with auto-debit`}
-          icon={CreditCard}
-          accent="sky"
-          onClick={() => setActiveTab("subscriptions")}
+          label="This week"
+          value={formatAmountInr(analytics.weekRevenuePaise)}
+          sub={`${analytics.weekCount} payments · Mon–today IST`}
+          icon={TrendingUp}
+          accent="emerald"
+          onClick={() => {
+            setDateFilter("this_week");
+            setStatusFilter("completed");
+            setActiveTab("transactions");
+          }}
         />
         <StatCard
-          label="Opens"
-          value={analytics.opensCount}
-          sub={`${analytics.expiring7d} expiring ≤7d · ${analytics.failedCount} failed`}
-          icon={AlertCircle}
-          accent={analytics.opensCount > 0 ? "amber" : "slate"}
-          onClick={() => setActiveTab("tracking")}
+          label="This month"
+          value={formatAmountInr(analytics.mtdRevenuePaise)}
+          sub={`${analytics.mtdCount} payments · ${formatAmountInr(analytics.totalRevenuePaise)} all time`}
+          icon={BarChart3}
+          accent="sky"
+          onClick={() => {
+            setDateFilter("this_month");
+            setStatusFilter("completed");
+            setActiveTab("transactions");
+          }}
+        />
+        <StatCard
+          label="Active now"
+          value={analytics.activeSubscriptions}
+          sub={`${analytics.expiredSubscriptions} expired · ${analytics.autoDebitActive} auto-debit live`}
+          icon={CreditCard}
+          accent="emerald"
+          onClick={() => {
+            setLifecycleFilter("active");
+            setActiveTab("subscriptions");
+          }}
         />
       </div>
 
@@ -1173,6 +1325,60 @@ export default function PaymentsContent({
         </div>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        <div className="lg:col-span-7 admin-card p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Month-wise collections</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Completed payments, last 12 months IST</p>
+            </div>
+            <span className="text-base font-bold text-slate-900 tabular-nums">
+              {formatAmountInr(monthRevenueChart.reduce((sum, row) => sum + row.amountPaise, 0))}
+            </span>
+          </div>
+          <AdminBarChart
+            height={180}
+            mode="single"
+            series={[{ key: "amount", label: "Revenue", color: "#1d4ed8" }]}
+            data={monthRevenueChart.map((row) => ({
+              label: row.label,
+              values: { amount: row.amountPaise },
+            }))}
+            formatValue={(n) => {
+              const rupees = n / 100;
+              if (rupees >= 100000) return `₹${(rupees / 100000).toFixed(1)}L`;
+              if (rupees >= 1000) return `₹${Math.round(rupees / 1000)}k`;
+              return `₹${Math.round(rupees)}`;
+            }}
+            formatTooltip={(point) => formatAmountInr(point.values.amount ?? 0)}
+          />
+        </div>
+        <div className="lg:col-span-5 admin-card p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Week-wise collections</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Last 8 weeks, Monday start IST</p>
+            </div>
+          </div>
+          <AdminBarChart
+            height={180}
+            mode="single"
+            series={[{ key: "amount", label: "Revenue", color: "#0f766e" }]}
+            data={weekRevenueChart.map((row) => ({
+              label: row.label,
+              values: { amount: row.amountPaise },
+            }))}
+            formatValue={(n) => {
+              const rupees = n / 100;
+              if (rupees >= 100000) return `₹${(rupees / 100000).toFixed(1)}L`;
+              if (rupees >= 1000) return `₹${Math.round(rupees / 1000)}k`;
+              return `₹${Math.round(rupees)}`;
+            }}
+            formatTooltip={(point) => formatAmountInr(point.values.amount ?? 0)}
+          />
+        </div>
+      </div>
+
       {/* Secondary metrics */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
         {[
@@ -1198,13 +1404,13 @@ export default function PaymentsContent({
           },
           {
             label: "Expired",
-            value: analytics.expiredPlans,
+            value: analytics.expiredSubscriptions,
             tone: "text-rose-700 bg-rose-50 border-rose-100",
           },
           {
-            label: "Merchants",
-            value: subscriptions.length,
-            tone: "text-slate-700 bg-slate-50 border-slate-100",
+            label: "Active now",
+            value: analytics.activeSubscriptions,
+            tone: "text-emerald-700 bg-emerald-50 border-emerald-100",
           },
         ].map((item) => (
           <div
@@ -1269,13 +1475,13 @@ export default function PaymentsContent({
         </div>
         <div className="rounded-2xl border border-slate-200/80 bg-white p-5">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            Active plans
+            Active now by plan
           </h3>
           <div className="mt-4 grid grid-cols-3 gap-3">
             {[
-              { label: "Starter", count: analytics.planBreakdown.starter },
-              { label: "Growth", count: analytics.planBreakdown.growthMonthly },
-              { label: "Pro Annual", count: analytics.planBreakdown.proAnnual },
+              { label: "Starter", count: analytics.activePlanBreakdown.starter },
+              { label: "Growth", count: analytics.activePlanBreakdown.growthMonthly },
+              { label: "Pro Annual", count: analytics.activePlanBreakdown.proAnnual },
             ].map((plan) => (
               <div
                 key={plan.label}
@@ -1398,7 +1604,7 @@ export default function PaymentsContent({
                 </p>
               ) : (
                 filteredSubscriptions.slice(0, 8).map((s) => {
-                  const urgency = getExpiryUrgency(s.planExpiresAt);
+                  const lifecycle = subscriptionLifecycle(s);
                   const days = daysUntilExpiry(s.planExpiresAt);
                   return (
                     <div
@@ -1419,13 +1625,10 @@ export default function PaymentsContent({
                           {formatDateTime(s.planExpiresAt)}
                         </p>
                         <span
-                          className={`inline-flex px-2 py-0.5 rounded-md border text-[9px] font-semibold ${expiryBadgeClass(urgency)}`}
+                          className={`inline-flex px-2 py-0.5 rounded-md border text-[9px] font-semibold ${lifecycleBadgeClass(lifecycle)}`}
                         >
-                          {days === null
-                            ? "No expiry"
-                            : days < 0
-                              ? "Expired"
-                              : `${days}d left`}
+                          {lifecycleLabel(lifecycle)}
+                          {lifecycle === "active" && days !== null ? ` · ${days}d left` : ""}
                         </span>
                       </div>
                     </div>
@@ -1695,17 +1898,18 @@ export default function PaymentsContent({
                     <tr>
                       <th className="px-4 py-3 font-semibold">Merchant</th>
                       <th className="px-4 py-3 font-semibold">Plan</th>
-                      <th className="px-4 py-3 font-semibold">Payment</th>
-                      <th className="px-4 py-3 font-semibold">Subscription</th>
+                      <th className="px-4 py-3 font-semibold">Access</th>
+                      <th className="px-4 py-3 font-semibold">Razorpay</th>
                       <th className="px-4 py-3 font-semibold">Auto-debit</th>
                       <th className="px-4 py-3 font-semibold">Expires</th>
-                      <th className="px-4 py-3 font-semibold">Mandate</th>
+                      <th className="px-4 py-3 font-semibold">Last paid</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {filteredSubscriptions.map((sub) => {
-                      const urgency = getExpiryUrgency(sub.planExpiresAt);
-                      const days = daysUntilExpiry(sub.planExpiresAt);
+                      const lifecycle = subscriptionLifecycle(sub);
+                      const trail = paymentsForBusiness(payments, sub.businessId);
+                      const lastPaid = trail.find((row) => row.status === "completed");
                       return (
                         <tr
                           key={sub.businessId}
@@ -1727,9 +1931,9 @@ export default function PaymentsContent({
                           </td>
                           <td className="px-4 py-3">
                             <span
-                              className={`inline-flex px-2 py-0.5 rounded-md border text-[10px] font-semibold capitalize ${statusBadgeClass(sub.paymentStatus)}`}
+                              className={`inline-flex px-2 py-0.5 rounded-md border text-[10px] font-semibold ${lifecycleBadgeClass(lifecycle)}`}
                             >
-                              {sub.paymentStatus}
+                              {lifecycleLabel(lifecycle)}
                             </span>
                           </td>
                           <td className="px-4 py-3 capitalize text-slate-700">
@@ -1750,18 +1954,16 @@ export default function PaymentsContent({
                             <p className="text-slate-700 whitespace-nowrap">
                               {formatDateTime(sub.planExpiresAt)}
                             </p>
-                            <span
-                              className={`inline-flex mt-1 px-1.5 py-0.5 rounded text-[9px] font-semibold ${expiryBadgeClass(urgency)}`}
-                            >
-                              {days === null
-                                ? "—"
-                                : days < 0
-                                  ? "Expired"
-                                  : `${days}d`}
-                            </span>
                           </td>
-                          <td className="px-4 py-3 capitalize text-slate-600">
-                            {sub.mandateStatus}
+                          <td className="px-4 py-3">
+                            {lastPaid ? (
+                              <>
+                                <p className="font-semibold tabular-nums">{lastPaid.amountDisplay}</p>
+                                <p className="text-[10px] text-slate-500">{formatDateTime(lastPaid.createdAt)}</p>
+                              </>
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1773,9 +1975,10 @@ export default function PaymentsContent({
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {filteredSubscriptions.map((sub) => {
-                const urgency = getExpiryUrgency(sub.planExpiresAt);
+                const lifecycle = subscriptionLifecycle(sub);
                 const days = daysUntilExpiry(sub.planExpiresAt);
                 const isExpanded = expandedSubId === sub.businessId;
+                const trail = paymentsForBusiness(payments, sub.businessId);
                 return (
                   <div
                     key={sub.businessId}
@@ -1797,9 +2000,9 @@ export default function PaymentsContent({
                           )}
                         </div>
                         <span
-                          className={`shrink-0 inline-flex px-2.5 py-1 rounded-lg border text-[10px] font-semibold capitalize ${statusBadgeClass(sub.paymentStatus)}`}
+                          className={`shrink-0 inline-flex px-2.5 py-1 rounded-lg border text-[10px] font-semibold ${lifecycleBadgeClass(lifecycle)}`}
                         >
-                          {sub.paymentStatus}
+                          {lifecycleLabel(lifecycle)}
                         </span>
                       </div>
 
@@ -1822,7 +2025,7 @@ export default function PaymentsContent({
                         </div>
                         <div className="rounded-xl bg-slate-50 px-3 py-2">
                           <p className="text-[9px] text-slate-400 uppercase">
-                            Subscription
+                            Razorpay
                           </p>
                           <p className="text-[11px] font-semibold capitalize text-slate-800 mt-0.5">
                             {sub.subscriptionStatus || "—"}
@@ -1842,13 +2045,13 @@ export default function PaymentsContent({
 
                       <div className="mt-3 flex items-center justify-between">
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-semibold ${expiryBadgeClass(urgency)}`}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-semibold ${lifecycleBadgeClass(lifecycle)}`}
                         >
                           <Calendar className="w-3 h-3" />
-                          {days === null
-                            ? "No expiry"
-                            : days < 0
-                              ? "Expired"
+                          {lifecycle === "expired"
+                            ? "Plan ended"
+                            : days === null
+                              ? "No expiry on file"
                               : `${days} days remaining`}
                         </span>
                         <button
@@ -1858,25 +2061,27 @@ export default function PaymentsContent({
                           }
                           className="text-[11px] font-semibold text-primary hover:underline"
                         >
-                          {isExpanded ? "Hide IDs" : "Razorpay IDs"}
+                          {isExpanded ? "Hide trail" : `Payment trail (${trail.length})`}
                         </button>
                       </div>
 
+                      {trail.length > 0 && !isExpanded && (
+                        <p className="mt-3 text-[11px] text-slate-500">
+                          Last paid {formatDateTime(trail[0].createdAt)} · {trail[0].amountDisplay}
+                        </p>
+                      )}
+
                       {isExpanded && (
-                        <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-                          <div className="flex justify-between gap-2 text-[11px]">
-                            <span className="text-slate-400">Payment ID</span>
-                            <CopyableId value={sub.paymentId} />
+                        <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                              Payment trail
+                            </p>
+                            <PaymentTrail payments={trail} />
                           </div>
                           <div className="flex justify-between gap-2 text-[11px]">
-                            <span className="text-slate-400">Order ID</span>
-                            <CopyableId value={sub.orderId} />
-                          </div>
-                          <div className="flex justify-between gap-2 text-[11px]">
-                            <span className="text-slate-400">
-                              Subscription ID
-                            </span>
-                            <CopyableId value={sub.subscriptionId} />
+                            <span className="text-slate-400">Business ID</span>
+                            <CopyableId value={sub.businessId} />
                           </div>
                           <div className="flex justify-between gap-2 text-[11px]">
                             <span className="text-slate-400">Mandate</span>
