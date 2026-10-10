@@ -13,7 +13,6 @@ import {
   LoaderCircle,
   LockKeyhole,
   Mail,
-  MailCheck,
   Newspaper,
   RotateCw,
   ShieldCheck,
@@ -38,6 +37,14 @@ const HIGHLIGHTS = [
   { label: "Revenue", desc: "Subscriptions and Razorpay", Icon: IndianRupee },
   { label: "Content", desc: "Media, jobs and blogs", Icon: Newspaper },
 ];
+
+const LINE_LABEL = "block text-[13px] font-medium text-slate-600";
+const LINE_ICON =
+  "pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-teal-600";
+const LINE_INPUT =
+  "peer block h-12 w-full rounded-none border-0 border-b border-slate-300! bg-transparent pl-7 text-[15px] text-slate-900 outline-none transition-colors placeholder:text-slate-400 hover:border-slate-400! focus:ring-0 autofill:shadow-[inset_0_0_0_1000px_#fff]";
+const LINE_FOCUS_BAR =
+  "pointer-events-none absolute inset-x-0 bottom-0 h-0.5 origin-left scale-x-0 bg-teal-600 transition-transform duration-300 peer-focus:scale-x-100";
 
 export default function Home() {
   const [username, setUsername] = useState("");
@@ -218,7 +225,6 @@ export default function Home() {
   };
 
   const isEmailStep = step === "email";
-  const StepIcon = isEmailStep ? MailCheck : LockKeyhole;
 
   return (
     <div className="flex min-h-screen bg-[#f5f7fa]">
@@ -236,10 +242,8 @@ export default function Home() {
         <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-cyan-500/15 blur-3xl" />
 
         <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-white px-4 py-2.5 shadow-lg shadow-black/20">
-              <Image src="/logo1.png" alt="FinderB" width={142} height={32} className="object-contain" priority />
-            </div>
+          <div className="flex items-center gap-4">
+            <Image src="/logo-white.png" alt="FinderB" width={151} height={34} className="object-contain" priority />
             <span className="inline-flex items-center gap-2 rounded-full border border-teal-400/30! bg-teal-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-200">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-400" />
               Control deck
@@ -288,34 +292,26 @@ export default function Home() {
         </div>
       </aside>
 
-      <main className="relative flex flex-1 items-center justify-center overflow-hidden p-5 sm:p-12">
-        <div className="pointer-events-none absolute -top-32 right-0 h-80 w-80 rounded-full bg-teal-200/40 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-40 -left-20 h-80 w-80 rounded-full bg-cyan-100/60 blur-3xl" />
-
-        <div className="relative w-full max-w-[440px]">
-          <div className="mb-8 flex flex-col items-center lg:hidden">
-            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
-              <Image src="/logo1.png" alt="FinderB" width={160} height={36} className="object-contain" priority />
-            </div>
-            <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-700">
+      <main className="flex flex-1 items-center justify-center bg-white px-6 py-10 sm:px-12">
+        <div className="w-full max-w-[400px]">
+          <div className="mb-12 flex flex-col items-start lg:hidden">
+            <Image src="/logo1.png" alt="FinderB" width={151} height={34} className="object-contain" priority />
+            <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-700">
               Control deck
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200/80! bg-white/95 p-7 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.28)] backdrop-blur sm:p-9">
-            <div className="mb-7 flex items-center gap-2" aria-label={`Step ${isEmailStep ? 2 : 1} of 2`}>
-              <span className="h-1.5 flex-1 rounded-full bg-teal-500" />
-              <span className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${isEmailStep ? "bg-teal-500" : "bg-slate-200"}`} />
+          <div>
+            <div className="mb-8 flex items-center gap-1.5" aria-label={`Step ${isEmailStep ? 2 : 1} of 2`}>
+              <span className="h-1 w-8 rounded-full bg-teal-600" />
+              <span className={`h-1 w-8 rounded-full transition-colors duration-300 ${isEmailStep ? "bg-teal-600" : "bg-slate-200"}`} />
               <span className="ml-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Step {isEmailStep ? 2 : 1}/2
+                Step {isEmailStep ? 2 : 1} of 2
               </span>
             </div>
 
-            <div className="mb-7">
-              <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-md shadow-teal-600/25">
-                <StepIcon className="h-5 w-5" aria-hidden />
-              </span>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+            <div className="mb-9">
+              <h1 className="text-[1.75rem] font-semibold tracking-tight text-slate-900">
                 {isEmailStep ? "Check your email" : "Welcome back"}
               </h1>
               {isEmailStep ? (
@@ -397,13 +393,13 @@ export default function Home() {
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleLogin} className="space-y-5">
+              <form onSubmit={handleLogin} className="space-y-7">
                 <div>
-                  <label htmlFor="username" className="admin-label mb-1.5 block">
+                  <label htmlFor="username" className={LINE_LABEL}>
                     Email address
                   </label>
-                  <div className="relative">
-                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+                  <div className="group relative">
+                    <Mail className={LINE_ICON} aria-hidden />
                     <input
                       id="username"
                       name="username"
@@ -413,17 +409,18 @@ export default function Home() {
                       autoFocus
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="admin-input h-11 pl-10"
+                      className={`${LINE_INPUT} pr-2`}
                       placeholder="admin@finderb.com"
                     />
+                    <span className={LINE_FOCUS_BAR} aria-hidden />
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="password" className="admin-label mb-1.5 block">
+                  <label htmlFor="password" className={LINE_LABEL}>
                     Password
                   </label>
-                  <div className="relative">
-                    <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+                  <div className="group relative">
+                    <LockKeyhole className={LINE_ICON} aria-hidden />
                     <input
                       id="password"
                       name="password"
@@ -432,13 +429,14 @@ export default function Home() {
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="admin-input h-11 pl-10 pr-11"
+                      className={`${LINE_INPUT} pr-10`}
                       placeholder="Enter your password"
                     />
+                    <span className={LINE_FOCUS_BAR} aria-hidden />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-slate-400 transition-colors hover:text-slate-700"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
@@ -449,7 +447,7 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="admin-btn-primary h-11 w-full text-[15px] font-semibold"
+                  className="admin-btn-primary mt-9! h-11 w-full text-[15px] font-semibold"
                 >
                   {isLoading ? (
                     <>
@@ -467,7 +465,7 @@ export default function Home() {
             )}
           </div>
 
-          <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-slate-400">
+          <p className="mt-10 flex items-center gap-1.5 text-xs text-slate-400">
             <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
             Protected by 2-step email verification
           </p>
