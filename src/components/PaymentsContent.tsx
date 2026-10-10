@@ -1,8 +1,15 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
+  CalendarClock,
+  CalendarRange,
+  CalendarX,
+  CircleCheck,
+  CircleX,
+  Clock,
+  Info,
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
@@ -107,6 +114,36 @@ function statusBadgeClass(status: string) {
   if (status === "failed")
     return "bg-rose-500/10 text-rose-700 border-rose-200/80";
   return "bg-slate-500/10 text-slate-600 border-slate-200/80";
+}
+
+const ABANDONED_CHECKOUT_MS = 30 * 60 * 1000;
+
+/** Rows are written as pending when checkout opens, so the reason is inferred from what happened next. */
+function paymentStatusReason(payment: PaymentRecord, all: PaymentRecord[]): string | null {
+  if (payment.status === "failed") return "Declined or cancelled at Razorpay";
+  if (payment.status !== "pending") return null;
+
+  const createdMs = parseFinderbTimestamp(payment.createdAt)?.getTime() ?? 0;
+  const paidLater = all.find(
+    (other) =>
+      other.id !== payment.id &&
+      other.businessId === payment.businessId &&
+      other.status === "completed" &&
+      (parseFinderbTimestamp(other.createdAt)?.getTime() ?? 0) >= createdMs,
+  );
+  if (paidLater) return `Retried — merchant paid on ${formatDateTime(paidLater.createdAt)}`;
+  if (payment.paymentId) return "Paid at Razorpay, waiting for confirmation";
+  if (payment.paymentType === "subscription_renewal") return "Renewal charge waiting for the bank debit";
+
+  const abandoned = createdMs > 0 && Date.now() - createdMs > ABANDONED_CHECKOUT_MS;
+  if (payment.paymentType === "subscription_auth") {
+    return abandoned
+      ? "Autopay mandate never approved — merchant left the setup"
+      : "Waiting for the merchant to approve autopay";
+  }
+  return abandoned
+    ? "Checkout abandoned — merchant did not complete payment"
+    : "Checkout open — merchant may still be paying";
 }
 
 function matchesPlanFilter(
@@ -420,18 +457,21 @@ export default function PaymentsContent({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [activeTab, setActiveTabState] = useState<TabId>("overview");
+  const tabsRef = useRef<HTMLDivElement>(null);
+  // Tab content sits below the KPIs, so shortcuts scroll it into view instead of leaving the page in place.
+  const setActiveTab = useCallback((tab: TabId) => {
+    setActiveTabState(tab);
+    requestAnimationFrame(() => {
+      tabsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
   const [showFilters, setShowFilters] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [expandedSubId, setExpandedSubId] = useState<string | null>(null);
   const [subViewMode, setSubViewMode] = useState<SubViewMode>("grid");
   const [txnSort, setTxnSort] = useState<TxnSort>("date_desc");
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, [activeTab]);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -1038,16 +1078,6 @@ export default function PaymentsContent({
       <div className="admin-platform-hero">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <span className="admin-badge bg-teal-50 text-teal-800 border-teal-100">
-                Razorpay · Ledger
-              </span>
-              {opens.length > 0 && (
-                <span className="admin-badge bg-amber-50 text-amber-800 border-amber-200">
-                  {opens.length} open
-                </span>
-              )}
-            </div>
             <h1 className="admin-page-title">Payments & Subscriptions</h1>
             <p className="admin-page-subtitle">
               Company collections, who is Active vs Expired, and every merchant payment trail.
@@ -1101,7 +1131,18 @@ export default function PaymentsContent({
 
       {/* Opens alert strip */}
       {opens.length > 0 && (
-        <div className="admin-card px-5 py-4 border-amber-200/80 bg-amber-50/40">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setActiveTab("tracking")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setActiveTab("tracking");
+            }
+          }}
+          className="admin-card px-5 py-4 border-amber-200/80 bg-amber-50/40 w-full text-left hover:border-amber-300 transition-colors cursor-pointer"
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-md bg-amber-500/15">
@@ -1116,7 +1157,8 @@ export default function PaymentsContent({
                   {analytics.pendingCount > 0 && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setStatusFilter("pending");
                         setActiveTab("transactions");
                       }}
@@ -1128,7 +1170,8 @@ export default function PaymentsContent({
                   {analytics.failedCount > 0 && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setStatusFilter("failed");
                         setActiveTab("transactions");
                       }}
@@ -1140,7 +1183,8 @@ export default function PaymentsContent({
                   {analytics.expiring7d > 0 && (
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setExpiryFilter("expiring_7d");
                         setActiveTab("subscriptions");
                       }}
@@ -1154,7 +1198,10 @@ export default function PaymentsContent({
             </div>
             <button
               type="button"
-              onClick={() => setActiveTab("tracking")}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveTab("tracking");
+              }}
               className="px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors"
             >
               View tracking
@@ -1394,50 +1441,89 @@ export default function PaymentsContent({
       </div>
 
       {/* Secondary metrics */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           {
             label: "Pending",
+            hint: "Checkout not finished",
+            Icon: Clock,
             value: analytics.pendingCount,
-            tone: "text-amber-700 bg-amber-50 border-amber-100",
+            onClick: () => {
+              setStatusFilter("pending");
+              setActiveTab("transactions");
+            },
           },
           {
             label: "Failed",
+            hint: "Declined at Razorpay",
+            Icon: CircleX,
             value: analytics.failedCount,
-            tone: "text-rose-700 bg-rose-50 border-rose-100",
+            onClick: () => {
+              setStatusFilter("failed");
+              setActiveTab("transactions");
+            },
           },
           {
             label: "Expiring 7d",
+            hint: "Renewal due this week",
+            Icon: CalendarClock,
             value: analytics.expiring7d,
-            tone: "text-orange-700 bg-orange-50 border-orange-100",
+            onClick: () => {
+              setExpiryFilter("expiring_7d");
+              setActiveTab("subscriptions");
+            },
           },
           {
             label: "Expiring 30d",
+            hint: "Renewal due this month",
+            Icon: CalendarRange,
             value: analytics.expiring30d,
-            tone: "text-amber-700 bg-amber-50 border-amber-100",
+            onClick: () => {
+              setExpiryFilter("expiring_30d");
+              setActiveTab("subscriptions");
+            },
           },
           {
             label: "Expired",
+            hint: "Plan has ended",
+            Icon: CalendarX,
             value: analytics.expiredSubscriptions,
-            tone: "text-rose-700 bg-rose-50 border-rose-100",
+            onClick: () => {
+              setLifecycleFilter("expired");
+              setActiveTab("subscriptions");
+            },
           },
           {
             label: "Active now",
+            hint: "Paid and live",
+            Icon: CircleCheck,
             value: analytics.activeSubscriptions,
-            tone: "text-emerald-700 bg-emerald-50 border-emerald-100",
+            onClick: () => {
+              setLifecycleFilter("active");
+              setActiveTab("subscriptions");
+            },
           },
-        ].map((item) => (
-          <div
-            key={item.label}
-            className={`rounded-xl border px-4 py-3 text-center ${item.tone}`}
+        ].map(({ label, hint, Icon, value, onClick }) => (
+          <button
+            key={label}
+            type="button"
+            onClick={onClick}
+            className="group rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-left transition-colors hover:bg-slate-50"
           >
-            <p className="text-[9px] font-semibold uppercase tracking-wider opacity-70">
-              {item.label}
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-medium text-slate-500">{label}</p>
+              <Icon
+                className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500"
+                aria-hidden
+              />
+            </div>
+            <p
+              className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${value ? "text-slate-900" : "text-slate-300"}`}
+            >
+              {value}
             </p>
-            <p className="text-lg font-bold mt-0.5 tabular-nums">
-              {item.value}
-            </p>
-          </div>
+            <p className="mt-0.5 truncate text-[11px] text-slate-400">{hint}</p>
+          </button>
         ))}
       </div>
 
@@ -1514,7 +1600,10 @@ export default function PaymentsContent({
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1 p-1 rounded-2xl bg-slate-100/80 border border-slate-200/60">
+      <div
+        ref={tabsRef}
+        className="scroll-mt-[200px] flex flex-wrap gap-1 p-1 rounded-2xl bg-slate-100/80 border border-slate-200/60"
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -1560,7 +1649,9 @@ export default function PaymentsContent({
                   No transactions match filters.
                 </p>
               ) : (
-                filteredPayments.slice(0, 8).map((p) => (
+                filteredPayments.slice(0, 8).map((p) => {
+                  const reason = paymentStatusReason(p, payments);
+                  return (
                   <div
                     key={p.id}
                     className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors"
@@ -1572,6 +1663,12 @@ export default function PaymentsContent({
                       <p className="text-[11px] text-slate-500">
                         {formatDateTime(p.createdAt)} · {p.planName}
                       </p>
+                      {reason && (
+                        <p className="mt-1 flex items-start gap-1.5 text-[11px] leading-snug text-slate-500">
+                          <Info className="mt-px h-3 w-3 shrink-0 text-slate-400" aria-hidden />
+                          <span>{reason}</span>
+                        </p>
+                      )}
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-slate-900 tabular-nums">
@@ -1584,7 +1681,8 @@ export default function PaymentsContent({
                       </span>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
             {filteredPayments.length > 8 && (
@@ -1777,6 +1875,11 @@ export default function PaymentsContent({
                             {payment.source && (
                               <p className="mt-1 text-[9px] capitalize text-slate-400">
                                 {payment.source}
+                              </p>
+                            )}
+                            {payment.status !== "completed" && (
+                              <p className="mt-1 max-w-[190px] text-[10px] leading-snug text-slate-500">
+                                {paymentStatusReason(payment, payments)}
                               </p>
                             )}
                           </td>
