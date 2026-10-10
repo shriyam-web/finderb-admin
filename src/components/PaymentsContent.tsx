@@ -79,7 +79,7 @@ type BusinessPaymentRow = {
 type TabId = "overview" | "transactions" | "subscriptions" | "tracking";
 type SubViewMode = "grid" | "table";
 type TxnSort = "date_desc" | "date_asc" | "amount_desc" | "amount_asc";
-type StatusFilter = "all" | "completed" | "pending" | "failed";
+type StatusFilter = "all" | "completed" | "pending" | "failed" | "attempted";
 type BillingFilter = "all" | "monthly" | "annual";
 type PlanFilter = "all" | "starter" | "growth_monthly" | "pro_annual";
 type TypeFilter =
@@ -118,20 +118,38 @@ function statusBadgeClass(status: string) {
 
 const ABANDONED_CHECKOUT_MS = 30 * 60 * 1000;
 
-/** Rows are written as pending when checkout opens, so the reason is inferred from what happened next. */
-function paymentStatusReason(payment: PaymentRecord, all: PaymentRecord[]): string | null {
-  if (payment.status === "failed") return "Declined or cancelled at Razorpay";
-  if (payment.status !== "pending") return null;
-
+function laterCompletedPayment(payment: PaymentRecord, all: PaymentRecord[]): PaymentRecord | undefined {
   const createdMs = parseFinderbTimestamp(payment.createdAt)?.getTime() ?? 0;
-  const paidLater = all.find(
+  return all.find(
     (other) =>
       other.id !== payment.id &&
       other.businessId === payment.businessId &&
       other.status === "completed" &&
       (parseFinderbTimestamp(other.createdAt)?.getTime() ?? 0) >= createdMs,
   );
-  if (paidLater) return `Retried — merchant paid on ${formatDateTime(paidLater.createdAt)}`;
+}
+
+/** A pending checkout the merchant followed with a successful payment is no longer waiting on anything. */
+function markAttemptedPayments(payments: PaymentRecord[]): PaymentRecord[] {
+  return payments.map((payment) =>
+    payment.status === "pending" && laterCompletedPayment(payment, payments)
+      ? { ...payment, status: "attempted" }
+      : payment,
+  );
+}
+
+/** Rows are written as pending when checkout opens, so the reason is inferred from what happened next. */
+function paymentStatusReason(payment: PaymentRecord, all: PaymentRecord[]): string | null {
+  if (payment.status === "failed") return "Declined or cancelled at Razorpay";
+  if (payment.status === "attempted") {
+    const paid = laterCompletedPayment(payment, all);
+    return paid
+      ? `Not completed — merchant paid on ${formatDateTime(paid.createdAt)} in a later attempt`
+      : "Not completed — merchant paid in a later attempt";
+  }
+  if (payment.status !== "pending") return null;
+
+  const createdMs = parseFinderbTimestamp(payment.createdAt)?.getTime() ?? 0;
   if (payment.paymentId) return "Paid at Razorpay, waiting for confirmation";
   if (payment.paymentType === "subscription_renewal") return "Renewal charge waiting for the bank debit";
 
@@ -615,7 +633,7 @@ export default function PaymentsContent({
           return aTime - bTime;
         });
 
-      setPayments(merged);
+      setPayments(markAttemptedPayments(merged));
       setSubscriptions(subscriptionRows);
       setLastRefreshed(new Date());
     } catch (err) {
@@ -649,8 +667,12 @@ export default function PaymentsContent({
     [payments],
   );
 
+  const attemptedCount = useMemo(
+    () => payments.filter((p) => p.status === "attempted").length,
+    [payments],
+  );
   const statusTotal =
-    analytics.completedCount + analytics.pendingCount + analytics.failedCount;
+    analytics.completedCount + analytics.pendingCount + analytics.failedCount + attemptedCount;
 
   const matchesSearch = useCallback(
     (...fields: (string | null | undefined)[]) => {
@@ -927,6 +949,12 @@ export default function PaymentsContent({
               active={statusFilter === "failed"}
               onClick={() => setStatusFilter("failed")}
               count={analytics.failedCount}
+            />
+            <FilterChip
+              label="Attempted"
+              active={statusFilter === "attempted"}
+              onClick={() => setStatusFilter("attempted")}
+              count={attemptedCount}
             />
           </div>
 
@@ -1333,6 +1361,13 @@ export default function PaymentsContent({
                   }}
                   title="Failed"
                 />
+                <div
+                  className="bg-slate-300 transition-all"
+                  style={{
+                    width: `${(attemptedCount / statusTotal) * 100}%`,
+                  }}
+                  title="Attempted"
+                />
               </>
             )}
           </div>
@@ -1355,6 +1390,12 @@ export default function PaymentsContent({
                 count: analytics.failedCount,
                 color: "bg-rose-500",
                 filter: "failed" as StatusFilter,
+              },
+              {
+                label: "Attempted",
+                count: attemptedCount,
+                color: "bg-slate-300",
+                filter: "attempted" as StatusFilter,
               },
             ].map((row) => (
               <button
@@ -2296,7 +2337,7 @@ export default function PaymentsContent({
                   <div key={p.id} className="flex gap-4">
                     <div className="flex flex-col items-center">
                       <div
-                        className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 ${p.status === "completed" ? "bg-emerald-500" : p.status === "failed" ? "bg-rose-500" : "bg-amber-500"}`}
+                        className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 ${p.status === "completed" ? "bg-emerald-500" : p.status === "failed" ? "bg-rose-500" : p.status === "attempted" ? "bg-slate-300" : "bg-amber-500"}`}
                       />
                       {i < Math.min(19, filteredPayments.length - 1) && (
                         <div className="w-px flex-1 bg-slate-200 my-1" />
