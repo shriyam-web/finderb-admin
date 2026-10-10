@@ -287,7 +287,7 @@ export default function Home() {
           </div>
 
           <p className="text-xs text-slate-500">
-            &copy; {new Date().getFullYear()} FinderB Technologies · Authorized personnel only
+            &copy; {new Date().getFullYear()} Maagaa Connect Private Limited · Authorized personnel only
           </p>
         </div>
       </aside>
