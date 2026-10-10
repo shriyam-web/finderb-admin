@@ -124,10 +124,12 @@ export default function Home() {
       loginEnabled?: boolean;
     },
     loginLogId?: string | null,
+    token?: string,
   ) => {
     localStorage.setItem(
       "admin_session",
       JSON.stringify({
+        token: token || "",
         email: admin.email,
         role: admin.role,
         id: admin.id,
@@ -155,6 +157,7 @@ export default function Home() {
         success?: boolean;
         error?: string;
         loginLogId?: string | null;
+        sessionToken?: string;
         admin?: {
           id: string;
           email: string;
@@ -170,7 +173,7 @@ export default function Home() {
         setIsLoading(false);
         return;
       }
-      finishSession(result.admin, result.loginLogId);
+      finishSession(result.admin, result.loginLogId, result.sessionToken);
     } catch {
       setError("Could not check that code.");
       setIsLoading(false);

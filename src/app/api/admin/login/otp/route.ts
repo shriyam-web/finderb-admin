@@ -6,6 +6,7 @@ import {
   sendAdminLoginCode,
   signLoginChallenge,
 } from "../../../../../lib/adminLoginOtp";
+import { signAdminSession } from "../../../../../lib/adminSessionToken";
 import { isConsoleLoginUnlocked, normalizeAccessFields } from "../../../../../lib/adminTabAccess";
 
 function getSupabase() {
@@ -120,6 +121,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       loginLogId: logRow?.id ?? null,
+      sessionToken: signAdminSession(admin.id),
       admin: {
         id: admin.id,
         email: admin.email,
