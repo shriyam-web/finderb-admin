@@ -3,6 +3,41 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  IndianRupee,
+  LoaderCircle,
+  LockKeyhole,
+  Mail,
+  MailCheck,
+  Newspaper,
+  RotateCw,
+  ShieldCheck,
+  Store,
+  UsersRound,
+} from "lucide-react";
+import OtpCodeBoxes from "../components/OtpCodeBoxes";
+
+type AdminPayload = {
+  id: string;
+  email: string;
+  role: string;
+  allowed_tabs: string[] | null;
+  allowed_tab_modes?: Record<string, string> | null;
+  displayName?: string | null;
+  loginEnabled?: boolean;
+};
+
+const HIGHLIGHTS = [
+  { label: "Merchant ops", desc: "KYC, listings and plans", Icon: Store },
+  { label: "Team access", desc: "Roles and permissions", Icon: UsersRound },
+  { label: "Revenue", desc: "Subscriptions and Razorpay", Icon: IndianRupee },
+  { label: "Content", desc: "Media, jobs and blogs", Icon: Newspaper },
+];
 
 export default function Home() {
   const [username, setUsername] = useState("");
@@ -13,6 +48,7 @@ export default function Home() {
   const [step, setStep] = useState<"password" | "email">("password");
   const [challenge, setChallenge] = useState("");
   const [otpCode, setOtpCode] = useState("");
+  const [codeInvalid, setCodeInvalid] = useState(false);
   const [resendIn, setResendIn] = useState(0);
   const router = useRouter();
 
@@ -61,52 +97,26 @@ export default function Home() {
       const result = (await response.json()) as {
         success?: boolean;
         error?: string;
-        admin?: {
-          id: string;
-          email: string;
-          role: string;
-          allowed_tabs: string[] | null;
-          allowed_tab_modes?: Record<string, string> | null;
-          displayName?: string | null;
-          loginEnabled?: boolean;
-        };
+        step?: "email";
+        challenge?: string;
       };
 
-      const twoFactor = result as { step?: "email"; challenge?: string };
-      if (twoFactor.step === "email") {
-        if (!twoFactor.challenge) {
-          setError("Could not start email verification.");
-          setIsLoading(false);
-          return;
-        }
-        setChallenge(twoFactor.challenge);
-        setOtpCode("");
-        setResendIn(90);
-        setStep("email");
-        setIsLoading(false);
-        return;
-      }
-
-      if (!response.ok || !result.success || !result.admin) {
+      if (!response.ok || !result.success) {
         setError(result.error || "Incorrect email or password. Please try again.");
         setIsLoading(false);
         return;
       }
-
-      localStorage.setItem(
-        "admin_session",
-        JSON.stringify({
-          email: result.admin.email,
-          role: result.admin.role,
-          id: result.admin.id,
-          allowed_tabs: result.admin.allowed_tabs,
-          allowed_tab_modes: result.admin.allowed_tab_modes ?? null,
-          displayName: result.admin.displayName ?? null,
-          loginEnabled: result.admin.loginEnabled === true,
-        }),
-      );
-
-      router.push("/dashboard");
+      if (result.step !== "email" || !result.challenge) {
+        setError("Could not start email verification.");
+        setIsLoading(false);
+        return;
+      }
+      setChallenge(result.challenge);
+      setOtpCode("");
+      setCodeInvalid(false);
+      setResendIn(90);
+      setStep("email");
+      setIsLoading(false);
     } catch {
       setError("An error occurred during login.");
       setIsLoading(false);
@@ -114,15 +124,7 @@ export default function Home() {
   };
 
   const finishSession = (
-    admin: {
-      id: string;
-      email: string;
-      role: string;
-      allowed_tabs: string[] | null;
-      allowed_tab_modes?: Record<string, string> | null;
-      displayName?: string | null;
-      loginEnabled?: boolean;
-    },
+    admin: AdminPayload,
     loginLogId?: string | null,
     token?: string,
   ) => {
@@ -143,33 +145,28 @@ export default function Home() {
     router.push("/dashboard");
   };
 
-  const handleEmailCode = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const verifyCode = async (code: string) => {
+    if (isLoading || code.length !== 6) return;
     setError("");
+    setCodeInvalid(false);
     setIsLoading(true);
     try {
       const response = await fetch("/api/admin/login/otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ challenge, code: otpCode }),
+        body: JSON.stringify({ challenge, code }),
       });
       const result = (await response.json()) as {
         success?: boolean;
         error?: string;
         loginLogId?: string | null;
         sessionToken?: string;
-        admin?: {
-          id: string;
-          email: string;
-          role: string;
-          allowed_tabs: string[] | null;
-          allowed_tab_modes?: Record<string, string> | null;
-          displayName?: string | null;
-          loginEnabled?: boolean;
-        };
+        admin?: AdminPayload;
       };
       if (!response.ok || !result.success || !result.admin) {
         setError(result.error || "That code was not accepted.");
+        setCodeInvalid(true);
+        setOtpCode("");
         setIsLoading(false);
         return;
       }
@@ -183,6 +180,7 @@ export default function Home() {
   const handleResend = async () => {
     if (resendIn > 0 || isLoading) return;
     setError("");
+    setCodeInvalid(false);
     setIsLoading(true);
     setOtpCode("");
     try {
@@ -210,180 +208,222 @@ export default function Home() {
     }
   };
 
+  const backToPassword = () => {
+    setStep("password");
+    setChallenge("");
+    setOtpCode("");
+    setCodeInvalid(false);
+    setResendIn(0);
+    setError("");
+  };
+
+  const isEmailStep = step === "email";
+  const StepIcon = isEmailStep ? MailCheck : LockKeyhole;
+
   return (
     <div className="flex min-h-screen bg-[#f5f7fa]">
-      <div className="hidden lg:flex lg:w-[46%] relative overflow-hidden border-r border-slate-800 bg-slate-950 text-white">
+      <aside className="relative hidden w-[46%] overflow-hidden border-r border-slate-800! bg-slate-950 text-white lg:flex">
         <div
           className="pointer-events-none absolute inset-0 opacity-40"
           style={{
             backgroundImage:
               "linear-gradient(rgba(45,212,191,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(45,212,191,0.1) 1px, transparent 1px)",
             backgroundSize: "32px 32px",
+            maskImage: "radial-gradient(ellipse at 30% 40%, black 30%, transparent 75%)",
           }}
         />
-        <div className="pointer-events-none absolute -right-20 top-10 h-72 w-72 rounded-full bg-teal-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute -left-16 bottom-0 h-56 w-56 rounded-full bg-cyan-500/15 blur-3xl" />
-        <div className="relative z-10 flex flex-col justify-between p-12 xl:p-16 w-full">
-          <div>
-            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-              <Image
-                src="/logo1.png"
-                alt="FinderB"
-                width={168}
-                height={48}
-                className="object-contain"
-                priority
-              />
-              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-800">
-                <span className="h-1.5 w-1.5 rounded-full bg-teal-500 animate-pulse" />
-                Control deck · secure access
-              </div>
+        <div className="pointer-events-none absolute -right-24 top-6 h-80 w-80 rounded-full bg-teal-400/20 blur-3xl" />
+        <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-cyan-500/15 blur-3xl" />
+
+        <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-white px-4 py-2.5 shadow-lg shadow-black/20">
+              <Image src="/logo1.png" alt="FinderB" width={142} height={32} className="object-contain" priority />
             </div>
+            <span className="inline-flex items-center gap-2 rounded-full border border-teal-400/30! bg-teal-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-200">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-400" />
+              Control deck
+            </span>
           </div>
 
-          <div className="space-y-8 max-w-md">
+          <div className="max-w-md space-y-10">
             <div>
-              <h2 className="text-3xl xl:text-4xl font-semibold leading-tight tracking-tight text-white">
-                Operate FinderB with clarity and speed.
+              <h2 className="text-4xl font-semibold leading-[1.15] tracking-tight text-white xl:text-[2.75rem]">
+                Operate FinderB with{" "}
+                <span className="bg-gradient-to-r from-teal-300 to-cyan-300 bg-clip-text text-transparent">
+                  clarity and speed.
+                </span>
               </h2>
-              <p className="text-slate-300 text-base leading-relaxed mt-4">
-                Merchants, teams, payments, and content — one high-signal
-                console for your ops team.
+              <p className="mt-4 text-base leading-relaxed text-slate-300">
+                Merchants, teams, payments, and content — one high-signal console for your ops team.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "Merchant ops", desc: "KYC · listings · plans" },
-                { label: "Team access", desc: "Roles · permissions" },
-                { label: "Revenue", desc: "Subs · Razorpay" },
-                { label: "Content", desc: "Media · jobs · blogs" },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm px-4 py-3"
+
+            <ul className="grid grid-cols-2 gap-3">
+              {HIGHLIGHTS.map(({ label, desc, Icon }) => (
+                <li
+                  key={label}
+                  className="rounded-xl border border-white/10! bg-white/[0.04] px-4 py-3.5 backdrop-blur-sm transition-colors hover:border-teal-400/30! hover:bg-white/[0.07]"
                 >
-                  <p className="text-sm font-semibold text-white">
-                    {item.label}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
-                </div>
+                  <span className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-teal-400/15 text-teal-300">
+                    <Icon className="h-4 w-4" aria-hidden />
+                  </span>
+                  <p className="text-sm font-semibold text-white">{label}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">{desc}</p>
+                </li>
               ))}
+            </ul>
+
+            <div className="flex items-center gap-3 rounded-xl border border-white/10! bg-white/[0.03] px-4 py-3">
+              <ShieldCheck className="h-5 w-5 shrink-0 text-teal-300" aria-hidden />
+              <p className="text-xs leading-relaxed text-slate-300">
+                Every sign-in needs your password and a one-time email code. Console activity is logged.
+              </p>
             </div>
           </div>
 
           <p className="text-xs text-slate-500">
-            &copy; {new Date().getFullYear()} FinderB Technologies · Authorized
-            personnel only
+            &copy; {new Date().getFullYear()} FinderB Technologies · Authorized personnel only
           </p>
         </div>
-      </div>
+      </aside>
 
-      <div className="flex flex-1 items-center justify-center p-6 sm:p-12">
-        <div className="w-full max-w-[420px]">
-          <div className="lg:hidden flex flex-col items-center mb-10 rounded-2xl bg-white px-6 py-5 border border-slate-200 shadow-sm">
-            <Image
-              src="/logo1.png"
-              alt="FinderB"
-              width={150}
-              height={44}
-              className="object-contain"
-              priority
-            />
-            <p className="mt-2 text-[11px] font-semibold tracking-[0.16em] uppercase text-teal-700">
+      <main className="relative flex flex-1 items-center justify-center overflow-hidden p-5 sm:p-12">
+        <div className="pointer-events-none absolute -top-32 right-0 h-80 w-80 rounded-full bg-teal-200/40 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-40 -left-20 h-80 w-80 rounded-full bg-cyan-100/60 blur-3xl" />
+
+        <div className="relative w-full max-w-[440px]">
+          <div className="mb-8 flex flex-col items-center lg:hidden">
+            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
+              <Image src="/logo1.png" alt="FinderB" width={160} height={36} className="object-contain" priority />
+            </div>
+            <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-700">
               Control deck
             </p>
           </div>
 
-          <div className="admin-card p-8">
-            <div className="mb-7">
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                {step === "password" ? "Sign in" : "Email code"}
-              </h1>
-              <p className="mt-1.5 text-sm text-slate-500 font-medium">
-                {step === "email"
-                  ? `Enter the 6-digit code sent to ${username.trim() || "your email"}.`
-                  : "Use your authorized admin credentials"}
-              </p>
+          <div className="rounded-2xl border border-slate-200/80! bg-white/95 p-7 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.28)] backdrop-blur sm:p-9">
+            <div className="mb-7 flex items-center gap-2" aria-label={`Step ${isEmailStep ? 2 : 1} of 2`}>
+              <span className="h-1.5 flex-1 rounded-full bg-teal-500" />
+              <span className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${isEmailStep ? "bg-teal-500" : "bg-slate-200"}`} />
+              <span className="ml-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Step {isEmailStep ? 2 : 1}/2
+              </span>
             </div>
 
-            {step === "email" ? (
-              <form onSubmit={handleEmailCode} className="space-y-5">
-                {error && <div className="admin-alert-error">{error}</div>}
-                <div>
-                  <label htmlFor="otp" className="admin-label block mb-1.5">
-                    Email code
-                  </label>
-                  <input
-                    id="otp"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    required
-                    value={otpCode}
-                    onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-                    className="admin-input tracking-[0.3em]"
-                    placeholder="6-digit code"
-                  />
-                </div>
-                <button type="submit" disabled={isLoading || otpCode.length !== 6} className="admin-btn-primary w-full py-2.5">
-                  {isLoading ? "Checking code..." : "Continue"}
-                </button>
-                <button
-                  type="button"
-                  disabled={isLoading || resendIn > 0}
-                  onClick={() => void handleResend()}
-                  className="w-full text-sm font-semibold text-slate-500 disabled:opacity-50"
-                >
-                  {resendIn > 0
-                    ? `Resend in ${Math.floor(resendIn / 60)}:${String(resendIn % 60).padStart(2, "0")}`
-                    : "Resend code"}
-                </button>
-                <button
-                  type="button"
-                  className="w-full text-sm font-semibold text-slate-500"
-                  onClick={() => {
-                    setStep("password");
-                    setChallenge("");
-                    setOtpCode("");
-                    setResendIn(0);
-                    setError("");
+            <div className="mb-7">
+              <span className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-md shadow-teal-600/25">
+                <StepIcon className="h-5 w-5" aria-hidden />
+              </span>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                {isEmailStep ? "Check your email" : "Welcome back"}
+              </h1>
+              {isEmailStep ? (
+                <p className="mt-1.5 text-sm text-slate-500">
+                  We sent a 6-digit code to{" "}
+                  <span className="font-semibold text-slate-800">{username.trim() || "your email"}</span>
+                </p>
+              ) : (
+                <p className="mt-1.5 text-sm text-slate-500">Sign in with your authorized admin credentials.</p>
+              )}
+            </div>
+
+            {error && (
+              <div className="admin-alert-error mb-5 flex items-start gap-2.5 py-3" role="alert">
+                <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {isEmailStep ? (
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void verifyCode(otpCode);
+                }}
+                className="space-y-6"
+              >
+                <OtpCodeBoxes
+                  value={otpCode}
+                  onChange={(value) => {
+                    setOtpCode(value);
+                    if (codeInvalid) setCodeInvalid(false);
+                    if (error) setError("");
                   }}
+                  onComplete={(code) => void verifyCode(code)}
+                  disabled={isLoading}
+                  invalid={codeInvalid}
+                  autoFocus
+                />
+
+                <button
+                  type="submit"
+                  disabled={isLoading || otpCode.length !== 6}
+                  className="admin-btn-primary h-11 w-full text-[15px] font-semibold"
                 >
-                  Use a different account
+                  {isLoading ? (
+                    <>
+                      <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+                      Verifying…
+                    </>
+                  ) : (
+                    <>
+                      Verify and continue
+                      <ArrowRight className="h-4 w-4" aria-hidden />
+                    </>
+                  )}
                 </button>
+
+                <div className="flex items-center justify-between border-t border-slate-100! pt-5 text-sm">
+                  <button
+                    type="button"
+                    onClick={backToPassword}
+                    className="inline-flex items-center gap-1.5 font-medium text-slate-500 transition-colors hover:text-slate-900"
+                  >
+                    <ArrowLeft className="h-4 w-4" aria-hidden />
+                    Change account
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLoading || resendIn > 0}
+                    onClick={() => void handleResend()}
+                    className="inline-flex items-center gap-1.5 font-semibold text-teal-700 transition-colors hover:text-teal-900 disabled:cursor-not-allowed disabled:text-slate-400"
+                  >
+                    <RotateCw className="h-3.5 w-3.5" aria-hidden />
+                    {resendIn > 0
+                      ? `Resend in ${Math.floor(resendIn / 60)}:${String(resendIn % 60).padStart(2, "0")}`
+                      : "Resend code"}
+                  </button>
+                </div>
               </form>
             ) : (
-            <form onSubmit={handleLogin} className="space-y-5">
-              {error && <div className="admin-alert-error">{error}</div>}
-
-              <div className="space-y-4">
+              <form onSubmit={handleLogin} className="space-y-5">
                 <div>
-                  <label
-                    htmlFor="username"
-                    className="admin-label block mb-1.5"
-                  >
+                  <label htmlFor="username" className="admin-label mb-1.5 block">
                     Email address
                   </label>
-                  <input
-                    id="username"
-                    name="username"
-                    type="email"
-                    required
-                    autoComplete="email"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="admin-input"
-                    placeholder="admin@finderb.com"
-                  />
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
+                    <input
+                      id="username"
+                      name="username"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      autoFocus
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="admin-input h-11 pl-10"
+                      placeholder="admin@finderb.com"
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label
-                    htmlFor="password"
-                    className="admin-label block mb-1.5"
-                  >
+                  <label htmlFor="password" className="admin-label mb-1.5 block">
                     Password
                   </label>
                   <div className="relative">
+                    <LockKeyhole className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />
                     <input
                       id="password"
                       name="password"
@@ -392,69 +432,47 @@ export default function Home() {
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="admin-input pr-11"
+                      className="admin-input h-11 pl-10 pr-11"
                       placeholder="Enter your password"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-700"
-                      aria-label={
-                        showPassword ? "Hide password" : "Show password"
-                      }
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                     >
-                      {showPassword ? (
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"
-                          />
-                        </svg>
-                      ) : (
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                          />
-                        </svg>
-                      )}
+                      {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
                     </button>
                   </div>
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="admin-btn-primary w-full py-2.5"
-              >
-                {isLoading ? "Authenticating..." : "Sign in"}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="admin-btn-primary h-11 w-full text-[15px] font-semibold"
+                >
+                  {isLoading ? (
+                    <>
+                      <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+                      Checking…
+                    </>
+                  ) : (
+                    <>
+                      Continue
+                      <ArrowRight className="h-4 w-4" aria-hidden />
+                    </>
+                  )}
+                </button>
+              </form>
             )}
           </div>
+
+          <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-slate-400">
+            <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+            Protected by 2-step email verification
+          </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
