@@ -316,51 +316,50 @@ export async function POST(request: Request) {
     let pushSent = 0;
     let pushNote: string | null = null;
 
-    if (targetsUsers(audiences)) {
-      try {
-        const dispatchHeaders: Record<string, string> = {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        };
-        const secret = process.env.FINDERB_DISPATCH_SECRET?.trim();
-        if (secret) {
-          dispatchHeaders["x-finderb-dispatch"] = secret;
-        }
-
-        const dispatchRes = await fetch(
-          `${getPublicSiteUrl()}/api/notifications/dispatch`,
-          {
-            method: "POST",
-            headers: dispatchHeaders,
-            body: JSON.stringify({ broadcastId: data.id }),
-          },
-        );
-        const dispatchJson = (await dispatchRes.json().catch(() => null)) as {
-          success?: boolean;
-          sent?: number;
-          skipped?: string;
-          error?: string;
-        } | null;
-
-        if (dispatchJson?.success) {
-          pushSent = Number(dispatchJson.sent || 0);
-          if (dispatchJson.skipped === "no-token-table") {
-            pushNote =
-              "Saved. Run supabase/user_notifications.sql so app push tokens can be stored.";
-          } else if (pushSent === 0) {
-            pushNote =
-              "Saved and visible in the FinderB app. Push alerts go out after users open the app once while signed in.";
-          }
-        } else {
-          pushNote =
-            dispatchJson?.error ||
-            "Saved. The app inbox will show it; push dispatch did not complete.";
-        }
-      } catch (dispatchError) {
-        console.error("[admin broadcasts] dispatch", dispatchError);
-        pushNote =
-          "Saved. The app inbox will show it; live site push dispatch could not be reached.";
+    try {
+      const dispatchHeaders: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      };
+      const secret = process.env.FINDERB_DISPATCH_SECRET?.trim();
+      if (secret) {
+        dispatchHeaders["x-finderb-dispatch"] = secret;
       }
+
+      const dispatchRes = await fetch(
+        `${getPublicSiteUrl()}/api/notifications/dispatch`,
+        {
+          method: "POST",
+          headers: dispatchHeaders,
+          body: JSON.stringify({ broadcastId: data.id }),
+        },
+      );
+      const dispatchJson = (await dispatchRes.json().catch(() => null)) as {
+        success?: boolean;
+        sent?: number;
+        skipped?: string;
+        error?: string;
+      } | null;
+
+      if (dispatchJson?.success) {
+        pushSent = Number(dispatchJson.sent || 0);
+        if (dispatchJson.skipped === "no-token-table") {
+          pushNote =
+            "Saved. Run supabase/user_notifications.sql so app push tokens can be stored.";
+        } else if (pushSent === 0) {
+          pushNote = targetsUsers(audiences)
+            ? "Saved and visible in the FinderB app. Push alerts go out after users open the app once while signed in."
+            : "Saved and visible in the merchant panel. Push alerts go out once merchants open the latest app while signed in.";
+        }
+      } else {
+        pushNote =
+          dispatchJson?.error ||
+          "Saved. The app inbox will show it; push dispatch did not complete.";
+      }
+    } catch (dispatchError) {
+      console.error("[admin broadcasts] dispatch", dispatchError);
+      pushNote =
+        "Saved. The app inbox will show it; live site push dispatch could not be reached.";
     }
 
     return NextResponse.json({
@@ -369,9 +368,7 @@ export async function POST(request: Request) {
       pushSent,
       message:
         pushNote ||
-        (targetsUsers(audiences)
-          ? `Broadcast sent. ${pushSent} app device${pushSent === 1 ? "" : "s"} notified.`
-          : "Broadcast sent to merchants."),
+        `Broadcast sent. ${pushSent} app device${pushSent === 1 ? "" : "s"} notified.`,
     });
   } catch (error) {
     console.error("[admin broadcasts]", error);
