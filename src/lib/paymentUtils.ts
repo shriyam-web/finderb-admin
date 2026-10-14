@@ -93,6 +93,8 @@ type BusinessPaymentRow = {
   mandateStatus?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
+  slug?: string | null;
+  city?: string | null;
 };
 
 type MerchantPaymentRow = {

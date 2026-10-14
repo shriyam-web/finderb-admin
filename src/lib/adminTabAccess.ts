@@ -176,9 +176,9 @@ export function resolveTabAccess(
   if (!session) return "none";
   if (isDeveloperRole(session.role)) return "edit";
   if (tab === "Manage Admins") return "none";
-  // Sensitive support impersonation: never auto-grant to controllers.
-  // Developer grants explicitly via Manage Admins allow-list.
-  if (tab === "Merchant Support Login") {
+  // Sensitive support impersonation / review moderation: never auto-grant
+  // to controllers. Developer grants explicitly via Manage Admins.
+  if (tab === "Merchant Support Login" || tab === "Reviews") {
     return modeFromAllowList(effectiveTabModes(session), tab);
   }
   if (isControllerRole(session.role)) {

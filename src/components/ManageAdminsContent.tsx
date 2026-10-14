@@ -62,6 +62,7 @@ export const ASSIGNABLE_ADMIN_TABS = [
   "YouTube Playlists",
   "FinderB Jobs",
   "Settings",
+  "Reviews",
 ] as const;
 
 type Props = {

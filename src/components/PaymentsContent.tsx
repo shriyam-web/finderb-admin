@@ -30,6 +30,7 @@ import {
   Zap,
 } from "lucide-react";
 import { createClient } from "../../utils/supabase/client";
+import { getBusinessProfileUrl } from "../lib/site";
 import { parseFinderbTimestamp } from "../lib/formatDateTime";
 import {
   buildMonthWiseRevenue,
@@ -74,6 +75,8 @@ type BusinessPaymentRow = {
   mandateStatus?: string | null;
   updatedAt?: string | null;
   createdAt?: string | null;
+  slug?: string | null;
+  city?: string | null;
 };
 
 type TabId = "overview" | "transactions" | "subscriptions" | "tracking";
@@ -234,15 +237,51 @@ function CopyableId({
         setCopied(true);
         setTimeout(() => setCopied(false), 1500);
       }}
-      className="group inline-flex items-center gap-1 font-mono text-[10px] text-slate-700 hover:text-primary transition-colors max-w-full"
+      className="group inline-flex items-center gap-1 text-[10px] tabular-nums text-slate-700 hover:text-primary transition-colors max-w-full"
       title={`Copy ${label || "ID"}`}
     >
       <span className="truncate">{value}</span>
       <Copy className="w-3 h-3 shrink-0 opacity-40 group-hover:opacity-100" />
       {copied && (
-        <span className="text-[9px] text-emerald-600 font-sans">Copied</span>
+        <span className="text-[9px] text-emerald-600">Copied</span>
       )}
     </button>
+  );
+}
+
+function MerchantNameLink({
+  businessId,
+  name,
+  slug,
+  city,
+  className = "",
+}: {
+  businessId: string;
+  name: string;
+  slug?: string | null;
+  city?: string | null;
+  className?: string;
+}) {
+  if (!businessId || !name || name === "—") {
+    return <span className={className}>{name || "—"}</span>;
+  }
+
+  return (
+    <a
+      href={getBusinessProfileUrl({
+        id: businessId,
+        businessName: name,
+        slug,
+        city,
+      })}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      className={`hover:text-primary hover:underline underline-offset-2 ${className}`}
+      title={`Open ${name} on FinderB`}
+    >
+      {name}
+    </a>
   );
 }
 
@@ -423,7 +462,19 @@ function PaymentTrail({
       {payments.map((payment) => (
         <div
           key={payment.id}
-          className="rounded-xl border border-slate-100 bg-white px-3 py-2.5"
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            if (payment.paymentId) void navigator.clipboard.writeText(payment.paymentId);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              if (payment.paymentId) void navigator.clipboard.writeText(payment.paymentId);
+            }
+          }}
+          className="w-full text-left rounded-xl border border-slate-100 bg-white px-3 py-2.5 hover:border-slate-300 hover:bg-slate-50/80 transition-colors cursor-pointer"
+          title={payment.paymentId ? "Copy payment ID" : undefined}
         >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="min-w-0">
@@ -490,6 +541,13 @@ export default function PaymentsContent({
   const [subViewMode, setSubViewMode] = useState<SubViewMode>("grid");
   const [txnSort, setTxnSort] = useState<TxnSort>("date_desc");
 
+  const profileMeta = useMemo(() => {
+    const map = new Map<string, { slug?: string | null; city?: string | null }>();
+    for (const row of businesses) {
+      if (row.id) map.set(String(row.id), { slug: row.slug, city: row.city });
+    }
+    return map;
+  }, [businesses]);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -593,7 +651,9 @@ export default function PaymentsContent({
  workEmail,
  email,
  mobile,
- registrationNumber
+ registrationNumber,
+ slug,
+ city
  )
  `,
         )
@@ -609,7 +669,7 @@ export default function PaymentsContent({
             `id, businessName, workEmail, email, mobile, registrationNumber,
  paymentStatus, paymentId, orderId, selectedPlan, billingCycle,
  planStartedAt, planExpiresAt, razorpaySubscriptionId, subscriptionStatus,
- autoRenewEnabled, mandateStatus, updatedAt, createdAt`,
+ autoRenewEnabled, mandateStatus, updatedAt, createdAt, slug, city`,
           )
           .or(
             "paymentStatus.eq.completed,paymentStatus.eq.pending,paymentStatus.eq.failed,paymentId.not.is.null,orderId.not.is.null,razorpaySubscriptionId.not.is.null",
@@ -803,6 +863,9 @@ export default function PaymentsContent({
       title: string;
       detail: string;
       severity: "high" | "medium";
+      businessId: string;
+      businessName: string;
+      paymentId?: string;
     }[] = [];
 
     payments
@@ -815,6 +878,9 @@ export default function PaymentsContent({
           title: `Pending payment — ${p.businessName}`,
           detail: `${p.amountDisplay} · ${p.planName}`,
           severity: "medium",
+          businessId: p.businessId,
+          businessName: p.businessName,
+          paymentId: p.id,
         });
       });
 
@@ -828,6 +894,9 @@ export default function PaymentsContent({
           title: `Failed payment — ${p.businessName}`,
           detail: `${p.amountDisplay} · ${formatDateTime(p.createdAt)}`,
           severity: "high",
+          businessId: p.businessId,
+          businessName: p.businessName,
+          paymentId: p.id,
         });
       });
 
@@ -844,6 +913,8 @@ export default function PaymentsContent({
           title: `Expiring soon — ${s.businessName}`,
           detail: `${s.planName} · ${days} day${days === 1 ? "" : "s"} left`,
           severity: "high",
+          businessId: s.businessId,
+          businessName: s.businessName,
         });
       });
 
@@ -857,6 +928,8 @@ export default function PaymentsContent({
           title: `Mandate pending — ${s.businessName}`,
           detail: `${s.planName} · Auto-debit setup incomplete`,
           severity: "medium",
+          businessId: s.businessId,
+          businessName: s.businessName,
         });
       });
 
@@ -877,6 +950,17 @@ export default function PaymentsContent({
     },
     { id: "tracking", label: "Opens & tracking", count: opens.length },
   ];
+
+  const openTransaction = (paymentId: string) => {
+    setExpandedId(paymentId);
+    setActiveTab("transactions");
+  };
+
+  const openSubscription = (businessId: string) => {
+    setExpandedSubId(businessId);
+    setSubViewMode("grid");
+    setActiveTab("subscriptions");
+  };
 
   const filterPanel = (
     <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden">
@@ -1102,7 +1186,7 @@ export default function PaymentsContent({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 font-sans">
       <div className="admin-platform-hero">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
@@ -1291,7 +1375,15 @@ export default function PaymentsContent({
 
       {/* Financial pulse — revenue chart + status mix */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        <div className="lg:col-span-8 admin-card p-4">
+        <button
+          type="button"
+          onClick={() => {
+            setDateFilter("7d");
+            setStatusFilter("completed");
+            setActiveTab("transactions");
+          }}
+          className="lg:col-span-8 admin-card p-4 text-left hover:border-slate-300 transition-colors"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
@@ -1327,7 +1419,7 @@ export default function PaymentsContent({
             }}
             formatTooltip={(point) => formatAmountInr(point.values.amount ?? 0)}
           />
-        </div>
+        </button>
 
         <div className="lg:col-span-4 admin-card p-4">
           <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
@@ -1428,7 +1520,15 @@ export default function PaymentsContent({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        <div className="lg:col-span-7 admin-card p-4">
+        <button
+          type="button"
+          onClick={() => {
+            setDateFilter("this_month");
+            setStatusFilter("completed");
+            setActiveTab("transactions");
+          }}
+          className="lg:col-span-7 admin-card p-4 text-left hover:border-slate-300 transition-colors"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
             <div>
               <h3 className="text-sm font-semibold text-slate-900">Month-wise collections</h3>
@@ -1454,8 +1554,16 @@ export default function PaymentsContent({
             }}
             formatTooltip={(point) => formatAmountInr(point.values.amount ?? 0)}
           />
-        </div>
-        <div className="lg:col-span-5 admin-card p-4">
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDateFilter("this_week");
+            setStatusFilter("completed");
+            setActiveTab("transactions");
+          }}
+          className="lg:col-span-5 admin-card p-4 text-left hover:border-slate-300 transition-colors"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
             <div>
               <h3 className="text-sm font-semibold text-slate-900">Week-wise collections</h3>
@@ -1478,7 +1586,7 @@ export default function PaymentsContent({
             }}
             formatTooltip={(point) => formatAmountInr(point.values.amount ?? 0)}
           />
-        </div>
+        </button>
       </div>
 
       {/* Secondary metrics */}
@@ -1579,6 +1687,7 @@ export default function PaymentsContent({
               {
                 label: "Monthly",
                 amount: analytics.monthlyRevenuePaise,
+                cycle: "monthly" as BillingFilter,
                 pct: analytics.totalRevenuePaise
                   ? (analytics.monthlyRevenuePaise /
                       analytics.totalRevenuePaise) *
@@ -1588,6 +1697,7 @@ export default function PaymentsContent({
               {
                 label: "Annual",
                 amount: analytics.annualRevenuePaise,
+                cycle: "annual" as BillingFilter,
                 pct: analytics.totalRevenuePaise
                   ? (analytics.annualRevenuePaise /
                       analytics.totalRevenuePaise) *
@@ -1595,7 +1705,16 @@ export default function PaymentsContent({
                   : 0,
               },
             ].map((row) => (
-              <div key={row.label}>
+              <button
+                key={row.label}
+                type="button"
+                onClick={() => {
+                  setBillingFilter(row.cycle);
+                  setStatusFilter("completed");
+                  setActiveTab("transactions");
+                }}
+                className="w-full text-left rounded-xl hover:bg-slate-50 p-1 -m-1"
+              >
                 <div className="flex justify-between text-[11px] mb-1">
                   <span className="font-medium text-slate-700">
                     {row.label}
@@ -1610,7 +1729,7 @@ export default function PaymentsContent({
                     style={{ width: `${Math.min(row.pct, 100)}%` }}
                   />
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -1620,13 +1739,19 @@ export default function PaymentsContent({
           </h3>
           <div className="mt-4 grid grid-cols-3 gap-3">
             {[
-              { label: "Starter", count: analytics.activePlanBreakdown.starter },
-              { label: "Growth", count: analytics.activePlanBreakdown.growthMonthly },
-              { label: "Pro Annual", count: analytics.activePlanBreakdown.proAnnual },
+              { label: "Starter", count: analytics.activePlanBreakdown.starter, filter: "starter" as PlanFilter },
+              { label: "Growth", count: analytics.activePlanBreakdown.growthMonthly, filter: "growth_monthly" as PlanFilter },
+              { label: "Pro Annual", count: analytics.activePlanBreakdown.proAnnual, filter: "pro_annual" as PlanFilter },
             ].map((plan) => (
-              <div
+              <button
                 key={plan.label}
-                className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3 text-center"
+                type="button"
+                onClick={() => {
+                  setPlanFilter(plan.filter);
+                  setLifecycleFilter("active");
+                  setActiveTab("subscriptions");
+                }}
+                className="rounded-xl bg-slate-50 border border-slate-100 px-3 py-3 text-center hover:border-slate-300 hover:bg-white transition-colors"
               >
                 <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
                   {plan.label}
@@ -1634,7 +1759,7 @@ export default function PaymentsContent({
                 <p className="text-xl font-bold text-slate-900 mt-1 tabular-nums">
                   {plan.count}
                 </p>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -1674,14 +1799,18 @@ export default function PaymentsContent({
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100">
+            <button
+              type="button"
+              onClick={() => setActiveTab("transactions")}
+              className="w-full px-5 py-4 border-b border-slate-100 text-left hover:bg-slate-50/80"
+            >
               <h3 className="text-sm font-semibold text-slate-900">
                 Recent transactions
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Latest {Math.min(8, filteredPayments.length)} payments
               </p>
-            </div>
+            </button>
             <div className="divide-y divide-slate-50">
               {loading ? (
                 <LoadingSkeleton />
@@ -1693,13 +1822,20 @@ export default function PaymentsContent({
                 filteredPayments.slice(0, 8).map((p) => {
                   const reason = paymentStatusReason(p, payments);
                   return (
-                  <div
+                  <button
                     key={p.id}
-                    className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors"
+                    type="button"
+                    onClick={() => openTransaction(p.id)}
+                    className="w-full px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors text-left"
                   >
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-slate-900 truncate">
-                        {p.businessName}
+                        <MerchantNameLink
+                          businessId={p.businessId}
+                          name={p.businessName}
+                          slug={profileMeta.get(p.businessId)?.slug}
+                          city={profileMeta.get(p.businessId)?.city}
+                        />
                       </p>
                       <p className="text-[11px] text-slate-500">
                         {formatDateTime(p.createdAt)} · {p.planName}
@@ -1721,7 +1857,7 @@ export default function PaymentsContent({
                         {p.status}
                       </span>
                     </div>
-                  </div>
+                  </button>
                   );
                 })
               )}
@@ -1740,14 +1876,18 @@ export default function PaymentsContent({
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100">
+            <button
+              type="button"
+              onClick={() => setActiveTab("subscriptions")}
+              className="w-full px-5 py-4 border-b border-slate-100 text-left hover:bg-slate-50/80"
+            >
               <h3 className="text-sm font-semibold text-slate-900">
                 Subscription health
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Sorted by nearest expiry
               </p>
-            </div>
+            </button>
             <div className="divide-y divide-slate-50">
               {loading ? (
                 <LoadingSkeleton />
@@ -1760,13 +1900,20 @@ export default function PaymentsContent({
                   const lifecycle = subscriptionLifecycle(s);
                   const days = daysUntilExpiry(s.planExpiresAt);
                   return (
-                    <div
+                    <button
                       key={s.businessId}
-                      className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors"
+                      type="button"
+                      onClick={() => openSubscription(s.businessId)}
+                      className="w-full px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors text-left"
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-slate-900 truncate">
-                          {s.businessName}
+                          <MerchantNameLink
+                            businessId={s.businessId}
+                            name={s.businessName}
+                            slug={profileMeta.get(s.businessId)?.slug}
+                            city={profileMeta.get(s.businessId)?.city}
+                          />
                         </p>
                         <p className="text-[11px] text-slate-500">
                           {s.planName} ·{" "}
@@ -1784,7 +1931,7 @@ export default function PaymentsContent({
                           {lifecycle === "active" && days !== null ? ` · ${days}d left` : ""}
                         </span>
                       </div>
-                    </div>
+                    </button>
                   );
                 })
               )}
@@ -1890,7 +2037,12 @@ export default function PaymentsContent({
                           </td>
                           <td className="px-4 py-3.5">
                             <p className="font-semibold text-slate-900">
-                              {payment.businessName}
+                              <MerchantNameLink
+                                businessId={payment.businessId}
+                                name={payment.businessName}
+                                slug={profileMeta.get(payment.businessId)?.slug}
+                                city={profileMeta.get(payment.businessId)?.city}
+                              />
                             </p>
                             <p className="text-[10px] text-slate-500">
                               {payment.merchantEmail}
@@ -1943,6 +2095,15 @@ export default function PaymentsContent({
                         {isExpanded && (
                           <tr className="bg-slate-50/40">
                             <td colSpan={9} className="px-5 py-5">
+                              <div className="mb-3">
+                                <MerchantNameLink
+                                  businessId={payment.businessId}
+                                  name={payment.businessName}
+                                  slug={profileMeta.get(payment.businessId)?.slug}
+                                  city={profileMeta.get(payment.businessId)?.city}
+                                  className="text-sm font-semibold"
+                                />
+                              </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 {[
                                   {
@@ -1979,17 +2140,25 @@ export default function PaymentsContent({
                                   },
                                   { label: "Record ID", value: payment.id },
                                 ].map((field) => (
-                                  <div
+                                  <button
                                     key={field.label}
-                                    className="rounded-xl bg-white border border-slate-100 px-3 py-2.5"
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (field.value && field.value !== "—") {
+                                        void navigator.clipboard.writeText(String(field.value));
+                                      }
+                                    }}
+                                    className="rounded-xl bg-white border border-slate-100 px-3 py-2.5 text-left hover:border-slate-300 transition-colors"
+                                    title={field.value ? `Copy ${field.label}` : undefined}
                                   >
                                     <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
                                       {field.label}
                                     </p>
-                                    <p className="text-[11px] font-mono text-slate-800 break-all mt-1">
+                                    <p className="text-[11px] tabular-nums text-slate-800 break-all mt-1">
                                       {field.value || "—"}
                                     </p>
-                                  </div>
+                                  </button>
                                 ))}
                               </div>
                             </td>
@@ -2071,11 +2240,17 @@ export default function PaymentsContent({
                       return (
                         <tr
                           key={sub.businessId}
-                          className="hover:bg-slate-50/60 align-top"
+                          className="hover:bg-slate-50/60 align-top cursor-pointer"
+                          onClick={() => openSubscription(sub.businessId)}
                         >
                           <td className="px-4 py-3">
                             <p className="font-semibold text-slate-900">
-                              {sub.businessName}
+                              <MerchantNameLink
+                                businessId={sub.businessId}
+                                name={sub.businessName}
+                                slug={profileMeta.get(sub.businessId)?.slug}
+                                city={profileMeta.get(sub.businessId)?.city}
+                              />
                             </p>
                             <p className="text-[10px] text-slate-500">
                               {sub.merchantEmail}
@@ -2140,19 +2315,35 @@ export default function PaymentsContent({
                 return (
                   <div
                     key={sub.businessId}
-                    className={`rounded-2xl border border-slate-200/80 border-l-4 ${planAccent(sub.planName, sub.billingCycle)} bg-white overflow-hidden hover:border-slate-300 transition-shadow`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() =>
+                      setExpandedSubId(isExpanded ? null : sub.businessId)
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setExpandedSubId(isExpanded ? null : sub.businessId);
+                      }
+                    }}
+                    className={`rounded-2xl border border-slate-200/80 border-l-4 ${planAccent(sub.planName, sub.billingCycle)} bg-white overflow-hidden hover:border-slate-300 transition-shadow cursor-pointer text-left`}
                   >
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <h4 className="text-sm font-semibold text-slate-900 truncate">
-                            {sub.businessName}
+                            <MerchantNameLink
+                              businessId={sub.businessId}
+                              name={sub.businessName}
+                              slug={profileMeta.get(sub.businessId)?.slug}
+                              city={profileMeta.get(sub.businessId)?.city}
+                            />
                           </h4>
                           <p className="text-[11px] text-slate-500 mt-0.5">
                             {sub.merchantEmail}
                           </p>
                           {sub.registrationNumber && (
-                            <p className="font-mono text-[10px] text-slate-400 mt-1">
+                            <p className="text-[10px] tabular-nums text-slate-400 mt-1">
                               {sub.registrationNumber}
                             </p>
                           )}
@@ -2214,9 +2405,10 @@ export default function PaymentsContent({
                         </span>
                         <button
                           type="button"
-                          onClick={() =>
-                            setExpandedSubId(isExpanded ? null : sub.businessId)
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedSubId(isExpanded ? null : sub.businessId);
+                          }}
                           className="text-[11px] font-semibold text-primary hover:underline"
                         >
                           {isExpanded ? "Hide trail" : `Payment trail (${trail.length})`}
@@ -2282,9 +2474,22 @@ export default function PaymentsContent({
             ) : (
               <div className="divide-y divide-slate-50">
                 {opens.map((item) => (
-                  <div
+                  <button
                     key={item.id}
-                    className="px-5 py-4 flex items-start gap-4 hover:bg-slate-50/50 transition-colors"
+                    type="button"
+                    onClick={() => {
+                      if (item.type === "pending" || item.type === "failed") {
+                        if (item.paymentId) openTransaction(item.paymentId);
+                        else {
+                          setStatusFilter(item.type);
+                          setActiveTab("transactions");
+                        }
+                        return;
+                      }
+                      if (item.type === "expiring") setExpiryFilter("expiring_7d");
+                      openSubscription(item.businessId);
+                    }}
+                    className="w-full px-5 py-4 flex items-start gap-4 hover:bg-slate-50/50 transition-colors text-left"
                   >
                     <div
                       className={`p-2 rounded-xl shrink-0 ${item.severity === "high" ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"}`}
@@ -2304,13 +2509,20 @@ export default function PaymentsContent({
                       <p className="text-xs text-slate-500 mt-0.5">
                         {item.detail}
                       </p>
+                      <MerchantNameLink
+                        businessId={item.businessId}
+                        name={item.businessName}
+                        slug={profileMeta.get(item.businessId)?.slug}
+                        city={profileMeta.get(item.businessId)?.city}
+                        className="inline-block mt-1 text-xs font-semibold"
+                      />
                     </div>
                     <span
                       className={`shrink-0 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase ${item.severity === "high" ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-700"}`}
                     >
                       {item.type}
                     </span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -2334,7 +2546,12 @@ export default function PaymentsContent({
                 </p>
               ) : (
                 filteredPayments.slice(0, 20).map((p, i) => (
-                  <div key={p.id} className="flex gap-4">
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => openTransaction(p.id)}
+                    className="flex gap-4 w-full text-left hover:bg-slate-50/80 rounded-xl px-1 -mx-1"
+                  >
                     <div className="flex flex-col items-center">
                       <div
                         className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1.5 ${p.status === "completed" ? "bg-emerald-500" : p.status === "failed" ? "bg-rose-500" : p.status === "attempted" ? "bg-slate-300" : "bg-amber-500"}`}
@@ -2346,7 +2563,12 @@ export default function PaymentsContent({
                     <div className="pb-6 min-w-0 flex-1">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <p className="text-sm font-medium text-slate-900">
-                          {p.businessName}
+                          <MerchantNameLink
+                            businessId={p.businessId}
+                            name={p.businessName}
+                            slug={profileMeta.get(p.businessId)?.slug}
+                            city={profileMeta.get(p.businessId)?.city}
+                          />
                         </p>
                         <span className="text-sm font-bold tabular-nums text-slate-900">
                           {p.amountDisplay}
@@ -2362,7 +2584,7 @@ export default function PaymentsContent({
                         {p.status}
                       </span>
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>

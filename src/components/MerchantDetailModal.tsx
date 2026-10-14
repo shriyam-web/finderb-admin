@@ -17,6 +17,7 @@ import {
   fetchMerchantAuditLogs,
   type MerchantAuditEntry,
 } from "../lib/merchantAudit";
+import { createClient } from "../../utils/supabase/client";
 import {
   applyPlanPreset,
   collapsePlanExpiry,
@@ -43,6 +44,8 @@ export type MerchantBusinessRecord = {
   fullName: string;
   workEmail: string;
   mobile: string;
+  emailVerified?: boolean | null;
+  mobileVerified?: boolean | null;
   owner_name: string | null;
   owner_mobile: string | null;
   businessName: string;
@@ -918,6 +921,22 @@ export default function MerchantDetailModal({
   const [planPresetId, setPlanPresetId] = useState(
     resolvePlanPresetId(business.selectedPlan, business.billingCycle),
   );
+  const [paymentTrail, setPaymentTrail] = useState<
+    Array<{
+      id: string;
+      plan: string | null;
+      billing_cycle: string | null;
+      amount_paise: number | null;
+      status: string | null;
+      payment_type: string | null;
+      order_id: string | null;
+      payment_id: string | null;
+      razorpay_subscription_id: string | null;
+      created_at: string | null;
+    }>
+  >([]);
+  const [paymentTrailError, setPaymentTrailError] = useState("");
+  const [paymentTrailLoading, setPaymentTrailLoading] = useState(false);
   const [auditLogs, setAuditLogs] = useState<MerchantAuditEntry[]>([]);
   const [auditError, setAuditError] = useState("");
   const [isLoadingAudit, setIsLoadingAudit] = useState(false);
@@ -999,6 +1018,34 @@ export default function MerchantDetailModal({
       resolvePlanPresetId(business.selectedPlan, business.billingCycle),
     );
   }, [business.planExpiresAt, business.selectedPlan, business.billingCycle]);
+
+  useEffect(() => {
+    if (!canViewFinancialData || tab !== "billing") return;
+    let active = true;
+    setPaymentTrailLoading(true);
+    setPaymentTrailError("");
+    const supabase = createClient();
+    void supabase
+      .from("merchant_payments")
+      .select(
+        "id, plan, billing_cycle, amount_paise, status, payment_type, order_id, payment_id, razorpay_subscription_id, created_at",
+      )
+      .eq("business_id", business.id)
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          setPaymentTrailError("Could not load payment trail.");
+          setPaymentTrail([]);
+        } else {
+          setPaymentTrail(data ?? []);
+        }
+        setPaymentTrailLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [business.id, canViewFinancialData, tab]);
 
   useEffect(() => {
     if (tab !== "audit") return;
@@ -1442,6 +1489,10 @@ export default function MerchantDetailModal({
                       type="email"
                       onChange={(v) => patchDraft({ workEmail: v })}
                     />
+                    <Row
+                      label="Email verification"
+                      value={display.emailVerified ? "Verified" : "Not verified"}
+                    />
                     {/* Login email is the merchant's credential — never editable. */}
                     <Row
                       label="Login email"
@@ -1458,6 +1509,10 @@ export default function MerchantDetailModal({
                       onChange={(v) =>
                         patchDraft({ mobile: v, owner_mobile: v || null })
                       }
+                    />
+                    <Row
+                      label="Mobile verification"
+                      value={display.mobileVerified ? "Verified" : "Not verified"}
                     />
                     <Field
                       label="Public phone"
@@ -2002,6 +2057,56 @@ export default function MerchantDetailModal({
                     )}
                   </Section>
                 </div>
+
+                <Section title="Payment trail">
+                  {paymentTrailLoading ? (
+                    <p className="px-3 py-3 text-xs text-slate-500">Loading payments…</p>
+                  ) : paymentTrailError ? (
+                    <p className="px-3 py-3 text-xs text-rose-600">{paymentTrailError}</p>
+                  ) : paymentTrail.length === 0 ? (
+                    <p className="px-3 py-3 text-xs text-slate-500">
+                      No payment records yet for this merchant.
+                    </p>
+                  ) : (
+                    <div className="divide-y divide-slate-100">
+                      {paymentTrail.map((payment) => {
+                        const rupees =
+                          payment.amount_paise != null
+                            ? `₹${(payment.amount_paise / 100).toLocaleString("en-IN")}`
+                            : "—";
+                        return (
+                          <div key={payment.id} className="px-3 py-2.5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-slate-900">
+                                  {formatDateTimeInr(payment.created_at)}
+                                </p>
+                                <p className="mt-0.5 text-[11px] text-slate-500">
+                                  {[payment.payment_type, payment.plan, payment.billing_cycle]
+                                    .filter(Boolean)
+                                    .join(" · ") || "Payment"}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs font-semibold text-slate-900">{rupees}</p>
+                                <p className="text-[11px] text-slate-500">
+                                  {formatStatusLabel(payment.status)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-1.5 space-y-0.5 text-[11px] text-slate-500">
+                              {payment.payment_id ? <p>Payment {payment.payment_id}</p> : null}
+                              {payment.order_id ? <p>Order {payment.order_id}</p> : null}
+                              {payment.razorpay_subscription_id ? (
+                                <p>Subscription {payment.razorpay_subscription_id}</p>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </Section>
 
                 {canManage && (
                   <Section title="Change plan">

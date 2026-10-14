@@ -39,6 +39,7 @@ import { useAdminToast } from "../../components/AdminToast";
 import MerchantRegistrationContent from "../../components/MerchantRegistrationContent";
 import QuickOnboardContent from "../../components/QuickOnboardContent";
 import MerchantSupportLoginContent from "../../components/MerchantSupportLoginContent";
+import ReviewsContent from "../../components/ReviewsContent";
 import ManageAdminsContent from "../../components/ManageAdminsContent";
 import SuspiciousLoginModal from "../../components/SuspiciousLoginModal";
 import AdminOverlay from "../../components/AdminOverlay";
@@ -57,8 +58,10 @@ import { requestListingLiveEmail } from "../../lib/requestListingLiveEmail";
 import { diffAuditChanges, logMerchantAudit } from "../../lib/merchantAudit";
 import {
   CATEGORY_LEAD_BADGE,
+  DIRECT_LEAD_BADGE,
   PROFILE_LEAD_BADGE,
   isCategoryLeadSource,
+  isDirectLeadSource,
   isLegacyLeadSource,
   isProfileLeadSource,
   leadBadgeClassName,
@@ -215,6 +218,7 @@ interface Lead {
   business_id: string | null;
   message: string | null;
   status: string;
+  source?: string | null;
   created_at: string;
   updated_at: string;
   merchant_name?: string | null;
@@ -530,6 +534,24 @@ const ALL_MENU_ITEMS = [
     ),
   },
   {
+    name: "Reviews",
+    icon: (
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.98 10.101c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+        />
+      </svg>
+    ),
+  },
+  {
     name: "Categories",
     icon: (
       <svg
@@ -800,6 +822,7 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
       },
       "Merchant Support Login",
       "Leads",
+      "Reviews",
     ],
   },
   {
@@ -1510,7 +1533,8 @@ export default function Dashboard() {
     if (isController && adminSession?.allowed_tab_modes == null) {
       return (
         item.name !== "Manage Admins" &&
-        item.name !== "Merchant Support Login"
+        item.name !== "Merchant Support Login" &&
+        item.name !== "Reviews"
       );
     }
     if (isController) {
@@ -1546,6 +1570,8 @@ export default function Dashboard() {
       activeTab === "Manage Admins" ||
       (activeTab === "Merchant Support Login" &&
         !hasTabAccess(adminSession, "Merchant Support Login")) ||
+      (activeTab === "Reviews" &&
+        !hasTabAccess(adminSession, "Reviews")) ||
       (!isController && COMING_SOON_TABS.has(activeTab))
     ) {
       if (firstAllowed) setActiveTab(firstAllowed);
@@ -1716,11 +1742,13 @@ export default function Dashboard() {
     });
 
     leads.forEach((l) => {
-      const source = isProfileLeadSource(l.status)
+      const source = isProfileLeadSource(l.source || l.status)
         ? "profile"
-        : isCategoryLeadSource(l.status)
+        : isCategoryLeadSource(l.source || l.status)
           ? "category circulation"
-          : l.status;
+          : isDirectLeadSource(l.source || l.status)
+            ? "direct"
+            : l.status;
       activities.push({
         id: l.id,
         type: "lead",
@@ -2429,6 +2457,13 @@ export default function Dashboard() {
           <MerchantSupportLoginContent
             adminSession={adminSession}
             canManage={hasFullTabAccess(adminSession, "Merchant Support Login")}
+          />
+        );
+      case "Reviews":
+        return (
+          <ReviewsContent
+            adminSession={adminSession}
+            canManage={hasFullTabAccess(adminSession, "Reviews")}
           />
         );
       case "Settings":
@@ -3674,13 +3709,15 @@ function LeadsContent({
                     </td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-medium border max-w-[150px] truncate ${leadBadgeClassName(lead.status)}`}
+                        className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-medium border max-w-[150px] truncate ${leadBadgeClassName(lead.source || lead.status)}`}
                       >
-                        {isProfileLeadSource(lead.status)
+                        {isProfileLeadSource(lead.source || lead.status)
                           ? PROFILE_LEAD_BADGE
-                          : isCategoryLeadSource(lead.status)
+                          : isCategoryLeadSource(lead.source || lead.status)
                             ? CATEGORY_LEAD_BADGE
-                            : lead.status}
+                            : isDirectLeadSource(lead.source || lead.status)
+                              ? DIRECT_LEAD_BADGE
+                              : lead.status}
                       </span>
                     </td>
                     <td className="px-4 py-3">

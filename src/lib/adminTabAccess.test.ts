@@ -40,6 +40,7 @@ const ALL_TABS = [
   "YouTube Playlists",
   "FinderB Jobs",
   "Settings",
+  "Reviews",
   "News",
   "FinderB E-commerce",
   "Manage Admins",
@@ -55,7 +56,11 @@ function menuFor(session: AdminAccessSession) {
   return ALL_TABS.filter((name) => {
     if (session.role === "developer") return true;
     if (session.role === "controller") {
-      return name !== "Manage Admins" && name !== "Merchant Support Login";
+      return (
+        name !== "Manage Admins" &&
+        name !== "Merchant Support Login" &&
+        name !== "Reviews"
+      );
     }
     if (name === "Manage Admins" || COMING_SOON.has(name)) return false;
     return canAccessTab(session, name);
@@ -97,6 +102,19 @@ assert.equal(
   menuFor({ role: "controller" }).includes("Merchant Support Login"),
   false,
 );
+assert.equal(menuFor({ role: "controller" }).includes("Reviews"), false);
+assert.equal(
+  resolveTabAccess({ role: "controller" }, "Reviews"),
+  "none",
+);
+assert.equal(
+  resolveTabAccess(
+    { role: "controller", allowed_tab_modes: { Reviews: "edit" } },
+    "Reviews",
+  ),
+  "edit",
+);
+assert.equal(resolveTabAccess({ role: "developer" }, "Reviews"), "edit");
 assert.equal(isPremiumConsoleRole("developer"), true);
 assert.equal(isPremiumConsoleRole("controller"), false);
 assert.equal(isPremiumConsoleRole("super_admin"), false);
