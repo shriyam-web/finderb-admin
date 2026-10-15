@@ -63,6 +63,7 @@ export const ASSIGNABLE_ADMIN_TABS = [
   "FinderB Jobs",
   "Settings",
   "Reviews",
+  "Change Requests",
 ] as const;
 
 type Props = {

@@ -40,6 +40,7 @@ import MerchantRegistrationContent from "../../components/MerchantRegistrationCo
 import QuickOnboardContent from "../../components/QuickOnboardContent";
 import MerchantSupportLoginContent from "../../components/MerchantSupportLoginContent";
 import ReviewsContent from "../../components/ReviewsContent";
+import ChangeRequestsContent from "../../components/ChangeRequestsContent";
 import ManageAdminsContent from "../../components/ManageAdminsContent";
 import SuspiciousLoginModal from "../../components/SuspiciousLoginModal";
 import AdminOverlay from "../../components/AdminOverlay";
@@ -552,6 +553,24 @@ const ALL_MENU_ITEMS = [
     ),
   },
   {
+    name: "Change Requests",
+    icon: (
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
+      </svg>
+    ),
+  },
+  {
     name: "Categories",
     icon: (
       <svg
@@ -823,6 +842,7 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
       "Merchant Support Login",
       "Leads",
       "Reviews",
+      "Change Requests",
     ],
   },
   {
@@ -1534,7 +1554,8 @@ export default function Dashboard() {
       return (
         item.name !== "Manage Admins" &&
         item.name !== "Merchant Support Login" &&
-        item.name !== "Reviews"
+        item.name !== "Reviews" &&
+        item.name !== "Change Requests"
       );
     }
     if (isController) {
@@ -1572,6 +1593,8 @@ export default function Dashboard() {
         !hasTabAccess(adminSession, "Merchant Support Login")) ||
       (activeTab === "Reviews" &&
         !hasTabAccess(adminSession, "Reviews")) ||
+      (activeTab === "Change Requests" &&
+        !hasTabAccess(adminSession, "Change Requests")) ||
       (!isController && COMING_SOON_TABS.has(activeTab))
     ) {
       if (firstAllowed) setActiveTab(firstAllowed);
@@ -2464,6 +2487,13 @@ export default function Dashboard() {
           <ReviewsContent
             adminSession={adminSession}
             canManage={hasFullTabAccess(adminSession, "Reviews")}
+          />
+        );
+      case "Change Requests":
+        return (
+          <ChangeRequestsContent
+            adminSession={adminSession}
+            canManage={hasFullTabAccess(adminSession, "Change Requests")}
           />
         );
       case "Settings":

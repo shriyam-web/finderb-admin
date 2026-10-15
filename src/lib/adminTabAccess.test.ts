@@ -41,6 +41,7 @@ const ALL_TABS = [
   "FinderB Jobs",
   "Settings",
   "Reviews",
+  "Change Requests",
   "News",
   "FinderB E-commerce",
   "Manage Admins",
@@ -103,8 +104,13 @@ assert.equal(
   false,
 );
 assert.equal(menuFor({ role: "controller" }).includes("Reviews"), false);
+assert.equal(menuFor({ role: "controller" }).includes("Change Requests"), false);
 assert.equal(
   resolveTabAccess({ role: "controller" }, "Reviews"),
+  "none",
+);
+assert.equal(
+  resolveTabAccess({ role: "controller" }, "Change Requests"),
   "none",
 );
 assert.equal(
