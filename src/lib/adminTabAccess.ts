@@ -181,7 +181,9 @@ export function resolveTabAccess(
   if (
     tab === "Merchant Support Login" ||
     tab === "Reviews" ||
-    tab === "Change Requests"
+    tab === "Change Requests" ||
+    tab === "Ownership Requests" ||
+    tab === "Job Reports"
   ) {
     return modeFromAllowList(effectiveTabModes(session), tab);
   }

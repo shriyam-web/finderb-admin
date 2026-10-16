@@ -120,6 +120,9 @@ export function validateAndNormalizeMerchantRegistration(
       error: "Legal business name must be at least 2 characters.",
     };
   }
+  if (businessName.length > 50) {
+    return { ok: false, error: "Business name must be 50 characters or fewer." };
+  }
 
   const displayNameRaw = data.displayName?.trim() ?? "";
   if (displayNameRaw && displayNameRaw.length < MIN_NAME_LENGTH) {
@@ -127,6 +130,9 @@ export function validateAndNormalizeMerchantRegistration(
       ok: false,
       error: "Business display name must be at least 2 characters.",
     };
+  }
+  if (displayNameRaw.length > 50) {
+    return { ok: false, error: "Display name must be 50 characters or fewer." };
   }
 
   const category = data.category?.trim() ?? "";

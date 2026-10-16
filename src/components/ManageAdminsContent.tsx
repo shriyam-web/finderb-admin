@@ -64,6 +64,8 @@ export const ASSIGNABLE_ADMIN_TABS = [
   "Settings",
   "Reviews",
   "Change Requests",
+  "Ownership Requests",
+  "Job Reports",
 ] as const;
 
 type Props = {

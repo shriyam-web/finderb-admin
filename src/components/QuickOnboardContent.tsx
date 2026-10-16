@@ -981,7 +981,7 @@ export default function QuickOnboardContent({
 
   const readinessChecks = draft
     ? [
-        draft.businessName.length >= 2,
+        draft.businessName.trim().length >= 2 && draft.businessName.trim().length <= 50,
         draft.emailUnavailable || Boolean(draft.loginEmail),
         draft.mobile.length === 10,
         draft.categoryMatched,
@@ -1609,7 +1609,8 @@ export default function QuickOnboardContent({
                         value={draft.businessName}
                         tone={fieldTone(
                           "businessName",
-                          draft.businessName.length >= 2,
+                          draft.businessName.trim().length >= 2 &&
+                            draft.businessName.trim().length <= 50,
                         )}
                       />
                       <FieldStatus
@@ -1722,8 +1723,9 @@ export default function QuickOnboardContent({
                       <input
                         className="admin-input"
                         value={draft.businessName}
+                        maxLength={50}
                         onChange={(e) =>
-                          patchDraft({ businessName: e.target.value })
+                          patchDraft({ businessName: e.target.value.slice(0, 50) })
                         }
                       />
                     </label>

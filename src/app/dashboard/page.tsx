@@ -41,6 +41,8 @@ import QuickOnboardContent from "../../components/QuickOnboardContent";
 import MerchantSupportLoginContent from "../../components/MerchantSupportLoginContent";
 import ReviewsContent from "../../components/ReviewsContent";
 import ChangeRequestsContent from "../../components/ChangeRequestsContent";
+import OwnershipRequestsContent from "../../components/OwnershipRequestsContent";
+import JobReportsContent from "../../components/JobReportsContent";
 import ManageAdminsContent from "../../components/ManageAdminsContent";
 import SuspiciousLoginModal from "../../components/SuspiciousLoginModal";
 import AdminOverlay from "../../components/AdminOverlay";
@@ -571,6 +573,42 @@ const ALL_MENU_ITEMS = [
     ),
   },
   {
+    name: "Ownership Requests",
+    icon: (
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+        />
+      </svg>
+    ),
+  },
+  {
+    name: "Job Reports",
+    icon: (
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.48 0L3.16 16.25A2 2 0 005 19z"
+        />
+      </svg>
+    ),
+  },
+  {
     name: "Categories",
     icon: (
       <svg
@@ -843,6 +881,8 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
       "Leads",
       "Reviews",
       "Change Requests",
+      "Ownership Requests",
+      "Job Reports",
     ],
   },
   {
@@ -1555,7 +1595,9 @@ export default function Dashboard() {
         item.name !== "Manage Admins" &&
         item.name !== "Merchant Support Login" &&
         item.name !== "Reviews" &&
-        item.name !== "Change Requests"
+        item.name !== "Change Requests" &&
+        item.name !== "Ownership Requests" &&
+        item.name !== "Job Reports"
       );
     }
     if (isController) {
@@ -1595,6 +1637,10 @@ export default function Dashboard() {
         !hasTabAccess(adminSession, "Reviews")) ||
       (activeTab === "Change Requests" &&
         !hasTabAccess(adminSession, "Change Requests")) ||
+      (activeTab === "Ownership Requests" &&
+        !hasTabAccess(adminSession, "Ownership Requests")) ||
+      (activeTab === "Job Reports" &&
+        !hasTabAccess(adminSession, "Job Reports")) ||
       (!isController && COMING_SOON_TABS.has(activeTab))
     ) {
       if (firstAllowed) setActiveTab(firstAllowed);
@@ -2494,6 +2540,20 @@ export default function Dashboard() {
           <ChangeRequestsContent
             adminSession={adminSession}
             canManage={hasFullTabAccess(adminSession, "Change Requests")}
+          />
+        );
+      case "Job Reports":
+        return (
+          <JobReportsContent
+            adminSession={adminSession}
+            canManage={hasFullTabAccess(adminSession, "Job Reports")}
+          />
+        );
+      case "Ownership Requests":
+        return (
+          <OwnershipRequestsContent
+            adminSession={adminSession}
+            canManage={hasFullTabAccess(adminSession, "Ownership Requests")}
           />
         );
       case "Settings":

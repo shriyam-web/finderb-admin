@@ -372,6 +372,11 @@ function collectFieldIssues(fields: QuickOnboardAiFields): {
 
   if (!fields.businessName || fields.businessName.length < MIN_NAME_LENGTH) {
     missing.push("businessName");
+  } else if (fields.businessName.length > 50) {
+    errors.push("Business name must be 50 characters or fewer.");
+  }
+  if (fields.displayName && fields.displayName.length > 50) {
+    errors.push("Display name must be 50 characters or fewer.");
   }
   // ownerFullName is optional — fill later on the merchant profile if unknown.
   if (

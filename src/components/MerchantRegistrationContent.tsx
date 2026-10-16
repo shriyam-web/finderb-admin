@@ -296,12 +296,16 @@ export default function MerchantRegistrationContent({
       form.businessName.trim().length < MIN_NAME_LENGTH
     ) {
       next.businessName = "Legal business name must be at least 2 characters.";
+    } else if (form.businessName.trim().length > 50) {
+      next.businessName = "Business name must be 50 characters or fewer.";
     }
     if (
       form.displayName.trim() &&
       form.displayName.trim().length < MIN_NAME_LENGTH
     ) {
       next.displayName = "Display name must be at least 2 characters.";
+    } else if (form.displayName.trim().length > 50) {
+      next.displayName = "Display name must be 50 characters or fewer.";
     }
     if (!splitBusinessCategories(form.mappedCategories).length) {
       next.mappedCategories = "Please add at least one business category.";
@@ -728,7 +732,8 @@ export default function MerchantRegistrationContent({
                     id="businessName"
                     className="admin-input"
                     value={form.businessName}
-                    onChange={(e) => patch({ businessName: e.target.value })}
+                    onChange={(e) => patch({ businessName: e.target.value.slice(0, 50) })}
+                    maxLength={50}
                     placeholder="Acme Retail Pvt Ltd"
                     autoFocus
                   />
@@ -743,7 +748,8 @@ export default function MerchantRegistrationContent({
                     id="displayName"
                     className="admin-input"
                     value={form.displayName}
-                    onChange={(e) => patch({ displayName: e.target.value })}
+                    onChange={(e) => patch({ displayName: e.target.value.slice(0, 50) })}
+                    maxLength={50}
                     placeholder="Acme Store"
                   />
                 </Field>

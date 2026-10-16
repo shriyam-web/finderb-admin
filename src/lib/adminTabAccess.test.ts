@@ -42,6 +42,8 @@ const ALL_TABS = [
   "Settings",
   "Reviews",
   "Change Requests",
+  "Ownership Requests",
+  "Job Reports",
   "News",
   "FinderB E-commerce",
   "Manage Admins",
@@ -60,7 +62,10 @@ function menuFor(session: AdminAccessSession) {
       return (
         name !== "Manage Admins" &&
         name !== "Merchant Support Login" &&
-        name !== "Reviews"
+        name !== "Reviews" &&
+        name !== "Change Requests" &&
+        name !== "Ownership Requests" &&
+        name !== "Job Reports"
       );
     }
     if (name === "Manage Admins" || COMING_SOON.has(name)) return false;
@@ -112,6 +117,20 @@ assert.equal(
 assert.equal(
   resolveTabAccess({ role: "controller" }, "Change Requests"),
   "none",
+);
+assert.equal(
+  resolveTabAccess({ role: "controller" }, "Ownership Requests"),
+  "none",
+);
+assert.equal(menuFor({ role: "controller" }).includes("Ownership Requests"), false);
+assert.equal(resolveTabAccess({ role: "controller" }, "Job Reports"), "none");
+assert.equal(menuFor({ role: "controller" }).includes("Job Reports"), false);
+assert.equal(
+  resolveTabAccess(
+    { role: "admin", allowed_tab_modes: { "Ownership Requests": "edit" } },
+    "Ownership Requests",
+  ),
+  "edit",
 );
 assert.equal(
   resolveTabAccess(
