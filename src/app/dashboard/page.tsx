@@ -10,6 +10,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
 } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "../../../utils/supabase/client";
@@ -114,6 +115,7 @@ import {
 } from "../../lib/onboardSource";
 import { byOldestWait, waitingLabel } from "../../lib/waitingLabel";
 import { ADMIN_PANEL_REFRESH } from "../../lib/adminPanelRefresh";
+import AdminRefreshFab from "../../components/AdminRefreshFab";
 
 interface User {
   id: string;
@@ -1255,6 +1257,8 @@ export default function Dashboard() {
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [panelRefresh, setPanelRefresh] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshFromUser = useRef(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [queueCounts, setQueueCounts] = useState<SidebarQueueCounts>(EMPTY_QUEUE_COUNTS);
   const [queueItems, setQueueItems] = useState<AdminTodo[]>([]);
@@ -1415,8 +1419,10 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
+      let refreshFailed = false;
       try {
         if (panelRefresh === 0) setDataLoading(true);
+        else setRefreshing(true);
         setFetchError(null);
 
         const supabase = createClient();
@@ -1646,10 +1652,16 @@ export default function Dashboard() {
           setMerchantPaymentRows(paymentData ?? []);
         }
       } catch (error: any) {
+        refreshFailed = true;
         console.error("❌ Unexpected error during fetch:", error);
         setFetchError(`Unexpected error: ${error?.message || "Unknown error"}`);
       } finally {
         setDataLoading(false);
+        setRefreshing(false);
+        if (refreshFromUser.current) {
+          refreshFromUser.current = false;
+          toast(refreshFailed ? "Could not refresh." : "Refreshed.", refreshFailed ? "error" : "success");
+        }
       }
     };
 
@@ -3450,14 +3462,6 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="admin-topbar-actions">
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new Event(ADMIN_PANEL_REFRESH))}
-                className="admin-btn-secondary !py-1.5 !px-3 text-xs"
-                title="Reload this panel"
-              >
-                Refresh
-              </button>
               <span
                 className={`admin-role-badge capitalize ${
                   isDeveloper
@@ -3636,6 +3640,17 @@ export default function Dashboard() {
             const updated = { ...adminSession, displayName };
             localStorage.setItem("admin_session", JSON.stringify(updated));
             setAdminSession(updated);
+          }}
+        />
+      )}
+
+      {adminSession?.id && (
+        <AdminRefreshFab
+          busy={refreshing}
+          onRefresh={() => {
+            refreshFromUser.current = true;
+            setRefreshing(true);
+            window.dispatchEvent(new Event(ADMIN_PANEL_REFRESH));
           }}
         />
       )}

@@ -8,6 +8,7 @@ import {
   type SiteRuntime,
 } from "../lib/siteRuntime";
 import AdminOverlay from "./AdminOverlay";
+import { useAdminPanelRefresh } from "../lib/adminPanelRefresh";
 
 type Props = {
   adminId: string;
@@ -92,6 +93,8 @@ export default function SiteModePanel({ adminId, onModeChange }: Props) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useAdminPanelRefresh(load);
 
   useEffect(() => {
     if (resendIn <= 0) return;

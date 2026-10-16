@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useAdminToast } from "./AdminToast";
+import { useAdminPanelRefresh } from "../lib/adminPanelRefresh";
 
 type AdminSession = {
   id: string;
@@ -71,6 +72,14 @@ export default function MerchantSupportLoginContent({
       setSearching(false);
     }
   };
+
+  const refreshSearch = useCallback(() => {
+    if (query.trim().length >= 2) void handleSearch();
+    // Search reads the latest query from this render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, adminSession?.id]);
+
+  useAdminPanelRefresh(refreshSearch);
 
   const handleOpen = async () => {
     if (!canOpen || !selected || !adminSession?.id) return;

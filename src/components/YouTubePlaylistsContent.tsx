@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
+import { useAdminPanelRefresh } from "../lib/adminPanelRefresh";
 
 export type YoutubePlaylist = {
   id: string;
@@ -190,6 +191,13 @@ export default function YouTubePlaylistsContent({
   useEffect(() => {
     loadPlaylists();
   }, [loadPlaylists]);
+
+  const reloadPlaylists = useCallback(() => {
+    void loadPlaylists();
+    if (selectedId) void loadVideos(selectedId);
+  }, [loadPlaylists, loadVideos, selectedId]);
+
+  useAdminPanelRefresh(reloadPlaylists);
 
   useEffect(() => {
     if (!selectedId) {

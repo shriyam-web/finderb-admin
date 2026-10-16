@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import { createClient } from "../../utils/supabase/client";
+import { useAdminPanelRefresh } from "../lib/adminPanelRefresh";
 import { uploadToCloudinary } from "../utils/cloudinary";
 import {
   ListSearchInput,
@@ -174,6 +175,8 @@ export default function TouristPlacesContent({
   useEffect(() => {
     loadPlaces();
   }, [loadPlaces]);
+
+  useAdminPanelRefresh(loadPlaces);
 
   const placeCategories = useMemo(() => {
     const set = new Set(

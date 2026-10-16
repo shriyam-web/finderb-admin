@@ -10,6 +10,7 @@ import {
   type WhatsNewEntry,
 } from "../lib/whatsNew";
 import { useAdminToast } from "./AdminToast";
+import { useAdminPanelRefresh } from "../lib/adminPanelRefresh";
 import AdminOverlay from "./AdminOverlay";
 
 const WHATS_NEW_POS_KEY = "admin_whats_new_pos";
@@ -108,6 +109,12 @@ export default function WhatsNewPanel({
     if (!open) return;
     void load();
   }, [open, load]);
+
+  const reloadIfOpen = useCallback(() => {
+    if (open) void load();
+  }, [open, load]);
+
+  useAdminPanelRefresh(reloadIfOpen);
 
   useEffect(() => {
     if (!open) return;
@@ -362,6 +369,8 @@ export function useWhatsNewUnreadCount(adminId: string | null | undefined) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useAdminPanelRefresh(refresh);
 
   return { unreadCount, setUnreadCount, refreshUnread: refresh };
 }
