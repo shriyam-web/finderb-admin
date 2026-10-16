@@ -2,21 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const POS_KEY = "admin-refresh-fab";
-
-type FabPos = { x: number; y: number };
-
-function readPos(): FabPos | null {
-  try {
-    const raw = localStorage.getItem(POS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as FabPos;
-    if (typeof parsed?.x !== "number" || typeof parsed?.y !== "number") return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
+import { REFRESH_FAB_POS_KEY, readFabPosition, writeFabPosition, type FabPos } from "../lib/adminFabPosition";
 
 function clamp(x: number, y: number, width: number, height: number): FabPos {
   const maxX = Math.max(8, window.innerWidth - width - 8);
@@ -47,7 +33,7 @@ export default function AdminRefreshFab({
   });
 
   useEffect(() => {
-    setPos(readPos());
+    setPos(readFabPosition(REFRESH_FAB_POS_KEY));
   }, []);
 
   return (
@@ -96,7 +82,7 @@ export default function AdminRefreshFab({
         const rect = buttonRef.current.getBoundingClientRect();
         const next = clamp(rect.left, rect.top, rect.width, rect.height);
         setPos(next);
-        localStorage.setItem(POS_KEY, JSON.stringify(next));
+        writeFabPosition(REFRESH_FAB_POS_KEY, next);
       }}
       onClick={(event) => {
         if (dragRef.current.moved) {

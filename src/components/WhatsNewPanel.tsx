@@ -13,22 +13,7 @@ import { useAdminToast } from "./AdminToast";
 import { useAdminPanelRefresh } from "../lib/adminPanelRefresh";
 import AdminOverlay from "./AdminOverlay";
 
-const WHATS_NEW_POS_KEY = "admin_whats_new_pos";
-
-type FabPos = { x: number; y: number };
-
-function readFabPos(): FabPos | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(WHATS_NEW_POS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as FabPos;
-    if (typeof parsed.x !== "number" || typeof parsed.y !== "number") return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
+import { WHATS_NEW_FAB_POS_KEY, readFabPosition, writeFabPosition, type FabPos } from "../lib/adminFabPosition";
 
 function clampFab(x: number, y: number, width: number, height: number): FabPos {
   const pad = 8;
@@ -76,7 +61,7 @@ export default function WhatsNewPanel({
   });
 
   useEffect(() => {
-    setFabPos(readFabPos());
+    setFabPos(readFabPosition(WHATS_NEW_FAB_POS_KEY));
   }, []);
 
   const panelUnread = useMemo(
@@ -219,7 +204,7 @@ export default function WhatsNewPanel({
             const rect = fabRef.current.getBoundingClientRect();
             const next = clampFab(rect.left, rect.top, rect.width, rect.height);
             setFabPos(next);
-            localStorage.setItem(WHATS_NEW_POS_KEY, JSON.stringify(next));
+            writeFabPosition(WHATS_NEW_FAB_POS_KEY, next);
           }}
           onClick={(event) => {
             if (dragRef.current.moved) {

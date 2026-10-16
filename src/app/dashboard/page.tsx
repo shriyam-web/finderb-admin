@@ -115,6 +115,7 @@ import {
 } from "../../lib/onboardSource";
 import { byOldestWait, waitingLabel } from "../../lib/waitingLabel";
 import { ADMIN_PANEL_REFRESH } from "../../lib/adminPanelRefresh";
+import { clearAdminFloatingPositions } from "../../lib/adminFabPosition";
 import AdminRefreshFab from "../../components/AdminRefreshFab";
 
 interface User {
@@ -1283,6 +1284,7 @@ export default function Dashboard() {
           .single();
 
         if (error || !data || data.is_disabled) {
+          clearAdminFloatingPositions();
           localStorage.removeItem("admin_session");
           router.push("/");
           return;
@@ -1313,6 +1315,7 @@ export default function Dashboard() {
         localStorage.setItem("admin_session", JSON.stringify(updatedSession));
         setAdminSession(updatedSession);
       } catch {
+        clearAdminFloatingPositions();
         localStorage.removeItem("admin_session");
         router.push("/");
       } finally {
@@ -1325,6 +1328,7 @@ export default function Dashboard() {
 
   const handleLogout = useCallback(() => {
     void reportAdminSession("end").finally(() => {
+      clearAdminFloatingPositions();
       localStorage.removeItem("admin_session");
       setAdminSession(null);
       router.push("/");

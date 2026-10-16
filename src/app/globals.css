@@ -352,7 +352,7 @@ body {
   .admin-refresh-fab {
     position: fixed;
     z-index: 210;
-    left: 1.25rem;
+    right: 1.25rem;
     bottom: 1.25rem;
     display: inline-flex;
     align-items: center;
@@ -371,7 +371,7 @@ body {
   }
 
   .admin-refresh-fab.is-placed {
-    left: auto;
+    right: auto;
     bottom: auto;
   }
 
