@@ -1,5 +1,49 @@
 import { FINDERB_TIMEZONE, formatDateTimeInr, parseFinderbTimestamp } from "./formatDateTime";
 
+/** A started checkout can still be paid for this long. After that, the same attempt is cancelled. */
+export const CHECKOUT_WINDOW_MS = 15 * 60 * 1000;
+
+export function settleCheckoutStatus(input: {
+  status: string;
+  createdAt?: string | null;
+  paymentId?: string | null;
+  paymentType?: string | null;
+  now?: number;
+}): string {
+  const status = String(input.status || "").trim().toLowerCase();
+  if (
+    status === "completed" ||
+    status === "failed" ||
+    status === "cancelled" ||
+    status === "attempted"
+  ) {
+    return status;
+  }
+  if (status !== "pending") return status || "cancelled";
+  if (input.paymentId) return "pending";
+  if (input.paymentType === "subscription_renewal") return "pending";
+
+  const created = input.createdAt ? Date.parse(input.createdAt) : Number.NaN;
+  const now = input.now ?? Date.now();
+  if (!Number.isFinite(created) || now - created >= CHECKOUT_WINDOW_MS) return "cancelled";
+  return "pending";
+}
+
+/** Money already moved and then stuck, or the bank declined it. An unpaid checkout is not this. */
+export function isGenuinePaymentIssue(payment: {
+  status: string;
+  createdAt?: string | null;
+  paymentId?: string | null;
+  paymentType?: string | null;
+}): boolean {
+  const status = settleCheckoutStatus(payment);
+  if (status === "failed") return true;
+  if (status !== "pending") return false;
+  if (!payment.paymentId && payment.paymentType !== "subscription_renewal") return false;
+  const created = payment.createdAt ? Date.parse(payment.createdAt) : Number.NaN;
+  return Number.isFinite(created) && Date.now() - created >= CHECKOUT_WINDOW_MS;
+}
+
 export type PaymentRecord = {
   id: string;
   businessId: string;
@@ -139,7 +183,12 @@ export function mapMerchantPaymentRow(row: MerchantPaymentRow): PaymentRecord {
     billingCycle,
     amountPaise: Number(row.amount_paise),
     amountDisplay: formatAmountInr(Number(row.amount_paise)),
-    status: String(row.status),
+    status: settleCheckoutStatus({
+      status: String(row.status),
+      createdAt: row.created_at ? String(row.created_at) : null,
+      paymentId: row.payment_id ? String(row.payment_id) : null,
+      paymentType: row.payment_type ? String(row.payment_type) : null,
+    }),
     paymentType: String(row.payment_type || "one_time"),
     orderId: row.order_id ? String(row.order_id) : null,
     paymentId: row.payment_id ? String(row.payment_id) : null,
@@ -169,12 +218,18 @@ export function buildLegacyPaymentFromBusiness(business: BusinessPaymentRow): Pa
   const billingCycle = String(business.billingCycle || "monthly");
   const amountPaise = planAmountPaise(plan, billingCycle);
   const createdAt = String(business.updatedAt || business.createdAt || new Date().toISOString());
-  const status =
+  const rawStatus =
     business.paymentStatus === "completed"
       ? "completed"
       : business.paymentStatus === "failed"
         ? "failed"
         : "pending";
+  const status = settleCheckoutStatus({
+    status: rawStatus,
+    createdAt,
+    paymentId,
+    paymentType: subscriptionId ? "subscription_auth" : "one_time",
+  });
 
   return {
     id: `legacy-${String(business.id ?? "unknown")}`,
@@ -292,6 +347,7 @@ export type PaymentAnalytics = {
   completedCount: number;
   pendingCount: number;
   failedCount: number;
+  cancelledCount: number;
   activeSubscriptions: number;
   expiredSubscriptions: number;
   pendingSubscriptions: number;
@@ -414,6 +470,8 @@ export function computePaymentAnalytics(
   const completed = payments.filter((p) => p.status === "completed");
   const pending = payments.filter((p) => p.status === "pending");
   const failed = payments.filter((p) => p.status === "failed");
+  const cancelled = payments.filter((p) => p.status === "cancelled");
+  const genuineOpens = payments.filter((p) => isGenuinePaymentIssue(p)).length;
 
   const now = new Date();
   const today = sumRange(completed, istRangeStart("today", now));
@@ -464,10 +522,6 @@ export function computePaymentAnalytics(
     if (lifecycle === "active") activePlanBreakdown[bucket] += 1;
   }
 
-  const mandatePending = subscriptions.filter(
-    (s) => s.mandateStatus === "pending" || s.mandateStatus === "created",
-  ).length;
-
   return {
     totalRevenuePaise,
     todayRevenuePaise: today.amountPaise,
@@ -479,6 +533,7 @@ export function computePaymentAnalytics(
     completedCount: completed.length,
     pendingCount: pending.length,
     failedCount: failed.length,
+    cancelledCount: cancelled.length,
     activeSubscriptions,
     expiredSubscriptions,
     pendingSubscriptions,
@@ -490,7 +545,7 @@ export function computePaymentAnalytics(
     monthlyRevenuePaise,
     annualRevenuePaise,
     avgTransactionPaise: completed.length ? Math.round(totalRevenuePaise / completed.length) : 0,
-    opensCount: pending.length + failed.length + expiring7d + mandatePending,
+    opensCount: genuineOpens,
     planBreakdown,
     activePlanBreakdown,
   };

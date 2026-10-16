@@ -40,6 +40,8 @@ import MerchantRegistrationContent from "../../components/MerchantRegistrationCo
 import QuickOnboardContent from "../../components/QuickOnboardContent";
 import MerchantSupportLoginContent from "../../components/MerchantSupportLoginContent";
 import ReviewsContent from "../../components/ReviewsContent";
+import BroadcastsContent from "../../components/BroadcastsContent";
+import BroadcastEmailContent from "../../components/BroadcastEmailContent";
 import ChangeRequestsContent from "../../components/ChangeRequestsContent";
 import OwnershipRequestsContent from "../../components/OwnershipRequestsContent";
 import JobReportsContent from "../../components/JobReportsContent";
@@ -76,11 +78,6 @@ import {
   formatDateTimeInr,
   parseFinderbTimestamp,
 } from "../../lib/formatDateTime";
-import {
-  DEFAULT_BROADCAST_CTA_LABEL,
-  resolveBroadcastCta,
-  sanitizeBroadcastCtaUrl,
-} from "../../lib/broadcastFields";
 import { mergePaymentHistory } from "../../lib/paymentUtils";
 import { computeDashboardStats } from "../../lib/dashboardStats";
 import {
@@ -116,6 +113,7 @@ import {
   type OnboardSource,
 } from "../../lib/onboardSource";
 import { byOldestWait, waitingLabel } from "../../lib/waitingLabel";
+import { ADMIN_PANEL_REFRESH } from "../../lib/adminPanelRefresh";
 
 interface User {
   id: string;
@@ -123,6 +121,12 @@ interface User {
   email: string;
   createdAt: string;
   password?: string | null;
+  phone?: string | null;
+  emailVerified?: boolean | null;
+  phoneVerified?: boolean | null;
+  authProvider?: string | null;
+  avatarUrl?: string | null;
+  updatedAt?: string | null;
 }
 
 interface Merchant {
@@ -733,6 +737,7 @@ const ALL_MENU_ITEMS = [
   },
   {
     name: "Broadcasts",
+    label: "Broadcast Notification",
     icon: (
       <svg
         className="w-4 h-4"
@@ -745,6 +750,24 @@ const ALL_MENU_ITEMS = [
           strokeLinejoin="round"
           strokeWidth="2"
           d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+        />
+      </svg>
+    ),
+  },
+  {
+    name: "Broadcast Email",
+    icon: (
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
         />
       </svg>
     ),
@@ -962,6 +985,7 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
     items: [
       "Payments & Subscriptions",
       "Broadcasts",
+      "Broadcast Email",
       "Settings",
       "Manage Admins",
     ],
@@ -1221,6 +1245,7 @@ export default function Dashboard() {
   >([]);
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [panelRefresh, setPanelRefresh] = useState(0);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [queueCounts, setQueueCounts] = useState<SidebarQueueCounts>(EMPTY_QUEUE_COUNTS);
   const [queueItems, setQueueItems] = useState<AdminTodo[]>([]);
@@ -1294,6 +1319,12 @@ export default function Dashboard() {
   }, [router]);
 
   useEffect(() => {
+    const onRefresh = () => setPanelRefresh((value) => value + 1);
+    window.addEventListener(ADMIN_PANEL_REFRESH, onRefresh);
+    return () => window.removeEventListener(ADMIN_PANEL_REFRESH, onRefresh);
+  }, []);
+
+  useEffect(() => {
     if (!adminSession?.id) return;
     let cancelled = false;
     const load = async () => {
@@ -1328,7 +1359,7 @@ export default function Dashboard() {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [adminSession?.id, activeTab]);
+  }, [adminSession?.id, activeTab, panelRefresh]);
 
   useEffect(() => {
     if (!adminSession?.id || !adminSession?.loginLogId) return;
@@ -1376,7 +1407,7 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setDataLoading(true);
+        if (panelRefresh === 0) setDataLoading(true);
         setFetchError(null);
 
         const supabase = createClient();
@@ -1614,7 +1645,7 @@ export default function Dashboard() {
     };
 
     fetchData();
-  }, []);
+  }, [panelRefresh]);
 
   useEffect(() => {
     const fetchAdmins = async () => {
@@ -1686,14 +1717,7 @@ export default function Dashboard() {
     fetchAdmins();
     fetchUsers();
     fetchLoginLogs();
-  }, [activeTab, isDeveloper]);
-
-  const [broadcastTitle, setBroadcastTitle] = useState("");
-  const [broadcastMessage, setBroadcastMessage] = useState("");
-  const [broadcastAudiences, setBroadcastAudiences] = useState<string[]>([
-    "Users",
-    "Merchants",
-  ]);
+  }, [activeTab, isDeveloper, panelRefresh]);
 
   const menuItems = ALL_MENU_ITEMS.filter((item) => {
     // Developer sees every tab, including Manage Admins and coming soon.
@@ -1714,12 +1738,24 @@ export default function Dashboard() {
     }
     if (isController) {
       if (item.name === "Manage Admins") return false;
+      if (item.name === "Broadcast Email") {
+        return (
+          hasTabAccess(adminSession, "Broadcasts") ||
+          hasTabAccess(adminSession, "Broadcast Email")
+        );
+      }
       return hasTabAccess(adminSession, item.name);
     }
     // Manage Admins + coming-soon placeholders stay off the allow-list.
     // Never leak News / E-commerce just because some other tab was granted.
     if (item.name === "Manage Admins" || COMING_SOON_TABS.has(item.name)) {
       return false;
+    }
+    if (item.name === "Broadcast Email") {
+      return (
+        hasTabAccess(adminSession, "Broadcasts") ||
+        hasTabAccess(adminSession, "Broadcast Email")
+      );
     }
     return hasTabAccess(adminSession, item.name);
   });
@@ -1980,8 +2016,8 @@ export default function Dashboard() {
   const pendingCountForTab = (name: string): number => {
     if (name === "Merchants") return dashboardStats.merchants.pendingKyc;
     if (name === "Users") return dashboardStats.users.todayNew;
-    if (name === "Leads") return dashboardStats.leads.weekNew;
-    if (name === "Payments & Subscriptions") return dashboardStats.payments.pendingCount;
+    if (name === "Leads") return 0;
+    if (name === "Payments & Subscriptions") return 0;
     if (name === "Blogs") return blogs.filter((blog) => blog.status === "draft").length;
     if (name === "FinderB Jobs") {
       return finderBJobs.filter((job) => {
@@ -2755,13 +2791,17 @@ export default function Dashboard() {
       case "Broadcasts":
         return (
           <BroadcastsContent
-            title={broadcastTitle}
-            setTitle={setBroadcastTitle}
-            message={broadcastMessage}
-            setMessage={setBroadcastMessage}
-            audiences={broadcastAudiences}
-            setAudiences={setBroadcastAudiences}
             canManage={hasFullTabAccess(adminSession, "Broadcasts")}
+            adminId={adminSession?.id ?? null}
+          />
+        );
+      case "Broadcast Email":
+        return (
+          <BroadcastEmailContent
+            canManage={
+              hasFullTabAccess(adminSession, "Broadcasts") ||
+              hasFullTabAccess(adminSession, "Broadcast Email")
+            }
             adminId={adminSession?.id ?? null}
           />
         );
@@ -3140,7 +3180,8 @@ export default function Dashboard() {
                 <div className="space-y-px">
                   {visibleEntries.map((entry) => {
                     if (!isNavBranch(entry)) {
-                      return renderLeaf(entry, entry);
+                      const leaf = menuByName.get(entry) as { label?: string } | undefined;
+                      return renderLeaf(entry, leaf?.label || entry);
                     }
 
                     const parentItem =
@@ -3398,6 +3439,14 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="admin-topbar-actions">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event(ADMIN_PANEL_REFRESH))}
+                className="admin-btn-secondary !py-1.5 !px-3 text-xs"
+                title="Reload this panel"
+              >
+                Refresh
+              </button>
               <span
                 className={`admin-role-badge capitalize ${
                   isDeveloper
@@ -4271,6 +4320,7 @@ function UsersContent({
     label: string;
   } | null>(null);
   const canManage = hasFullTabAccess(adminSession, "Users");
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   const handleDeleteUser = async (id: string) => {
     if (!canManage) return;
@@ -4350,6 +4400,7 @@ function UsersContent({
                 <th>User ID</th>
                 <th>Name</th>
                 <th>Email</th>
+                <th>Phone</th>
                 <th>Joined</th>
                 {canManage && <th>Password</th>}
                 <th className="text-right">Actions</th>
@@ -4381,6 +4432,9 @@ function UsersContent({
                     </p>
                   </td>
                   <td>
+                    <p className="text-sm text-slate-600">{user.phone || "—"}</p>
+                  </td>
+                  <td>
                     <p className="text-sm text-slate-600 tabular-nums">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </p>
@@ -4405,7 +4459,15 @@ function UsersContent({
                     />
                   )}
                   <td className="text-right">
-                    {canManage ? (
+                    <div className="inline-flex items-center justify-end gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUser(user)}
+                        className="admin-btn-secondary text-[11px] !py-1 !px-2.5"
+                      >
+                        Details
+                      </button>
+                      {canManage ? (
                       <button
                         onClick={() => handleDeleteUser(user.id)}
                         className="admin-icon-btn-danger"
@@ -4425,15 +4487,14 @@ function UsersContent({
                           />
                         </svg>
                       </button>
-                    ) : (
-                      <span className="text-[11px] text-slate-400">View</span>
-                    )}
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={canManage ? 6 : 5} className="admin-empty">
+                  <td colSpan={canManage ? 7 : 6} className="admin-empty">
                     {users.length === 0
                       ? "No users found"
                       : "No users match your search"}
@@ -4444,6 +4505,38 @@ function UsersContent({
           </table>
         </div>
       </div>
+
+      {selectedUser ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4" onClick={() => setSelectedUser(null)}>
+          <div className="admin-card w-full max-w-md p-5" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-400">User</p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-900">{selectedUser.fullName || "Unnamed"}</h2>
+              </div>
+              <button type="button" className="text-sm text-slate-500" onClick={() => setSelectedUser(null)}>Close</button>
+            </div>
+            <dl className="mt-4 space-y-2 text-sm">
+              {(
+                [
+                  ["User ID", selectedUser.id],
+                  ["Email", selectedUser.email || "—"],
+                  ["Phone", selectedUser.phone || "—"],
+                  ["Signed in with", selectedUser.authProvider || "Email"],
+                  ["Email verified", selectedUser.emailVerified ? "Yes" : "No"],
+                  ["Phone verified", selectedUser.phoneVerified ? "Yes" : "No"],
+                  ["Joined", selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleString() : "—"],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label} className="flex justify-between gap-4">
+                  <dt className="text-slate-500">{label}</dt>
+                  <dd className="break-all text-right font-medium text-slate-900">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      ) : null}
 
       {passwordModalTarget && adminSession && (
         <ControllerPasswordModal
@@ -5808,6 +5901,11 @@ function MerchantsContent({
                   <span className="inline-flex max-w-full items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
                     <span className="truncate">{merchant.category}</span>
                   </span>
+                  <p className="mt-1 truncate text-[11px] text-slate-500">
+                    {[merchant.city, merchant.createdAt ? `Listed ${new Date(merchant.createdAt).toLocaleDateString()}` : ""]
+                      .filter(Boolean)
+                      .join(" · ") || "City not set"}
+                  </p>
                 </div>
 
                 {canViewFinancialData && (
@@ -6779,637 +6877,6 @@ function MoviesContent({
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function BroadcastsContent({
-  title,
-  setTitle,
-  message,
-  setMessage,
-  audiences,
-  setAudiences,
-  canManage = false,
-  adminId = null,
-}: {
-  title: string;
-  setTitle: (t: string) => void;
-  message: string;
-  setMessage: (m: string) => void;
-  audiences: string[];
-  setAudiences: (a: string[]) => void;
-  canManage?: boolean;
-  adminId?: string | null;
-}) {
-  const [isSending, setIsSending] = useState(false);
-  const [pastBroadcasts, setPastBroadcasts] = useState<Broadcast[]>([]);
-  const [ctaUrl, setCtaUrl] = useState("");
-  const [ctaLabel, setCtaLabel] = useState("");
-  const [showDatetime, setShowDatetime] = useState(true);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [dispatchNote, setDispatchNote] = useState<{
-    tone: "success" | "error";
-    text: string;
-  } | null>(null);
-  const AUDIENCE_OPTIONS = [
-    {
-      id: "Users",
-      label: "Users",
-                  hint: "FinderB app inbox + push",
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      ),
-    },
-    {
-      id: "Merchants",
-      label: "Merchants",
-      hint: "Partner businesses",
-      icon: (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-      ),
-    },
-  ] as const;
-
-  useEffect(() => {
-    fetchPastBroadcasts();
-    setAudiences(audiences.filter((a) => a === "Users" || a === "Merchants"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchPastBroadcasts = async () => {
-    if (adminId) {
-      const res = await fetch(
-        `/api/admin/broadcasts?adminId=${encodeURIComponent(adminId)}`,
-        { headers: { Accept: "application/json" } },
-      );
-      const payload = (await res.json().catch(() => null)) as {
-        success?: boolean;
-        broadcasts?: Broadcast[];
-      } | null;
-      if (payload?.success && Array.isArray(payload.broadcasts)) {
-        setPastBroadcasts(payload.broadcasts);
-        return;
-      }
-    }
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from("broadcasts")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(40);
-    if (!error && data) setPastBroadcasts(data as Broadcast[]);
-  };
-
-  const toggleAudience = (opt: string) => {
-    if (!canManage) return;
-    if (audiences.includes(opt)) {
-      setAudiences(audiences.filter((a) => a !== opt));
-    } else {
-      setAudiences([...audiences, opt]);
-    }
-  };
-
-  const canDispatch =
-    canManage &&
-    title.trim().length > 0 &&
-    message.trim().length > 0 &&
-    audiences.length > 0 &&
-    !isSending;
-
-  const previewCta = resolveBroadcastCta({
-    cta_url: ctaUrl,
-    cta_label: ctaLabel,
-  });
-
-  const resetCompose = () => {
-    setTitle("");
-    setMessage("");
-    setCtaUrl("");
-    setCtaLabel("");
-    setShowDatetime(true);
-  };
-
-  const handleDispatch = async () => {
-    if (!canManage) {
-      setDispatchNote({
-        tone: "error",
-        text: "You have read-only access to Broadcasts.",
-      });
-      return;
-    }
-    if (!canDispatch) {
-      setDispatchNote({
-        tone: "error",
-        text: "Add a title, message, and at least one audience.",
-      });
-      return;
-    }
-    if (ctaUrl.trim() && !sanitizeBroadcastCtaUrl(ctaUrl)) {
-      setDispatchNote({
-        tone: "error",
-        text: "Link must be a valid http or https URL.",
-      });
-      return;
-    }
-
-    try {
-      setIsSending(true);
-      setDispatchNote(null);
-      const res = await fetch("/api/admin/broadcasts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          message: message.trim(),
-          audiences,
-          adminId,
-          ctaUrl: ctaUrl.trim() || undefined,
-          ctaLabel: ctaLabel.trim() || undefined,
-          showDatetime,
-        }),
-      });
-      const payload = (await res.json().catch(() => null)) as {
-        success?: boolean;
-        error?: string;
-        message?: string;
-      } | null;
-
-      if (!res.ok || !payload?.success) {
-        throw new Error(payload?.error || "Failed to dispatch broadcast.");
-      }
-
-      setDispatchNote({
-        tone: "success",
-        text: payload.message || "Broadcast dispatched successfully.",
-      });
-      resetCompose();
-      fetchPastBroadcasts();
-    } catch (err: any) {
-      setDispatchNote({
-        tone: "error",
-        text: err.message || "Failed to dispatch broadcast.",
-      });
-    } finally {
-      setIsSending(false);
-    }
-  };
-
-  const handleDelete = async (broadcast: Broadcast) => {
-    if (!canManage || !adminId) return;
-    const ok = window.confirm(
-      `Delete “${broadcast.title}”? This removes it from the website, app inbox, and merchant alerts.`,
-    );
-    if (!ok) return;
-
-    try {
-      setDeletingId(broadcast.id);
-      const res = await fetch("/api/admin/broadcasts", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ id: broadcast.id, adminId }),
-      });
-      const payload = (await res.json().catch(() => null)) as {
-        success?: boolean;
-        error?: string;
-      } | null;
-      if (!res.ok || !payload?.success) {
-        throw new Error(payload?.error || "Failed to delete broadcast.");
-      }
-      setPastBroadcasts((rows) => rows.filter((row) => row.id !== broadcast.id));
-    } catch (err: any) {
-      setDispatchNote({
-        tone: "error",
-        text: err.message || "Failed to delete broadcast.",
-      });
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const formatAudience = (raw: unknown) => {
-    const list = Array.isArray(raw)
-      ? raw.filter((a) => a === "Users" || a === "Merchants")
-      : [];
-    return list.length ? list.join(" · ") : "—";
-  };
-
-  return (
-    <div className="space-y-5">
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 text-white">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.35]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(45,212,191,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(45,212,191,0.08) 1px, transparent 1px)",
-            backgroundSize: "28px 28px",
-          }}
-        />
-        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-teal-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute -left-10 bottom-0 h-40 w-40 rounded-full bg-cyan-500/10 blur-3xl" />
-        <div className="relative px-5 py-5 sm:px-6 sm:py-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div className="space-y-2 max-w-xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-teal-400/30 bg-teal-400/10 px-2.5 py-1 text-[11px] font-medium text-teal-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-teal-300 animate-pulse" />
-              Signal channel
-            </div>
-            <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">
-              Global Broadcast
-            </h1>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              Push announcements to FinderB app users and merchants in one
-              dispatch. User-targeted messages appear in the mobile app
-              Notifications screen.
-            </p>
-          </div>
-          <div className="flex gap-4 text-right">
-            <div>
-              <p className="text-[11px] text-slate-400">Recent</p>
-              <p className="text-lg font-semibold tabular-nums text-teal-200">
-                {pastBroadcasts.length}
-              </p>
-            </div>
-            <div>
-              <p className="text-[11px] text-slate-400">Targets</p>
-              <p className="text-lg font-semibold tabular-nums text-teal-200">
-                {audiences.length || 0}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
-        <div className="xl:col-span-3 space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900">Compose</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {canManage
-                    ? "Required: title, audience, message. Optional: link, button text, date/time."
-                    : "View only — ask Controller for Edit on Broadcasts"}
-                </p>
-              </div>
-              <span className="text-[11px] font-medium text-slate-400 tabular-nums">
-                {message.length} chars
-              </span>
-            </div>
-
-            <div
-              className={`p-4 space-y-4 ${!canManage ? "opacity-60 pointer-events-none" : ""}`}
-            >
-              <div>
-                <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
-                  Title
-                  <span className="ml-1.5 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-600">
-                    Required
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Platform maintenance tonight"
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
-                  Audience
-                  <span className="ml-1.5 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-600">
-                    Required
-                  </span>
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {AUDIENCE_OPTIONS.map((opt) => {
-                    const active = audiences.includes(opt.id);
-                    return (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => toggleAudience(opt.id)}
-                        className={`flex items-start gap-3 rounded-xl border px-3.5 py-3 text-left transition-all ${
-                          active
-                            ? "border-teal-500/40 bg-teal-50/80 ring-1 ring-teal-500/20"
-                            : "border-slate-200 bg-white hover:border-slate-300"
-                        }`}
-                      >
-                        <span
-                          className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg ${
-                            active
-                              ? "bg-teal-600 text-white"
-                              : "bg-slate-100 text-slate-500"
-                          }`}
-                        >
-                          {opt.icon}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold text-slate-900">
-                              {opt.label}
-                            </span>
-                            <span
-                              className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                                active
-                                  ? "border-teal-600 bg-teal-600"
-                                  : "border-slate-300"
-                              }`}
-                            >
-                              {active && (
-                                <svg
-                                  className="w-2.5 h-2.5 text-white"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                              )}
-                            </span>
-                          </span>
-                          <span className="block text-xs text-slate-500 mt-0.5">
-                            {opt.hint}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
-                  Message
-                  <span className="ml-1.5 rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-600">
-                    Required
-                  </span>
-                </label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Write the announcement users and merchants will see…"
-                  rows={7}
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 resize-y min-h-[140px]"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
-                    CTA link
-                    <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                      Optional
-                    </span>
-                  </label>
-                  <input
-                    type="url"
-                    value={ctaUrl}
-                    onChange={(e) => setCtaUrl(e.target.value)}
-                    placeholder="https://finderb.in/offers"
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40"
-                  />
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    Leave empty if this announcement has no button. Must start with http:// or https://.
-                  </p>
-                </div>
-                <div>
-                  <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
-                    CTA button text
-                    <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                      Optional
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    value={ctaLabel}
-                    onChange={(e) => setCtaLabel(e.target.value)}
-                    placeholder={DEFAULT_BROADCAST_CTA_LABEL}
-                    maxLength={40}
-                    disabled={!ctaUrl.trim()}
-                    className="w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 disabled:bg-slate-50 disabled:text-slate-400"
-                  />
-                  <p className="mt-1 text-[11px] text-slate-400">
-                    Used only when a link is set. Defaults to “{DEFAULT_BROADCAST_CTA_LABEL}”.
-                  </p>
-                </div>
-                <div>
-                  <label className="mb-1.5 flex items-center text-xs font-medium text-slate-600">
-                    Date & time on notification
-                    <span className="ml-1.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                      Optional
-                    </span>
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowDatetime((value) => !value)}
-                    className={`flex w-full items-center justify-between rounded-lg border px-3.5 py-2.5 text-sm ${
-                      showDatetime
-                        ? "border-teal-500/40 bg-teal-50/70 text-slate-900"
-                        : "border-slate-200 bg-white text-slate-700"
-                    }`}
-                  >
-                    <span>{showDatetime ? "Show date & time" : "Hide date & time"}</span>
-                    <span
-                      className={`relative h-5 w-9 rounded-full ${
-                        showDatetime ? "bg-teal-600" : "bg-slate-300"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                          showDatetime ? "translate-x-4" : "translate-x-0.5"
-                        }`}
-                      />
-                    </span>
-                  </button>
-                </div>
-              </div>
-
-              {dispatchNote && (
-                <div
-                  className={`rounded-lg px-3 py-2.5 text-sm ${
-                    dispatchNote.tone === "success"
-                      ? "bg-emerald-50 text-emerald-800 border border-emerald-100"
-                      : "bg-rose-50 text-rose-800 border border-rose-100"
-                  }`}
-                >
-                  {dispatchNote.text}
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between pt-1">
-                <p className="text-xs text-slate-400">
-                  Dispatches immediately to selected audiences.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleDispatch}
-                  disabled={!canDispatch}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 transition-colors disabled:opacity-45 disabled:cursor-not-allowed"
-                >
-                  {isSending ? (
-                    "Dispatching…"
-                  ) : (
-                    <>
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                        />
-                      </svg>
-                      Dispatch
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="xl:col-span-2 space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/70">
-              <h2 className="text-sm font-semibold text-slate-900">Live preview</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                How the announcement will read
-              </p>
-            </div>
-            <div className="p-4">
-              <div className="rounded-xl border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-950 text-[10px] font-bold text-teal-300">
-                    FB
-                  </span>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-900">
-                      FinderB
-                    </p>
-                    <p className="text-[11px] text-slate-400">Announcement</p>
-                  </div>
-                </div>
-                <h3 className="text-sm font-semibold text-slate-900 leading-snug">
-                  {title.trim() || "Your title appears here"}
-                </h3>
-                <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                  {message.trim() ||
-                    "Your message preview will show up here as you type."}
-                </p>
-                {previewCta ? (
-                  <span className="inline-flex items-center justify-center rounded-lg bg-teal-700 px-3 py-1.5 text-xs font-semibold text-white">
-                    {previewCta.label}
-                  </span>
-                ) : null}
-                {showDatetime ? (
-                  <p className="text-[11px] text-slate-400">
-                    {formatDateTimeInr(new Date())}
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-slate-400">Date & time hidden</p>
-                )}
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {(audiences.length ? audiences : ["No audience"]).map((a) => (
-                    <span
-                      key={a}
-                      className="rounded-full bg-teal-50 text-teal-800 px-2 py-0.5 text-[11px] font-medium"
-                    >
-                      {a}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900">
-                  Dispatch history
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Latest sends · signed-in reads
-                </p>
-              </div>
-            </div>
-            <div className="divide-y divide-slate-100 max-h-[520px] overflow-y-auto">
-              {pastBroadcasts.length > 0 ? (
-                pastBroadcasts.map((b) => {
-                  const cta = resolveBroadcastCta({
-                    cta_url: b.cta_url,
-                    cta_label: b.cta_label,
-                  });
-                  const reads = Number(b.read_count || 0);
-                  return (
-                    <div
-                      key={b.id}
-                      className="px-4 py-3.5 hover:bg-slate-50/80 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-1">
-                        <h3 className="text-sm font-semibold text-slate-900 leading-snug">
-                          {b.title}
-                        </h3>
-                        <span className="shrink-0 text-[11px] text-slate-400 tabular-nums">
-                          {formatDateTimeInr(b.created_at)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2">
-                        {b.message}
-                      </p>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                        <p className="text-[11px] font-medium text-teal-700">
-                          {formatAudience(b.target_audience)}
-                        </p>
-                        <p className="text-[11px] font-medium tabular-nums text-slate-600">
-                          {reads} read{reads === 1 ? "" : "s"}
-                        </p>
-                        {b.show_datetime === false ? (
-                          <span className="text-[11px] text-slate-400">
-                            Date hidden
-                          </span>
-                        ) : null}
-                        {cta ? (
-                          <span className="text-[11px] text-slate-500 truncate max-w-[140px]">
-                            {cta.label}
-                          </span>
-                        ) : null}
-                        {canManage ? (
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(b)}
-                            disabled={deletingId === b.id}
-                            className="ml-auto text-[11px] font-semibold text-rose-600 hover:text-rose-700 disabled:opacity-50"
-                          >
-                            {deletingId === b.id ? "Deleting…" : "Delete"}
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="px-4 py-12 text-center text-sm text-slate-400">
-                  No broadcasts yet
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

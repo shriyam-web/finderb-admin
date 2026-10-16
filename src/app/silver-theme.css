@@ -2,9 +2,9 @@
    Layout sticky chrome stays in globals.css; this file is colors only. */
 
 html[data-admin-theme="silver"] {
-  --background: #0f1115;
+  --background: #2c313a;
   --foreground: #e2e8f0;
-  --sidebar-background: #0f1115;
+  --sidebar-background: #2c313a;
   --sidebar-foreground: #94a3b8;
   --sidebar-foreground-active: #f8fafc;
   --sidebar-border: rgba(148, 163, 184, 0.2);
@@ -40,14 +40,14 @@ html[data-admin-theme="silver"] {
 
 html[data-admin-theme="silver"],
 html[data-admin-theme="silver"] body {
-  background: #0f1115 !important;
+  background: #2c313a !important;
   color: #e2e8f0 !important;
 }
 
 html[data-admin-theme="silver"] .admin-shell {
   background:
     radial-gradient(1100px 560px at 90% -10%, rgba(148, 163, 184, 0.08), transparent 55%),
-    linear-gradient(165deg, #08090c 0%, #16181d 45%, #0f1115 100%) !important;
+    linear-gradient(165deg, #22262e 0%, #16181d 45%, #2c313a 100%) !important;
   color: #e2e8f0 !important;
 }
 
@@ -56,13 +56,13 @@ html[data-admin-theme="silver"] .admin-content-area {
 }
 
 html[data-admin-theme="silver"] .admin-chrome-sticky {
-  background: #0f1115 !important;
+  background: #2c313a !important;
   z-index: 40 !important;
 }
 
 /* ——— Sidebar ——— */
 html[data-admin-theme="silver"] .admin-sidebar {
-  background: linear-gradient(180deg, #000 0%, #0f1115 50%, #16181d 100%) !important;
+  background: linear-gradient(180deg, #22262e 0%, #2c313a 50%, #3a414c 100%) !important;
   border-right: 1px solid rgba(148, 163, 184, 0.22) !important;
   color: #cbd5e1 !important;
 }
@@ -76,7 +76,7 @@ html[data-admin-theme="silver"] .admin-sidebar-footer {
 html[data-admin-theme="silver"] .admin-brand-splash {
   background:
     radial-gradient(120% 120% at 100% 0%, rgba(148, 163, 184, 0.26), transparent 55%),
-    linear-gradient(160deg, #1e2229 0%, #0f1115 100%) !important;
+    linear-gradient(160deg, #1e2229 0%, #2c313a 100%) !important;
   border-color: rgba(148, 163, 184, 0.28) !important;
 }
 
@@ -133,7 +133,7 @@ html[data-admin-theme="silver"] .admin-controller-ribbon span {
 }
 
 html[data-admin-theme="silver"] .admin-topbar {
-  background: #0f1115 !important;
+  background: #2c313a !important;
   border-bottom: 1px solid rgba(148, 163, 184, 0.2) !important;
   color: #f8fafc !important;
   backdrop-filter: none !important;
@@ -240,7 +240,7 @@ html[data-admin-theme="silver"] .admin-modal-lg {
 
 html[data-admin-theme="silver"] .admin-card-header,
 html[data-admin-theme="silver"] .admin-table thead {
-  background: #0f1115 !important;
+  background: #2c313a !important;
   border-color: rgba(148, 163, 184, 0.12) !important;
 }
 
@@ -291,7 +291,7 @@ html[data-admin-theme="silver"] .admin-btn-primary {
 
 html[data-admin-theme="silver"] .admin-btn-secondary,
 html[data-admin-theme="silver"] .admin-btn-ghost {
-  background: #0f1115 !important;
+  background: #2c313a !important;
   border-color: rgba(148, 163, 184, 0.22) !important;
   color: #e2e8f0 !important;
 }
@@ -314,7 +314,7 @@ html[data-admin-theme="silver"] input[type="search"],
 html[data-admin-theme="silver"] input[type="url"],
 html[data-admin-theme="silver"] input[type="tel"],
 html[data-admin-theme="silver"] input[type="date"] {
-  background: #0f1115 !important;
+  background: #2c313a !important;
   border-color: rgba(148, 163, 184, 0.2) !important;
   color: #f8fafc !important;
 }
@@ -332,7 +332,7 @@ html[data-admin-theme="silver"] input:focus {
 html[data-admin-theme="silver"] .admin-table th,
 html[data-admin-theme="silver"] th {
   color: #e2e8f0 !important;
-  background: #0f1115 !important;
+  background: #2c313a !important;
   border-color: rgba(148, 163, 184, 0.12) !important;
 }
 
@@ -498,7 +498,7 @@ html[data-admin-theme="silver"] .admin-shell {
 }
 
 html[data-admin-theme="silver"] .admin-brand-splash {
-  background: linear-gradient(160deg, #1e2229 0%, #0f1115 100%) !important;
+  background: linear-gradient(160deg, #1e2229 0%, #2c313a 100%) !important;
   border-color: rgba(148, 163, 184, 0.22) !important;
 }
 

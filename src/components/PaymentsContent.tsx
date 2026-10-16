@@ -32,6 +32,7 @@ import {
 import { createClient } from "../../utils/supabase/client";
 import { getBusinessProfileUrl } from "../lib/site";
 import { parseFinderbTimestamp } from "../lib/formatDateTime";
+import { ADMIN_PANEL_REFRESH } from "../lib/adminPanelRefresh";
 import {
   buildMonthWiseRevenue,
   buildRevenueChart,
@@ -41,6 +42,7 @@ import {
   daysUntilExpiry,
   formatAmountInr,
   formatDateTime,
+  isGenuinePaymentIssue,
   istRangeStart,
   lifecycleLabel,
   mergePaymentHistory,
@@ -82,7 +84,7 @@ type BusinessPaymentRow = {
 type TabId = "overview" | "transactions" | "subscriptions" | "tracking";
 type SubViewMode = "grid" | "table";
 type TxnSort = "date_desc" | "date_asc" | "amount_desc" | "amount_asc";
-type StatusFilter = "all" | "completed" | "pending" | "failed" | "attempted";
+type StatusFilter = "all" | "completed" | "pending" | "failed" | "cancelled" | "attempted";
 type BillingFilter = "all" | "monthly" | "annual";
 type PlanFilter = "all" | "starter" | "growth_monthly" | "pro_annual";
 type TypeFilter =
@@ -116,10 +118,10 @@ function statusBadgeClass(status: string) {
     return "bg-amber-500/10 text-amber-800 border-amber-200/80";
   if (status === "failed")
     return "bg-rose-500/10 text-rose-700 border-rose-200/80";
+  if (status === "cancelled")
+    return "bg-slate-500/10 text-slate-600 border-slate-200/80";
   return "bg-slate-500/10 text-slate-600 border-slate-200/80";
 }
-
-const ABANDONED_CHECKOUT_MS = 30 * 60 * 1000;
 
 function laterCompletedPayment(payment: PaymentRecord, all: PaymentRecord[]): PaymentRecord | undefined {
   const createdMs = parseFinderbTimestamp(payment.createdAt)?.getTime() ?? 0;
@@ -143,7 +145,10 @@ function markAttemptedPayments(payments: PaymentRecord[]): PaymentRecord[] {
 
 /** Rows are written as pending when checkout opens, so the reason is inferred from what happened next. */
 function paymentStatusReason(payment: PaymentRecord, all: PaymentRecord[]): string | null {
-  if (payment.status === "failed") return "Declined or cancelled at Razorpay";
+  if (payment.status === "failed") return "The bank or Razorpay declined this payment";
+  if (payment.status === "cancelled") {
+    return "Merchant closed checkout, or left it past the window, so this attempt can no longer be paid";
+  }
   if (payment.status === "attempted") {
     const paid = laterCompletedPayment(payment, all);
     return paid
@@ -152,19 +157,10 @@ function paymentStatusReason(payment: PaymentRecord, all: PaymentRecord[]): stri
   }
   if (payment.status !== "pending") return null;
 
-  const createdMs = parseFinderbTimestamp(payment.createdAt)?.getTime() ?? 0;
-  if (payment.paymentId) return "Paid at Razorpay, waiting for confirmation";
-  if (payment.paymentType === "subscription_renewal") return "Renewal charge waiting for the bank debit";
-
-  const abandoned = createdMs > 0 && Date.now() - createdMs > ABANDONED_CHECKOUT_MS;
-  if (payment.paymentType === "subscription_auth") {
-    return abandoned
-      ? "Autopay mandate never approved — merchant left the setup"
-      : "Waiting for the merchant to approve autopay";
-  }
-  return abandoned
-    ? "Checkout abandoned — merchant did not complete payment"
-    : "Checkout open — merchant may still be paying";
+  if (payment.paymentId) return "Money is with Razorpay and confirmation is still pending";
+  if (payment.paymentType === "subscription_renewal") return "Renewal debit is still with the bank";
+  if (payment.paymentType === "subscription_auth") return "Checkout is still open for the autopay approval";
+  return "Checkout is still open — the merchant can still pay this attempt";
 }
 
 function matchesPlanFilter(
@@ -709,6 +705,12 @@ export default function PaymentsContent({
     loadPayments();
   }, [loadPayments]);
 
+  useEffect(() => {
+    const onRefresh = () => void loadPayments();
+    window.addEventListener(ADMIN_PANEL_REFRESH, onRefresh);
+    return () => window.removeEventListener(ADMIN_PANEL_REFRESH, onRefresh);
+  }, [loadPayments]);
+
   const analytics = useMemo(
     () => computePaymentAnalytics(payments, subscriptions),
     [payments, subscriptions],
@@ -859,7 +861,7 @@ export default function PaymentsContent({
   const opens = useMemo(() => {
     const items: {
       id: string;
-      type: "pending" | "failed" | "expiring" | "mandate";
+      type: "pending" | "failed";
       title: string;
       detail: string;
       severity: "high" | "medium";
@@ -869,15 +871,15 @@ export default function PaymentsContent({
     }[] = [];
 
     payments
-      .filter((p) => p.status === "pending")
+      .filter((p) => isGenuinePaymentIssue(p) && p.status === "pending")
       .slice(0, 10)
       .forEach((p) => {
         items.push({
           id: `pending-${p.id}`,
           type: "pending",
-          title: `Pending payment — ${p.businessName}`,
-          detail: `${p.amountDisplay} · ${p.planName}`,
-          severity: "medium",
+          title: `Payment stuck — ${p.businessName}`,
+          detail: `${p.amountDisplay} · money moved, confirmation is still pending`,
+          severity: "high",
           businessId: p.businessId,
           businessName: p.businessName,
           paymentId: p.id,
@@ -900,41 +902,8 @@ export default function PaymentsContent({
         });
       });
 
-    subscriptions
-      .filter((s) => {
-        const days = daysUntilExpiry(s.planExpiresAt);
-        return days !== null && days >= 0 && days <= 7;
-      })
-      .forEach((s) => {
-        const days = daysUntilExpiry(s.planExpiresAt);
-        items.push({
-          id: `expiring-${s.businessId}`,
-          type: "expiring",
-          title: `Expiring soon — ${s.businessName}`,
-          detail: `${s.planName} · ${days} day${days === 1 ? "" : "s"} left`,
-          severity: "high",
-          businessId: s.businessId,
-          businessName: s.businessName,
-        });
-      });
-
-    subscriptions
-      .filter((s) => ["pending", "created"].includes(s.mandateStatus))
-      .slice(0, 5)
-      .forEach((s) => {
-        items.push({
-          id: `mandate-${s.businessId}`,
-          type: "mandate",
-          title: `Mandate pending — ${s.businessName}`,
-          detail: `${s.planName} · Auto-debit setup incomplete`,
-          severity: "medium",
-          businessId: s.businessId,
-          businessName: s.businessName,
-        });
-      });
-
     return items;
-  }, [payments, subscriptions]);
+  }, [payments]);
 
   const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
@@ -1033,6 +1002,12 @@ export default function PaymentsContent({
               active={statusFilter === "failed"}
               onClick={() => setStatusFilter("failed")}
               count={analytics.failedCount}
+            />
+            <FilterChip
+              label="Cancelled"
+              active={statusFilter === "cancelled"}
+              onClick={() => setStatusFilter("cancelled")}
+              count={analytics.cancelledCount}
             />
             <FilterChip
               label="Attempted"
@@ -1266,7 +1241,7 @@ export default function PaymentsContent({
                   attention
                 </p>
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
-                  {analytics.pendingCount > 0 && (
+                  {opens.some((item) => item.type === "pending") && (
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1276,7 +1251,7 @@ export default function PaymentsContent({
                       }}
                       className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-semibold hover:bg-amber-200 transition-colors"
                     >
-                      {analytics.pendingCount} pending
+                      {opens.filter((item) => item.type === "pending").length} stuck
                     </button>
                   )}
                   {analytics.failedCount > 0 && (
@@ -2455,10 +2430,10 @@ export default function PaymentsContent({
           <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100">
               <h3 className="text-sm font-semibold text-slate-900">
-                Action queue — Opens
+                Genuine payment issues
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Items requiring review or follow-up
+                A bank decline, or money that moved and is still unconfirmed. A checkout the merchant closed or left is cancelled, and is not listed here.
               </p>
             </div>
             {opens.length === 0 ? (
@@ -2468,7 +2443,7 @@ export default function PaymentsContent({
                 </div>
                 <p className="text-sm font-medium text-slate-900">All clear</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  No pending opens at the moment.
+                  No failed or stuck payments.
                 </p>
               </div>
             ) : (
@@ -2478,25 +2453,18 @@ export default function PaymentsContent({
                     key={item.id}
                     type="button"
                     onClick={() => {
-                      if (item.type === "pending" || item.type === "failed") {
-                        if (item.paymentId) openTransaction(item.paymentId);
-                        else {
-                          setStatusFilter(item.type);
-                          setActiveTab("transactions");
-                        }
-                        return;
+                      if (item.paymentId) openTransaction(item.paymentId);
+                      else {
+                        setStatusFilter(item.type);
+                        setActiveTab("transactions");
                       }
-                      if (item.type === "expiring") setExpiryFilter("expiring_7d");
-                      openSubscription(item.businessId);
                     }}
                     className="w-full px-5 py-4 flex items-start gap-4 hover:bg-slate-50/50 transition-colors text-left"
                   >
                     <div
                       className={`p-2 rounded-xl shrink-0 ${item.severity === "high" ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"}`}
                     >
-                      {item.type === "expiring" ? (
-                        <Calendar className="w-4 h-4" />
-                      ) : item.type === "failed" ? (
+                      {item.type === "failed" ? (
                         <ArrowDownRight className="w-4 h-4" />
                       ) : (
                         <ArrowUpRight className="w-4 h-4" />

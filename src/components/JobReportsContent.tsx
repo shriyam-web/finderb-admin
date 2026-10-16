@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAdminToast } from "./AdminToast";
+import { ADMIN_PANEL_REFRESH, requestAdminPanelRefresh } from "../lib/adminPanelRefresh";
 
 type AdminSession = { id: string; email?: string; role?: string };
 
@@ -58,6 +59,12 @@ export default function JobReportsContent({
   }, [load]);
 
   useEffect(() => {
+    const onRefresh = () => void load();
+    window.addEventListener(ADMIN_PANEL_REFRESH, onRefresh);
+    return () => window.removeEventListener(ADMIN_PANEL_REFRESH, onRefresh);
+  }, [load]);
+
+  useEffect(() => {
     if (!focusId) return;
     setStatus("pending");
   }, [focusId]);
@@ -96,6 +103,7 @@ export default function JobReportsContent({
       toast(action === "takedown" ? "Job removed. The business was notified." : "Report dismissed.");
       setNote("");
       await load();
+      requestAdminPanelRefresh();
     } finally {
       setBusyId(null);
     }

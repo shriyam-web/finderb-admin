@@ -21,6 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 import { formatActivityDate, formatActivityTime } from "../lib/formatDateTime";
+import { waitingLabel } from "../lib/waitingLabel";
 import type { DashboardStats } from "../lib/dashboardStats";
 import type { MerchantRequest } from "../lib/merchantRequest";
 import AdminBarChart from "./AdminBarChart";
@@ -158,6 +159,17 @@ function QuickLink({
     </button>
   );
 }
+
+const TODO_STRIPES = ["#e11d48", "#d97706", "#0f766e", "#2563eb", "#7c3aed", "#db2777", "#ea580c", "#0891b2"];
+
+const TODO_TONES: Record<string, { label: string; soft: string; ink: string; border: string }> = {
+  "user-flag": { label: "Review", soft: "#ffe4e6", ink: "#be123c", border: "#fecdd3" },
+  "business-flag": { label: "Review", soft: "#ffedd5", ink: "#c2410c", border: "#fed7aa" },
+  change: { label: "Change", soft: "#fef3c7", ink: "#b45309", border: "#fde68a" },
+  ownership: { label: "Ownership", soft: "#dbeafe", ink: "#1d4ed8", border: "#bfdbfe" },
+  "job-report": { label: "Job", soft: "#ede9fe", ink: "#6d28d9", border: "#ddd6fe" },
+  fallback: { label: "Queue", soft: "#f1f5f9", ink: "#334155", border: "#e2e8f0" },
+};
 
 export default function DashboardContent({
   setActiveTab,
@@ -333,28 +345,44 @@ export default function DashboardContent({
             </p>
           </div>
         ) : (
-          <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-100">
-            {todos.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onOpenTodo(item)}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50"
-              >
-                <span className="w-32 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                  {item.tab}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-slate-900">
-                    {item.title}
+          <div className="max-h-[420px] space-y-2 overflow-y-auto p-3">
+            {todos.map((item, index) => {
+              const tone = TODO_TONES[item.kind] || TODO_TONES.fallback;
+              const stripe = TODO_STRIPES[index % TODO_STRIPES.length];
+              const waited = waitingLabel(item.waitingSince);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onOpenTodo(item)}
+                  className="flex w-full items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-px hover:shadow"
+                  style={{ borderColor: tone.border, borderLeftWidth: 5, borderLeftColor: stripe }}
+                >
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold"
+                    style={{ background: tone.soft, color: tone.ink }}
+                  >
+                    {index + 1}
                   </span>
-                  <span className="block truncate text-xs text-slate-500">
-                    {item.detail}
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-slate-900">{item.title}</span>
+                      <span
+                        className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                        style={{ background: tone.soft, color: tone.ink }}
+                      >
+                        {tone.label}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs text-slate-500">
+                      {item.detail}
+                      {waited ? ` · ${waited}` : ""}
+                    </span>
                   </span>
-                </span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
-              </button>
-            ))}
+                  <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                </button>
+              );
+            })}
           </div>
         )}
       </section>
@@ -368,7 +396,7 @@ export default function DashboardContent({
             <StatCard
               label="Reviews"
               value={queueCounts.reviews}
-              sub="Anonymous reviews and open reports"
+              sub="Open reports from users and businesses"
               icon={Shield}
               accent={queueCounts.reviews ? "amber" : "slate"}
               onClick={() => setActiveTab("Reviews")}
@@ -566,9 +594,9 @@ export default function DashboardContent({
               onClick={() => setActiveTab("Payments & Subscriptions")}
             />
             <MiniMetric
-              label="Opens"
+              label="Payment issues"
               value={stats.payments.opensCount}
-              hint="Needs attention"
+              hint="Failed or stuck"
               onClick={() => setActiveTab("Payments & Subscriptions")}
             />
           </>
@@ -739,7 +767,7 @@ export default function DashboardContent({
           </div>
           {showRevenue ? (
             <div className="p-4">
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 lg:grid-cols-6 gap-2">
                 {[
                   {
                     label: "Total revenue",
@@ -765,6 +793,11 @@ export default function DashboardContent({
                     label: "Failed",
                     value: stats.payments.failedCount,
                     tone: "border-rose-200 bg-rose-50/50",
+                  },
+                  {
+                    label: "Cancelled",
+                    value: stats.payments.cancelledCount,
+                    tone: "border-slate-200 bg-slate-50",
                   },
                 ].map((item) => (
                   <button
@@ -830,10 +863,9 @@ export default function DashboardContent({
           {canViewFinancialData && (
             <QuickLink
               label="Payments & subscriptions"
-              description="Ledger, filters, opens tracking"
+              description="Ledger, filters, and genuine payment failures"
               icon={CreditCard}
               onClick={() => setActiveTab("Payments & Subscriptions")}
-              badge={stats.payments.opensCount || undefined}
             />
           )}
           {canAccessTab("Leads") && (
@@ -842,7 +874,6 @@ export default function DashboardContent({
               description="Profile and category enquiries"
               icon={Activity}
               onClick={() => setActiveTab("Leads")}
-              badge={stats.leads.weekNew ? `+${stats.leads.weekNew}` : undefined}
             />
           )}
           {canAccessTab("Categories") && (

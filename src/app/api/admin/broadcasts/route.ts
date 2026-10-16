@@ -17,7 +17,7 @@ type AdminRow = {
 };
 
 const BROADCAST_SELECT =
-  "id, title, message, target_audience, created_at, cta_url, cta_label, show_datetime";
+  "id, title, message, target_audience, created_at, cta_url, cta_label, show_datetime, status, scheduled_at, target_user_id, target_business_id, target_label, recipient_count";
 const BROADCAST_SELECT_FALLBACK =
   "id, title, message, target_audience, created_at";
 
@@ -48,7 +48,7 @@ function targetsUsers(audience: unknown): boolean {
 function isMissingColumnError(message?: string | null) {
   return Boolean(
     message &&
-      /cta_url|cta_label|show_datetime|broadcast_reads|schema cache|does not exist/i.test(
+      /cta_url|cta_label|show_datetime|broadcast_reads|status|scheduled_at|target_user_id|target_business_id|target_label|recipient_count|schema cache|does not exist/i.test(
         message,
       ),
   );
@@ -131,6 +131,38 @@ function parseCtaFromBody(body: {
   };
 }
 
+async function dispatchBroadcast(id: string): Promise<{ sent: number; note: string | null }> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+  const secret = process.env.FINDERB_DISPATCH_SECRET?.trim();
+  if (secret) headers["x-finderb-dispatch"] = secret;
+  const res = await fetch(`${getPublicSiteUrl()}/api/notifications/dispatch`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ broadcastId: id }),
+  });
+  const json = (await res.json().catch(() => null)) as {
+    success?: boolean;
+    sent?: number;
+    skipped?: string;
+    error?: string;
+  } | null;
+  if (!json?.success) {
+    return {
+      sent: 0,
+      note: json?.error || "Saved. The inbox will show it; push dispatch did not complete.",
+    };
+  }
+  const sent = Number(json.sent || 0);
+  if (json.skipped === "scheduled") return { sent: 0, note: "It is still waiting for its scheduled time." };
+  if (json.skipped === "no-token-table") {
+    return { sent: 0, note: "Saved. Run supabase/user_notifications.sql so app push tokens can be stored." };
+  }
+  return { sent, note: null };
+}
+
 export async function GET(request: Request) {
   try {
     const adminId = new URL(request.url).searchParams.get("adminId")?.trim();
@@ -187,17 +219,58 @@ export async function GET(request: Request) {
       cta_url?: string | null;
       cta_label?: string | null;
       show_datetime?: boolean | null;
+      status?: string | null;
+      scheduled_at?: string | null;
+      target_user_id?: string | null;
+      target_business_id?: string | null;
+      target_label?: string | null;
+      recipient_count?: number | null;
     }>;
+    const now = Date.now();
+    for (const row of rows) {
+      if (String(row.status || "").toLowerCase() !== "scheduled") continue;
+      const at = Date.parse(String(row.scheduled_at || ""));
+      if (!Number.isFinite(at) || at > now) continue;
+      await dispatchBroadcast(row.id);
+      row.status = "sent";
+    }
+
     const counts = await readCountByBroadcast(
       supabase,
       rows.map((row) => row.id),
     );
+
+    const needsEstimate = rows.some(
+      (row) =>
+        row.recipient_count == null &&
+        !row.target_user_id &&
+        !row.target_business_id,
+    );
+    let userCount = 0;
+    let businessCount = 0;
+    if (needsEstimate) {
+      const [users, businesses] = await Promise.all([
+        supabase.from("User").select("id", { count: "exact", head: true }),
+        supabase.from("Business").select("id", { count: "exact", head: true }),
+      ]);
+      userCount = users.count || 0;
+      businessCount = businesses.count || 0;
+    }
 
     return NextResponse.json({
       success: true,
       broadcasts: rows.map((row) => ({
         ...row,
         read_count: counts[row.id] || 0,
+        recipient_count:
+          row.recipient_count ??
+          (row.target_user_id || row.target_business_id
+            ? 1
+            : (targetsUsers(row.target_audience) ? userCount : 0) +
+              (Array.isArray(row.target_audience) &&
+              row.target_audience.some((item) => String(item).toLowerCase() === "merchants")
+                ? businessCount
+                : 0)),
       })),
     });
   } catch (error) {
@@ -212,6 +285,8 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
+      action?: string;
+      id?: string;
       title?: string;
       message?: string;
       audiences?: string[];
@@ -219,6 +294,11 @@ export async function POST(request: Request) {
       ctaUrl?: string;
       ctaLabel?: string;
       showDatetime?: boolean;
+      targetUserId?: string;
+      targetBusinessId?: string;
+      targetLabel?: string;
+      scheduledAt?: string;
+      saveAs?: "send" | "queue" | "schedule";
     };
 
     if (!body.adminId) {
@@ -246,18 +326,62 @@ export async function POST(request: Request) {
       );
     }
 
+    if (body.action === "send-now" || body.action === "cancel") {
+      const id = String(body.id || "").trim();
+      if (!id) {
+        return NextResponse.json(
+          { success: false, error: "Choose a notification." },
+          { status: 400 },
+        );
+      }
+      if (body.action === "cancel") {
+        const { error } = await supabase.from("broadcasts").delete().eq("id", id);
+        if (error) {
+          return NextResponse.json(
+            { success: false, error: error.message || "Could not remove it." },
+            { status: 500 },
+          );
+        }
+        return NextResponse.json({ success: true });
+      }
+      await supabase
+        .from("broadcasts")
+        .update({ status: "sent", scheduled_at: null })
+        .eq("id", id);
+      await supabase.from("broadcasts").update({ push_sent_at: null }).eq("id", id);
+      const sent = await dispatchBroadcast(id);
+      return NextResponse.json({
+        success: true,
+        message: sent.note || "Notification sent.",
+      });
+    }
+
     const title = String(body.title || "").trim();
     const message = String(body.message || "").trim();
-    const audiences = Array.isArray(body.audiences)
-      ? body.audiences.filter((item) => item === "Users" || item === "Merchants")
-      : [];
+    const targetUserId = String(body.targetUserId || "").trim();
+    const targetBusinessId = String(body.targetBusinessId || "").trim();
+    const audiences = targetUserId || targetBusinessId
+      ? []
+      : Array.isArray(body.audiences)
+        ? body.audiences.filter((item) => item === "Users" || item === "Merchants")
+        : [];
 
-    if (!title || !message || audiences.length === 0) {
+    if (!title || !message || (!audiences.length && !targetUserId && !targetBusinessId)) {
       return NextResponse.json(
         {
           success: false,
-          error: "Add a title, message, and at least one audience.",
+          error: "Add a title, a message, and who should receive it.",
         },
+        { status: 400 },
+      );
+    }
+
+    const scheduledAt = body.scheduledAt ? new Date(body.scheduledAt) : null;
+    const scheduledOk = Boolean(scheduledAt && !Number.isNaN(scheduledAt.getTime()));
+    const saveAs = body.saveAs || "send";
+    if (saveAs === "schedule" && (!scheduledOk || scheduledAt!.getTime() <= Date.now())) {
+      return NextResponse.json(
+        { success: false, error: "Pick a future date and time to schedule this." },
         { status: 400 },
       );
     }
@@ -271,13 +395,38 @@ export async function POST(request: Request) {
     }
 
     const showDatetime = body.showDatetime !== false;
+    const hold = saveAs === "queue" || saveAs === "schedule";
+    const status = saveAs === "queue" ? "queued" : saveAs === "schedule" ? "scheduled" : "sent";
+    let recipientCount = targetUserId || targetBusinessId ? 1 : 0;
+    if (!recipientCount) {
+      if (audiences.includes("Users")) {
+        const users = await supabase.from("User").select("id", { count: "exact", head: true });
+        recipientCount += users.count || 0;
+      }
+      if (audiences.includes("Merchants")) {
+        const businesses = await supabase
+          .from("Business")
+          .select("id", { count: "exact", head: true });
+        recipientCount += businesses.count || 0;
+      }
+    }
     const payload = {
       title,
       message,
-      target_audience: audiences,
+      target_audience: targetUserId
+        ? ["direct-user"]
+        : targetBusinessId
+          ? ["direct-business"]
+          : audiences,
       cta_url: cta.url,
       cta_label: cta.label,
       show_datetime: showDatetime,
+      status,
+      scheduled_at: saveAs === "schedule" && scheduledAt ? scheduledAt.toISOString() : null,
+      target_user_id: targetUserId || null,
+      target_business_id: targetBusinessId || null,
+      target_label: String(body.targetLabel || "").trim() || null,
+      recipient_count: recipientCount,
     };
 
     const inserted = await supabase
@@ -286,14 +435,26 @@ export async function POST(request: Request) {
       .select(BROADCAST_SELECT)
       .single();
 
-    const insert =
-      inserted.error && isMissingColumnError(inserted.error.message)
-        ? await supabase
-            .from("broadcasts")
-            .insert({ title, message, target_audience: audiences })
-            .select(BROADCAST_SELECT_FALLBACK)
-            .single()
-        : inserted;
+    const missingColumns = Boolean(
+      inserted.error && isMissingColumnError(inserted.error.message),
+    );
+    if (missingColumns && (hold || targetUserId || targetBusinessId)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Run supabase/broadcast_schedule.sql once in Supabase, then try again.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const insert = missingColumns
+      ? await supabase
+          .from("broadcasts")
+          .insert({ title, message, target_audience: audiences })
+          .select(BROADCAST_SELECT_FALLBACK)
+          .single()
+      : inserted;
 
     if (insert.error || !insert.data) {
       return NextResponse.json(
@@ -313,48 +474,28 @@ export async function POST(request: Request) {
       created_at?: string | null;
     };
 
+    if (hold) {
+      return NextResponse.json({
+        success: true,
+        broadcast: { ...data, read_count: 0, recipient_count: recipientCount },
+        message:
+          saveAs === "schedule"
+            ? "Scheduled. It will send at the time you picked."
+            : "Added to the queue.",
+      });
+    }
+
     let pushSent = 0;
     let pushNote: string | null = null;
 
     try {
-      const dispatchHeaders: Record<string, string> = {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      };
-      const secret = process.env.FINDERB_DISPATCH_SECRET?.trim();
-      if (secret) {
-        dispatchHeaders["x-finderb-dispatch"] = secret;
-      }
-
-      const dispatchRes = await fetch(
-        `${getPublicSiteUrl()}/api/notifications/dispatch`,
-        {
-          method: "POST",
-          headers: dispatchHeaders,
-          body: JSON.stringify({ broadcastId: data.id }),
-        },
-      );
-      const dispatchJson = (await dispatchRes.json().catch(() => null)) as {
-        success?: boolean;
-        sent?: number;
-        skipped?: string;
-        error?: string;
-      } | null;
-
-      if (dispatchJson?.success) {
-        pushSent = Number(dispatchJson.sent || 0);
-        if (dispatchJson.skipped === "no-token-table") {
-          pushNote =
-            "Saved. Run supabase/user_notifications.sql so app push tokens can be stored.";
-        } else if (pushSent === 0) {
-          pushNote = targetsUsers(audiences)
-            ? "Saved and visible in the FinderB app. Push alerts go out after users open the app once while signed in."
-            : "Saved and visible in the merchant panel. Push alerts go out once merchants open the latest app while signed in.";
-        }
-      } else {
-        pushNote =
-          dispatchJson?.error ||
-          "Saved. The app inbox will show it; push dispatch did not complete.";
+      const sent = await dispatchBroadcast(data.id);
+      pushSent = sent.sent;
+      pushNote = sent.note;
+      if (!pushNote && pushSent === 0) {
+        pushNote = targetsUsers(audiences)
+          ? "Saved and visible in the FinderB app. Push alerts go out after users open the app once while signed in."
+          : "Saved and visible in the merchant panel. Push alerts go out once merchants open the latest app while signed in.";
       }
     } catch (dispatchError) {
       console.error("[admin broadcasts] dispatch", dispatchError);

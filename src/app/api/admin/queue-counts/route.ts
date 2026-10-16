@@ -22,16 +22,6 @@ function getSupabase() {
   });
 }
 
-async function pendingAnonymousReviews(supabase: SupabaseClient): Promise<number> {
-  const { count, error } = await supabase
-    .from("review_moderation")
-    .select("id", { count: "exact", head: true })
-    .eq("anonymity_status", "pending")
-    .not("deleted", "eq", true);
-  if (error) return 0;
-  return count || 0;
-}
-
 export type QueueTodoItem = {
   id: string;
   tab: string;
@@ -118,18 +108,15 @@ export async function GET(request: Request) {
 
     const allowed = (tab: string) => canAccessTab(session, tab);
     const [
-      anonymousReviews,
       openFlags,
       changeRequests,
       ownershipRequests,
       jobReports,
-      reviewRows,
       flagRows,
       changeRows,
       ownershipRows,
       reportRows,
     ] = await Promise.all([
-      allowed("Reviews") ? pendingAnonymousReviews(supabase) : 0,
       allowed("Reviews")
         ? exactCount(supabase, "review_reports", { status: "open" })
         : 0,
@@ -142,15 +129,6 @@ export async function GET(request: Request) {
       allowed("Job Reports")
         ? exactCount(supabase, "job_reports", { status: "pending" })
         : 0,
-      allowed("Reviews")
-        ? todoRows(
-            supabase,
-            "review_moderation",
-            "id, review_id, business_name, author_name, created_at",
-            { anonymity_status: "pending" },
-            true,
-          )
-        : [],
       allowed("Reviews")
         ? todoRows(supabase, "review_reports", "id, reason, reporter_type, created_at", {
             status: "open",
@@ -184,15 +162,6 @@ export async function GET(request: Request) {
       return typeof value === "string" && value ? value : null;
     };
     const items: QueueTodoItem[] = [
-      ...reviewRows.map((row) => ({
-          id: `review-${row.review_id || row.id}`,
-          tab: "Reviews",
-          title: clip(row.business_name) || "Anonymous review",
-          detail: "Decide whether this anonymous review stays hidden",
-          targetId: String(row.review_id || row.id || ""),
-          waitingSince: when(row),
-          kind: "review",
-        })),
       ...flagRows.map((row) => ({
         id: `flag-${row.id}`,
         tab: "Reviews",
@@ -234,7 +203,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       counts: {
-        reviews: anonymousReviews + openFlags,
+        reviews: openFlags,
         changeRequests,
         ownershipRequests,
         jobReports,

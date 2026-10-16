@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdminToast } from "./AdminToast";
 import { getBusinessProfileUrl } from "../lib/site";
+import { ADMIN_PANEL_REFRESH, requestAdminPanelRefresh } from "../lib/adminPanelRefresh";
 
 type AdminSession = {
   id: string;
@@ -91,6 +92,12 @@ export default function ChangeRequestsContent({
   }, [load]);
 
   useEffect(() => {
+    const onRefresh = () => void load();
+    window.addEventListener(ADMIN_PANEL_REFRESH, onRefresh);
+    return () => window.removeEventListener(ADMIN_PANEL_REFRESH, onRefresh);
+  }, [load]);
+
+  useEffect(() => {
     if (!focusId) return;
     setStatus("pending");
   }, [focusId]);
@@ -130,6 +137,7 @@ export default function ChangeRequestsContent({
       toast(action === "approve" ? "Change applied." : "Request rejected.");
       setNote("");
       await load();
+      requestAdminPanelRefresh();
     } catch {
       toast("Could not update this request.", "error");
     } finally {

@@ -8,6 +8,7 @@ import {
   useClientPage,
 } from "./AdminListControls";
 import { getBusinessProfileUrl } from "../lib/site";
+import { ADMIN_PANEL_REFRESH, requestAdminPanelRefresh } from "../lib/adminPanelRefresh";
 
 type AdminSession = {
   id: string;
@@ -15,7 +16,7 @@ type AdminSession = {
   role?: string;
 };
 
-type InnerTab = "all" | "anonymous" | "user-flags" | "business-flags";
+type InnerTab = "all" | "user-flags" | "business-flags";
 
 type ReviewRow = {
   business_id: string;
@@ -47,7 +48,6 @@ type FlagRow = ReviewRow & {
 
 const TABS: { id: InnerTab; label: string; help: string }[] = [
   { id: "all", label: "All reviews", help: "Every review written on a FinderB listing" },
-  { id: "anonymous", label: "Anonymous posts", help: "Customers who asked to hide their name" },
   { id: "user-flags", label: "Customer reports", help: "Reviews reported by other users" },
   { id: "business-flags", label: "Business reports", help: "Reviews flagged by the shop owner" },
 ];
@@ -77,10 +77,8 @@ function visibilityLabel(row: Pick<ReviewRow, "hidden" | "deleted">) {
 }
 
 function anonymousLabel(status: string) {
-  if (status === "pending") return { label: "Needs a decision", className: "bg-sky-50 text-sky-800 border-sky-200" };
-  if (status === "allowed") return { label: "Kept anonymous", className: "bg-slate-100 text-slate-700 border-slate-200" };
   if (status === "revealed") return { label: "Real name shown", className: "bg-violet-50 text-violet-800 border-violet-200" };
-  return { label: status, className: "bg-slate-100 text-slate-700 border-slate-200" };
+  return { label: "Anonymous", className: "bg-slate-100 text-slate-700 border-slate-200" };
 }
 
 function isFlagRow(row: ReviewRow | FlagRow): row is FlagRow {
@@ -101,7 +99,7 @@ function toReviewRow(raw: Record<string, unknown>): ReviewRow {
     date: raw.date ? String(raw.date) : raw.created_at ? String(raw.created_at) : "",
     anonymous: Boolean(raw.anonymous),
     anonymous_reason: raw.anonymous_reason ? String(raw.anonymous_reason) : null,
-    anonymity_status: String(raw.anonymity_status || (raw.anonymous ? "pending" : "allowed")),
+    anonymity_status: String(raw.anonymity_status === "revealed" ? "revealed" : "allowed"),
     hidden: Boolean(raw.hidden),
     deleted: Boolean(raw.deleted),
     reply: raw.reply ? String(raw.reply) : null,
@@ -119,7 +117,6 @@ export default function ReviewsContent({
 }) {
   const { toast } = useAdminToast();
   const [tab, setTab] = useState<InnerTab>("all");
-  const [anonStatus, setAnonStatus] = useState<"pending" | "allowed" | "revealed" | "">("pending");
   const [flagStatus, setFlagStatus] = useState<"open" | "all">("open");
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
@@ -136,10 +133,7 @@ export default function ReviewsContent({
     setLoading(true);
     try {
       const params = new URLSearchParams({ adminId: adminSession.id });
-      if (tab === "anonymous") {
-        params.set("kind", "anonymous");
-        if (anonStatus) params.set("status", anonStatus);
-      } else if (tab === "user-flags") {
+      if (tab === "user-flags") {
         params.set("kind", "user-flags");
         params.set("status", flagStatus);
       } else if (tab === "business-flags") {
@@ -176,10 +170,16 @@ export default function ReviewsContent({
     } finally {
       setLoading(false);
     }
-  }, [adminSession?.id, tab, appliedQuery, toast, anonStatus, flagStatus]);
+  }, [adminSession?.id, tab, appliedQuery, toast, flagStatus]);
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const onRefresh = () => void load();
+    window.addEventListener(ADMIN_PANEL_REFRESH, onRefresh);
+    return () => window.removeEventListener(ADMIN_PANEL_REFRESH, onRefresh);
   }, [load]);
 
   useEffect(() => {
@@ -190,9 +190,8 @@ export default function ReviewsContent({
     } else if (focus.kind === "user-flag") {
       setTab("user-flags");
       setFlagStatus("open");
-    } else {
-      setTab("anonymous");
-      setAnonStatus("pending");
+    } else if (focus.kind === "review") {
+      setTab("all");
     }
     setQuery("");
     setAppliedQuery("");
@@ -222,6 +221,7 @@ export default function ReviewsContent({
       toast("Updated.", "success");
       setNote("");
       await load();
+      requestAdminPanelRefresh();
     } catch {
       toast("Action failed.", "error");
     } finally {
@@ -240,7 +240,7 @@ export default function ReviewsContent({
   };
 
   const list = tab === "user-flags" || tab === "business-flags" ? flags : reviews;
-  const paging = useClientPage(list, 12, `${tab}-${anonStatus}-${flagStatus}-${appliedQuery}`);
+  const paging = useClientPage(list, 12, `${tab}-${flagStatus}-${appliedQuery}`);
   const focusListKey = list
     .map((row) => (isFlagRow(row) ? row.id : row.review_id))
     .join("|");
@@ -264,7 +264,7 @@ export default function ReviewsContent({
   const actionButtons = (
     businessId: string,
     reviewId: string,
-    extras?: { reportId?: string; anonymous?: boolean; hidden?: boolean; deleted?: boolean },
+    extras?: { reportId?: string; hidden?: boolean; deleted?: boolean },
   ) => {
     const key = `${businessId}:${reviewId}`;
     const disabled = !canManage || busyKey === key;
@@ -313,26 +313,6 @@ export default function ReviewsContent({
               Remove review
             </button>
           )}
-          {extras?.anonymous ? (
-            <>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => void act({ action: "allowAnonymous", businessId, reviewId }, key)}
-                className="rounded-lg border border-teal-200 px-2.5 py-1 text-[11px] font-semibold text-teal-800 hover:bg-teal-50 disabled:opacity-40"
-              >
-                Keep name hidden
-              </button>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => void act({ action: "revealAnonymous", businessId, reviewId }, key)}
-                className="rounded-lg border border-amber-200 px-2.5 py-1 text-[11px] font-semibold text-amber-800 hover:bg-amber-50 disabled:opacity-40"
-              >
-                Show real name
-              </button>
-            </>
-          ) : null}
           {extras?.reportId ? (
             <button
               type="button"
@@ -419,7 +399,6 @@ export default function ReviewsContent({
         <div className="mt-3">
           {actionButtons(row.business_id, row.review_id, {
             reportId: extra?.reportId,
-            anonymous: row.anonymous,
             hidden: row.hidden,
             deleted: row.deleted,
           })}
@@ -429,7 +408,6 @@ export default function ReviewsContent({
   };
 
   const emptyCopy = useMemo(() => {
-    if (tab === "anonymous") return "No anonymous reviews in this filter.";
     if (tab === "user-flags") return "No customer reports in this filter.";
     if (tab === "business-flags") return "No business reports in this filter.";
     return appliedQuery.trim() ? "No reviews match that search." : "No reviews found yet.";
@@ -440,17 +418,16 @@ export default function ReviewsContent({
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Reviews</h1>
         <p className="mt-1 max-w-3xl text-sm text-slate-500">
-          Read what customers posted on listings, hide or remove a review if it breaks the rules, and decide whether an
-          anonymous review should stay nameless.
+          Read what customers posted on listings. Hide or remove a review if it breaks the rules. An anonymous review
+          stays anonymous and goes live on its own.
         </p>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-3">
         {[
           ["On listings", counts.visible],
           ["Hidden", counts.hidden],
           ["Removed", counts.removed],
-          ["Anonymous waiting", counts.anonymousPending],
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-xl border border-slate-200 bg-white px-3 py-2">
             <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">{label}</p>
@@ -507,30 +484,6 @@ export default function ReviewsContent({
             </button>
           ) : null}
         </form>
-      ) : null}
-
-      {tab === "anonymous" ? (
-        <div className="flex flex-wrap gap-1.5">
-          {([
-            ["pending", "Needs a decision"],
-            ["allowed", "Kept anonymous"],
-            ["revealed", "Name shown"],
-            ["", "All anonymous"],
-          ] as const).map(([value, label]) => (
-            <button
-              key={value || "all"}
-              type="button"
-              onClick={() => setAnonStatus(value)}
-              className={`rounded-md border px-2.5 py-1 text-xs font-medium ${
-                anonStatus === value
-                  ? "border-slate-900 bg-slate-900 text-white"
-                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
       ) : null}
 
       {tab === "user-flags" || tab === "business-flags" ? (
