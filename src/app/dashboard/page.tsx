@@ -1763,24 +1763,12 @@ export default function Dashboard() {
     }
     if (isController) {
       if (item.name === "Manage Admins") return false;
-      if (item.name === "Broadcast Email") {
-        return (
-          hasTabAccess(adminSession, "Broadcasts") ||
-          hasTabAccess(adminSession, "Broadcast Email")
-        );
-      }
       return hasTabAccess(adminSession, item.name);
     }
     // Manage Admins + coming-soon placeholders stay off the allow-list.
     // Never leak News / E-commerce just because some other tab was granted.
     if (item.name === "Manage Admins" || COMING_SOON_TABS.has(item.name)) {
       return false;
-    }
-    if (item.name === "Broadcast Email") {
-      return (
-        hasTabAccess(adminSession, "Broadcasts") ||
-        hasTabAccess(adminSession, "Broadcast Email")
-      );
     }
     return hasTabAccess(adminSession, item.name);
   });
@@ -2825,10 +2813,7 @@ export default function Dashboard() {
       case "Broadcast Email":
         return (
           <BroadcastEmailContent
-            canManage={
-              hasFullTabAccess(adminSession, "Broadcasts") ||
-              hasFullTabAccess(adminSession, "Broadcast Email")
-            }
+            canManage={hasFullTabAccess(adminSession, "Broadcast Email")}
             adminId={adminSession?.id ?? null}
           />
         );

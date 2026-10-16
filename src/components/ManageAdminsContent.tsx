@@ -58,6 +58,7 @@ export const ASSIGNABLE_ADMIN_TABS = [
   "Tourist Places",
   "Payments & Subscriptions",
   "Broadcasts",
+  "Broadcast Email",
   "Blogs",
   "YouTube Playlists",
   "FinderB Jobs",
@@ -67,6 +68,10 @@ export const ASSIGNABLE_ADMIN_TABS = [
   "Ownership Requests",
   "Job Reports",
 ] as const;
+
+const TAB_ACCESS_LABELS: Record<string, string> = {
+  Broadcasts: "Broadcast Notification",
+};
 
 type Props = {
   admins: AdminProfile[];
@@ -1192,7 +1197,7 @@ export default function ManageAdminsContent({
                     }`}
                   >
                     <span className="text-[13px] font-medium text-slate-800 sm:min-w-[10.5rem]">
-                      {tab}
+                      {TAB_ACCESS_LABELS[tab] || tab}
                     </span>
                     <div className="inline-flex rounded-md border border-slate-200 overflow-hidden ml-auto">
                       {(

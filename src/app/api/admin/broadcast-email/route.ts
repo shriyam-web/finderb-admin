@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     .select("id, role, is_disabled, allowed_tabs, allowed_tab_modes")
     .eq("id", adminId)
     .single();
-  if (!admin || admin.is_disabled || !canEditTab(admin, "Broadcasts")) {
+  if (!admin || admin.is_disabled || !canEditTab(admin, "Broadcast Email")) {
     return NextResponse.json({ success: false, error: "You cannot send email." }, { status: 403 });
   }
 

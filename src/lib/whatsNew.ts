@@ -80,6 +80,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Broadcast permissions are split, and new owners cannot edit for 15 days",
+    body: "Tab access now lists Broadcast Notification and Broadcast Email separately. Granting one does not grant the other.\n\nAfter an ownership transfer, the new owner cannot change the listing for 15 days: name, contact, photos, and other business details stay as they were. They can edit after that window. Reverse transfer still restores the previous login during those 15 days.",
+    published_at: "2026-10-17T05:00:00+05:30",
+  },
+  {
     title: "Owners answer claims, and transfers can be reversed",
     body: "When someone asks to manage a listing, the request still arrives here. The current owner is also emailed, and the business app shows a high-priority notification.\n\nThe owner has 48 hours to approve or deny in Notifications. Their answer shows on the Ownership Requests card: approved, denied, or still waiting. If 48 hours pass with no answer, their buttons close and the card says the current business didn't respond. You then approve or deny.\n\nAfter you approve, the previous login is kept for 15 days. Open Can reverse and press Reverse transfer to give that login back. The new login stops working. After 15 days the transfer stays as it is.",
     published_at: "2026-10-17T04:50:00+05:30",

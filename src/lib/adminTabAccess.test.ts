@@ -36,6 +36,7 @@ const ALL_TABS = [
   "Tourist Places",
   "Payments & Subscriptions",
   "Broadcasts",
+  "Broadcast Email",
   "Blogs",
   "YouTube Playlists",
   "FinderB Jobs",
@@ -329,6 +330,7 @@ assert.deepEqual(
   assert.equal(canAccessTab(session, "Merchants"), true);
   assert.equal(canEditTab(session, "Merchants"), false);
   assert.equal(canEditTab(session, "Broadcasts"), false);
+  assert.equal(canAccessTab(session, "Broadcast Email"), false);
   assert.equal(canEditTab(session, "Settings"), true);
   assert.equal(canAccessTab(session, "Users"), false);
 }
