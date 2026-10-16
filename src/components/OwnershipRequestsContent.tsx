@@ -32,9 +32,11 @@ function formatWhen(value: string) {
 export default function OwnershipRequestsContent({
   adminSession,
   canManage,
+  focusId = null,
 }: {
   adminSession: AdminSession | null;
   canManage: boolean;
+  focusId?: string | null;
 }) {
   const { toast } = useAdminToast();
   const [status, setStatus] = useState<"pending" | "approved" | "denied" | "all">("pending");
@@ -57,6 +59,19 @@ export default function OwnershipRequestsContent({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    setStatus("pending");
+  }, [focusId]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    document.getElementById(`admin-focus-${focusId}`)?.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    });
+  }, [focusId, rows]);
 
   const act = async (row: OwnershipRow, action: "approve" | "deny") => {
     if (!adminSession?.id || !canManage) return;
@@ -137,7 +152,13 @@ export default function OwnershipRequestsContent({
       ) : (
         <ul className="space-y-3">
           {rows.map((row) => (
-            <li key={row.id} className="rounded-xl border border-slate-200 bg-white p-4">
+            <li
+              key={row.id}
+              id={`admin-focus-${row.id}`}
+              className={`rounded-xl border bg-white p-4 ${
+                focusId === row.id ? "border-amber-300 ring-2 ring-amber-300" : "border-slate-200"
+              }`}
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">{row.business_name}</p>

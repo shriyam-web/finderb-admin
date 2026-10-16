@@ -49,9 +49,11 @@ function formatWhen(value: string | null | undefined) {
 export default function ChangeRequestsContent({
   adminSession,
   canManage,
+  focusId = null,
 }: {
   adminSession: AdminSession | null;
   canManage: boolean;
+  focusId?: string | null;
 }) {
   const { toast } = useAdminToast();
   const [status, setStatus] = useState<"pending" | "approved" | "rejected" | "all">(
@@ -87,6 +89,19 @@ export default function ChangeRequestsContent({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    setStatus("pending");
+  }, [focusId]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    document.getElementById(`admin-focus-${focusId}`)?.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    });
+  }, [focusId, rows]);
 
   const pendingCount = useMemo(
     () => rows.filter((row) => row.status === "pending").length,
@@ -186,7 +201,12 @@ export default function ChangeRequestsContent({
             return (
               <article
                 key={row.id}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                id={`admin-focus-${row.id}`}
+                className={`rounded-xl border bg-white p-4 shadow-sm ${
+                  focusId === row.id
+                    ? "border-amber-300 ring-2 ring-amber-300"
+                    : "border-slate-200"
+                }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">

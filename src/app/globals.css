@@ -178,11 +178,11 @@ body {
   }
 
   .admin-nav-group {
-    @apply mb-3 last:mb-1;
+    @apply mb-1.5 last:mb-0.5;
   }
 
   .admin-nav-group-label {
-    @apply px-3 mb-1.5 text-[11px] font-medium text-slate-400;
+    @apply px-2.5 mb-0.5 text-[10px] font-medium text-slate-400;
   }
 
   .admin-sidebar.is-collapsed .admin-nav-group-label {
@@ -190,7 +190,7 @@ body {
   }
 
   .admin-nav-item {
-    @apply w-full flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium rounded-lg transition-colors duration-150 relative;
+    @apply w-full flex items-center gap-2 px-2.5 py-1.5 text-[12.5px] font-medium rounded-md transition-colors duration-150 relative;
   }
 
   .admin-sidebar.is-collapsed .admin-nav-item {
@@ -264,7 +264,7 @@ body {
   }
 
   .admin-nav-subitem {
-    @apply w-full flex items-center gap-2 px-2.5 py-1.5 text-[12px] font-medium rounded-md transition-colors duration-150;
+    @apply w-full flex items-center gap-2 px-2 py-1 text-[12px] font-medium rounded-md transition-colors duration-150 relative;
   }
 
   .admin-nav-subitem-active {
@@ -275,25 +275,28 @@ body {
     background-image: linear-gradient(
       100deg,
       #64748b 0%,
-      #0d9488 28%,
-      #f59e0b 50%,
-      #0d9488 72%,
+      #0d9488 16%,
+      #f59e0b 34%,
+      #e11d48 50%,
+      #7c3aed 66%,
+      #0d9488 84%,
       #64748b 100%
     );
-    background-size: 220% 100%;
+    background-size: 240% 100%;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: admin-nav-text-slide 3.2s linear infinite;
+    animation: admin-nav-text-slide 2.6s linear infinite;
   }
 
   .admin-nav-shimmer-text-active {
     background-image: linear-gradient(
       100deg,
       #0f766e 0%,
-      #14b8a6 30%,
-      #fbbf24 50%,
-      #14b8a6 70%,
+      #14b8a6 18%,
+      #fbbf24 38%,
+      #fb7185 54%,
+      #a78bfa 72%,
       #0f766e 100%
     );
     font-weight: 700;
@@ -368,6 +371,8 @@ body {
     writing-mode: vertical-rl;
     text-orientation: mixed;
     transform: translateY(-50%);
+    touch-action: none;
+    cursor: grab;
     transition:
       transform 160ms ease,
       box-shadow 160ms ease,
@@ -378,6 +383,26 @@ body {
     filter: brightness(1.03);
     transform: translateY(-50%) translateX(-2px);
     box-shadow: 0 14px 32px rgba(245, 158, 11, 0.42);
+  }
+
+  .admin-whats-new-fab.is-placed,
+  .admin-whats-new-fab.is-placed:hover {
+    right: auto;
+    width: auto;
+    min-height: 0;
+    padding: 0.5rem 0.8rem;
+    border-radius: 999px;
+    border-right: 1px solid #d97706;
+    writing-mode: horizontal-tb;
+    transform: none;
+    cursor: grab;
+  }
+
+  .admin-whats-new-fab.is-dragging,
+  .admin-whats-new-fab.is-dragging:hover {
+    cursor: grabbing;
+    transition: none;
+    transform: none;
   }
 
   .admin-whats-new-fab-label {

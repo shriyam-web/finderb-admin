@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, Dispatch, SetStateAction } from "react";
+import React, { useEffect, useMemo, useState, Dispatch, SetStateAction } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -246,6 +246,7 @@ export function BlogContent({
   onDeleteBlog,
   onUploadImage,
   canManage = false,
+  focusBlogId = null,
 }: {
   blogs: Blog[];
   onUpdateBlog: (item: Partial<Blog>) => Promise<void>;
@@ -253,6 +254,7 @@ export function BlogContent({
   onDeleteBlog: (id: string) => Promise<void>;
   onUploadImage: (file: File) => Promise<string>;
   canManage?: boolean;
+  focusBlogId?: string | null;
 }) {
   const [editingBlog, setEditingBlog] = useState<Blog | null>(null);
   const [isAddingBlog, setIsAddingBlog] = useState(false);
@@ -274,6 +276,17 @@ export function BlogContent({
     "all",
   );
   const [categoryFilter, setCategoryFilter] = useState("all");
+
+  useEffect(() => {
+    if (!focusBlogId) return;
+    const blog = blogs.find((item) => item.id === focusBlogId);
+    if (!blog) return;
+    setSearch("");
+    setStatusFilter("draft");
+    setCategoryFilter("all");
+    setIsAddingBlog(false);
+    setEditingBlog(blog);
+  }, [focusBlogId, blogs]);
 
   const categories = useMemo(() => {
     const set = new Set(blogs.map((b) => b.category).filter(Boolean));

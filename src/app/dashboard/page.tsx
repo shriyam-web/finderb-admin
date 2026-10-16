@@ -106,6 +106,16 @@ import {
   siteModeLabel,
   type SiteMode,
 } from "../../lib/siteRuntime";
+import {
+  codeShiningTabs,
+  recordFutureShiningTabs,
+} from "../../lib/sidebarTabShine";
+import {
+  normalizeOnboardSource,
+  onboardSourceLabel,
+  type OnboardSource,
+} from "../../lib/onboardSource";
+import { byOldestWait, waitingLabel } from "../../lib/waitingLabel";
 
 interface User {
   id: string;
@@ -134,6 +144,7 @@ interface Merchant {
   city: string | null;
   createdAt: string | null;
   hasViewablePassword: boolean;
+  onboardSource: OnboardSource | null;
 }
 
 interface AdminSession {
@@ -194,6 +205,7 @@ function mapBusinessToMerchant(m: any): Merchant {
     slug: m.slug || null,
     city: m.city || null,
     createdAt: m.createdAt || null,
+    onboardSource: normalizeOnboardSource(m.onboardSource),
     hasViewablePassword: (() => {
       const classified = classifyStoredPassword(m.password);
       return Boolean(classified && classified !== PASSWORD_HASHED_DISPLAY);
@@ -209,6 +221,8 @@ function mapBusinessToMerchantRequest(m: any): MerchantRequest {
     category: m.category || "Other",
     date: new Date(m.createdAt || Date.now()).toLocaleDateString(),
     registrationNumber: m.registrationNumber || null,
+    onboardSource: normalizeOnboardSource(m.onboardSource),
+    createdAt: m.createdAt || null,
   };
 }
 
@@ -297,6 +311,7 @@ interface BusinessData {
   whatsappNumber: string | null;
   yearsInBusiness: number | null;
   youtubeUrl: string | null;
+  onboardSource?: string | null;
   review: unknown;
   reviewReply: unknown;
 }
@@ -402,18 +417,27 @@ const COMING_SOON_COPY: Record<string, string> = {
 
 const DISABLED_FEATURE_TABS = new Set(["News"]);
 
-const NEW_SIDEBAR_TABS = new Set([
-  "Reviews",
-  "Change Requests",
-  "Ownership Requests",
-  "Job Reports",
-]);
-
 type SidebarQueueCounts = {
   reviews: number;
   changeRequests: number;
   ownershipRequests: number;
   jobReports: number;
+};
+
+type AdminTodo = {
+  id: string;
+  tab: string;
+  title: string;
+  detail: string;
+  targetId: string | null;
+  waitingSince: string | null;
+  kind: string;
+};
+
+type TodoFocus = {
+  tab: string;
+  targetId: string;
+  kind: string;
 };
 
 const EMPTY_QUEUE_COUNTS: SidebarQueueCounts = {
@@ -882,6 +906,21 @@ function isNavBranch(entry: NavEntry): entry is NavBranch {
   return typeof entry === "object" && entry !== null && "children" in entry;
 }
 
+function allSidebarTabNames(): string[] {
+  const names: string[] = [];
+  for (const group of NAV_GROUPS) {
+    for (const entry of group.items) {
+      if (isNavBranch(entry)) {
+        names.push(entry.name);
+        for (const child of entry.children) names.push(child.name);
+      } else {
+        names.push(entry);
+      }
+    }
+  }
+  return names;
+}
+
 const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
   { label: "Overview", items: ["Dashboard"] },
   {
@@ -952,6 +991,8 @@ export default function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showAdminProfile, setShowAdminProfile] = useState(false);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+  const [futureShiningTabs, setFutureShiningTabs] = useState<string[]>([]);
+  const [todoFocus, setTodoFocus] = useState<TodoFocus | null>(null);
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   const [platformTimeLabel, setPlatformTimeLabel] = useState("");
   const [platformDateLabel, setPlatformDateLabel] = useState("");
@@ -960,6 +1001,16 @@ export default function Dashboard() {
     unreadCount: whatsNewUnreadCount,
     setUnreadCount: setWhatsNewUnreadCount,
   } = useWhatsNewUnreadCount(adminSession?.id);
+
+  useEffect(() => {
+    setFutureShiningTabs(recordFutureShiningTabs(allSidebarTabNames()));
+  }, []);
+
+  const shiningTabs = useMemo(() => {
+    const names = codeShiningTabs();
+    for (const name of futureShiningTabs) names.add(name);
+    return names;
+  }, [futureShiningTabs]);
 
   const isDeveloper = adminSession?.role === "developer";
   const isController = adminSession?.role === "controller";
@@ -1172,6 +1223,8 @@ export default function Dashboard() {
   const [dataLoading, setDataLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [queueCounts, setQueueCounts] = useState<SidebarQueueCounts>(EMPTY_QUEUE_COUNTS);
+  const [queueItems, setQueueItems] = useState<AdminTodo[]>([]);
+  const [queueReady, setQueueReady] = useState(false);
 
   useEffect(() => {
     const validateSession = async () => {
@@ -1252,6 +1305,7 @@ export default function Dashboard() {
         const data = (await response.json()) as {
           success?: boolean;
           counts?: SidebarQueueCounts;
+          items?: AdminTodo[];
         };
         if (!cancelled && data.success && data.counts) {
           setQueueCounts({
@@ -1260,9 +1314,12 @@ export default function Dashboard() {
             ownershipRequests: Number(data.counts.ownershipRequests) || 0,
             jobReports: Number(data.counts.jobReports) || 0,
           });
+          setQueueItems(Array.isArray(data.items) ? data.items : []);
         }
       } catch {
         /* Sidebar counts are optional. The tabs still open. */
+      } finally {
+        if (!cancelled) setQueueReady(true);
       }
     };
     void load();
@@ -1759,6 +1816,7 @@ export default function Dashboard() {
         city: null,
         createdAt: new Date().toISOString(),
         hasViewablePassword: false,
+        onboardSource: req.onboardSource,
       },
     ]);
     setMerchantRequests((prev: MerchantRequest[]) =>
@@ -1937,6 +1995,100 @@ export default function Dashboard() {
     if (name === "Job Reports") return queueCounts.jobReports;
     return 0;
   };
+
+  const adminTodos = useMemo(() => {
+    const items: AdminTodo[] = [];
+    const allow = (tab: string) => hasTabAccess(adminSession, tab);
+    if (allow("Merchants")) {
+      const waitingListings = [...merchantRequests].sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : Number.POSITIVE_INFINITY;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : Number.POSITIVE_INFINITY;
+        return aTime - bTime;
+      });
+      for (const merchant of waitingListings) {
+        const age = waitingLabel(merchant.createdAt);
+        items.push({
+          id: `listing-${merchant.id}`,
+          tab: "Merchants",
+          title: merchant.name,
+          detail: [age, "Listing approval", merchant.category || "Uncategorised"]
+            .filter(Boolean)
+            .join(" · "),
+          targetId: merchant.id,
+          waitingSince: merchant.createdAt,
+          kind: "merchant",
+        });
+      }
+    }
+    for (const item of queueItems) {
+      if (allow(item.tab)) items.push(item);
+    }
+    if (allow("FinderB Jobs")) {
+      const waiting = finderBJobs
+        .filter((job) => {
+          const status = (job.approval_status || "").toLowerCase();
+          return status !== "approved" && status !== "rejected";
+        })
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      for (const job of waiting.slice(0, 12)) {
+        const age = waitingLabel(job.created_at);
+        items.push({
+          id: `job-${job.id}`,
+          tab: "FinderB Jobs",
+          title: job.title,
+          detail: [age, job.business_name ? `Job approval · ${job.business_name}` : "Job waiting for approval"]
+            .filter(Boolean)
+            .join(" · "),
+          targetId: job.id,
+          waitingSince: job.created_at || null,
+          kind: "job",
+        });
+      }
+      if (waiting.length > 12) {
+        items.push({
+          id: "jobs-more",
+          tab: "FinderB Jobs",
+          title: `${waiting.length - 12} more jobs`,
+          detail: "Open FinderB Jobs to review the rest",
+          targetId: null,
+          waitingSince: null,
+          kind: "more",
+        });
+      }
+    }
+    if (allow("Blogs")) {
+      const drafts = blogs
+        .filter((blog) => blog.status === "draft")
+        .sort(
+          (a, b) =>
+            new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime(),
+        );
+      for (const blog of drafts.slice(0, 8)) {
+        const age = waitingLabel(blog.created_at);
+        items.push({
+          id: `blog-${blog.id}`,
+          tab: "Blogs",
+          title: blog.title || "Untitled draft",
+          detail: [age, "Draft blog waiting to be published"].filter(Boolean).join(" · "),
+          targetId: blog.id,
+          waitingSince: blog.created_at || null,
+          kind: "blog",
+        });
+      }
+      if (drafts.length > 8) {
+        items.push({
+          id: "blogs-more",
+          tab: "Blogs",
+          title: `${drafts.length - 8} more drafts`,
+          detail: "Open Blogs to finish them",
+          targetId: null,
+          waitingSince: null,
+          kind: "more",
+        });
+      }
+    }
+    return byOldestWait(items);
+  }, [adminSession, merchantRequests, queueItems, finderBJobs, blogs]);
 
   const handleUpdateCategory = async (
     catName: string,
@@ -2409,6 +2561,17 @@ export default function Dashboard() {
             canEditListings={canEditListings}
             canViewListingsQueue={canViewListingsQueue}
             canViewLoginLogs={isDeveloper}
+            queueCounts={queueCounts}
+            todos={adminTodos}
+            todosReady={!dataLoading && queueReady}
+            onOpenTodo={(item) => {
+              setActiveTab(item.tab);
+              setTodoFocus(
+                item.targetId
+                  ? { tab: item.tab, targetId: item.targetId, kind: item.kind }
+                  : null,
+              );
+            }}
           />
         );
       case "Users":
@@ -2432,6 +2595,9 @@ export default function Dashboard() {
             uploadProgress={uploadProgress}
             setUploadProgress={setUploadProgress}
             canViewFinancialData={canViewFinancialData}
+            focusBusinessId={
+              todoFocus?.tab === "Merchants" ? todoFocus.targetId : null
+            }
           />
         );
       case "Business Onboarding":
@@ -2553,6 +2719,7 @@ export default function Dashboard() {
             onDeleteBlog={handleDeleteBlog}
             onUploadImage={handleBlogImageUpload}
             canManage={hasFullTabAccess(adminSession, "Blogs")}
+            focusBlogId={todoFocus?.tab === "Blogs" ? todoFocus.targetId : null}
           />
         );
       case "YouTube Playlists":
@@ -2567,6 +2734,9 @@ export default function Dashboard() {
             jobs={finderBJobs}
             setJobs={setFinderBJobs}
             canManage={hasFullTabAccess(adminSession, "FinderB Jobs")}
+            focusJobId={
+              todoFocus?.tab === "FinderB Jobs" ? todoFocus.targetId : null
+            }
           />
         );
       case "Payments & Subscriptions":
@@ -2607,6 +2777,7 @@ export default function Dashboard() {
           <ReviewsContent
             adminSession={adminSession}
             canManage={hasFullTabAccess(adminSession, "Reviews")}
+            focus={todoFocus?.tab === "Reviews" ? todoFocus : null}
           />
         );
       case "Change Requests":
@@ -2614,6 +2785,9 @@ export default function Dashboard() {
           <ChangeRequestsContent
             adminSession={adminSession}
             canManage={hasFullTabAccess(adminSession, "Change Requests")}
+            focusId={
+              todoFocus?.tab === "Change Requests" ? todoFocus.targetId : null
+            }
           />
         );
       case "Job Reports":
@@ -2621,6 +2795,7 @@ export default function Dashboard() {
           <JobReportsContent
             adminSession={adminSession}
             canManage={hasFullTabAccess(adminSession, "Job Reports")}
+            focusId={todoFocus?.tab === "Job Reports" ? todoFocus.targetId : null}
           />
         );
       case "Ownership Requests":
@@ -2628,6 +2803,9 @@ export default function Dashboard() {
           <OwnershipRequestsContent
             adminSession={adminSession}
             canManage={hasFullTabAccess(adminSession, "Ownership Requests")}
+            focusId={
+              todoFocus?.tab === "Ownership Requests" ? todoFocus.targetId : null
+            }
           />
         );
       case "Settings":
@@ -2670,6 +2848,17 @@ export default function Dashboard() {
             canEditListings={canEditListings}
             canViewListingsQueue={canViewListingsQueue}
             canViewLoginLogs={isDeveloper}
+            queueCounts={queueCounts}
+            todos={adminTodos}
+            todosReady={!dataLoading && queueReady}
+            onOpenTodo={(item) => {
+              setActiveTab(item.tab);
+              setTodoFocus(
+                item.targetId
+                  ? { tab: item.tab, targetId: item.targetId, kind: item.kind }
+                  : null,
+              );
+            }}
           />
         );
     }
@@ -2858,7 +3047,7 @@ export default function Dashboard() {
           )}
         </div>
 
-        <nav className="flex-1 px-2 py-2 overflow-y-auto sidebar-scrollbar">
+        <nav className="flex-1 px-1.5 py-1 overflow-y-auto sidebar-scrollbar">
           {NAV_GROUPS.map((group) => {
             const menuByName = new Map(menuItems.map((m) => [m.name, m]));
             const visibleEntries = group.items.filter((entry) => {
@@ -2882,7 +3071,7 @@ export default function Dashboard() {
               const isComingSoon = COMING_SOON_TABS.has(name);
               const isActive = activeTab === name;
               const pendingCount = isComingSoon ? 0 : pendingCountForTab(name);
-              const showNew = NEW_SIDEBAR_TABS.has(name);
+              const shineLabel = !isComingSoon && shiningTabs.has(name);
 
               return (
                 <button
@@ -2919,7 +3108,15 @@ export default function Dashboard() {
                     />
                   )}
                   {!sidebarCollapsed && (
-                    <span className="truncate text-left leading-snug">{label}</span>
+                    <span
+                      className={`truncate text-left leading-snug ${
+                        shineLabel
+                          ? `admin-nav-shimmer-text${isActive ? " admin-nav-shimmer-text-active" : ""}`
+                          : ""
+                      }`}
+                    >
+                      {label}
+                    </span>
                   )}
                   {isComingSoon ? (
                     <span className="admin-nav-badges">
@@ -2927,16 +3124,11 @@ export default function Dashboard() {
                         {DISABLED_FEATURE_TABS.has(name) ? "Off" : "Soon"}
                       </span>
                     </span>
-                  ) : showNew || pendingCount > 0 ? (
+                  ) : pendingCount > 0 ? (
                     <span className="admin-nav-badges">
-                      {showNew ? (
-                        <span className="admin-nav-badge admin-nav-badge-new">New</span>
-                      ) : null}
-                      {pendingCount > 0 ? (
-                        <span className="admin-nav-badge admin-nav-badge-alert">
-                          {pendingCount > 99 ? "99+" : pendingCount}
-                        </span>
-                      ) : null}
+                      <span className="admin-nav-badge admin-nav-badge-alert">
+                        {pendingCount > 99 ? "99+" : pendingCount}
+                      </span>
                     </span>
                   ) : null}
                 </button>
@@ -4479,6 +4671,7 @@ function MerchantsContent({
   uploadProgress,
   setUploadProgress,
   canViewFinancialData,
+  focusBusinessId = null,
 }: {
   activeMerchants: Merchant[];
   setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>;
@@ -4492,6 +4685,7 @@ function MerchantsContent({
     SetStateAction<{ current: number; total: number } | null>
   >;
   canViewFinancialData: boolean;
+  focusBusinessId?: string | null;
 }) {
   const [merchantTab, setMerchantTab] = useState<"Active" | "Pending">(
     "Active",
@@ -4504,6 +4698,7 @@ function MerchantsContent({
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [planFilter, setPlanFilter] = useState("all");
+  const [originFilter, setOriginFilter] = useState("all");
   const [sortBy, setSortBy] = useState<MerchantSortOption>("newest");
   const [rowsPerPage, setRowsPerPage] = useState<number>(10);
   const [page, setPage] = useState(1);
@@ -4530,6 +4725,7 @@ function MerchantsContent({
     categoryFilter !== "all" ||
     statusFilter !== "all" ||
     (canViewFinancialData && planFilter !== "all") ||
+    originFilter !== "all" ||
     Boolean(searchTerm.trim());
 
   const clearFilters = () => {
@@ -4537,6 +4733,7 @@ function MerchantsContent({
     setCategoryFilter("all");
     setStatusFilter("all");
     setPlanFilter("all");
+    setOriginFilter("all");
   };
 
   const filteredActiveMerchants = useMemo(() => {
@@ -4557,7 +4754,11 @@ function MerchantsContent({
           resolvePlanPresetId(
             m.selectedPlan || "free",
             m.billingCycle || "monthly",
-          ) === planFilter),
+          ) === planFilter) &&
+        (originFilter === "all" ||
+          (originFilter === "unknown"
+            ? !m.onboardSource
+            : m.onboardSource === originFilter)),
     );
 
     const byName = (a: Merchant, b: Merchant) =>
@@ -4597,6 +4798,7 @@ function MerchantsContent({
     categoryFilter,
     statusFilter,
     planFilter,
+    originFilter,
     sortBy,
     canViewFinancialData,
   ]);
@@ -4611,7 +4813,11 @@ function MerchantsContent({
         m.registrationNumber,
         m.category,
       ) &&
-      (categoryFilter === "all" || m.category === categoryFilter),
+      (categoryFilter === "all" || m.category === categoryFilter) &&
+      (originFilter === "all" ||
+        (originFilter === "unknown"
+          ? !m.onboardSource
+          : m.onboardSource === originFilter)),
   );
 
   // Reset to page 1 whenever the visible dataset changes.
@@ -4624,6 +4830,7 @@ function MerchantsContent({
     categoryFilter,
     statusFilter,
     planFilter,
+    originFilter,
     sortBy,
   ]);
 
@@ -4641,6 +4848,23 @@ function MerchantsContent({
     (safePage - 1) * rowsPerPage,
     safePage * rowsPerPage,
   );
+
+  const pendingFocusKey = filteredMerchantRequests.map((item) => item.id).join("|");
+  useEffect(() => {
+    if (!focusBusinessId || merchantTab !== "Pending") return;
+    const ids = pendingFocusKey ? pendingFocusKey.split("|") : [];
+    const index = ids.indexOf(focusBusinessId);
+    if (index < 0) return;
+    const nextPage = Math.floor(index / rowsPerPage) + 1;
+    if (page !== nextPage) {
+      setPage(nextPage);
+      return;
+    }
+    document.getElementById(`admin-focus-${focusBusinessId}`)?.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    });
+  }, [focusBusinessId, merchantTab, pendingFocusKey, rowsPerPage, page]);
 
   const fetchMerchantPassword = async (merchantId: string) => {
     const { data } = await createClient()
@@ -4679,6 +4903,15 @@ function MerchantsContent({
     }
     setSelectedBusiness(data);
   };
+
+  useEffect(() => {
+    if (!focusBusinessId) return;
+    setMerchantTab("Pending");
+    setSearchTerm("");
+    setCategoryFilter("all");
+    setOriginFilter("all");
+    void handleViewMerchant(focusBusinessId);
+  }, [focusBusinessId]);
 
   const handleBusinessImageUpload = async (files: File[]) => {
     if (!files.length || !selectedBusiness) return;
@@ -5338,6 +5571,17 @@ function MerchantsContent({
             </option>
           ))}
         </select>
+        <select
+          value={originFilter}
+          onChange={(e) => setOriginFilter(e.target.value)}
+          className={filterSelectClass}
+          title="Filter by who created the profile"
+        >
+          <option value="all">All origins</option>
+          <option value="self">Self registered</option>
+          <option value="admin">Added by admin</option>
+          <option value="unknown">Origin not recorded</option>
+        </select>
         {merchantTab === "Active" && (
           <>
             <select
@@ -5395,13 +5639,17 @@ function MerchantsContent({
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="admin-page-header">
         <div>
-          <h1 className="admin-page-title">Partner management</h1>
+          <h1 className="admin-page-title">Merchants</h1>
           <p className="admin-page-subtitle">
-            Manage merchant profiles, public listing status, and FinderB
-            verification badges.
+            {activeMerchants.length} active
+            {canViewFinancialData ? ` · ${paidCount} paid` : ""}
+            {` · ${verifiedCount} verified`}
+            {merchantRequests.length
+              ? ` · ${merchantRequests.length} waiting for review`
+              : ""}
           </p>
         </div>
         <div className="admin-segmented">
@@ -5430,42 +5678,6 @@ function MerchantsContent({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {[
-          {
-            label: "Active partners",
-            value: activeMerchants.length,
-            dot: "bg-teal-500",
-          },
-          {
-            label: "FinderB verified",
-            value: verifiedCount,
-            dot: "bg-emerald-500",
-          },
-          ...(canViewFinancialData
-            ? [{ label: "Paid plans", value: paidCount, dot: "bg-indigo-400" }]
-            : []),
-          {
-            label: "Awaiting review",
-            value: merchantRequests.length,
-            dot: "bg-amber-400",
-          },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5"
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${stat.dot}`} />
-            <span className="text-xs font-medium text-slate-500">
-              {stat.label}
-            </span>
-            <span className="text-sm font-semibold text-slate-900 tabular-nums">
-              {stat.value}
-            </span>
-          </div>
-        ))}
-      </div>
-
       {merchantTab === "Active" ? (
         <div className="admin-card overflow-hidden">
           {toolbar}
@@ -5490,7 +5702,7 @@ function MerchantsContent({
             {pagedActiveMerchants.map((merchant) => (
               <div
                 key={merchant.id}
-                className={`grid grid-cols-1 gap-2 lg:gap-3 px-4 py-3 lg:items-center hover:bg-slate-50/70 transition-colors ${
+                className={`grid grid-cols-1 gap-2 lg:gap-3 px-4 py-2.5 lg:items-center hover:bg-slate-50/70 transition-colors ${
                   canViewFinancialData
                     ? "lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_auto]"
                     : "lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_auto]"
@@ -5529,6 +5741,11 @@ function MerchantsContent({
                       <p className="text-[13px] font-semibold text-slate-900 truncate">
                         {merchant.name}
                       </p>
+                      {merchant.onboardSource && (
+                        <p className="text-[10px] font-medium text-slate-400">
+                          {onboardSourceLabel(merchant.onboardSource)}
+                        </p>
+                      )}
                       <span
                         className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${merchant.status === "Active" ? "bg-emerald-500" : "bg-slate-300"}`}
                         title={merchant.status}
@@ -5810,7 +6027,10 @@ function MerchantsContent({
             {pagedMerchantRequests.map((req) => (
               <div
                 key={req.id}
-                className="grid grid-cols-1 lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 lg:gap-3 px-4 py-3 lg:items-center hover:bg-slate-50/70 transition-colors"
+                id={`admin-focus-${req.id}`}
+                className={`grid grid-cols-1 lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 lg:gap-3 px-4 py-3 lg:items-center hover:bg-slate-50/70 transition-colors ${
+                  focusBusinessId === req.id ? "bg-amber-50 ring-2 ring-inset ring-amber-300" : ""
+                }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="admin-avatar !w-9 !h-9 !text-xs shrink-0">
@@ -5824,6 +6044,11 @@ function MerchantsContent({
                     <p className="text-[13px] font-semibold text-slate-900 truncate">
                       {req.name}
                     </p>
+                    {req.onboardSource && (
+                      <p className="text-[10px] font-medium text-slate-400">
+                        {onboardSourceLabel(req.onboardSource)}
+                      </p>
+                    )}
                     <div className="flex items-center gap-1.5 text-[11px] text-slate-500 min-w-0">
                       {req.registrationNumber && (
                         <span className="admin-mono text-[10px] shrink-0">
@@ -6029,6 +6254,8 @@ function MerchantsContent({
               category: selectedBusiness.category || "",
               date: "",
               registrationNumber: selectedBusiness.registrationNumber || null,
+              onboardSource: normalizeOnboardSource(selectedBusiness.onboardSource),
+              createdAt: selectedBusiness.createdAt || null,
             });
             setSelectedBusiness(null);
           }}

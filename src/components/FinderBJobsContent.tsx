@@ -1,6 +1,6 @@
 "use client";
 
-import { Dispatch, SetStateAction, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
 import AdminOverlay from "./AdminOverlay";
 import {
@@ -81,10 +81,12 @@ export default function FinderBJobsContent({
   jobs,
   setJobs,
   canManage = false,
+  focusJobId = null,
 }: {
   jobs: FinderBJob[];
   setJobs: Dispatch<SetStateAction<FinderBJob[]>>;
   canManage?: boolean;
+  focusJobId?: string | null;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<JobStatus | "all">("all");
@@ -93,6 +95,16 @@ export default function FinderBJobsContent({
   const [rejectingJob, setRejectingJob] = useState<FinderBJob | null>(null);
   const [reason, setReason] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (!focusJobId) return;
+    const job = jobs.find((item) => item.id === focusJobId);
+    if (!job) return;
+    setSearchTerm("");
+    setStatusFilter("pending");
+    setTypeFilter("all");
+    setSelectedJob(job);
+  }, [focusJobId, jobs]);
 
   const stats = useMemo(
     () => ({

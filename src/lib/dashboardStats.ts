@@ -1,3 +1,4 @@
+import { normalizeOnboardSource } from "./onboardSource";
 import { parseFinderbTimestamp } from "./formatDateTime";
 import { isCategoryLeadSource, isProfileLeadSource } from "./leadBadges";
 import {
@@ -57,6 +58,14 @@ export type DashboardStats = {
   plans: { starter: number; growthMonthly: number; proAnnual: number };
   content: { categories: number; blogs: number; jobs: number };
   weekSignups: { users: number; merchants: number; leads: number; total: number };
+  onboarding: {
+    self: number;
+    admin: number;
+    unknown: number;
+    weekSelf: number;
+    weekAdmin: number;
+    weeks: { label: string; self: number; admin: number }[];
+  };
 };
 
 export function computeDashboardStats(input: {
@@ -96,6 +105,39 @@ export function computeDashboardStats(input: {
   const weekNewMerchants = countSince(input.allBusinessData, (m) => m.createdAt, 7);
   const weekNewLeads = countSince(input.leads, (l) => l.created_at, 7);
 
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+  const weekBuckets = lastEightWeekBuckets(new Date());
+  let selfOnboarded = 0;
+  let adminOnboarded = 0;
+  let unknownOnboarded = 0;
+  let weekSelf = 0;
+  let weekAdmin = 0;
+  for (const business of input.allBusinessData as {
+    onboardSource?: string | null;
+    createdAt?: string | null;
+  }[]) {
+    const source = normalizeOnboardSource(business.onboardSource);
+    const created = parseFinderbTimestamp(business.createdAt);
+    const thisWeek = Boolean(created && created >= weekAgo);
+    if (source === "self") {
+      selfOnboarded += 1;
+      if (thisWeek) weekSelf += 1;
+    } else if (source === "admin") {
+      adminOnboarded += 1;
+      if (thisWeek) weekAdmin += 1;
+    } else {
+      unknownOnboarded += 1;
+    }
+    if (!created || (source !== "self" && source !== "admin")) continue;
+    const bucket = weekBuckets.find(
+      (week) => created.getTime() >= week.start && created.getTime() < week.end,
+    );
+    if (!bucket) continue;
+    if (source === "self") bucket.self += 1;
+    else bucket.admin += 1;
+  }
+
   return {
     users: {
       total: input.users.length,
@@ -134,5 +176,37 @@ export function computeDashboardStats(input: {
       leads: weekNewLeads,
       total: weekNewUsers + weekNewMerchants,
     },
+    onboarding: {
+      self: selfOnboarded,
+      admin: adminOnboarded,
+      unknown: unknownOnboarded,
+      weekSelf,
+      weekAdmin,
+      weeks: weekBuckets.map((week) => ({
+        label: week.label,
+        self: week.self,
+        admin: week.admin,
+      })),
+    },
   };
+}
+
+function lastEightWeekBuckets(now: Date) {
+  const monday = new Date(now);
+  monday.setHours(0, 0, 0, 0);
+  const weekday = monday.getDay();
+  monday.setDate(monday.getDate() - (weekday === 0 ? 6 : weekday - 1));
+  return Array.from({ length: 8 }, (_, index) => {
+    const startDate = new Date(monday);
+    startDate.setDate(monday.getDate() - (7 - index) * 7);
+    const end = new Date(startDate);
+    end.setDate(startDate.getDate() + 7);
+    return {
+      start: startDate.getTime(),
+      end: end.getTime(),
+      label: startDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      self: 0,
+      admin: 0,
+    };
+  });
 }

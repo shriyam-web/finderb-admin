@@ -91,13 +91,17 @@ function MiniMetric({
   label,
   value,
   hint,
+  onClick,
 }: {
   label: string;
   value: string | number;
   hint?: string;
+  onClick?: () => void;
 }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+  const className =
+    "rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left w-full hover:border-slate-300 hover:bg-slate-50 transition-colors";
+  const body = (
+    <>
       <p className="text-[11px] font-medium text-slate-500">{label}</p>
       <p className="text-lg font-semibold text-slate-900 mt-0.5 tabular-nums tracking-tight leading-none">
         {value}
@@ -107,7 +111,13 @@ function MiniMetric({
           {hint}
         </p>
       )}
-    </div>
+    </>
+  );
+  if (!onClick) return <div className={className}>{body}</div>;
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {body}
+    </button>
   );
 }
 
@@ -166,6 +176,10 @@ export default function DashboardContent({
   canEditListings,
   canViewListingsQueue,
   canViewLoginLogs,
+  queueCounts,
+  todos,
+  todosReady,
+  onOpenTodo,
 }: {
   setActiveTab: (tab: string) => void;
   merchantRequests: MerchantRequest[];
@@ -183,6 +197,27 @@ export default function DashboardContent({
   canEditListings: boolean;
   canViewListingsQueue: boolean;
   canViewLoginLogs: boolean;
+  queueCounts: {
+    reviews: number;
+    changeRequests: number;
+    ownershipRequests: number;
+    jobReports: number;
+  };
+  todos: {
+    id: string;
+    tab: string;
+    title: string;
+    detail: string;
+    targetId: string | null;
+    waitingSince: string | null;
+    kind: string;
+  }[];
+  todosReady: boolean;
+  onOpenTodo: (item: {
+    tab: string;
+    targetId: string | null;
+    kind: string;
+  }) => void;
 }) {
   const [showRevenue, setShowRevenue] = useState(false);
   const [activityFilter, setActivityFilter] = useState<
@@ -272,6 +307,106 @@ export default function DashboardContent({
         </div>
       </div>
 
+      <section className="admin-card overflow-hidden">
+        <div className="admin-card-header">
+          <div>
+            <h2 className="admin-card-title">To-do</h2>
+            <p className="admin-card-description">
+              {todosReady
+                ? todos.length
+                  ? `${todos.length} item${todos.length === 1 ? "" : "s"} waiting for review`
+                  : "Nothing is waiting"
+                : "Checking what needs a review"}
+            </p>
+          </div>
+        </div>
+        {!todosReady ? (
+          <p className="px-4 py-6 text-sm text-slate-500">Loading the queue…</p>
+        ) : todos.length === 0 ? (
+          <div className="px-6 py-8 text-center">
+            <p className="text-2xl" aria-hidden>
+              🎉
+            </p>
+            <h3 className="mt-2 text-lg font-semibold text-slate-900">Kudos</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Every review queue is clear. Nice work.
+            </p>
+          </div>
+        ) : (
+          <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-100">
+            {todos.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onOpenTodo(item)}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-50"
+              >
+                <span className="w-32 shrink-0 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                  {item.tab}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-slate-900">
+                    {item.title}
+                  </span>
+                  <span className="block truncate text-xs text-slate-500">
+                    {item.detail}
+                  </span>
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {(canAccessTab("Reviews") ||
+        canAccessTab("Change Requests") ||
+        canAccessTab("Ownership Requests") ||
+        canAccessTab("Job Reports")) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          {canAccessTab("Reviews") && (
+            <StatCard
+              label="Reviews"
+              value={queueCounts.reviews}
+              sub="Anonymous reviews and open reports"
+              icon={Shield}
+              accent={queueCounts.reviews ? "amber" : "slate"}
+              onClick={() => setActiveTab("Reviews")}
+            />
+          )}
+          {canAccessTab("Change Requests") && (
+            <StatCard
+              label="Change requests"
+              value={queueCounts.changeRequests}
+              sub="Name and category edits"
+              icon={FileText}
+              accent={queueCounts.changeRequests ? "amber" : "slate"}
+              onClick={() => setActiveTab("Change Requests")}
+            />
+          )}
+          {canAccessTab("Ownership Requests") && (
+            <StatCard
+              label="Ownership requests"
+              value={queueCounts.ownershipRequests}
+              sub="Claims on existing listings"
+              icon={Building2}
+              accent={queueCounts.ownershipRequests ? "amber" : "slate"}
+              onClick={() => setActiveTab("Ownership Requests")}
+            />
+          )}
+          {canAccessTab("Job Reports") && (
+            <StatCard
+              label="Job reports"
+              value={queueCounts.jobReports}
+              sub="Reported job posts"
+              icon={Briefcase}
+              accent={queueCounts.jobReports ? "amber" : "slate"}
+              onClick={() => setActiveTab("Job Reports")}
+            />
+          )}
+        </div>
+      )}
+
       {/* Primary KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         {canAccessTab("Users") && (
@@ -311,9 +446,90 @@ export default function DashboardContent({
             sub={`${stats.weekSignups.users} users · ${stats.weekSignups.merchants} partners`}
             icon={UserPlus}
             accent="primary"
+            onClick={() =>
+              setActiveTab(canAccessTab("Users") ? "Users" : "Merchants")
+            }
           />
         )}
       </div>
+
+      {canAccessTab("Merchants") && (
+        <section className="admin-card p-4">
+          <div className="flex flex-wrap items-end justify-between gap-2 mb-3">
+            <div>
+              <h2 className="admin-card-title">How businesses joined</h2>
+              <p className="admin-card-description">
+                Self registration versus profiles created in this panel
+                {stats.onboarding.weekSelf + stats.onboarding.weekAdmin > 0
+                  ? ` · ${stats.onboarding.weekSelf} self and ${stats.onboarding.weekAdmin} by admin this week`
+                  : ""}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab("Merchants")}
+              className="text-xs font-medium text-teal-700 hover:underline"
+            >
+              Open merchants
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveTab("Merchants")}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-3 text-left hover:bg-slate-50"
+            >
+              <p className="text-[11px] font-medium text-slate-500">Self registered</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+                {stats.onboarding.self.toLocaleString()}
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("Merchants")}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-3 text-left hover:bg-slate-50"
+            >
+              <p className="text-[11px] font-medium text-slate-500">Added by admin</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+                {stats.onboarding.admin.toLocaleString()}
+              </p>
+            </button>
+          </div>
+          {stats.onboarding.self + stats.onboarding.admin > 0 && (
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 flex">
+              <div
+                className="h-full bg-teal-600"
+                style={{
+                  width: `${(stats.onboarding.self / (stats.onboarding.self + stats.onboarding.admin)) * 100}%`,
+                }}
+              />
+              <div className="h-full flex-1 bg-amber-400" />
+            </div>
+          )}
+          {stats.onboarding.unknown > 0 && (
+            <p className="mt-2 text-[11px] text-slate-500">
+              {stats.onboarding.unknown.toLocaleString()} older listings have no origin saved.
+              New signups are tagged after the onboard-source column is added.
+            </p>
+          )}
+          <div className="mt-4">
+            <p className="mb-2 text-[11px] font-medium text-slate-500">
+              Last 8 weeks · teal is self registered, amber is added by admin
+            </p>
+            <AdminBarChart
+              height={180}
+              data={stats.onboarding.weeks.map((week) => ({
+                label: week.label,
+                values: { self: week.self, admin: week.admin },
+              }))}
+              series={[
+                { key: "self", label: "Self registered", color: "#0d9488" },
+                { key: "admin", label: "Added by admin", color: "#f59e0b" },
+              ]}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Secondary stats row */}
       <div
@@ -326,6 +542,7 @@ export default function DashboardContent({
             label="Awaiting listing review"
             value={stats.merchants.pendingKyc}
             hint="Pending admin approval"
+            onClick={() => setActiveTab("Merchants")}
           />
         )}
         {canViewFinancialData && (
@@ -334,21 +551,25 @@ export default function DashboardContent({
               label="Paid partners"
               value={stats.merchants.paid}
               hint="Completed payment"
+              onClick={() => setActiveTab("Payments & Subscriptions")}
             />
             <MiniMetric
               label="Payment success"
               value={`${stats.payments.successRate}%`}
               hint="Of all attempts"
+              onClick={() => setActiveTab("Payments & Subscriptions")}
             />
             <MiniMetric
               label="Active subs"
               value={stats.payments.activeSubscriptions}
               hint="Razorpay active"
+              onClick={() => setActiveTab("Payments & Subscriptions")}
             />
             <MiniMetric
               label="Opens"
               value={stats.payments.opensCount}
               hint="Needs attention"
+              onClick={() => setActiveTab("Payments & Subscriptions")}
             />
           </>
         )}
@@ -357,6 +578,7 @@ export default function DashboardContent({
             label="Categories"
             value={stats.content.categories}
             hint={`${stats.content.blogs} blogs · ${stats.content.jobs} jobs`}
+            onClick={() => setActiveTab("Categories")}
           />
         )}
       </div>
@@ -403,30 +625,25 @@ export default function DashboardContent({
               }))}
             />
             <div className="mt-2 pt-3 border-t border-slate-100 grid grid-cols-3 gap-3 px-1">
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                  Leads (7d)
-                </p>
-                <p className="text-base font-bold text-slate-900 tabular-nums">
-                  {stats.leads.weekNew}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                  Category leads
-                </p>
-                <p className="text-base font-bold text-slate-900 tabular-nums">
-                  {stats.leads.category}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
-                  Profile leads
-                </p>
-                <p className="text-base font-bold text-slate-900 tabular-nums">
-                  {stats.leads.profile}
-                </p>
-              </div>
+              {[
+                { label: "Leads (7d)", value: stats.leads.weekNew },
+                { label: "Category leads", value: stats.leads.category },
+                { label: "Profile leads", value: stats.leads.profile },
+              ].map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => canAccessTab("Leads") && setActiveTab("Leads")}
+                  className="text-left rounded-md hover:bg-slate-50 px-1 py-0.5"
+                >
+                  <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                    {item.label}
+                  </p>
+                  <p className="text-base font-bold text-slate-900 tabular-nums">
+                    {item.value}
+                  </p>
+                </button>
+              ))}
             </div>
           </div>
         </div>
@@ -463,7 +680,12 @@ export default function DashboardContent({
                   ? (plan.count / stats.merchants.total) * 100
                   : 0;
                 return (
-                  <div key={plan.label}>
+                  <button
+                    key={plan.label}
+                    type="button"
+                    onClick={() => setActiveTab("Payments & Subscriptions")}
+                    className="block w-full text-left"
+                  >
                     <div className="flex justify-between text-[11px] mb-1">
                       <span className="font-bold text-slate-700">
                         {plan.label}
@@ -478,7 +700,7 @@ export default function DashboardContent({
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -545,9 +767,11 @@ export default function DashboardContent({
                     tone: "border-rose-200 bg-rose-50/50",
                   },
                 ].map((item) => (
-                  <div
+                  <button
                     key={item.label}
-                    className={`rounded-lg border px-3 py-2.5 ${item.tone}`}
+                    type="button"
+                    onClick={() => setActiveTab("Payments & Subscriptions")}
+                    className={`rounded-lg border px-3 py-2.5 text-left hover:brightness-[0.98] ${item.tone}`}
                   >
                     <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-500">
                       {item.label}
@@ -555,7 +779,7 @@ export default function DashboardContent({
                     <p className="text-lg font-bold text-slate-900 mt-0.5 tabular-nums leading-none">
                       {item.value}
                     </p>
-                  </div>
+                  </button>
                 ))}
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">

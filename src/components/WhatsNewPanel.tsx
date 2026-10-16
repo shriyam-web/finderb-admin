@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
 import { formatDateTimeInr } from "../lib/formatDateTime";
 import {
@@ -11,6 +11,31 @@ import {
 } from "../lib/whatsNew";
 import { useAdminToast } from "./AdminToast";
 import AdminOverlay from "./AdminOverlay";
+
+const WHATS_NEW_POS_KEY = "admin_whats_new_pos";
+
+type FabPos = { x: number; y: number };
+
+function readFabPos(): FabPos | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(WHATS_NEW_POS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as FabPos;
+    if (typeof parsed.x !== "number" || typeof parsed.y !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function clampFab(x: number, y: number, width: number, height: number): FabPos {
+  const pad = 8;
+  return {
+    x: Math.min(Math.max(pad, x), Math.max(pad, window.innerWidth - width - pad)),
+    y: Math.min(Math.max(pad, y), Math.max(pad, window.innerHeight - height - pad)),
+  };
+}
 
 type Props = {
   open: boolean;
@@ -37,6 +62,21 @@ export default function WhatsNewPanel({
   const [error, setError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
+  const [fabPos, setFabPos] = useState<FabPos | null>(null);
+  const [draggingFab, setDraggingFab] = useState(false);
+  const fabRef = useRef<HTMLButtonElement>(null);
+  const dragRef = useRef({
+    pointerId: -1,
+    startX: 0,
+    startY: 0,
+    originX: 0,
+    originY: 0,
+    moved: false,
+  });
+
+  useEffect(() => {
+    setFabPos(readFabPos());
+  }, []);
 
   const panelUnread = useMemo(
     () => entries.filter((entry) => !entry.isRead).length,
@@ -133,9 +173,58 @@ export default function WhatsNewPanel({
     <>
       {!open && (
         <button
+          ref={fabRef}
           type="button"
-          onClick={onOpen}
-          className="admin-whats-new-fab"
+          onPointerDown={(event) => {
+            const rect = event.currentTarget.getBoundingClientRect();
+            dragRef.current = {
+              pointerId: event.pointerId,
+              startX: event.clientX,
+              startY: event.clientY,
+              originX: rect.left,
+              originY: rect.top,
+              moved: false,
+            };
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            if (dragRef.current.pointerId !== event.pointerId) return;
+            const dx = event.clientX - dragRef.current.startX;
+            const dy = event.clientY - dragRef.current.startY;
+            if (Math.abs(dx) + Math.abs(dy) < 5) return;
+            dragRef.current.moved = true;
+            const rect = event.currentTarget.getBoundingClientRect();
+            setDraggingFab(true);
+            setFabPos(
+              clampFab(
+                dragRef.current.originX + dx,
+                dragRef.current.originY + dy,
+                rect.width,
+                rect.height,
+              ),
+            );
+          }}
+          onPointerUp={(event) => {
+            if (dragRef.current.pointerId !== event.pointerId) return;
+            dragRef.current.pointerId = -1;
+            setDraggingFab(false);
+            if (!dragRef.current.moved || !fabRef.current) return;
+            const rect = fabRef.current.getBoundingClientRect();
+            const next = clampFab(rect.left, rect.top, rect.width, rect.height);
+            setFabPos(next);
+            localStorage.setItem(WHATS_NEW_POS_KEY, JSON.stringify(next));
+          }}
+          onClick={(event) => {
+            if (dragRef.current.moved) {
+              event.preventDefault();
+              dragRef.current.moved = false;
+              return;
+            }
+            onOpen();
+          }}
+          className={`admin-whats-new-fab ${fabPos ? "is-placed" : ""} ${draggingFab ? "is-dragging" : ""}`}
+          style={fabPos ? { left: fabPos.x, top: fabPos.y } : undefined}
+          title="Drag to move. Click to open."
           aria-label={
             badgeCount > 0
               ? `What's New, ${badgeCount} unread`

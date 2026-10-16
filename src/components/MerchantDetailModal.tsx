@@ -38,6 +38,7 @@ import {
   CategoryLabelDisplay,
   CategorySubcategoryPicker,
 } from "./CategorySubcategoryPicker";
+import { onboardSourceLabel } from "../lib/onboardSource";
 
 export type MerchantBusinessRecord = {
   id: string;
@@ -113,6 +114,7 @@ export type MerchantBusinessRecord = {
   review: unknown;
   reviewReply: unknown;
   password?: string | null;
+  onboardSource?: string | null;
 };
 
 type MerchantDetailModalProps = {
@@ -1328,35 +1330,25 @@ export default function MerchantDetailModal({
                       Public profile ↗
                     </a>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    <Chip tone={statusTone(display.status)}>
-                      Listing {display.status || "Inactive"}
-                    </Chip>
-                    <Chip tone="neutral">
-                      KYC {display.kycStatus || "pending"}
-                    </Chip>
-                    {isPlaceholderEmail(display.email) && (
-                      <Chip tone="warning">Email missing</Chip>
-                    )}
-                    {display.googleRating != null && (
-                      <Chip tone="warning">
-                        Google ★ {formatNumber(display.googleRating, 1)}
-                      </Chip>
-                    )}
-                    {canViewFinancialData && (
-                      <>
-                        <Chip tone={statusTone(display.paymentStatus)}>
-                          Pay {formatStatusLabel(display.paymentStatus)}
-                        </Chip>
-                        <Chip tone="primary">
-                          {planLabel(
-                            display.selectedPlan,
-                            display.billingCycle,
-                          )}
-                        </Chip>
-                      </>
-                    )}
-                  </div>
+                  <p className="mt-1 text-[12px] text-slate-500 leading-snug">
+                    {[
+                      `Listing ${display.status || "Inactive"}`,
+                      `KYC ${display.kycStatus || "pending"}`,
+                      isPlaceholderEmail(display.email) ? "Email missing" : "",
+                      display.googleRating != null
+                        ? `Google ${formatNumber(display.googleRating, 1)}`
+                        : "",
+                      canViewFinancialData
+                        ? formatStatusLabel(display.paymentStatus)
+                        : "",
+                      canViewFinancialData
+                        ? planLabel(display.selectedPlan, display.billingCycle)
+                        : "",
+                      onboardSourceLabel(display.onboardSource),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -1431,7 +1423,7 @@ export default function MerchantDetailModal({
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar bg-slate-50/50">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-slate-50/40">
             {tab === "overview" && (
               <>
                 {(canManage || display.isFinderBVerified) && (

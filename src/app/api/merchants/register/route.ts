@@ -211,9 +211,7 @@ export async function POST(request: Request) {
     const galleryImages = await resolveGalleryImages(normalized.photos);
     const profilePictureUrl = galleryImages[0] || null;
 
-    const { data: business, error } = await supabase
-      .from("Business")
-      .insert({
+    const insertRow = {
         id,
         fullName: normalized.fullName,
         // Placeholder logins keep workEmail blank so the profile still
@@ -256,11 +254,28 @@ export async function POST(request: Request) {
         paymentModes: normalized.paymentModes,
         createdAt: now,
         updatedAt: now,
-      })
+        onboardSource: "admin",
+    };
+    let { data: business, error } = await supabase
+      .from("Business")
+      .insert(insertRow)
       .select(
         "id, registrationNumber, businessName, fullName, email, mobile, slug, status, kycStatus, city",
       )
       .single();
+    if (error && /onboardSource/i.test(error.message)) {
+      const withoutSource = { ...insertRow } as Record<string, unknown>;
+      delete withoutSource.onboardSource;
+      const retry = await supabase
+        .from("Business")
+        .insert(withoutSource)
+        .select(
+          "id, registrationNumber, businessName, fullName, email, mobile, slug, status, kycStatus, city",
+        )
+        .single();
+      business = retry.data;
+      error = retry.error;
+    }
 
     if (error) {
       if (error.code === "23505") {
@@ -281,7 +296,14 @@ export async function POST(request: Request) {
       );
     }
 
-    if (String(business?.status || "").toLowerCase() === "active") {
+    if (!business) {
+      return NextResponse.json(
+        { success: false, error: "Registration failed." },
+        { status: 500 },
+      );
+    }
+
+    if (String(business.status || "").toLowerCase() === "active") {
       void notifyListingLiveOnSite(String(business.id)).catch((notifyError) => {
         console.warn("[admin-register] listing-live notify failed", notifyError);
       });

@@ -111,9 +111,11 @@ function toReviewRow(raw: Record<string, unknown>): ReviewRow {
 export default function ReviewsContent({
   adminSession,
   canManage,
+  focus = null,
 }: {
   adminSession: AdminSession | null;
   canManage: boolean;
+  focus?: { targetId: string; kind: string } | null;
 }) {
   const { toast } = useAdminToast();
   const [tab, setTab] = useState<InnerTab>("all");
@@ -180,6 +182,22 @@ export default function ReviewsContent({
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!focus?.targetId) return;
+    if (focus.kind === "business-flag") {
+      setTab("business-flags");
+      setFlagStatus("open");
+    } else if (focus.kind === "user-flag") {
+      setTab("user-flags");
+      setFlagStatus("open");
+    } else {
+      setTab("anonymous");
+      setAnonStatus("pending");
+    }
+    setQuery("");
+    setAppliedQuery("");
+  }, [focus?.targetId, focus?.kind]);
+
   const act = async (payload: Record<string, unknown>, key: string) => {
     if (!canManage || !adminSession?.id) {
       toast("Read-only access. Ask a Developer for edit permission.", "error");
@@ -223,6 +241,25 @@ export default function ReviewsContent({
 
   const list = tab === "user-flags" || tab === "business-flags" ? flags : reviews;
   const paging = useClientPage(list, 12, `${tab}-${anonStatus}-${flagStatus}-${appliedQuery}`);
+  const focusListKey = list
+    .map((row) => (isFlagRow(row) ? row.id : row.review_id))
+    .join("|");
+
+  useEffect(() => {
+    if (!focus?.targetId) return;
+    const ids = focusListKey ? focusListKey.split("|") : [];
+    const index = ids.indexOf(focus.targetId);
+    if (index < 0) return;
+    const nextPage = Math.floor(index / paging.pageSize) + 1;
+    if (paging.page !== nextPage) {
+      paging.setPage(nextPage);
+      return;
+    }
+    document.getElementById(`admin-focus-${focus.targetId}`)?.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    });
+  }, [focus?.targetId, focusListKey, paging.page, paging.pageSize, paging.setPage]);
 
   const actionButtons = (
     businessId: string,
@@ -315,7 +352,15 @@ export default function ReviewsContent({
     const vis = visibilityLabel(row);
     const listingUrl = getBusinessProfileUrl({ id: row.business_id, slug: row.slug, city: row.city, businessName: row.business_name });
     return (
-      <article key={`${row.business_id}:${row.review_id}:${extra?.reportId || ""}`} className="rounded-xl border border-slate-200 bg-white p-4">
+      <article
+        key={`${row.business_id}:${row.review_id}:${extra?.reportId || ""}`}
+        id={`admin-focus-${extra?.reportId || row.review_id}`}
+        className={`rounded-xl border bg-white p-4 ${
+          focus?.targetId === (extra?.reportId || row.review_id)
+            ? "border-amber-300 ring-2 ring-amber-300"
+            : "border-slate-200"
+        }`}
+      >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <a href={listingUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-slate-900 hover:underline">

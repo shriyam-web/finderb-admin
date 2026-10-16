@@ -81,8 +81,13 @@ const WHATS_NEW_SEEDS: Array<{
 }> = [
   {
     title: "Four new sidebar queues",
-    body: "Reviews, Change Requests, Ownership Requests, and Job Reports are now in the sidebar. Each one has a New sticker.\n\nReviews — decide anonymous reviews and open review reports.\nChange Requests — approve or reject a business name or category change.\nOwnership Requests — approve or deny someone claiming a listing. Approval emails the login details only to that person.\nJob Reports — review a reported job. Taking it down emails the business with your reason.\n\nIf a tab has something waiting, its sidebar row shows a count, so you can see that a visit is needed without opening it. The same count appears on every tab that has pending work: merchant approvals, new users, new leads, draft blogs, jobs waiting for approval, and pending payments.",
+    body: "Reviews, Change Requests, Ownership Requests, and Job Reports are in the sidebar. A new tab's name shines in colour for 30 days, then it looks like the other tabs. No sticker.\n\nReviews — decide anonymous reviews and open review reports.\nChange Requests — approve or reject a business name or category change.\nOwnership Requests — approve or deny someone claiming a listing. Approval emails the login details only to that person.\nJob Reports — review a reported job. Taking it down emails the business with your reason.\n\nIf a tab has something waiting, its sidebar row shows a count. The same count appears on every tab that has pending work.",
     published_at: "2026-10-17T01:20:00+05:30",
+  },
+  {
+    title: "To-do opens the item, and signups show who joined",
+    body: "Dashboard To-do is oldest first. Each row says how long it has been waiting, and a click opens that exact request: the merchant profile, the review, the change, the ownership claim, the job report, the job, or the draft.\n\nHow businesses joined shows self registration against profiles created in this panel, including the last eight weeks. A merchant's details say whether they signed up themselves or an admin created the profile.\n\nOlder listings stay untagged until new signups write the origin. Run supabase/business_onboard_source.sql if that column is not in the database yet.",
+    published_at: "2026-10-17T01:50:00+05:30",
   },
   {
     title: "Your account access is restored",
@@ -114,13 +119,21 @@ const WHATS_NEW_SEEDS: Array<{
 async function ensureWhatsNewSeeds(
   supabase: SupabaseClient,
 ): Promise<void> {
-  const { data } = await supabase.from("admin_whats_new").select("title");
-  const existing = new Set(
-    ((data || []) as Array<{ title: string }>).map((row) => row.title),
-  );
-  const missing = WHATS_NEW_SEEDS.filter((item) => !existing.has(item.title));
-  if (!missing.length) return;
-  await supabase.from("admin_whats_new").insert(missing);
+  const { data } = await supabase.from("admin_whats_new").select("title, body");
+  const existing = (data || []) as Array<{ title: string; body: string }>;
+  const titles = new Set(existing.map((row) => row.title));
+  const missing = WHATS_NEW_SEEDS.filter((item) => !titles.has(item.title));
+  if (missing.length) {
+    await supabase.from("admin_whats_new").insert(missing);
+  }
+  const queues = WHATS_NEW_SEEDS.find((item) => item.title === "Four new sidebar queues");
+  const stored = existing.find((row) => row.title === "Four new sidebar queues");
+  if (queues && stored && stored.body.includes("New sticker")) {
+    await supabase
+      .from("admin_whats_new")
+      .update({ body: queues.body })
+      .eq("title", queues.title);
+  }
 }
 
 export async function markWhatsNewRead(
