@@ -212,8 +212,35 @@ body {
     color: var(--sidebar-foreground-active);
   }
 
+  .admin-nav-badges {
+    @apply ml-auto flex items-center gap-1 shrink-0;
+  }
+
   .admin-nav-badge {
     @apply ml-auto shrink-0 min-w-[1.2rem] h-[1.2rem] px-1 rounded-md text-[10px] font-medium tabular-nums flex items-center justify-center bg-slate-100 text-slate-600 border border-slate-200;
+  }
+
+  .admin-nav-badges .admin-nav-badge {
+    @apply ml-0;
+  }
+
+  .admin-sidebar.is-collapsed .admin-nav-badges {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    margin-left: 0;
+  }
+
+  .admin-sidebar.is-collapsed .admin-nav-badge-new,
+  .admin-sidebar.is-collapsed .admin-nav-badge-soon {
+    display: none;
+  }
+
+  .admin-sidebar.is-collapsed .admin-nav-badge {
+    min-width: 0.9rem;
+    height: 0.9rem;
+    padding: 0 2px;
+    font-size: 8px;
   }
 
   .admin-nav-badge-alert {

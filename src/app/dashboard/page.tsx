@@ -402,6 +402,27 @@ const COMING_SOON_COPY: Record<string, string> = {
 
 const DISABLED_FEATURE_TABS = new Set(["News"]);
 
+const NEW_SIDEBAR_TABS = new Set([
+  "Reviews",
+  "Change Requests",
+  "Ownership Requests",
+  "Job Reports",
+]);
+
+type SidebarQueueCounts = {
+  reviews: number;
+  changeRequests: number;
+  ownershipRequests: number;
+  jobReports: number;
+};
+
+const EMPTY_QUEUE_COUNTS: SidebarQueueCounts = {
+  reviews: 0,
+  changeRequests: 0,
+  ownershipRequests: 0,
+  jobReports: 0,
+};
+
 const SIDEBAR_MIN = 220;
 const SIDEBAR_MAX = 400;
 const SIDEBAR_DEFAULT = 268;
@@ -1150,6 +1171,7 @@ export default function Dashboard() {
   const [categoryError, setCategoryError] = useState<string | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [queueCounts, setQueueCounts] = useState<SidebarQueueCounts>(EMPTY_QUEUE_COUNTS);
 
   useEffect(() => {
     const validateSession = async () => {
@@ -1217,6 +1239,39 @@ export default function Dashboard() {
       router.push("/");
     });
   }, [router]);
+
+  useEffect(() => {
+    if (!adminSession?.id) return;
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await fetch(
+          `/api/admin/queue-counts?adminId=${encodeURIComponent(adminSession.id)}`,
+          { cache: "no-store" },
+        );
+        const data = (await response.json()) as {
+          success?: boolean;
+          counts?: SidebarQueueCounts;
+        };
+        if (!cancelled && data.success && data.counts) {
+          setQueueCounts({
+            reviews: Number(data.counts.reviews) || 0,
+            changeRequests: Number(data.counts.changeRequests) || 0,
+            ownershipRequests: Number(data.counts.ownershipRequests) || 0,
+            jobReports: Number(data.counts.jobReports) || 0,
+          });
+        }
+      } catch {
+        /* Sidebar counts are optional. The tabs still open. */
+      }
+    };
+    void load();
+    const timer = window.setInterval(load, 45_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [adminSession?.id, activeTab]);
 
   useEffect(() => {
     if (!adminSession?.id || !adminSession?.loginLogId) return;
@@ -1863,6 +1918,25 @@ export default function Dashboard() {
       finderBJobs,
     ],
   );
+
+  const pendingCountForTab = (name: string): number => {
+    if (name === "Merchants") return dashboardStats.merchants.pendingKyc;
+    if (name === "Users") return dashboardStats.users.todayNew;
+    if (name === "Leads") return dashboardStats.leads.weekNew;
+    if (name === "Payments & Subscriptions") return dashboardStats.payments.pendingCount;
+    if (name === "Blogs") return blogs.filter((blog) => blog.status === "draft").length;
+    if (name === "FinderB Jobs") {
+      return finderBJobs.filter((job) => {
+        const status = (job.approval_status || "").toLowerCase();
+        return status !== "approved" && status !== "rejected";
+      }).length;
+    }
+    if (name === "Reviews") return queueCounts.reviews;
+    if (name === "Change Requests") return queueCounts.changeRequests;
+    if (name === "Ownership Requests") return queueCounts.ownershipRequests;
+    if (name === "Job Reports") return queueCounts.jobReports;
+    return 0;
+  };
 
   const handleUpdateCategory = async (
     catName: string,
@@ -2807,51 +2881,8 @@ export default function Dashboard() {
               if (!item) return null;
               const isComingSoon = COMING_SOON_TABS.has(name);
               const isActive = activeTab === name;
-              const badge =
-                name === "Quick Onboard"
-                  ? {
-                      value: "New",
-                      alert: false as const,
-                      soon: false as const,
-                      isNew: true as const,
-                    }
-                  : !isComingSoon &&
-                      name === "Merchants" &&
-                      dashboardStats.merchants.pendingKyc > 0
-                    ? {
-                        value: dashboardStats.merchants.pendingKyc,
-                        alert: true as const,
-                        soon: false as const,
-                        isNew: false as const,
-                      }
-                    : !isComingSoon &&
-                        name === "Leads" &&
-                        dashboardStats.leads.weekNew > 0
-                      ? {
-                          value: dashboardStats.leads.weekNew,
-                          alert: false as const,
-                          soon: false as const,
-                          isNew: false as const,
-                        }
-                      : !isComingSoon &&
-                          name === "Users" &&
-                          dashboardStats.users.todayNew > 0
-                        ? {
-                            value: dashboardStats.users.todayNew,
-                            alert: false as const,
-                            soon: false as const,
-                            isNew: false as const,
-                          }
-                        : isComingSoon
-                          ? {
-                              value: DISABLED_FEATURE_TABS.has(name)
-                                ? "Off"
-                                : "Soon",
-                              alert: false as const,
-                              soon: true as const,
-                              isNew: false as const,
-                            }
-                          : null;
+              const pendingCount = isComingSoon ? 0 : pendingCountForTab(name);
+              const showNew = NEW_SIDEBAR_TABS.has(name);
 
               return (
                 <button
@@ -2888,39 +2919,24 @@ export default function Dashboard() {
                     />
                   )}
                   {!sidebarCollapsed && (
-                    <span
-                      className={`truncate text-left leading-snug ${
-                        opts?.nested &&
-                        name === "Quick Onboard" &&
-                        !isActive
-                          ? "admin-nav-shimmer-text"
-                          : opts?.nested &&
-                              name === "Quick Onboard" &&
-                              isActive
-                            ? "admin-nav-shimmer-text admin-nav-shimmer-text-active"
-                            : ""
-                      }`}
-                    >
-                      {label}
-                    </span>
+                    <span className="truncate text-left leading-snug">{label}</span>
                   )}
-                  {!sidebarCollapsed && badge ? (
-                    <span
-                      className={`admin-nav-badge ${
-                        badge.isNew
-                          ? "admin-nav-badge-new"
-                          : badge.soon
-                            ? "admin-nav-badge-soon"
-                            : badge.alert
-                              ? "admin-nav-badge-alert"
-                              : ""
-                      }`}
-                    >
-                      {typeof badge.value === "number"
-                        ? badge.value > 99
-                          ? "99+"
-                          : badge.value
-                        : badge.value}
+                  {isComingSoon ? (
+                    <span className="admin-nav-badges">
+                      <span className="admin-nav-badge admin-nav-badge-soon">
+                        {DISABLED_FEATURE_TABS.has(name) ? "Off" : "Soon"}
+                      </span>
+                    </span>
+                  ) : showNew || pendingCount > 0 ? (
+                    <span className="admin-nav-badges">
+                      {showNew ? (
+                        <span className="admin-nav-badge admin-nav-badge-new">New</span>
+                      ) : null}
+                      {pendingCount > 0 ? (
+                        <span className="admin-nav-badge admin-nav-badge-alert">
+                          {pendingCount > 99 ? "99+" : pendingCount}
+                        </span>
+                      ) : null}
                     </span>
                   ) : null}
                 </button>
@@ -2995,12 +3011,13 @@ export default function Dashboard() {
                                 {entry.name}
                               </span>
                             )}
-                            {!sidebarCollapsed &&
-                            dashboardStats.merchants.pendingKyc > 0 ? (
-                              <span className="admin-nav-badge admin-nav-badge-alert">
-                                {dashboardStats.merchants.pendingKyc > 99
-                                  ? "99+"
-                                  : dashboardStats.merchants.pendingKyc}
+                            {dashboardStats.merchants.pendingKyc > 0 ? (
+                              <span className="admin-nav-badges">
+                                <span className="admin-nav-badge admin-nav-badge-alert">
+                                  {dashboardStats.merchants.pendingKyc > 99
+                                    ? "99+"
+                                    : dashboardStats.merchants.pendingKyc}
+                                </span>
                               </span>
                             ) : null}
                           </button>

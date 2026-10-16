@@ -80,6 +80,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Four new sidebar queues",
+    body: "Reviews, Change Requests, Ownership Requests, and Job Reports are now in the sidebar. Each one has a New sticker.\n\nReviews — decide anonymous reviews and open review reports.\nChange Requests — approve or reject a business name or category change.\nOwnership Requests — approve or deny someone claiming a listing. Approval emails the login details only to that person.\nJob Reports — review a reported job. Taking it down emails the business with your reason.\n\nIf a tab has something waiting, its sidebar row shows a count, so you can see that a visit is needed without opening it. The same count appears on every tab that has pending work: merchant approvals, new users, new leads, draft blogs, jobs waiting for approval, and pending payments.",
+    published_at: "2026-10-17T01:20:00+05:30",
+  },
+  {
     title: "Your account access is restored",
     body: "You can now use your account again.",
     published_at: "2026-09-11T00:03:00+05:30",
