@@ -3,6 +3,7 @@ export type MerchantRequest = {
   name: string;
   email: string;
   category: string;
+  city: string | null;
   date: string;
   registrationNumber: string | null;
   onboardSource: "self" | "admin" | null;

@@ -146,6 +146,8 @@ interface Merchant {
   planExpiresAt: string | null;
   slug: string | null;
   city: string | null;
+  state: string | null;
+  phone: string | null;
   createdAt: string | null;
   hasViewablePassword: boolean;
   onboardSource: OnboardSource | null;
@@ -208,6 +210,8 @@ function mapBusinessToMerchant(m: any): Merchant {
     planExpiresAt: m.planExpiresAt || null,
     slug: m.slug || null,
     city: m.city || null,
+    state: m.state || null,
+    phone: m.publicPhone || m.mobile || m.owner_mobile || null,
     createdAt: m.createdAt || null,
     onboardSource: normalizeOnboardSource(m.onboardSource),
     hasViewablePassword: (() => {
@@ -223,7 +227,12 @@ function mapBusinessToMerchantRequest(m: any): MerchantRequest {
     name: m.businessName || m.fullName || "Unknown Merchant",
     email: m.workEmail || m.email || "",
     category: m.category || "Other",
-    date: new Date(m.createdAt || Date.now()).toLocaleDateString(),
+    city: m.city || null,
+    date: new Date(m.createdAt || Date.now()).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }),
     registrationNumber: m.registrationNumber || null,
     onboardSource: normalizeOnboardSource(m.onboardSource),
     createdAt: m.createdAt || null,
@@ -1849,7 +1858,9 @@ export default function Dashboard() {
         billingCycle: "monthly",
         planExpiresAt: null,
         slug: null,
-        city: null,
+        city: req.city,
+        state: null,
+        phone: null,
         createdAt: new Date().toISOString(),
         hasViewablePassword: false,
         onboardSource: req.onboardSource,
@@ -4321,6 +4332,8 @@ function UsersContent({
   } | null>(null);
   const canManage = hasFullTabAccess(adminSession, "Users");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
 
   const handleDeleteUser = async (id: string) => {
     if (!canManage) return;
@@ -4337,8 +4350,25 @@ function UsersContent({
   };
 
   const filteredUsers = users.filter((user) =>
-    matchesSearchTerm(searchTerm, user.id, user.fullName, user.email),
+    matchesSearchTerm(
+      searchTerm,
+      user.id,
+      user.fullName,
+      user.email,
+      user.phone,
+      user.authProvider,
+    ),
   );
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
+  const safePage = Math.min(page, totalPages);
+  const pagedUsers = filteredUsers.slice(
+    (safePage - 1) * rowsPerPage,
+    safePage * rowsPerPage,
+  );
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, rowsPerPage]);
 
   const fetchUserPassword = async (userId: string) => {
     const { data } = await createClient()
@@ -4392,52 +4422,67 @@ function UsersContent({
         </div>
       </div>
 
-      <div className="admin-card">
+      <div className="admin-card overflow-hidden">
         <div className="admin-table-wrap">
-          <table className="admin-table">
+          <table className="admin-table admin-table-compact">
             <thead>
               <tr>
-                <th>User ID</th>
-                <th>Name</th>
+                <th>User</th>
                 <th>Email</th>
                 <th>Phone</th>
+                <th>Signed in</th>
+                <th>Verified</th>
                 <th>Joined</th>
                 {canManage && <th>Password</th>}
                 <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((user) => (
+              {pagedUsers.map((user) => (
                 <tr key={user.id}>
                   <td>
-                    <p className="admin-mono">{user.id}</p>
-                  </td>
-                  <td>
-                    <div className="flex items-center gap-3">
-                      <div className="admin-avatar">
-                        {user.fullName
+                    <div className="flex items-center gap-3 min-w-[180px]">
+                      <div className="admin-avatar !w-8 !h-8 !text-[11px]">
+                        {(user.fullName || "?")
                           .split(" ")
                           .map((n) => n[0])
                           .join("")
                           .slice(0, 2)}
                       </div>
-                      <p className="text-sm font-medium text-slate-900">
-                        {user.fullName}
-                      </p>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900">
+                          {user.fullName || "Unnamed"}
+                        </p>
+                        <p className="admin-mono truncate text-[10px] text-slate-400" title={user.id}>
+                          {user.id}
+                        </p>
+                      </div>
                     </div>
                   </td>
                   <td>
-                    <p className="text-sm text-slate-600">
+                    <p className="max-w-[220px] truncate text-sm text-slate-700">
                       {user.email || "—"}
                     </p>
                   </td>
-                  <td>
-                    <p className="text-sm text-slate-600">{user.phone || "—"}</p>
+                  <td className="whitespace-nowrap">{user.phone || "—"}</td>
+                  <td className="whitespace-nowrap text-slate-600">
+                    {user.authProvider || "Email"}
                   </td>
                   <td>
-                    <p className="text-sm text-slate-600 tabular-nums">
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {user.emailVerified ? (
+                        <span className="admin-badge border-emerald-200 bg-emerald-50 text-emerald-800">Email</span>
+                      ) : null}
+                      {user.phoneVerified ? (
+                        <span className="admin-badge border-sky-200 bg-sky-50 text-sky-800">Phone</span>
+                      ) : null}
+                      {!user.emailVerified && !user.phoneVerified ? (
+                        <span className="text-xs text-slate-400">Not verified</span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td className="whitespace-nowrap tabular-nums text-slate-600">
+                    {shortDate(user.createdAt)}
                   </td>
                   {canManage && (
                     <PasswordRevealCell
@@ -4459,7 +4504,7 @@ function UsersContent({
                     />
                   )}
                   <td className="text-right">
-                    <div className="inline-flex items-center justify-end gap-1.5">
+                    <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => setSelectedUser(user)}
@@ -4494,7 +4539,7 @@ function UsersContent({
               ))}
               {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={canManage ? 7 : 6} className="admin-empty">
+                  <td colSpan={canManage ? 8 : 7} className="admin-empty">
                     {users.length === 0
                       ? "No users found"
                       : "No users match your search"}
@@ -4504,6 +4549,15 @@ function UsersContent({
             </tbody>
           </table>
         </div>
+        <PaginationFooter
+          total={filteredUsers.length}
+          page={safePage}
+          totalPages={totalPages}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={setRowsPerPage}
+          noun="users"
+        />
       </div>
 
       {selectedUser ? (
@@ -4642,6 +4696,17 @@ function planChipClass(plan: string): string {
     return "bg-indigo-50 text-indigo-700 border-indigo-200";
   if (p.includes("growth")) return "bg-teal-50 text-teal-700 border-teal-200";
   return "bg-slate-50 text-slate-600 border-slate-200";
+}
+
+function shortDate(value: string | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function planExpiryInfo(planExpiresAt: string | null): {
@@ -5211,7 +5276,9 @@ function MerchantsContent({
         billingCycle: "monthly",
         planExpiresAt: null,
         slug: null,
-        city: null,
+        city: merchant.city,
+        state: null,
+        phone: null,
         createdAt: new Date().toISOString(),
         hasViewablePassword: false,
       },
@@ -5402,6 +5469,10 @@ function MerchantsContent({
           name: updates.businessName || updates.fullName || m.name,
           email: updates.workEmail || updates.email || m.email,
           category: updates.category || m.category,
+          city: updates.city !== undefined ? updates.city : m.city,
+          state: updates.state !== undefined ? updates.state : m.state,
+          phone:
+            updates.publicPhone || updates.mobile || updates.owner_mobile || m.phone,
           status: updates.status || m.status,
           isFinderBVerified: updates.isFinderBVerified ?? m.isFinderBVerified,
           selectedPlan: updates.selectedPlan ?? m.selectedPlan,
@@ -5774,333 +5845,167 @@ function MerchantsContent({
       {merchantTab === "Active" ? (
         <div className="admin-card overflow-hidden">
           {toolbar}
-          <div
-            className={`hidden lg:grid gap-3 px-4 py-2.5 border-b border-slate-100 bg-slate-50/60 text-[10px] font-semibold uppercase tracking-wide text-slate-400 ${
-              canViewFinancialData
-                ? "grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_auto]"
-                : "grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_auto]"
-            }`}
-          >
-            <span>Merchant</span>
-            <span>Category</span>
-            {canViewFinancialData && (
-              <>
-                <span>Plan</span>
-                <span>Valid until</span>
-              </>
-            )}
-            <span className="text-right pr-1">Actions</span>
-          </div>
-          <div className="divide-y divide-slate-100">
-            {pagedActiveMerchants.map((merchant) => (
-              <div
-                key={merchant.id}
-                className={`grid grid-cols-1 gap-2 lg:gap-3 px-4 py-2.5 lg:items-center hover:bg-slate-50/70 transition-colors ${
-                  canViewFinancialData
-                    ? "lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1.1fr)_minmax(0,0.9fr)_auto]"
-                    : "lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_auto]"
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="relative shrink-0">
-                    <div className="admin-avatar !w-9 !h-9 !text-xs">
-                      {merchant.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .slice(0, 2)}
-                    </div>
-                    {merchant.isFinderBVerified && (
-                      <span
-                        className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center"
-                        title="FinderB Verified"
-                      >
-                        <svg
-                          className="w-2 h-2 text-white"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <p className="text-[13px] font-semibold text-slate-900 truncate">
-                        {merchant.name}
-                      </p>
-                      {merchant.onboardSource && (
-                        <p className="text-[10px] font-medium text-slate-400">
-                          {onboardSourceLabel(merchant.onboardSource)}
-                        </p>
-                      )}
-                      <span
-                        className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${merchant.status === "Active" ? "bg-emerald-500" : "bg-slate-300"}`}
-                        title={merchant.status}
-                      />
-                    </div>
-                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 min-w-0">
-                      {merchant.registrationNumber && (
-                        <span className="admin-mono text-[10px] shrink-0">
-                          {merchant.registrationNumber}
-                        </span>
-                      )}
-                      {merchant.registrationNumber && merchant.email && (
-                        <span className="text-slate-300">·</span>
-                      )}
-                      {isPlaceholderEmail(merchant.email) ? (
-                        <span className="shrink-0 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1.5 py-px text-[10px] font-medium text-amber-800">
-                          Email missing
-                        </span>
-                      ) : (
-                        <span className="truncate">
-                          {merchant.email || "—"}
-                        </span>
-                      )}
-                      <a
-                        href={getBusinessProfileUrl({
-                          id: merchant.id,
-                          businessName: merchant.name,
-                          slug: merchant.slug,
-                          city: merchant.city,
-                        })}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 text-primary hover:underline inline-flex items-center gap-0.5"
-                        title="View public profile"
-                      >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                          />
-                        </svg>
-                      </a>
-                    </div>
-                    {canManage && visiblePasswords[merchant.id] && (
-                      <p className="admin-mono text-[10px] text-slate-700 mt-0.5">
-                        {formatRevealedPassword(visiblePasswords[merchant.id])}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="min-w-0">
-                  <span className="inline-flex max-w-full items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                    <span className="truncate">{merchant.category}</span>
-                  </span>
-                  <p className="mt-1 truncate text-[11px] text-slate-500">
-                    {[merchant.city, merchant.createdAt ? `Listed ${new Date(merchant.createdAt).toLocaleDateString()}` : ""]
-                      .filter(Boolean)
-                      .join(" · ") || "City not set"}
-                  </p>
-                </div>
-
-                {canViewFinancialData && (
-                  <>
-                    <div className="min-w-0">
-                      <span
-                        className={`inline-flex max-w-full items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${planChipClass(merchant.selectedPlan)}`}
-                      >
-                        <span className="truncate">
-                          {planLabel(
-                            merchant.selectedPlan,
-                            merchant.billingCycle,
-                          )}
-                        </span>
-                      </span>
-                    </div>
-
-                    {isStarterPlanId(merchant.selectedPlan) ? (
-                      <div className="text-[11px] text-slate-400">
-                        No expiry
-                      </div>
-                    ) : (
-                      (() => {
-                        const expiry = planExpiryInfo(merchant.planExpiresAt);
-                        return (
-                          <div className={`text-[11px] ${expiry.cls}`}>
-                            <span>{merchant.validUntil}</span>
-                            {expiry.note && (
-                              <span className="block text-[10px] opacity-80">
-                                {expiry.note}
-                              </span>
-                            )}
+          <div className="admin-table-wrap">
+            <table className="admin-table admin-table-compact">
+              <thead>
+                <tr>
+                  <th>Business</th>
+                  <th>Contact</th>
+                  <th>Location</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>Origin</th>
+                  <th>Listed</th>
+                  {canViewFinancialData && <th>Plan</th>}
+                  {canViewFinancialData && <th>Valid until</th>}
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedActiveMerchants.map((merchant) => {
+                  const expiry = planExpiryInfo(merchant.planExpiresAt);
+                  const location = [merchant.city, merchant.state].filter(Boolean).join(", ");
+                  return (
+                    <tr key={merchant.id}>
+                      <td>
+                        <div className="min-w-[190px]">
+                          <div className="flex items-center gap-2">
+                            <p className="truncate text-sm font-semibold text-slate-900">{merchant.name}</p>
+                            {merchant.isFinderBVerified ? (
+                              <span className="admin-badge shrink-0 border-emerald-200 bg-emerald-50 text-[10px] text-emerald-800">Verified</span>
+                            ) : null}
                           </div>
-                        );
-                      })()
-                    )}
-                  </>
-                )}
-
-                <div className="flex items-center justify-start lg:justify-end gap-1.5">
-                  {canManage && merchant.hasViewablePassword && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (visiblePasswords[merchant.id]) {
-                          setVisiblePasswords((p) => {
-                            const next = { ...p };
-                            delete next[merchant.id];
-                            return next;
-                          });
-                        } else {
-                          setPasswordModalTarget({
-                            id: merchant.id,
-                            label: `Enter your admin password to reveal the login password for ${merchant.name}.`,
-                          });
-                        }
-                      }}
-                      className="admin-icon-btn"
-                      title={
-                        visiblePasswords[merchant.id]
-                          ? "Hide login password"
-                          : "Reveal login password"
-                      }
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="2"
-                          d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
-                        />
-                      </svg>
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleViewMerchant(merchant.id)}
-                    className="admin-btn-secondary text-[10px] py-1.5 px-3"
-                  >
-                    Details
-                  </button>
-                  {canManage && (
-                    <>
-                      <span
-                        aria-hidden
-                        className="mx-1 h-4 w-px bg-slate-200"
-                      />
-                      <button
-                        onClick={() =>
-                          toggleMerchantStatus(merchant.id, merchant.status)
-                        }
-                        className="admin-icon-btn"
-                        title={
-                          merchant.status === "Active"
-                            ? "Deactivate"
-                            : "Activate"
-                        }
-                      >
-                        {merchant.status === "Active" ? (
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                          <div className="mt-0.5 flex items-center gap-2">
+                            {merchant.registrationNumber ? (
+                              <span className="admin-mono text-[10px] text-slate-400">{merchant.registrationNumber}</span>
+                            ) : null}
+                            <a
+                              href={getBusinessProfileUrl({
+                                id: merchant.id,
+                                businessName: merchant.name,
+                                slug: merchant.slug,
+                                city: merchant.city,
+                              })}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[11px] font-medium text-teal-700 hover:underline"
+                            >
+                              Profile
+                            </a>
+                          </div>
+                          {canManage && visiblePasswords[merchant.id] ? (
+                            <p className="admin-mono mt-0.5 text-[10px] text-slate-700">
+                              {formatRevealedPassword(visiblePasswords[merchant.id])}
+                            </p>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td>
+                        <div className="min-w-[150px]">
+                          {isPlaceholderEmail(merchant.email) ? (
+                            <span className="admin-badge border-amber-200 bg-amber-50 text-[10px] text-amber-800">Email missing</span>
+                          ) : (
+                            <p className="max-w-[200px] truncate text-sm text-slate-700">{merchant.email || "—"}</p>
+                          )}
+                          <p className="mt-0.5 text-xs text-slate-500">{merchant.phone || "No phone"}</p>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap text-slate-600">{location || "—"}</td>
+                      <td className="whitespace-nowrap text-slate-700">{merchant.category}</td>
+                      <td>
+                        <span className={`admin-badge ${merchant.status === "Active" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-slate-200 bg-slate-100 text-slate-600"}`}>
+                          {merchant.status || "Active"}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap text-xs text-slate-600">{onboardSourceLabel(merchant.onboardSource)}</td>
+                      <td className="whitespace-nowrap tabular-nums text-slate-600">{shortDate(merchant.createdAt)}</td>
+                      {canViewFinancialData ? (
+                        <>
+                          <td className="whitespace-nowrap">
+                            <span className={`admin-badge ${planChipClass(merchant.selectedPlan)}`}>
+                              {planLabel(merchant.selectedPlan, merchant.billingCycle)}
+                            </span>
+                          </td>
+                          <td className={`whitespace-nowrap ${isStarterPlanId(merchant.selectedPlan) ? "text-slate-400" : expiry.cls}`}>
+                            {isStarterPlanId(merchant.selectedPlan) ? "No expiry" : (
+                              <>
+                                {merchant.validUntil}
+                                {expiry.note ? <span className="ml-1.5 text-[10px]">{expiry.note}</span> : null}
+                              </>
+                            )}
+                          </td>
+                        </>
+                      ) : null}
+                      <td className="text-right">
+                        <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+                          {canManage && merchant.hasViewablePassword ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (visiblePasswords[merchant.id]) {
+                                  setVisiblePasswords((p) => {
+                                    const next = { ...p };
+                                    delete next[merchant.id];
+                                    return next;
+                                  });
+                                } else {
+                                  setPasswordModalTarget({
+                                    id: merchant.id,
+                                    label: `Enter your admin password to reveal the login password for ${merchant.name}.`,
+                                  });
+                                }
+                              }}
+                              className="admin-btn-secondary text-[11px] !py-1 !px-2.5"
+                            >
+                              {visiblePasswords[merchant.id] ? "Hide" : "Password"}
+                            </button>
+                          ) : null}
+                          <button
+                            type="button"
+                            onClick={() => handleViewMerchant(merchant.id)}
+                            className="admin-btn-secondary text-[11px] !py-1 !px-2.5"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => handleDeleteMerchant(merchant.id)}
-                        className="admin-icon-btn-danger"
-                        title="Delete"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-            {filteredActiveMerchants.length === 0 && (
-              <div className="py-20 text-center">
-                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-slate-600">
-                  {activeMerchants.length === 0
-                    ? "No active partners yet"
-                    : "No partners match your filters"}
-                </p>
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="mt-2 text-xs font-medium text-teal-700 hover:underline"
-                  >
-                    Clear search and filters
-                  </button>
-                )}
-              </div>
-            )}
+                            Details
+                          </button>
+                          {canManage ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => toggleMerchantStatus(merchant.id, merchant.status)}
+                                className="admin-btn-secondary text-[11px] !py-1 !px-2.5"
+                              >
+                                {merchant.status === "Active" ? "Pause" : "Activate"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMerchant(merchant.id)}
+                                className="admin-btn-danger text-[11px] !py-1 !px-2.5"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredActiveMerchants.length === 0 ? (
+                  <tr>
+                    <td colSpan={canViewFinancialData ? 10 : 8} className="admin-empty">
+                      {activeMerchants.length === 0
+                        ? "No active partners yet"
+                        : "No partners match your filters"}
+                      {hasActiveFilters ? (
+                        <button type="button" onClick={clearFilters} className="mt-2 block text-xs font-medium text-teal-700 hover:underline">
+                          Clear search and filters
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
           <PaginationFooter
             total={filteredActiveMerchants.length}
@@ -6115,168 +6020,95 @@ function MerchantsContent({
       ) : (
         <div className="admin-card overflow-hidden">
           {toolbar}
-          <div className="hidden lg:grid grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-3 px-4 py-2.5 border-b border-slate-100 bg-slate-50/60 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-            <span>Merchant</span>
-            <span>Category</span>
-            <span>Requested</span>
-            <span className="text-right pr-1">Actions</span>
-          </div>
-          <div className="divide-y divide-slate-100">
-            {pagedMerchantRequests.map((req) => (
-              <div
-                key={req.id}
-                id={`admin-focus-${req.id}`}
-                className={`grid grid-cols-1 lg:grid-cols-[minmax(0,2.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 lg:gap-3 px-4 py-3 lg:items-center hover:bg-slate-50/70 transition-colors ${
-                  focusBusinessId === req.id ? "bg-amber-50 ring-2 ring-inset ring-amber-300" : ""
-                }`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="admin-avatar !w-9 !h-9 !text-xs shrink-0">
-                    {req.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .slice(0, 2)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold text-slate-900 truncate">
-                      {req.name}
-                    </p>
-                    {req.onboardSource && (
-                      <p className="text-[10px] font-medium text-slate-400">
-                        {onboardSourceLabel(req.onboardSource)}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 min-w-0">
-                      {req.registrationNumber && (
-                        <span className="admin-mono text-[10px] shrink-0">
-                          {req.registrationNumber}
-                        </span>
-                      )}
-                      {req.registrationNumber && req.email && (
-                        <span className="text-slate-300">·</span>
-                      )}
+          <div className="admin-table-wrap">
+            <table className="admin-table admin-table-compact">
+              <thead>
+                <tr>
+                  <th>Business</th>
+                  <th>Contact</th>
+                  <th>Location</th>
+                  <th>Category</th>
+                  <th>Origin</th>
+                  <th>Requested</th>
+                  <th>Waiting</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedMerchantRequests.map((req) => (
+                  <tr
+                    key={req.id}
+                    id={`admin-focus-${req.id}`}
+                    className={focusBusinessId === req.id ? "bg-amber-50" : ""}
+                  >
+                    <td>
+                      <div className="min-w-[180px]">
+                        <p className="truncate text-sm font-semibold text-slate-900">{req.name}</p>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          {req.registrationNumber ? (
+                            <span className="admin-mono text-[10px] text-slate-400">{req.registrationNumber}</span>
+                          ) : null}
+                          <a
+                            href={getBusinessProfileUrl({ id: req.id, businessName: req.name })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-medium text-teal-700 hover:underline"
+                          >
+                            Profile
+                          </a>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
                       {isPlaceholderEmail(req.email) ? (
-                        <span className="shrink-0 inline-flex items-center rounded border border-amber-200 bg-amber-50 px-1.5 py-px text-[10px] font-medium text-amber-800">
-                          Email missing
-                        </span>
+                        <span className="admin-badge border-amber-200 bg-amber-50 text-[10px] text-amber-800">Email missing</span>
                       ) : (
-                        <span className="truncate">{req.email || "—"}</span>
+                        <p className="max-w-[200px] truncate text-sm text-slate-700">{req.email || "—"}</p>
                       )}
-                      <a
-                        href={getBusinessProfileUrl({
-                          id: req.id,
-                          businessName: req.name,
-                        })}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="shrink-0 text-primary hover:underline inline-flex items-center"
-                        title="View public profile"
-                      >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                          />
-                        </svg>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="min-w-0">
-                  <span className="inline-flex max-w-full items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700">
-                    <span className="truncate">{req.category}</span>
-                  </span>
-                </div>
-
-                <div className="text-[11px] text-slate-600">{req.date}</div>
-
-                <div className="flex items-center justify-start lg:justify-end gap-1.5">
-                  <button
-                    onClick={() => handleViewMerchant(req.id)}
-                    className="admin-btn-secondary text-[10px] py-1.5 px-3"
-                  >
-                    Details
-                  </button>
-                  {canManage && (
-                    <>
-                      <button
-                        onClick={() => handleApprove(req)}
-                        className="admin-btn-primary text-[10px] py-1.5 px-3"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleReject(req.id)}
-                        className="admin-btn-danger text-[10px] py-1.5 px-3"
-                      >
-                        Reject
-                      </button>
-                      <button
-                        onClick={() => handleDeleteMerchant(req.id)}
-                        className="admin-icon-btn-danger"
-                        title="Delete"
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-            {filteredMerchantRequests.length === 0 && (
-              <div className="py-20 text-center">
-                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-slate-600">
-                  {merchantRequests.length === 0
-                    ? "All caught up — no pending requests"
-                    : "No pending partners match your filters"}
-                </p>
-                {hasActiveFilters && (
-                  <button
-                    type="button"
-                    onClick={clearFilters}
-                    className="mt-2 text-xs font-medium text-teal-700 hover:underline"
-                  >
-                    Clear search and filters
-                  </button>
-                )}
-              </div>
-            )}
+                    </td>
+                    <td className="whitespace-nowrap text-slate-600">{req.city || "—"}</td>
+                    <td className="whitespace-nowrap text-slate-700">{req.category}</td>
+                    <td className="whitespace-nowrap text-xs text-slate-600">{onboardSourceLabel(req.onboardSource)}</td>
+                    <td className="whitespace-nowrap tabular-nums text-slate-600">{req.date}</td>
+                    <td className="whitespace-nowrap text-xs text-amber-700">{waitingLabel(req.createdAt) || "Just now"}</td>
+                    <td className="text-right">
+                      <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+                        <button type="button" onClick={() => handleViewMerchant(req.id)} className="admin-btn-secondary text-[11px] !py-1 !px-2.5">
+                          Details
+                        </button>
+                        {canManage ? (
+                          <>
+                            <button type="button" onClick={() => handleApprove(req)} className="admin-btn-primary text-[11px] !py-1 !px-2.5">
+                              Approve
+                            </button>
+                            <button type="button" onClick={() => handleReject(req.id)} className="admin-btn-danger text-[11px] !py-1 !px-2.5">
+                              Reject
+                            </button>
+                            <button type="button" onClick={() => handleDeleteMerchant(req.id)} className="admin-btn-danger text-[11px] !py-1 !px-2.5">
+                              Delete
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredMerchantRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="admin-empty">
+                      {merchantRequests.length === 0
+                        ? "All caught up — no pending requests"
+                        : "No pending partners match your filters"}
+                      {hasActiveFilters ? (
+                        <button type="button" onClick={clearFilters} className="mt-2 block text-xs font-medium text-teal-700 hover:underline">
+                          Clear search and filters
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
           </div>
           <PaginationFooter
             total={filteredMerchantRequests.length}
@@ -6350,6 +6182,7 @@ function MerchantsContent({
                 "",
               email: selectedBusiness.workEmail || selectedBusiness.email || "",
               category: selectedBusiness.category || "",
+              city: selectedBusiness.city || null,
               date: "",
               registrationNumber: selectedBusiness.registrationNumber || null,
               onboardSource: normalizeOnboardSource(selectedBusiness.onboardSource),

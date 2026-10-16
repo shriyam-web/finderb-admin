@@ -704,6 +704,14 @@ body {
     background: rgba(13, 148, 136, 0.03);
   }
 
+  .admin-table-compact th {
+    @apply px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400;
+  }
+
+  .admin-table-compact td {
+    @apply px-3 py-2.5 align-middle;
+  }
+
   .admin-badge {
     @apply inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border;
   }
