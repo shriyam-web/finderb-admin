@@ -80,6 +80,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Owners answer claims, and transfers can be reversed",
+    body: "When someone asks to manage a listing, the request still arrives here. The current owner is also emailed, and the business app shows a high-priority notification.\n\nThe owner has 48 hours to approve or deny in Notifications. Their answer shows on the Ownership Requests card: approved, denied, or still waiting. If 48 hours pass with no answer, their buttons close and the card says the current business didn't respond. You then approve or deny.\n\nAfter you approve, the previous login is kept for 15 days. Open Can reverse and press Reverse transfer to give that login back. The new login stops working. After 15 days the transfer stays as it is.",
+    published_at: "2026-10-17T04:50:00+05:30",
+  },
+  {
     title: "Four new sidebar queues",
     body: "Reviews, Change Requests, Ownership Requests, and Job Reports are in the sidebar. A new tab's name shines in colour for 30 days, then it looks like the other tabs. No sticker.\n\nReviews — decide anonymous reviews and open review reports.\nChange Requests — approve or reject a business name or category change.\nOwnership Requests — approve or deny someone claiming a listing. Approval emails the login details only to that person.\nJob Reports — review a reported job. Taking it down emails the business with your reason.\n\nIf a tab has something waiting, its sidebar row shows a count. The same count appears on every tab that has pending work.",
     published_at: "2026-10-17T01:20:00+05:30",

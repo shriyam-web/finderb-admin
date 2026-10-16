@@ -16,7 +16,19 @@ type OwnershipRow = {
   requester_phone: string;
   status: string;
   admin_note?: string | null;
+  owner_note?: string | null;
+  owner_opinion?: "waiting" | "approved" | "denied" | "expired" | string;
+  owner_deadline_at?: string | null;
+  reversible?: boolean;
+  reversible_until?: string | null;
   created_at: string;
+};
+
+const OPINION_LABEL: Record<string, string> = {
+  waiting: "Waiting for the current owner",
+  approved: "Current owner approved",
+  denied: "Current owner denied",
+  expired: "Current business didn't respond",
 };
 
 function formatWhen(value: string) {
@@ -40,9 +52,9 @@ export default function OwnershipRequestsContent({
   focusId?: string | null;
 }) {
   const { toast } = useAdminToast();
-  const [status, setStatus] = useState<"pending" | "approved" | "denied" | "all">("pending");
+  const [status, setStatus] = useState<"pending" | "approved" | "denied" | "reversed" | "reversible" | "all">("pending");
   const [rows, setRows] = useState<OwnershipRow[]>([]);
-  const [note, setNote] = useState("");
+  const [notes, setNotes] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -80,10 +92,12 @@ export default function OwnershipRequestsContent({
     });
   }, [focusId, rows]);
 
-  const act = async (row: OwnershipRow, action: "approve" | "deny") => {
+  const act = async (row: OwnershipRow, action: "approve" | "deny" | "reverse") => {
     if (!adminSession?.id || !canManage) return;
-    if (action === "deny" && note.trim().length < 3) {
-      toast("Add a reason before denying.", "error");
+    const reason = (notes[row.id] || "").trim();
+    if (action === "deny" && reason.length < 3) {
+      toast("Write the reason in the box on this request, then deny it.", "error");
+      document.getElementById(`deny-reason-${row.id}`)?.focus();
       return;
     }
     setBusyId(row.id);
@@ -95,7 +109,7 @@ export default function OwnershipRequestsContent({
           adminId: adminSession.id,
           requestId: row.id,
           action,
-          adminNote: note.trim(),
+          adminNote: reason,
         }),
       });
       const json = await res.json();
@@ -105,10 +119,16 @@ export default function OwnershipRequestsContent({
       }
       toast(
         action === "approve"
-          ? "Approved. Login details were sent only to that person."
-          : "Request denied.",
+          ? "Approved. Login details were sent only to that person. You can reverse this for 15 days."
+          : action === "reverse"
+            ? "Transfer reversed. The previous login works again."
+            : "Request denied.",
       );
-      setNote("");
+      setNotes((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
       await load();
       requestAdminPanelRefresh();
     } finally {
@@ -122,37 +142,30 @@ export default function OwnershipRequestsContent({
         <div>
           <h2 className="text-lg font-semibold text-slate-900">Ownership requests</h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">
-            People who asked to manage a listing. Approving replaces that business login and
-            sends the new credentials only to the requester, by email and in their own FinderB
-            notifications.
+            The current owner is emailed and gets a high-priority notification. They can approve
+            or deny in the app for 48 hours, and that answer shows on the card. If they do not
+            answer, the card says the business did not respond and you decide. An approved
+            transfer can be reversed for 15 days from Can reverse.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {(["pending", "approved", "denied", "all"] as const).map((item) => (
+          {(["pending", "approved", "denied", "reversed", "reversible", "all"] as const).map((item) => (
             <button
               key={item}
               type="button"
               onClick={() => setStatus(item)}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize ${
+                className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                 status === item
                   ? "border-slate-900 bg-slate-900 text-white"
                   : "border-slate-200 bg-white text-slate-600"
               }`}
             >
-              {item}
+              {item === "reversible" ? "Can reverse" : item[0].toUpperCase() + item.slice(1)}
             </button>
           ))}
         </div>
       </div>
-      {canManage ? (
-        <textarea
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-          rows={2}
-          placeholder="Reason, required when you deny"
-          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-slate-400"
-        />
-      ) : (
+      {canManage ? null : (
         <p className="text-sm text-slate-500">You can view these requests. Editing needs access from a developer.</p>
       )}
       {rows.length === 0 ? (
@@ -176,8 +189,32 @@ export default function OwnershipRequestsContent({
                   <p className="mt-2 text-sm text-slate-700">
                     {row.requester_name} · {row.requester_email} · +91 {row.requester_phone}
                   </p>
+                  <p
+                    className={`mt-2 text-xs font-semibold ${
+                      row.owner_opinion === "approved"
+                        ? "text-emerald-700"
+                        : row.owner_opinion === "denied"
+                          ? "text-rose-700"
+                          : row.owner_opinion === "expired"
+                            ? "text-amber-700"
+                            : "text-slate-600"
+                    }`}
+                  >
+                    {OPINION_LABEL[row.owner_opinion || "waiting"] || "Waiting for the current owner"}
+                    {row.owner_opinion === "waiting" && row.owner_deadline_at
+                      ? ` · until ${formatWhen(row.owner_deadline_at)}`
+                      : ""}
+                  </p>
+                  {row.owner_opinion === "denied" && row.owner_note ? (
+                    <p className="mt-1 text-xs text-slate-500">Owner reason: {row.owner_note}</p>
+                  ) : null}
                   {row.admin_note ? (
                     <p className="mt-1 text-xs text-slate-500">Note: {row.admin_note}</p>
+                  ) : null}
+                  {row.reversible && row.reversible_until ? (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Reversible until {formatWhen(row.reversible_until)}
+                    </p>
                   ) : null}
                 </div>
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold capitalize text-slate-700">
@@ -185,7 +222,21 @@ export default function OwnershipRequestsContent({
                 </span>
               </div>
               {canManage && row.status === "pending" ? (
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 space-y-2">
+                  <label className="block" htmlFor={`deny-reason-${row.id}`}>
+                    <span className="mb-1 block text-xs font-medium text-slate-600">Reason for denying</span>
+                    <textarea
+                      id={`deny-reason-${row.id}`}
+                      value={notes[row.id] || ""}
+                      onChange={(event) =>
+                        setNotes((current) => ({ ...current, [row.id]: event.target.value }))
+                      }
+                      rows={2}
+                      placeholder="Write why this request is denied. Required before Deny."
+                      className="admin-input min-h-[72px]"
+                    />
+                  </label>
+                  <div className="flex gap-2">
                   <button
                     type="button"
                     disabled={busyId === row.id}
@@ -201,6 +252,19 @@ export default function OwnershipRequestsContent({
                     className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 disabled:opacity-50"
                   >
                     Deny
+                  </button>
+                  </div>
+                </div>
+              ) : null}
+              {canManage && row.reversible ? (
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    disabled={busyId === row.id}
+                    onClick={() => void act(row, "reverse")}
+                    className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 disabled:opacity-50"
+                  >
+                    Reverse transfer
                   </button>
                 </div>
               ) : null}
