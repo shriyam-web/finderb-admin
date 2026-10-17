@@ -8,11 +8,15 @@ import styles from "./AdminEntryScreen.module.css";
 export type EntryDestination = "dashboard" | "login";
 
 const HANDOFF_KEY = "finderb-admin-entry-handoff";
-const WELCOME_MS = 900;
+const GREET_MS = 1450;
+const OUT_MS = 420;
+const WELCOME_MS = GREET_MS + OUT_MS + 700;
 const CHECK_MS = 900;
 const RESULT_MS = 1400;
+const LINE_WORDS = ["Control.", "Update.", "Manage."] as const;
 
 type Phase = "welcome" | "checking" | "result";
+type TitleBeat = "greet" | "out" | "line";
 
 async function probeSession(): Promise<EntryDestination> {
   try {
@@ -103,6 +107,13 @@ export default function AdminEntryScreen({
   if (elapsed >= welcomeMs + checkMs && liveStatus !== "checking") phase = "result";
   else if (elapsed >= welcomeMs) phase = "checking";
 
+  const titleBeat: TitleBeat =
+    reducedNow || continued.current || elapsed >= GREET_MS + OUT_MS
+      ? "line"
+      : elapsed >= GREET_MS
+        ? "out"
+        : "greet";
+
   const destination: EntryDestination | null =
     phase === "result" && liveStatus !== "checking" ? liveStatus : null;
 
@@ -124,17 +135,33 @@ export default function AdminEntryScreen({
 
   return (
     <div className={styles.root} role="status" aria-live="polite" data-phase={phase}>
+      <div className={styles.atmosphere} aria-hidden>
+        <span className={styles.glow} />
+      </div>
 
-      <div className={styles.stage}>
+      <div className={styles.brand}>
         <Image
           src="/fb-mark.png"
           alt=""
-          width={44}
-          height={44}
+          width={20}
+          height={20}
           className={styles.mark}
           priority
         />
-        <h1 className={styles.headline}>Welcome to FinderB Admin</h1>
+        <span>Admin</span>
+      </div>
+      <div className={styles.stage}>
+        {titleBeat === "line" ? (
+          <h1 className={styles.line}>
+            {LINE_WORDS.map((word, index) => (
+              <span key={word} className={styles.word} style={{ animationDelay: `${index * 160}ms` }}>
+                {word}
+              </span>
+            ))}
+          </h1>
+        ) : (
+          <h1 className={titleBeat === "out" ? styles.headlineOut : styles.headline}>Welcome Back</h1>
+        )}
         <div className={styles.statusSlot}>
           {phase === "checking" ? (
             <p className={styles.statusLine}>
