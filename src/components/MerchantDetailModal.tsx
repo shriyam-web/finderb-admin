@@ -39,6 +39,7 @@ import {
   CategorySubcategoryPicker,
 } from "./CategorySubcategoryPicker";
 import { onboardSourceLabel } from "../lib/onboardSource";
+import MerchantBadgePanel from "./MerchantBadgePanel";
 
 export type MerchantBusinessRecord = {
   id: string;
@@ -1451,6 +1452,8 @@ export default function MerchantDetailModal({
                     )}
                   </div>
                 )}
+
+                <MerchantBadgePanel businessId={display.id} canManage={canManage} />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                   <Section title="Contact">

@@ -14,6 +14,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "../../../utils/supabase/client";
+import { stampListingLiveAt } from "../../lib/listingLiveAt";
 import { uploadToCloudinary } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
 import FinderBJobsContent, {
@@ -1843,6 +1844,7 @@ export default function Dashboard() {
       toast("Error approving merchant: " + error.message, "error");
       return;
     }
+    void stampListingLiveAt(req.id);
 
     setActiveMerchants((prev: Merchant[]) => [
       ...prev,
@@ -5265,6 +5267,7 @@ function MerchantsContent({
       toast("Error approving merchant: " + error.message, "error");
       return;
     }
+    void stampListingLiveAt(merchant.id);
 
     setActiveMerchants([
       ...activeMerchants,
@@ -5345,6 +5348,7 @@ function MerchantsContent({
       toast("Error updating status: " + error.message, "error");
       return;
     }
+    if (newStatus === "Active") void stampListingLiveAt(id);
 
     setActiveMerchants(
       activeMerchants.map((m) =>

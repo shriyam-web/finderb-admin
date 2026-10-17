@@ -304,6 +304,14 @@ export async function POST(request: Request) {
     }
 
     if (String(business.status || "").toLowerCase() === "active") {
+      const { error: liveError } = await supabase
+        .from("Business")
+        .update({ listingLiveAt: now })
+        .eq("id", business.id)
+        .is("listingLiveAt", null);
+      if (liveError && !/listingLiveAt/i.test(liveError.message || "")) {
+        console.warn("[admin-register] listingLiveAt", liveError.message);
+      }
       void notifyListingLiveOnSite(String(business.id)).catch((notifyError) => {
         console.warn("[admin-register] listing-live notify failed", notifyError);
       });
