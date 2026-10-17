@@ -48,6 +48,14 @@ export function markAdminEntryHandoff() {
   sessionStorage.setItem(HANDOFF_KEY, String(Date.now()));
 }
 
+/** True when the welcome screen just finished and should not play again. */
+export function consumeAdminEntryHandoff(): boolean {
+  const at = Number(sessionStorage.getItem(HANDOFF_KEY) || 0);
+  const fresh = Date.now() - at < 20000;
+  if (fresh) sessionStorage.removeItem(HANDOFF_KEY);
+  return fresh;
+}
+
 export default function AdminEntryScreen({
   status,
   respectHandoff = false,

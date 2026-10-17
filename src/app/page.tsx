@@ -166,6 +166,10 @@ export default function Home() {
   const router = useRouter();
 
   useLayoutEffect(() => {
+    if (new URLSearchParams(window.location.search).get("form") === "1") {
+      window.history.replaceState(null, "", "/");
+      setGate("form");
+    }
     applyAdminConsoleTheme(readLaunchTheme());
   }, [gate]);
 
@@ -338,7 +342,7 @@ export default function Home() {
         onResolved={(destination) => {
           if (destination === "dashboard") {
             markAdminEntryHandoff();
-            router.push("/dashboard?from=login");
+            router.push("/dashboard");
             return;
           }
           setGate("form");

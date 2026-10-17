@@ -27,7 +27,7 @@ import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
-import AdminEntryScreen from "../../components/AdminEntryScreen";
+import AdminEntryScreen, { consumeAdminEntryHandoff } from "../../components/AdminEntryScreen";
 import GoodbyeScreen from "../../components/GoodbyeScreen";
 import AccessRestrictedPanel from "../../components/AccessRestrictedPanel";
 import WhatsNewPanel, {
@@ -1011,17 +1011,29 @@ export default function Dashboard() {
   const [adminSession, setAdminSession] = useState<any>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [bootMinElapsed, setBootMinElapsed] = useState(false);
-  const [arrival, setArrival] = useState<"unknown" | "fresh" | "login">("unknown");
+  const [arrival, setArrival] = useState<"fresh" | "login">("fresh");
 
   useLayoutEffect(() => {
     const fromLogin = new URLSearchParams(window.location.search).get("from") === "login";
-    setArrival(fromLogin ? "login" : "fresh");
+    if (fromLogin) {
+      setArrival("login");
+      return;
+    }
+    if (!consumeAdminEntryHandoff()) return;
+    try {
+      const raw = localStorage.getItem("admin_session");
+      const session = raw ? JSON.parse(raw) : null;
+      if (session?.id) setAdminSession(session);
+    } catch {
+      /* validateSession clears a broken payload */
+    }
+    setBootMinElapsed(true);
   }, []);
 
   useEffect(() => {
     if (arrival !== "login" || !sessionReady) return;
     if (!adminSession) {
-      router.replace("/");
+      router.replace("/?form=1");
       return;
     }
     window.history.replaceState(null, "", "/dashboard");
@@ -2962,16 +2974,15 @@ export default function Dashboard() {
   }
 
   if (!bootMinElapsed) {
-    if (arrival !== "fresh") {
+    if (arrival === "login") {
       return <AdminEntryScreen loaderOnly status="checking" onResolved={() => {}} />;
     }
     return (
       <AdminEntryScreen
-        respectHandoff
         status={!sessionReady ? "checking" : adminSession ? "dashboard" : "login"}
         onResolved={(destination) => {
           if (destination === "login") {
-            router.push("/");
+            router.replace("/?form=1");
             return;
           }
           setBootMinElapsed(true);
