@@ -5835,9 +5835,7 @@ function MerchantsContent({
             className={`admin-segmented-btn ${merchantTab === "Active" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}
           >
             Active
-            <span
-              className={`ml-1.5 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${merchantTab === "Active" ? "bg-teal-50 text-teal-800" : "bg-slate-200 text-slate-600"}`}
-            >
+            <span className={`merchant-tab-count ${merchantTab === "Active" ? "is-on" : ""}`}>
               {activeMerchants.length}
             </span>
           </button>
@@ -5847,7 +5845,7 @@ function MerchantsContent({
           >
             Pending
             <span
-              className={`ml-1.5 inline-flex items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${merchantRequests.length > 0 ? "bg-amber-100 text-amber-800" : merchantTab === "Pending" ? "bg-teal-50 text-teal-800" : "bg-slate-200 text-slate-600"}`}
+              className={`merchant-tab-count ${merchantRequests.length > 0 ? "is-alert" : merchantTab === "Pending" ? "is-on" : ""}`}
             >
               {merchantRequests.length}
             </span>
@@ -5859,7 +5857,7 @@ function MerchantsContent({
         <div className="admin-card overflow-hidden">
           {toolbar}
           <div className="admin-table-wrap">
-            <table className="admin-table admin-table-compact">
+            <table className="admin-table admin-table-compact admin-table-pin">
               <thead>
                 <tr>
                   <th>Business</th>
@@ -5883,7 +5881,14 @@ function MerchantsContent({
                       <td>
                         <div className="min-w-[190px]">
                           <div className="flex items-center gap-2">
-                            <p className="truncate text-sm font-semibold text-slate-900">{merchant.name}</p>
+                            <button
+                              type="button"
+                              className="merchant-name-btn"
+                              onClick={() => handleViewMerchant(merchant.id)}
+                              title={`Open ${merchant.name}`}
+                            >
+                              {merchant.name}
+                            </button>
                             {merchant.isFinderBVerified ? (
                               <span className="admin-badge shrink-0 border-emerald-200 bg-emerald-50 text-[10px] text-emerald-800">Verified</span>
                             ) : null}
@@ -6034,7 +6039,7 @@ function MerchantsContent({
         <div className="admin-card overflow-hidden">
           {toolbar}
           <div className="admin-table-wrap">
-            <table className="admin-table admin-table-compact">
+            <table className="admin-table admin-table-compact admin-table-pin">
               <thead>
                 <tr>
                   <th>Business</th>
@@ -6056,7 +6061,14 @@ function MerchantsContent({
                   >
                     <td>
                       <div className="min-w-[180px]">
-                        <p className="truncate text-sm font-semibold text-slate-900">{req.name}</p>
+                        <button
+                          type="button"
+                          className="merchant-name-btn"
+                          onClick={() => handleViewMerchant(req.id)}
+                          title={`Open ${req.name}`}
+                        >
+                          {req.name}
+                        </button>
                         <div className="mt-0.5 flex items-center gap-2">
                           {req.registrationNumber ? (
                             <span className="admin-mono text-[10px] text-slate-400">{req.registrationNumber}</span>
