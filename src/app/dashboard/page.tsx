@@ -5684,20 +5684,14 @@ function MerchantsContent({
     "h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 transition-colors";
 
   const toolbar = (
-    <div className="flex flex-col xl:flex-row xl:items-center gap-2 px-4 py-3 border-b border-slate-100 bg-white">
-      <div className="relative flex-1 min-w-0 max-w-md">
-        <input
-          type="text"
-          placeholder="Search name, email, merchant ID, category…"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="admin-search w-full !py-2 !text-[13px]"
-        />
+    <div className="merchant-toolbar">
+      <div className="merchant-search">
         <svg
-          className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
+          className="merchant-search-icon"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
+          aria-hidden
         >
           <path
             strokeLinecap="round"
@@ -5706,18 +5700,29 @@ function MerchantsContent({
             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
           />
         </svg>
-        {searchTerm && (
+        <input
+          type="search"
+          placeholder="Search name, email, merchant ID, category…"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="merchant-search-input"
+          aria-label="Search merchants"
+          autoComplete="off"
+          spellCheck={false}
+        />
+        {searchTerm ? (
           <button
             type="button"
             onClick={() => setSearchTerm("")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="merchant-search-clear"
             title="Clear search"
+            aria-label="Clear search"
           >
             <svg
-              className="w-3.5 h-3.5"
+              viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              viewBox="0 0 24 24"
+              aria-hidden
             >
               <path
                 strokeLinecap="round"
@@ -5727,9 +5732,9 @@ function MerchantsContent({
               />
             </svg>
           </button>
-        )}
+        ) : null}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="merchant-toolbar-filters">
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
