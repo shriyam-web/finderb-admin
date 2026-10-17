@@ -3007,3 +3007,157 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
 }
+
+.admin-universal-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.admin-universal-search-launch {
+  width: 2.1rem;
+  height: 2.1rem;
+}
+
+.admin-universal-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.admin-universal-search-field svg {
+  position: absolute;
+  left: 0.65rem;
+  width: 0.95rem;
+  height: 0.95rem;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.admin-universal-search-field input {
+  width: min(18rem, 42vw);
+  height: 2.1rem;
+  padding: 0 2.6rem 0 2rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.admin-universal-search-field input:focus {
+  border-color: #fdba74;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.12);
+}
+
+.admin-universal-search-close {
+  position: absolute;
+  right: 0.45rem;
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-universal-search-pop {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  width: min(28rem, calc(100vw - 1.5rem));
+  max-height: min(70vh, 28rem);
+  overflow: auto;
+  z-index: 70;
+  padding: 0.35rem;
+}
+
+.admin-universal-search-empty {
+  margin: 0;
+  padding: 0.85rem 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.admin-universal-search-hit {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  gap: 0.55rem;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-radius: 0.65rem;
+  background: transparent;
+  padding: 0.45rem 0.5rem;
+}
+
+.admin-universal-search-hit.is-active,
+.admin-universal-search-hit:hover {
+  background: #fff7ed;
+}
+
+.admin-universal-search-kind,
+.admin-universal-search-tab {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #c2410c;
+}
+
+.admin-universal-search-tab {
+  color: #94a3b8;
+  text-align: right;
+}
+
+.admin-universal-search-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-universal-search-title {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-universal-search-sub {
+  font-size: 0.7rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-universal-search mark {
+  background: #ffedd5;
+  color: inherit;
+  border-radius: 0.15rem;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search-field input {
+  background: #141414;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search-hit.is-active,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search-hit:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search-title {
+  color: #f8fafc;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search mark {
+  background: rgba(234, 88, 12, 0.35);
+}

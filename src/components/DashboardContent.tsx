@@ -688,11 +688,10 @@ export default function DashboardContent({
             <div>
               <h3 className="admin-card-title flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-orange-600" />
-                Growth trajectory
+                New registrations
               </h3>
               <p className="admin-card-description">
-                New registrations · 7 days · peak {chartPeak.label} (
-                {chartPeak.total})
+                Last 7 days · peak {chartPeak.label} ({chartPeak.total})
               </p>
             </div>
             <div className="flex gap-3 text-[11px] text-slate-500 font-semibold">
@@ -841,7 +840,7 @@ export default function DashboardContent({
                     tone: "border-slate-200 bg-slate-50",
                   },
                   {
-                    label: "MTD revenue",
+                    label: "This month's revenue",
                     value: stats.payments.mtdRevenueDisplay,
                     tone: "border-slate-200 bg-white",
                   },

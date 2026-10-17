@@ -282,9 +282,9 @@ export function BlogContent({
     const blog = blogs.find((item) => item.id === focusBlogId);
     if (!blog) return;
     setSearch("");
-    setStatusFilter("draft");
     setCategoryFilter("all");
     setIsAddingBlog(false);
+    setStatusFilter(blog.status === "draft" ? "draft" : "all");
     setEditingBlog(blog);
   }, [focusBlogId, blogs]);
 

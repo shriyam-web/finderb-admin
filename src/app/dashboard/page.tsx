@@ -26,6 +26,7 @@ import TouristPlacesContent from "../../components/TouristPlacesContent";
 import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import AdminContentLoader from "../../components/AdminContentLoader";
+import AdminUniversalSearch from "../../components/AdminUniversalSearch";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
 import AdminEntryScreen, { consumeAdminEntryHandoff } from "../../components/AdminEntryScreen";
@@ -2720,6 +2721,7 @@ export default function Dashboard() {
             users={users}
             setUsers={setUsers}
             adminSession={adminSession}
+            focusUserId={todoFocus?.tab === "Users" ? todoFocus.targetId : null}
           />
         );
       case "Merchants":
@@ -2803,6 +2805,7 @@ export default function Dashboard() {
             leads={leads}
             categories={categories}
             merchants={activeMerchants}
+            focusLeadId={todoFocus?.tab === "Leads" ? todoFocus.targetId : null}
           />
         );
       case "Categories":
@@ -3651,6 +3654,33 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="admin-topbar-actions">
+              <AdminUniversalSearch
+                adminId={adminSession?.id ?? null}
+                tabs={menuItems.map((item) => item.name)}
+                canViewFinancialData={canViewFinancialData}
+                users={users}
+                merchants={activeMerchants}
+                pendingMerchants={merchantRequests}
+                businesses={allBusinessData}
+                leads={leads}
+                categories={categories}
+                movies={movies}
+                places={touristPlaces}
+                blogs={blogs}
+                jobs={finderBJobs}
+                news={news}
+                admins={admins}
+                payments={merchantPaymentRows}
+                todos={queueItems}
+                onOpen={(hit) => {
+                  setActiveTab(hit.tab);
+                  setTodoFocus(
+                    hit.targetId
+                      ? { tab: hit.tab, targetId: hit.targetId, kind: hit.focusKind }
+                      : null,
+                  );
+                }}
+              />
               <span
                 className={`admin-role-badge ${
                   isDeveloper
@@ -3956,10 +3986,12 @@ function LeadsContent({
   leads,
   categories,
   merchants,
+  focusLeadId = null,
 }: {
   leads: Lead[];
   categories: Category[];
   merchants: Merchant[];
+  focusLeadId?: string | null;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All Categories");
@@ -3988,6 +4020,22 @@ function LeadsContent({
     });
     return Array.from(map.entries()).sort((a, b) => a[1].localeCompare(b[1]));
   }, [merchants, leads]);
+
+  useEffect(() => {
+    if (!focusLeadId) return;
+    const lead = leads.find((item) => item.id === focusLeadId);
+    if (!lead) return;
+    setCategoryFilter("All Categories");
+    setSourceFilter("All Sources");
+    setMerchantFilter("All Merchants");
+    setDateFilter("all");
+    setSearchTerm(lead.email || lead.phone || lead.name);
+    window.setTimeout(() => {
+      document.getElementById(`admin-focus-${lead.id}`)?.scrollIntoView({
+        block: "center",
+      });
+    }, 0);
+  }, [focusLeadId, leads]);
 
   const filteredLeads = useMemo(() => {
     const now = new Date();
@@ -4267,6 +4315,7 @@ function LeadsContent({
                 pageItems.map((lead) => (
                   <tr
                     key={lead.id}
+                    id={`admin-focus-${lead.id}`}
                     className="hover:bg-slate-50/80 transition-colors"
                   >
                     <td className="px-4 py-3">
@@ -4542,10 +4591,12 @@ function UsersContent({
   users,
   setUsers,
   adminSession,
+  focusUserId = null,
 }: {
   users: User[];
   setUsers: Dispatch<SetStateAction<User[]>>;
   adminSession: AdminSession | null;
+  focusUserId?: string | null;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [visiblePasswords, setVisiblePasswords] = useState<
@@ -4594,6 +4645,19 @@ function UsersContent({
   useEffect(() => {
     setPage(1);
   }, [searchTerm, rowsPerPage]);
+
+  useEffect(() => {
+    if (!focusUserId) return;
+    const user = users.find((item) => item.id === focusUserId);
+    if (!user) return;
+    setSearchTerm("");
+    setSelectedUser(user);
+    window.setTimeout(() => {
+      document.getElementById(`admin-focus-${user.id}`)?.scrollIntoView({
+        block: "center",
+      });
+    }, 0);
+  }, [focusUserId, users]);
 
   const fetchUserPassword = async (userId: string) => {
     const { data } = await createClient()
@@ -4649,7 +4713,7 @@ function UsersContent({
 
       <div className="admin-card overflow-hidden">
         <div className="admin-table-wrap">
-          <table className="admin-table admin-table-compact">
+          <table className="admin-table admin-table-compact admin-table-pin">
             <thead>
               <tr>
                 <th>User</th>
@@ -4664,7 +4728,7 @@ function UsersContent({
             </thead>
             <tbody>
               {pagedUsers.map((user) => (
-                <tr key={user.id}>
+                <tr key={user.id} id={`admin-focus-${user.id}`}>
                   <td>
                     <div className="flex items-center gap-3 min-w-[180px]">
                       <div className="admin-avatar !w-8 !h-8 !text-[11px]">
@@ -4675,9 +4739,14 @@ function UsersContent({
                           .slice(0, 2)}
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-900">
+                        <button
+                          type="button"
+                          className="merchant-name-btn max-w-[220px] truncate"
+                          onClick={() => setSelectedUser(user)}
+                          title={`Open ${user.fullName || "user"}`}
+                        >
                           {user.fullName || "Unnamed"}
-                        </p>
+                        </button>
                         <p className="admin-mono truncate text-[10px] text-slate-400" title={user.id}>
                           {user.id}
                         </p>

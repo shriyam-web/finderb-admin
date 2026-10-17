@@ -101,7 +101,7 @@ export default function FinderBJobsContent({
     const job = jobs.find((item) => item.id === focusJobId);
     if (!job) return;
     setSearchTerm("");
-    setStatusFilter("pending");
+    setStatusFilter(getJobStatus(job) === "pending" ? "pending" : "all");
     setTypeFilter("all");
     setSelectedJob(job);
   }, [focusJobId, jobs]);
