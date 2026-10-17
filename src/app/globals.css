@@ -2820,6 +2820,34 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   }
 }
 
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-goodbye {
+  background: #171717;
+  color: #f5f5f4;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-goodbye-card {
+  background: #1c1917;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-goodbye-card h1,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-goodbye-card dd {
+  color: #f5f5f4;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-goodbye-card p,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-goodbye-card dt {
+  color: #a8a29e;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-slide {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-slide span {
+  color: #d6d3d1;
+}
+
 html[data-admin-theme="dark"] .admin-login {
   background: #171717;
 }

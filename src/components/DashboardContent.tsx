@@ -7,7 +7,7 @@ import {
   BarChart3,
   Briefcase,
   Building2,
-  Calendar,
+  Clock,
   CheckCircle2,
   ChevronRight,
   CreditCard,
@@ -20,7 +20,7 @@ import {
   Wallet,
   Zap,
 } from "lucide-react";
-import { formatActivityDate, formatActivityTime } from "../lib/formatDateTime";
+import { formatActivityDate, formatActivityTime, formatSessionLength } from "../lib/formatDateTime";
 import { waitingLabel } from "../lib/waitingLabel";
 import type { DashboardStats } from "../lib/dashboardStats";
 import type { MerchantRequest } from "../lib/merchantRequest";
@@ -236,8 +236,7 @@ export default function DashboardContent({
   chartData,
   recentActivities,
   stats,
-  platformDateLabel,
-  platformTimeLabel,
+  sessionStartedAt,
   loginLogs,
   maintenanceMode,
   canViewFinancialData,
@@ -257,8 +256,7 @@ export default function DashboardContent({
   chartData: ChartDay[];
   recentActivities: ActivityItem[];
   stats: DashboardStats;
-  platformDateLabel: string;
-  platformTimeLabel: string;
+  sessionStartedAt: string | null;
   loginLogs: LoginLog[];
   maintenanceMode: boolean;
   canViewFinancialData: boolean;
@@ -302,6 +300,24 @@ export default function DashboardContent({
     { label: "—", total: 0 },
   );
 
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const startedMs = sessionStartedAt ? Date.parse(sessionStartedAt) : Number.NaN;
+  const sessionStartLabel = Number.isFinite(startedMs)
+    ? new Date(startedMs).toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      })
+    : "—";
+  const sessionLengthLabel = Number.isFinite(startedMs)
+    ? formatSessionLength(nowMs - startedMs)
+    : "—";
+
   const filteredActivities = useMemo(() => {
     if (activityFilter === "all") return recentActivities;
     return recentActivities.filter((a) => a.type === activityFilter);
@@ -333,13 +349,12 @@ export default function DashboardContent({
                   Platform live
                 </span>
               )}
-              {platformDateLabel && (
-                <span className="text-[11px] text-slate-500 flex items-center gap-1 tabular-nums font-semibold">
-                  <Calendar className="w-3.5 h-3.5" />
-                  {platformDateLabel}
-                  {platformTimeLabel && ` · ${platformTimeLabel}`}
-                </span>
-              )}
+              <span className="text-[11px] text-slate-500 flex items-center gap-1 tabular-nums font-semibold">
+                <Clock className="w-3.5 h-3.5" />
+                Started {sessionStartLabel}
+                <span className="text-slate-300">·</span>
+                Session {sessionLengthLabel}
+              </span>
             </div>
             <h1 className="admin-page-title !mb-0">Dashboard</h1>
             <p className="admin-page-subtitle !mt-1">

@@ -27,6 +27,7 @@ import DashboardContent from "../../components/DashboardContent";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
 import AdminEntryScreen from "../../components/AdminEntryScreen";
+import GoodbyeScreen from "../../components/GoodbyeScreen";
 import AccessRestrictedPanel from "../../components/AccessRestrictedPanel";
 import WhatsNewPanel, {
   useWhatsNewUnreadCount,
@@ -1180,17 +1181,12 @@ export default function Dashboard() {
         }),
       );
       setPlatformClockLabel(
-        `${now.toLocaleDateString("en-GB", {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })} · ${now.toLocaleTimeString("en-IN", {
+        now.toLocaleTimeString("en-IN", {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
           hour12: true,
-        })}`,
+        }),
       );
     };
     formatClock();
@@ -1290,6 +1286,8 @@ export default function Dashboard() {
         );
         const updatedSession = {
           ...session,
+          startedAt:
+            typeof session.startedAt === "string" ? session.startedAt : new Date().toISOString(),
           role: data.role,
           email: data.email ?? session.email,
           allowed_tabs: access.allowed_tabs,
@@ -1317,15 +1315,22 @@ export default function Dashboard() {
     validateSession();
   }, [router]);
 
+  const [goodbye, setGoodbye] = useState<{ startedAt: number; endedAt: number } | null>(null);
+
   const handleLogout = useCallback(() => {
+    const startedMs = Date.parse(String(adminSession?.startedAt || ""));
+    const endedAt = Date.now();
     void reportAdminSession("end").finally(() => {
       clearAdminFloatingPositions();
       localStorage.removeItem("admin_session");
       setAdminSession(null);
       applyAdminConsoleTheme(readLaunchTheme());
-      router.push("/");
+      setGoodbye({
+        startedAt: Number.isFinite(startedMs) ? startedMs : endedAt,
+        endedAt,
+      });
     });
-  }, [router]);
+  }, [adminSession?.startedAt]);
 
   useEffect(() => {
     const onRefresh = () => setPanelRefresh((value) => value + 1);
@@ -2615,8 +2620,9 @@ export default function Dashboard() {
             chartData={chartData}
             recentActivities={recentActivities}
             stats={dashboardStats}
-            platformDateLabel={platformDateLabel}
-            platformTimeLabel={platformTimeLabel}
+            sessionStartedAt={
+              typeof adminSession?.startedAt === "string" ? adminSession.startedAt : null
+            }
             loginLogs={loginLogs}
             maintenanceMode={siteMode === "maintenance"}
             canViewFinancialData={canViewFinancialData}
@@ -2903,8 +2909,9 @@ export default function Dashboard() {
             chartData={chartData}
             recentActivities={recentActivities}
             stats={dashboardStats}
-            platformDateLabel={platformDateLabel}
-            platformTimeLabel={platformTimeLabel}
+            sessionStartedAt={
+              typeof adminSession?.startedAt === "string" ? adminSession.startedAt : null
+            }
             loginLogs={loginLogs}
             maintenanceMode={siteMode === "maintenance"}
             canViewFinancialData={canViewFinancialData}
@@ -2927,6 +2934,10 @@ export default function Dashboard() {
         );
     }
   };
+
+  if (goodbye) {
+    return <GoodbyeScreen startedAt={goodbye.startedAt} endedAt={goodbye.endedAt} />;
+  }
 
   if (!bootMinElapsed) {
     return (
@@ -3609,9 +3620,10 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
-            <p className="text-xs text-slate-500 tabular-nums hidden sm:block font-semibold">
-              {platformClockLabel || "—"}
-            </p>
+            <div className="hidden text-right leading-tight sm:block">
+              <p className="text-[11px] font-medium text-slate-500">{platformDateLabel || "—"}</p>
+              <p className="text-xs font-semibold tabular-nums text-slate-700">{platformClockLabel || "—"}</p>
+            </div>
           </div>
         </div>
 

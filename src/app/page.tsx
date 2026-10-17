@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useLayoutEffect } from "react";
+import { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -58,6 +58,86 @@ const EMAIL_DOMAINS = [
   "rediffmail.com",
   "finderb.com",
 ];
+
+function SlideToContinue({
+  busy,
+  onConfirm,
+}: {
+  busy: boolean;
+  onConfirm: (form: HTMLFormElement | null) => void;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const xRef = useRef(0);
+  const drag = useRef<{ pointer: number; origin: number } | null>(null);
+  const [x, setX] = useState(0);
+
+  const limit = () => Math.max(0, (trackRef.current?.clientWidth ?? 0) - 48);
+
+  useEffect(() => {
+    if (busy) return;
+    xRef.current = 0;
+    setX(0);
+  }, [busy]);
+
+  const moveTo = (value: number) => {
+    const next = Math.min(limit(), Math.max(0, value));
+    xRef.current = next;
+    setX(next);
+  };
+
+  return (
+    <div
+      ref={trackRef}
+      className="admin-slide relative mt-9 h-12 w-full touch-none overflow-hidden rounded-full bg-stone-100 md:hidden"
+    >
+      <span className="pointer-events-none absolute inset-0 flex items-center justify-center pl-8 text-sm font-medium text-stone-500">
+        {busy ? "Checking…" : "Slide to continue"}
+      </span>
+      <button
+        type="button"
+        disabled={busy}
+        aria-label="Slide to continue"
+        onPointerDown={(event) => {
+          if (busy) return;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          drag.current = { pointer: event.clientX, origin: xRef.current };
+        }}
+        onPointerMove={(event) => {
+          if (!drag.current) return;
+          moveTo(drag.current.origin + event.clientX - drag.current.pointer);
+        }}
+        onPointerUp={() => {
+          if (!drag.current) return;
+          drag.current = null;
+          if (xRef.current >= limit() - 8) {
+            const form = trackRef.current?.closest("form") ?? null;
+            if (form && !form.checkValidity()) {
+              form.reportValidity();
+              moveTo(0);
+              return;
+            }
+            moveTo(limit());
+            onConfirm(form);
+            return;
+          }
+          moveTo(0);
+        }}
+        onPointerCancel={() => {
+          drag.current = null;
+          moveTo(0);
+        }}
+        className="absolute top-1 left-1 flex h-10 w-10 items-center justify-center rounded-full bg-[#ea580c] text-white disabled:opacity-60"
+        style={{ transform: `translateX(${x}px)` }}
+      >
+        {busy ? (
+          <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
+        ) : (
+          <ArrowRight className="h-4 w-4" aria-hidden />
+        )}
+      </button>
+    </div>
+  );
+}
 
 function emailDomainSuggestions(value: string): string[] {
   const at = value.lastIndexOf("@");
@@ -157,6 +237,7 @@ export default function Home() {
         displayName: admin.displayName ?? null,
         loginEnabled: admin.loginEnabled === true,
         loginLogId: loginLogId || null,
+        startedAt: new Date().toISOString(),
       }),
     );
     router.push("/dashboard");
@@ -531,7 +612,7 @@ export default function Home() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="admin-btn-primary mt-9! h-11 w-full text-[15px] font-semibold"
+                  className="admin-btn-primary mt-9! hidden h-11 w-full text-[15px] font-semibold max-md:!hidden md:inline-flex"
                 >
                   {isLoading ? (
                     <>
@@ -545,6 +626,10 @@ export default function Home() {
                     </>
                   )}
                 </button>
+                <SlideToContinue
+                  busy={isLoading}
+                  onConfirm={(form) => form?.requestSubmit()}
+                />
               </form>
             )}
           </div>
