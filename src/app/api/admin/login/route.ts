@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { hashPassword, verifyPassword } from "../../../../lib/merchantPassword";
-import { sendAdminLoginCode, signLoginChallenge } from "../../../../lib/adminLoginOtp";
+import {
+  requestIp,
+  sendAdminLoginCode,
+  signLoginChallenge,
+  takeLoginAttempt,
+} from "../../../../lib/adminLoginOtp";
+
+let unknownPasswordHash: Promise<string> | null = null;
+
+async function spendUnknownPasswordTime(password: string) {
+  unknownPasswordHash ||= hashPassword("finderb-admin-unknown-account");
+  await verifyPassword(password, await unknownPasswordHash);
+}
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -28,6 +40,19 @@ export async function POST(request: Request) {
 
     const email = body.email?.trim().toLowerCase() || "";
     const password = body.password ?? "";
+    if (email && password) {
+      const gate = await takeLoginAttempt(requestIp(request), email);
+      if (!gate.ok) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Too many sign-in attempts. Wait a minute and try again.",
+            retryAfter: gate.retryAfter,
+          },
+          { status: 429 },
+        );
+      }
+    }
 
     if (!email || !password) {
       return NextResponse.json(
@@ -118,6 +143,15 @@ export async function POST(request: Request) {
     }
 
     if (!admin) {
+      await spendUnknownPasswordTime(password);
+      return NextResponse.json(
+        { success: false, error: "Incorrect email or password. Please try again." },
+        { status: 401 },
+      );
+    }
+
+    const verification = await verifyPassword(password, String(admin.password || ""));
+    if (!verification.valid) {
       return NextResponse.json(
         { success: false, error: "Incorrect email or password. Please try again." },
         { status: 401 },
@@ -134,14 +168,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const verification = await verifyPassword(password, String(admin.password || ""));
-    if (!verification.valid) {
-      return NextResponse.json(
-        { success: false, error: "Incorrect email or password. Please try again." },
-        { status: 401 },
-      );
-    }
-
     if (verification.needsRehash) {
       const hashed = await hashPassword(password);
       const { error: rehashError } = await supabase
@@ -154,7 +180,7 @@ export async function POST(request: Request) {
     }
 
     const sent = await sendAdminLoginCode(admin.email);
-    if (!sent.ok) {
+    if (!sent.ok && !sent.retryAfter && !sent.locked) {
       return NextResponse.json({ success: false, error: sent.error }, { status: 503 });
     }
 
@@ -162,6 +188,7 @@ export async function POST(request: Request) {
       success: true,
       step: "email",
       challenge: signLoginChallenge(admin.id),
+      retryAfter: sent.ok ? 60 : sent.retryAfter ?? 60,
     });
   } catch (error) {
     console.error("[admin login] unexpected:", error);

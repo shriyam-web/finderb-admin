@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   ArrowRight,
@@ -160,17 +160,73 @@ function QuickLink({
   );
 }
 
-const TODO_STRIPES = ["#e11d48", "#d97706", "#0f766e", "#2563eb", "#7c3aed", "#db2777", "#ea580c", "#0891b2"];
+const TODO_FILL_COUNT = 8;
 
-const TODO_TONES: Record<string, { label: string; soft: string; ink: string; border: string }> = {
-  "user-flag": { label: "Review", soft: "#ffe4e6", ink: "#be123c", border: "#fecdd3" },
-  "business-flag": { label: "Review", soft: "#ffedd5", ink: "#c2410c", border: "#fed7aa" },
-  change: { label: "Change", soft: "#fef3c7", ink: "#b45309", border: "#fde68a" },
-  ownership: { label: "Ownership", soft: "#dbeafe", ink: "#1d4ed8", border: "#bfdbfe" },
-  "job-report": { label: "Job", soft: "#ede9fe", ink: "#6d28d9", border: "#ddd6fe" },
-  engagement: { label: "Engage", soft: "#ccfbf1", ink: "#0f766e", border: "#99f6e4" },
-  fallback: { label: "Queue", soft: "#f1f5f9", ink: "#334155", border: "#e2e8f0" },
+const TODO_TONES: Record<string, { label: string }> = {
+  "user-flag": { label: "Review" },
+  "business-flag": { label: "Review" },
+  change: { label: "Change" },
+  ownership: { label: "Ownership" },
+  "job-report": { label: "Job" },
+  engagement: { label: "Engage" },
+  merchant: { label: "Listing" },
+  job: { label: "Job" },
+  blog: { label: "Draft" },
+  more: { label: "More" },
+  fallback: { label: "Queue" },
 };
+
+type TodoCard = {
+  id: string;
+  tab: string;
+  title: string;
+  detail: string;
+  targetId: string | null;
+  waitingSince: string | null;
+  kind: string;
+};
+
+type LeavingTodo = TodoCard & { leaving: boolean; tone: number };
+
+function useLeavingTodos(items: TodoCard[]) {
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const signature = items.map((item) => `${item.id}\u0000${item.title}\u0000${item.detail}`).join("\n");
+  const [rows, setRows] = useState<LeavingTodo[]>(() =>
+    items.map((item, index) => ({ ...item, leaving: false, tone: index % TODO_FILL_COUNT })),
+  );
+
+  useEffect(() => {
+    const next = itemsRef.current;
+    setRows((prev) => {
+      const nextById = new Map(next.map((item) => [item.id, item]));
+      const seen = new Set(prev.map((row) => row.id));
+      const updated = prev.map((row) => {
+        const incoming = nextById.get(row.id);
+        if (!incoming) return { ...row, leaving: true };
+        return { ...incoming, leaving: false, tone: row.tone };
+      });
+      const added = next
+        .filter((item) => !seen.has(item.id))
+        .map((item, index) => ({
+          ...item,
+          leaving: false,
+          tone: (updated.length + index) % TODO_FILL_COUNT,
+        }));
+      return [...updated, ...added];
+    });
+  }, [signature]);
+
+  useEffect(() => {
+    if (!rows.some((row) => row.leaving)) return;
+    const timer = window.setTimeout(() => {
+      setRows((current) => current.filter((row) => !row.leaving));
+    }, 360);
+    return () => window.clearTimeout(timer);
+  }, [rows]);
+
+  return rows;
+}
 
 export default function DashboardContent({
   setActiveTab,
@@ -232,6 +288,7 @@ export default function DashboardContent({
     kind: string;
   }) => void;
 }) {
+  const todoRows = useLeavingTodos(todos);
   const [showRevenue, setShowRevenue] = useState(false);
   const [activityFilter, setActivityFilter] = useState<
     "all" | "user" | "merchant" | "lead"
@@ -327,60 +384,50 @@ export default function DashboardContent({
             <p className="admin-card-description">
               {todosReady
                 ? todos.length
-                  ? `${todos.length} item${todos.length === 1 ? "" : "s"} waiting for review`
-                  : "Nothing is waiting"
+                  ? `${todos.length} waiting · refreshes every 5 minutes`
+                  : "Refreshes every 5 minutes"
                 : "Checking what needs a review"}
             </p>
           </div>
         </div>
         {!todosReady ? (
           <p className="px-4 py-6 text-sm text-slate-500">Loading the queue…</p>
-        ) : todos.length === 0 ? (
-          <div className="px-6 py-8 text-center">
-            <p className="text-2xl" aria-hidden>
-              🎉
-            </p>
-            <h3 className="mt-2 text-lg font-semibold text-slate-900">Kudos</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Every review queue is clear. Nice work.
+        ) : todoRows.length === 0 ? (
+          <div className="todo-clear">
+            <h3>All caught up</h3>
+            <p>
+              Nothing needs a decision right now. Listings, reviews, claims, and reports will show up here as soon as they arrive.
             </p>
           </div>
         ) : (
-          <div className="max-h-[420px] space-y-2 overflow-y-auto p-3">
-            {todos.map((item, index) => {
+          <div className="todo-list">
+            {todoRows.map((item, index) => {
               const tone = TODO_TONES[item.kind] || TODO_TONES.fallback;
-              const stripe = TODO_STRIPES[index % TODO_STRIPES.length];
               const waited = waitingLabel(item.waitingSince);
               return (
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => onOpenTodo(item)}
-                  className="flex w-full items-center gap-3 rounded-xl border bg-white px-3 py-2.5 text-left shadow-sm transition hover:-translate-y-px hover:shadow"
-                  style={{ borderColor: tone.border, borderLeftWidth: 5, borderLeftColor: stripe }}
+                  onClick={() => {
+                    if (!item.leaving) onOpenTodo(item);
+                  }}
+                  className={item.leaving ? "todo-card is-leaving" : "todo-card"}
+                  data-tone={item.tone}
+                  tabIndex={item.leaving ? -1 : 0}
+                  aria-hidden={item.leaving || undefined}
                 >
-                  <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold"
-                    style={{ background: tone.soft, color: tone.ink }}
-                  >
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="truncate text-sm font-semibold text-slate-900">{item.title}</span>
-                      <span
-                        className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                        style={{ background: tone.soft, color: tone.ink }}
-                      >
-                        {tone.label}
-                      </span>
+                  <span className="todo-index">{index + 1}</span>
+                  <span className="todo-copy">
+                    <span className="todo-title-row">
+                      <span className="todo-title">{item.title}</span>
+                      <span className="todo-chip">{tone.label}</span>
                     </span>
-                    <span className="mt-0.5 block truncate text-xs text-slate-500">
+                    <span className="todo-detail">
                       {item.detail}
                       {waited ? ` · ${waited}` : ""}
                     </span>
                   </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                  <ChevronRight className="todo-chevron" />
                 </button>
               );
             })}

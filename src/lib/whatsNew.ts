@@ -80,6 +80,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Admin sign-in is slower to attack",
+    body: "Password sign-in now stops after 5 attempts in a minute, for that network and for that email address.\n\nThe email code can be sent again only after 60 seconds. That wait is on the server, so refreshing the page does not skip it. Five codes is the most one sign-in will email.\n\nFive wrong codes end that sign-in. Enter the password again to get a new code.\n\nA missing account takes the same time to reject as a wrong password.",
+    published_at: "2026-10-18T03:30:00+05:30",
+  },
+  {
     title: "Public badges have their own merchant tab",
     body: "Open a merchant and use the Badges tab. Overview only lists which marks are on the public profile.\n\nA business that already qualifies gets the mark by itself. Auto keeps it on while they still qualify. On forces a mark onto the profile. Off hides it.\n\nBest in Category — rating 4 or above, at least 3 visible reviews, replies within about 4 hours, and profile completion above 90%.\nQuick reply — average lead reply within 1 hour, and at least 5 leads opened.\nHighly rated — public rating 4.7 or above, and at least 10 visible reviews.\nPopular this month — most profile views or most leads this month among active businesses in the same category and city.\nNew on FinderB — the listing went live fewer than 30 days ago.\nFinderB Trusted — only an admin can turn this on. It does not award itself.",
     published_at: "2026-10-18T02:40:00+05:30",

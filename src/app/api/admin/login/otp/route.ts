@@ -3,8 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 import {
   consumeAdminLoginCode,
   readLoginChallenge,
+  requestIp,
   sendAdminLoginCode,
   signLoginChallenge,
+  takeOtpCheck,
 } from "../../../../../lib/adminLoginOtp";
 import { signAdminSession } from "../../../../../lib/adminSessionToken";
 import { isConsoleLoginUnlocked, normalizeAccessFields } from "../../../../../lib/adminTabAccess";
@@ -61,13 +63,30 @@ export async function POST(request: Request) {
     if (body.resend) {
       const sent = await sendAdminLoginCode(admin.email);
       if (!sent.ok) {
-        return NextResponse.json({ success: false, error: sent.error }, { status: 503 });
+        const status = sent.retryAfter || sent.locked ? 429 : 503;
+        return NextResponse.json(
+          { success: false, error: sent.error, retryAfter: sent.retryAfter ?? null },
+          { status },
+        );
       }
       return NextResponse.json({
         success: true,
         step: "email",
         challenge: signLoginChallenge(admin.id),
+        retryAfter: 60,
       });
+    }
+
+    const pace = await takeOtpCheck(requestIp(request));
+    if (!pace.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Too many code attempts. Wait a minute and try again.",
+          retryAfter: pace.retryAfter,
+        },
+        { status: 429 },
+      );
     }
 
     const code = String(body.code || "").replace(/\D/g, "");
@@ -77,9 +96,16 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    if (!(await consumeAdminLoginCode(admin.email, code))) {
+    const verdict = await consumeAdminLoginCode(admin.email, code);
+    if (verdict === "locked") {
       return NextResponse.json(
-        { success: false, error: "That code is invalid or expired. Request a new one." },
+        { success: false, error: "Too many incorrect codes. Enter your password again." },
+        { status: 401 },
+      );
+    }
+    if (verdict !== "ok") {
+      return NextResponse.json(
+        { success: false, error: "That code is invalid or expired." },
         { status: 401 },
       );
     }

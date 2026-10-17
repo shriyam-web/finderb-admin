@@ -106,6 +106,7 @@ export default function Home() {
         error?: string;
         step?: "email";
         challenge?: string;
+        retryAfter?: number;
       };
 
       if (!response.ok || !result.success) {
@@ -121,7 +122,7 @@ export default function Home() {
       setChallenge(result.challenge);
       setOtpCode("");
       setCodeInvalid(false);
-      setResendIn(90);
+      setResendIn(typeof result.retryAfter === "number" ? result.retryAfter : 60);
       setStep("email");
       setIsLoading(false);
     } catch {
@@ -171,9 +172,16 @@ export default function Home() {
         admin?: AdminPayload;
       };
       if (!response.ok || !result.success || !result.admin) {
+        if (result.error?.toLowerCase().includes("password again")) {
+          setStep("password");
+          setChallenge("");
+          setOtpCode("");
+          setCodeInvalid(false);
+        } else {
+          setCodeInvalid(true);
+          setOtpCode("");
+        }
         setError(result.error || "That code was not accepted.");
-        setCodeInvalid(true);
-        setOtpCode("");
         setIsLoading(false);
         return;
       }
@@ -200,14 +208,21 @@ export default function Home() {
         success?: boolean;
         error?: string;
         challenge?: string;
+        retryAfter?: number;
       };
       if (!response.ok || !result.success || !result.challenge) {
+        if (typeof result.retryAfter === "number") setResendIn(result.retryAfter);
+        if (result.error?.toLowerCase().includes("password again")) {
+          setStep("password");
+          setChallenge("");
+          setOtpCode("");
+        }
         setError(result.error || "Could not resend the code.");
         setIsLoading(false);
         return;
       }
       setChallenge(result.challenge);
-      setResendIn(90);
+      setResendIn(typeof result.retryAfter === "number" ? result.retryAfter : 60);
       setIsLoading(false);
     } catch {
       setError("Could not resend the code.");

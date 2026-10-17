@@ -1380,6 +1380,25 @@ export default function Dashboard() {
   }, [adminSession?.id, activeTab, panelRefresh]);
 
   useEffect(() => {
+    if (!adminSession?.id) return;
+    let last = Date.now();
+    const refresh = () => {
+      last = Date.now();
+      setPanelRefresh((value) => value + 1);
+    };
+    const timer = window.setInterval(refresh, 5 * 60 * 1000);
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - last >= 5 * 60 * 1000) refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [adminSession?.id]);
+
+  useEffect(() => {
     if (!adminSession?.id || !adminSession?.loginLogId) return;
     void reportAdminSession("heartbeat");
     const timer = window.setInterval(() => {
