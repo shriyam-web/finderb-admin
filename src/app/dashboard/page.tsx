@@ -3758,10 +3758,11 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
-            <div className="hidden text-right leading-tight sm:block">
-              <p className="text-[11px] font-medium text-slate-500">{platformDateLabel || "—"}</p>
-              <p className="text-xs font-semibold tabular-nums text-slate-700">{platformClockLabel || "—"}</p>
-            </div>
+            <p className="hidden text-right text-xs font-semibold tabular-nums text-slate-700 sm:block">
+              <span className="font-medium text-slate-500">{platformDateLabel || "—"}</span>
+              <span className="px-1.5 text-slate-300" aria-hidden>·</span>
+              <span>{platformClockLabel || "—"}</span>
+            </p>
           </div>
         </div>
 

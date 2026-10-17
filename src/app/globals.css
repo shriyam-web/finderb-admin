@@ -2770,16 +2770,21 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   text-align: center;
 }
 
-.todo-kudos {
+.todo-clear h3.todo-kudos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
   margin: 0;
-  font-size: 1.75rem;
-  line-height: 1;
+  font-size: 1.45rem;
+  font-weight: 650;
+  line-height: 1.15;
+  color: #0f172a;
 }
 
-.todo-clear h3 {
-  font-size: 16px;
-  font-weight: 650;
-  color: #0f172a;
+.todo-kudos span {
+  font-size: 2rem;
+  line-height: 1;
 }
 
 .todo-clear p {
