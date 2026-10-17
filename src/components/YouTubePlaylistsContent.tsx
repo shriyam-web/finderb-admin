@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
+import AdminContentLoader from "./AdminContentLoader";
 import { useAdminPanelRefresh } from "../lib/adminPanelRefresh";
 
 export type YoutubePlaylist = {
@@ -102,6 +103,7 @@ export default function YouTubePlaylistsContent({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [videos, setVideos] = useState<YoutubeVideo[]>([]);
   const [videosLoading, setVideosLoading] = useState(false);
+  const [videosReady, setVideosReady] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const [newPlaylistTitle, setNewPlaylistTitle] = useState("");
@@ -133,6 +135,7 @@ export default function YouTubePlaylistsContent({
       );
       setPlaylists([]);
       setLoading(false);
+      setVideosReady(true);
       return;
     }
 
@@ -162,30 +165,34 @@ export default function YouTubePlaylistsContent({
       if (current && withCounts.some((p) => p.id === current)) return current;
       return withCounts[0]?.id ?? null;
     });
+    if (!withCounts.length) setVideosReady(true);
     setLoading(false);
   }, []);
 
   const loadVideos = useCallback(async (playlistId: string) => {
     setVideosLoading(true);
-    const supabase = createClient();
-    const { data, error: fetchError } = await supabase
-      .from("youtube_videos")
-      .select(
-        "id, playlist_id, youtube_video_id, title, description, topic, thumbnail_url, watch_url, sort_order, is_published, created_at, updated_at",
-      )
-      .eq("playlist_id", playlistId)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false });
+    try {
+      const supabase = createClient();
+      const { data, error: fetchError } = await supabase
+        .from("youtube_videos")
+        .select(
+          "id, playlist_id, youtube_video_id, title, description, topic, thumbnail_url, watch_url, sort_order, is_published, created_at, updated_at",
+        )
+        .eq("playlist_id", playlistId)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false });
 
-    if (fetchError) {
-      setError(fetchError.message || "Could not load videos");
-      setVideos([]);
+      if (fetchError) {
+        setError(fetchError.message || "Could not load videos");
+        setVideos([]);
+        return;
+      }
+
+      setVideos((data ?? []) as YoutubeVideo[]);
+    } finally {
       setVideosLoading(false);
-      return;
+      setVideosReady(true);
     }
-
-    setVideos((data ?? []) as YoutubeVideo[]);
-    setVideosLoading(false);
   }, []);
 
   useEffect(() => {
@@ -464,6 +471,10 @@ export default function YouTubePlaylistsContent({
     }
     await loadVideos(selectedId);
   };
+
+  if ((loading && playlists.length === 0) || !videosReady) {
+    return <AdminContentLoader label="Loading playlists" />;
+  }
 
   return (
     <div className="space-y-6">

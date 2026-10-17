@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from "react";
 import { createClient } from "../../utils/supabase/client";
+import AdminContentLoader from "./AdminContentLoader";
 import { useAdminPanelRefresh } from "../lib/adminPanelRefresh";
 import { uploadToCloudinary } from "../utils/cloudinary";
 import {
@@ -96,6 +97,7 @@ export default function TouristPlacesContent({
 }) {
   const [places, setPlaces] = useState<TouristPlaceRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [placesReady, setPlacesReady] = useState(false);
   const [error, setError] = useState("");
   const [editingPlace, setEditingPlace] = useState<
     (Partial<TouristPlaceRecord> & { taggedBusinessIds: string[] }) | null
@@ -146,6 +148,7 @@ export default function TouristPlacesContent({
       );
       setPlaces([]);
       setLoading(false);
+      setPlacesReady(true);
       return;
     }
 
@@ -170,6 +173,7 @@ export default function TouristPlacesContent({
     }
 
     setLoading(false);
+    setPlacesReady(true);
   }, []);
 
   useEffect(() => {
@@ -726,6 +730,10 @@ export default function TouristPlacesContent({
       </div>
     </div>
   );
+
+  if (!placesReady) {
+    return <AdminContentLoader label="Loading tourist places" />;
+  }
 
   return (
     <div className="space-y-4 font-sans">

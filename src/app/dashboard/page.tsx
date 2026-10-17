@@ -25,6 +25,7 @@ import YouTubePlaylistsContent from "../../components/YouTubePlaylistsContent";
 import TouristPlacesContent from "../../components/TouristPlacesContent";
 import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
+import AdminContentLoader from "../../components/AdminContentLoader";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
 import AdminEntryScreen, { consumeAdminEntryHandoff } from "../../components/AdminEntryScreen";
@@ -1284,6 +1285,8 @@ export default function Dashboard() {
   const [queueCounts, setQueueCounts] = useState<SidebarQueueCounts>(EMPTY_QUEUE_COUNTS);
   const [queueItems, setQueueItems] = useState<AdminTodo[]>([]);
   const [queueReady, setQueueReady] = useState(false);
+  const [logsReady, setLogsReady] = useState(false);
+  const [adminsReady, setAdminsReady] = useState(false);
 
   useEffect(() => {
     const validateSession = async () => {
@@ -1724,7 +1727,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchAdmins = async () => {
-      if (activeTab === "Manage Admins") {
+      if (activeTab !== "Manage Admins") return;
+      try {
         const supabase = createClient();
         const { data, error } = await supabase
           .from("admins")
@@ -1736,6 +1740,8 @@ export default function Dashboard() {
         } else {
           setAdmins(data || []);
         }
+      } finally {
+        setAdminsReady(true);
       }
     };
 
@@ -1756,43 +1762,49 @@ export default function Dashboard() {
     };
 
     const fetchLoginLogs = async () => {
+      if (!adminSession?.id) return;
       if (!isDeveloper) {
         setLoginLogs([]);
+        setLogsReady(true);
         return;
       }
-      const supabase = createClient();
-      const query = supabase
-        .from("admin_login_logs")
-        .select("id, admin_id, admin_email, login_time, logout_at, last_seen_at")
-        .order("login_time", { ascending: false })
-        .limit(500);
-      let { data, error } = await query;
-
-      if (error && /logout_at|last_seen_at/i.test(error.message || "")) {
-        const fallback = await supabase
+      try {
+        const supabase = createClient();
+        const query = supabase
           .from("admin_login_logs")
-          .select("id, admin_id, admin_email, login_time")
+          .select("id, admin_id, admin_email, login_time, logout_at, last_seen_at")
           .order("login_time", { ascending: false })
           .limit(500);
-        data = (fallback.data || []).map((row) => ({
-          ...row,
-          logout_at: null,
-          last_seen_at: null,
-        }));
-        error = fallback.error;
-      }
+        let { data, error } = await query;
 
-      if (error) {
-        console.error("Error fetching login logs:", error);
-      } else {
-        setLoginLogs(data || []);
+        if (error && /logout_at|last_seen_at/i.test(error.message || "")) {
+          const fallback = await supabase
+            .from("admin_login_logs")
+            .select("id, admin_id, admin_email, login_time")
+            .order("login_time", { ascending: false })
+            .limit(500);
+          data = (fallback.data || []).map((row) => ({
+            ...row,
+            logout_at: null,
+            last_seen_at: null,
+          }));
+          error = fallback.error;
+        }
+
+        if (error) {
+          console.error("Error fetching login logs:", error);
+        } else {
+          setLoginLogs(data || []);
+        }
+      } finally {
+        setLogsReady(true);
       }
     };
 
     fetchAdmins();
     fetchUsers();
     fetchLoginLogs();
-  }, [activeTab, isDeveloper, panelRefresh]);
+  }, [activeTab, adminSession?.id, isDeveloper, panelRefresh]);
 
   const menuItems = ALL_MENU_ITEMS.filter((item) => {
     // Developer sees every tab, including Manage Admins and coming soon.
@@ -2641,6 +2653,31 @@ export default function Dashboard() {
           onRetry={() => window.location.reload()}
         />
       );
+    }
+
+    const shellFed =
+      activeTab === "Dashboard" ||
+      activeTab === "Users" ||
+      activeTab === "Merchants" ||
+      activeTab === "Business Onboarding" ||
+      activeTab === "Quick Onboard" ||
+      activeTab === "Leads" ||
+      activeTab === "Categories" ||
+      activeTab === "Movies" ||
+      activeTab === "Blogs" ||
+      activeTab === "FinderB Jobs" ||
+      activeTab === "Payments & Subscriptions" ||
+      activeTab === "Tourist Places";
+    const viewLoading =
+      (shellFed && dataLoading) ||
+      (activeTab === "Dashboard" && !queueReady) ||
+      ((activeTab === "Dashboard" || activeTab === "Settings") &&
+        isDeveloper &&
+        !logsReady) ||
+      (activeTab === "Manage Admins" && !adminsReady);
+
+    if (viewLoading) {
+      return <AdminContentLoader label={`Loading ${activeTab}`} />;
     }
 
     switch (activeTab) {

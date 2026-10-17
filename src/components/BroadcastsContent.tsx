@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AdminContentLoader from "./AdminContentLoader";
 import {
   DEFAULT_BROADCAST_CTA_LABEL,
   resolveBroadcastCta,
@@ -54,18 +55,26 @@ export default function BroadcastsContent({
   const [showDatetime, setShowDatetime] = useState(true);
   const [when, setWhen] = useState("");
   const [rows, setRows] = useState<Broadcast[]>([]);
+  const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [recipientFilter, setRecipientFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"newest" | "recipient">("newest");
 
   const load = async () => {
-    if (!adminId) return;
-    const res = await fetch(`/api/admin/broadcasts?adminId=${encodeURIComponent(adminId)}`, {
-      cache: "no-store",
-    });
-    const json = (await res.json().catch(() => null)) as { success?: boolean; broadcasts?: Broadcast[] } | null;
-    if (json?.success && Array.isArray(json.broadcasts)) setRows(json.broadcasts);
+    if (!adminId) {
+      setReady(true);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/admin/broadcasts?adminId=${encodeURIComponent(adminId)}`, {
+        cache: "no-store",
+      });
+      const json = (await res.json().catch(() => null)) as { success?: boolean; broadcasts?: Broadcast[] } | null;
+      if (json?.success && Array.isArray(json.broadcasts)) setRows(json.broadcasts);
+    } finally {
+      setReady(true);
+    }
   };
 
   useEffect(() => {
@@ -213,6 +222,8 @@ export default function BroadcastsContent({
   const toggle = (id: string) => {
     setAudiences((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
+
+  if (!ready) return <AdminContentLoader label="Loading broadcasts" />;
 
   return (
     <div className="space-y-5">

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAdminToast } from "./AdminToast";
+import AdminContentLoader from "./AdminContentLoader";
 import { ADMIN_PANEL_REFRESH, requestAdminPanelRefresh } from "../lib/adminPanelRefresh";
 
 type AdminSession = { id: string; email?: string; role?: string };
@@ -39,19 +40,29 @@ export default function JobReportsContent({
   const { toast } = useAdminToast();
   const [status, setStatus] = useState<"pending" | "removed" | "dismissed" | "all">("pending");
   const [rows, setRows] = useState<JobReportRow[]>([]);
+  const [ready, setReady] = useState(false);
   const [note, setNote] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!adminSession?.id) return;
-    const params = new URLSearchParams({ adminId: adminSession.id, status });
-    const res = await fetch(`/api/admin/job-reports?${params.toString()}`);
-    const json = await res.json();
-    if (!json?.success) {
-      toast(json?.error || "Could not load job reports.", "error");
+    if (!adminSession?.id) {
+      setReady(true);
       return;
     }
-    setRows((json.rows || []) as JobReportRow[]);
+    try {
+      const params = new URLSearchParams({ adminId: adminSession.id, status });
+      const res = await fetch(`/api/admin/job-reports?${params.toString()}`);
+      const json = await res.json();
+      if (!json?.success) {
+        toast(json?.error || "Could not load job reports.", "error");
+        return;
+      }
+      setRows((json.rows || []) as JobReportRow[]);
+    } catch {
+      toast("Could not load job reports.", "error");
+    } finally {
+      setReady(true);
+    }
   }, [adminSession?.id, status, toast]);
 
   useEffect(() => {
@@ -108,6 +119,8 @@ export default function JobReportsContent({
       setBusyId(null);
     }
   };
+
+  if (!ready) return <AdminContentLoader label="Loading job reports" />;
 
   return (
     <div className="space-y-5">

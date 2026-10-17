@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAdminToast } from "./AdminToast";
+import AdminContentLoader from "./AdminContentLoader";
 import { ADMIN_PANEL_REFRESH, requestAdminPanelRefresh } from "../lib/adminPanelRefresh";
 
 type AdminSession = { id: string; email?: string; role?: string };
@@ -54,19 +55,29 @@ export default function OwnershipRequestsContent({
   const { toast } = useAdminToast();
   const [status, setStatus] = useState<"pending" | "approved" | "denied" | "reversed" | "reversible" | "all">("pending");
   const [rows, setRows] = useState<OwnershipRow[]>([]);
+  const [ready, setReady] = useState(false);
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!adminSession?.id) return;
-    const params = new URLSearchParams({ adminId: adminSession.id, status });
-    const res = await fetch(`/api/admin/ownership-requests?${params.toString()}`);
-    const json = await res.json();
-    if (!json?.success) {
-      toast(json?.error || "Could not load ownership requests.", "error");
+    if (!adminSession?.id) {
+      setReady(true);
       return;
     }
-    setRows((json.rows || []) as OwnershipRow[]);
+    try {
+      const params = new URLSearchParams({ adminId: adminSession.id, status });
+      const res = await fetch(`/api/admin/ownership-requests?${params.toString()}`);
+      const json = await res.json();
+      if (!json?.success) {
+        toast(json?.error || "Could not load ownership requests.", "error");
+        return;
+      }
+      setRows((json.rows || []) as OwnershipRow[]);
+    } catch {
+      toast("Could not load ownership requests.", "error");
+    } finally {
+      setReady(true);
+    }
   }, [adminSession?.id, status, toast]);
 
   useEffect(() => {
@@ -135,6 +146,8 @@ export default function OwnershipRequestsContent({
       setBusyId(null);
     }
   };
+
+  if (!ready) return <AdminContentLoader label="Loading ownership requests" />;
 
   return (
     <div className="space-y-5">

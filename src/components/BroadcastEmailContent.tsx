@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AdminContentLoader from "./AdminContentLoader";
 import { ADMIN_PANEL_REFRESH } from "../lib/adminPanelRefresh";
 import {
   RECIPIENT_FILTERS,
@@ -36,6 +37,7 @@ export default function BroadcastEmailContent({
   const [sending, setSending] = useState(false);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [sent, setSent] = useState<SentEmail[]>([]);
+  const [ready, setReady] = useState(false);
   const [recipientFilter, setRecipientFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"newest" | "recipient">("newest");
 
@@ -49,31 +51,38 @@ export default function BroadcastEmailContent({
   };
 
   const load = async () => {
-    if (!adminId) return;
-    let local: SentEmail[] = [];
+    if (!adminId) {
+      setReady(true);
+      return;
+    }
     try {
-      const raw = window.localStorage.getItem(LOCAL_HISTORY);
-      const parsed = raw ? (JSON.parse(raw) as SentEmail[]) : [];
-      if (Array.isArray(parsed)) local = parsed;
-    } catch {
-      local = [];
-    }
-    const res = await fetch(`/api/admin/broadcast-email?adminId=${encodeURIComponent(adminId)}`, {
-      cache: "no-store",
-    });
-    const json = (await res.json().catch(() => null)) as { success?: boolean; emails?: SentEmail[] } | null;
-    const remote = json?.success && Array.isArray(json.emails) ? json.emails : [];
-    const merged = [...remote];
-    for (const item of local) {
-      const exists = merged.some((row) => {
-        if (row.subject !== item.subject || row.to.join(",") !== item.to.join(",")) return false;
-        const gap = Math.abs(new Date(row.createdAt).getTime() - new Date(item.createdAt).getTime());
-        return row.createdAt === item.createdAt || gap < 2 * 60 * 1000;
+      let local: SentEmail[] = [];
+      try {
+        const raw = window.localStorage.getItem(LOCAL_HISTORY);
+        const parsed = raw ? (JSON.parse(raw) as SentEmail[]) : [];
+        if (Array.isArray(parsed)) local = parsed;
+      } catch {
+        local = [];
+      }
+      const res = await fetch(`/api/admin/broadcast-email?adminId=${encodeURIComponent(adminId)}`, {
+        cache: "no-store",
       });
-      if (!exists) merged.push(item);
+      const json = (await res.json().catch(() => null)) as { success?: boolean; emails?: SentEmail[] } | null;
+      const remote = json?.success && Array.isArray(json.emails) ? json.emails : [];
+      const merged = [...remote];
+      for (const item of local) {
+        const exists = merged.some((row) => {
+          if (row.subject !== item.subject || row.to.join(",") !== item.to.join(",")) return false;
+          const gap = Math.abs(new Date(row.createdAt).getTime() - new Date(item.createdAt).getTime());
+          return row.createdAt === item.createdAt || gap < 2 * 60 * 1000;
+        });
+        if (!exists) merged.push(item);
+      }
+      merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      rememberLocal(merged);
+    } finally {
+      setReady(true);
     }
-    merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    rememberLocal(merged);
   };
 
   useEffect(() => {
@@ -136,6 +145,8 @@ export default function BroadcastEmailContent({
       setSending(false);
     }
   };
+
+  if (!ready) return <AdminContentLoader label="Loading broadcast email" />;
 
   return (
     <div className="space-y-5">

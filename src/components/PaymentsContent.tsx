@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AdminContentLoader from "./AdminContentLoader";
 import {
   AlertCircle,
   CalendarClock,
@@ -520,6 +521,7 @@ export default function PaymentsContent({
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadedOnce, setLoadedOnce] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [activeTab, setActiveTabState] = useState<TabId>("overview");
@@ -698,6 +700,7 @@ export default function PaymentsContent({
       );
     } finally {
       setLoading(false);
+      setLoadedOnce(true);
     }
   }, [businesses]);
 
@@ -1159,6 +1162,8 @@ export default function PaymentsContent({
       )}
     </div>
   );
+
+  if (!loadedOnce) return <AdminContentLoader label="Loading payments" />;
 
   return (
     <div className="space-y-4 font-sans">

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdminToast } from "./AdminToast";
+import AdminContentLoader from "./AdminContentLoader";
 import {
   ListSearchInput,
   PaginationControls,
@@ -119,6 +120,7 @@ export default function ReviewsContent({
   const [tab, setTab] = useState<InnerTab>("all");
   const [flagStatus, setFlagStatus] = useState<"open" | "all">("open");
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
   const [appliedQuery, setAppliedQuery] = useState("");
   const [note, setNote] = useState("");
@@ -129,7 +131,10 @@ export default function ReviewsContent({
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!adminSession?.id) return;
+    if (!adminSession?.id) {
+      setReady(true);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams({ adminId: adminSession.id });
@@ -169,6 +174,7 @@ export default function ReviewsContent({
       toast("Could not load reviews.", "error");
     } finally {
       setLoading(false);
+      setReady(true);
     }
   }, [adminSession?.id, tab, appliedQuery, toast, flagStatus]);
 
@@ -412,6 +418,8 @@ export default function ReviewsContent({
     if (tab === "business-flags") return "No business reports in this filter.";
     return appliedQuery.trim() ? "No reviews match that search." : "No reviews found yet.";
   }, [tab, appliedQuery]);
+
+  if (!ready) return <AdminContentLoader label="Loading reviews" />;
 
   return (
     <div className="space-y-4">

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdminToast } from "./AdminToast";
+import AdminContentLoader from "./AdminContentLoader";
 import { getBusinessProfileUrl } from "../lib/site";
 import { ADMIN_PANEL_REFRESH, requestAdminPanelRefresh } from "../lib/adminPanelRefresh";
 
@@ -61,12 +62,16 @@ export default function ChangeRequestsContent({
     "pending",
   );
   const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
   const [rows, setRows] = useState<ChangeRequestRow[]>([]);
   const [note, setNote] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    if (!adminSession?.id) return;
+    if (!adminSession?.id) {
+      setReady(true);
+      return;
+    }
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -84,6 +89,7 @@ export default function ChangeRequestsContent({
       toast("Could not load change requests.", "error");
     } finally {
       setLoading(false);
+      setReady(true);
     }
   }, [adminSession?.id, status, toast]);
 
@@ -144,6 +150,8 @@ export default function ChangeRequestsContent({
       setBusyId(null);
     }
   };
+
+  if (!ready) return <AdminContentLoader label="Loading change requests" />;
 
   return (
     <div className="space-y-5">
