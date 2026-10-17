@@ -245,7 +245,7 @@ body {
   }
 
   .admin-nav-badge-soon {
-    @apply bg-teal-50 text-teal-700 border-teal-100 !min-w-0 !px-1.5;
+    @apply bg-orange-50 text-orange-700 border-orange-100 !min-w-0 !px-1.5;
   }
 
   .admin-nav-badge-new {
@@ -691,11 +691,11 @@ body {
   }
 
   .admin-input {
-    @apply w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 transition-colors;
+    @apply w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/40 transition-colors;
   }
 
   .admin-search {
-    @apply pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 transition-colors;
+    @apply pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-normal text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/40 transition-colors;
   }
 
   .admin-btn-primary {
@@ -713,7 +713,7 @@ body {
   }
 
   .admin-btn-ghost {
-    @apply inline-flex items-center justify-center p-2 text-slate-500 hover:text-teal-700 hover:bg-slate-100 rounded-lg transition-colors;
+    @apply inline-flex items-center justify-center p-2 text-slate-500 hover:text-orange-700 hover:bg-slate-100 rounded-lg transition-colors;
   }
 
   .admin-btn-danger {
@@ -776,7 +776,7 @@ body {
   }
 
   .admin-role-badge-admin {
-    @apply border-teal-200 bg-teal-50 text-teal-800;
+    @apply border-orange-200 bg-orange-50 text-orange-800;
   }
 
   .admin-role-badge-admin .admin-role-badge-dot {
@@ -959,7 +959,7 @@ body {
   }
 
   .admin-breadcrumb-home:hover {
-    @apply text-teal-700;
+    @apply text-orange-700;
   }
 
   .admin-breadcrumb-current {
@@ -980,7 +980,7 @@ body {
   }
 
   .admin-icon-btn {
-    @apply w-8 h-8 flex items-center justify-center text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition-colors border border-slate-200 bg-white;
+    @apply w-8 h-8 flex items-center justify-center text-slate-500 hover:text-orange-700 hover:bg-orange-50 rounded-lg transition-colors border border-slate-200 bg-white;
   }
 
   .admin-icon-btn-danger {
@@ -996,7 +996,7 @@ body {
   }
 
   .admin-segmented-btn-active {
-    @apply bg-white text-teal-800 border border-slate-200;
+    @apply bg-white text-orange-800 border border-slate-200;
   }
 
   .admin-segmented-btn-idle {
@@ -1008,11 +1008,11 @@ body {
   }
 
   .admin-avatar {
-    @apply w-9 h-9 rounded-lg bg-teal-50 text-teal-800 flex items-center justify-center text-xs font-medium border border-teal-100 shrink-0;
+    @apply w-9 h-9 rounded-lg bg-orange-50 text-orange-800 flex items-center justify-center text-xs font-medium border border-orange-100 shrink-0;
   }
 
   .admin-avatar-dark {
-    @apply w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-medium shrink-0 bg-teal-600 text-white;
+    @apply w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-medium shrink-0 bg-orange-600 text-white;
   }
 
   .admin-alert-error {
@@ -1034,7 +1034,7 @@ body {
   }
 
   .admin-link {
-    @apply text-xs font-medium text-teal-700 hover:text-teal-900 transition-colors;
+    @apply text-xs font-medium text-orange-700 hover:text-orange-900 transition-colors;
   }
 
   .admin-label {
@@ -1087,7 +1087,7 @@ body {
   }
 
   .admin-platform-hero-kicker {
-    @apply inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-teal-700 mb-1.5;
+    @apply inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-orange-700 mb-1.5;
   }
 
   .admin-platform-hero-points {
@@ -1100,7 +1100,7 @@ body {
 
   .admin-platform-hero-points li::before {
     content: "";
-    @apply absolute left-0 top-[0.45em] h-1.5 w-1.5 rounded-full bg-teal-500;
+    @apply absolute left-0 top-[0.45em] h-1.5 w-1.5 rounded-full bg-orange-500;
   }
 
   .admin-platform-hero-steps {
@@ -1112,7 +1112,7 @@ body {
   }
 
   .admin-platform-hero-step-active {
-    @apply border-teal-200 bg-teal-50 text-teal-900;
+    @apply border-orange-200 bg-orange-50 text-orange-900;
   }
 
   .admin-platform-hero-step-done {
@@ -1124,7 +1124,7 @@ body {
   }
 
   .admin-platform-hero-step-active .admin-platform-hero-step-num {
-    @apply bg-teal-600 text-white;
+    @apply bg-orange-600 text-white;
   }
 
   .admin-platform-hero-step-done .admin-platform-hero-step-num {
@@ -1194,7 +1194,7 @@ body {
   }
 
   .qo-hero-kicker {
-    @apply inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-teal-700 mb-1.5;
+    @apply inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-orange-700 mb-1.5;
   }
 
   .qo-hero-link .qo-hero-kicker {
@@ -1223,7 +1223,7 @@ body {
 
   .qo-hero-points li::before {
     content: "";
-    @apply absolute left-0 top-[0.45em] h-1.5 w-1.5 rounded-full bg-teal-500;
+    @apply absolute left-0 top-[0.45em] h-1.5 w-1.5 rounded-full bg-orange-500;
   }
 
   .qo-hero-link .qo-hero-points li::before {
@@ -1267,7 +1267,7 @@ body {
   }
 
   .qo-kicker {
-    @apply inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-teal-700;
+    @apply inline-flex items-center gap-1.5 text-[10px] font-semibold tracking-[0.08em] uppercase text-orange-700;
   }
 
   .qo-method-switch {
@@ -1317,7 +1317,7 @@ body {
   }
 
   .qo-method-tab-active .qo-method-icon {
-    @apply border-teal-200;
+    @apply border-orange-200;
     background: linear-gradient(145deg, #ffffff 0%, #fef3c7 50%, #ffedd5 100%);
     box-shadow: none;
     color: inherit;
@@ -1363,7 +1363,7 @@ body {
   }
 
   .qo-method-tab-hint {
-    @apply text-[10px] leading-tight text-teal-50/55 transition-colors duration-300 truncate;
+    @apply text-[10px] leading-tight text-orange-50/55 transition-colors duration-300 truncate;
   }
 
   .qo-method-tab-active .qo-method-tab-hint {
@@ -1371,7 +1371,7 @@ body {
   }
 
   .qo-method-tab-default {
-    @apply inline-flex items-center rounded border border-teal-200/80 bg-teal-50 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-teal-800;
+    @apply inline-flex items-center rounded border border-orange-200/80 bg-orange-50 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-orange-800;
   }
 
   .qo-set-default {
@@ -1388,11 +1388,11 @@ body {
   }
 
   .qo-method-tab-active .qo-set-default {
-    @apply border-teal-200 bg-teal-50 text-teal-800;
+    @apply border-orange-200 bg-orange-50 text-orange-800;
   }
 
   .qo-method-tab-active .qo-set-default:hover {
-    @apply border-teal-300 bg-teal-100 text-teal-900;
+    @apply border-orange-300 bg-orange-100 text-orange-900;
   }
 
   @media (max-width: 639px) {
@@ -1420,7 +1420,7 @@ body {
   }
 
   .qo-howto-num {
-    @apply mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-teal-600 text-[10px] font-bold text-white;
+    @apply mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-orange-600 text-[10px] font-bold text-white;
     width: 1.15rem;
     height: 1.15rem;
   }
@@ -1443,11 +1443,11 @@ body {
 
   .qo-link-tips-list li::before {
     content: "";
-    @apply absolute left-0 top-[0.45em] h-1 w-1 rounded-full bg-teal-500;
+    @apply absolute left-0 top-[0.45em] h-1 w-1 rounded-full bg-orange-500;
   }
 
   .qo-link-tips-list a {
-    @apply font-semibold text-teal-700 underline underline-offset-2 hover:text-teal-900;
+    @apply font-semibold text-orange-700 underline underline-offset-2 hover:text-orange-900;
   }
 
   .qo-link-tips-list code {
@@ -1463,7 +1463,7 @@ body {
   }
 
   .qo-link-drop-busy {
-    @apply border-teal-300 bg-teal-50/40;
+    @apply border-orange-300 bg-orange-50/40;
   }
 
   .qo-link-drop-ok {
@@ -1475,11 +1475,11 @@ body {
   }
 
   .qo-link-drop-icon {
-    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-teal-700;
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-orange-700;
   }
 
   .qo-link-progress {
-    @apply rounded-xl border border-teal-100 bg-teal-50/70 px-3 py-2.5 overflow-hidden relative;
+    @apply rounded-xl border border-orange-100 bg-orange-50/70 px-3 py-2.5 overflow-hidden relative;
   }
 
   .qo-link-progress-bar {
@@ -1490,7 +1490,7 @@ body {
   }
 
   .qo-fetch-theater {
-    @apply relative mt-3 overflow-hidden rounded-xl border border-teal-900/20 px-4 py-4;
+    @apply relative mt-3 overflow-hidden rounded-xl border border-orange-900/20 px-4 py-4;
     background:
       radial-gradient(ellipse at 20% 0%, rgba(249, 115, 22, 0.28), transparent 55%),
       radial-gradient(ellipse at 90% 100%, rgba(245, 158, 11, 0.18), transparent 50%),
@@ -1526,7 +1526,7 @@ body {
   }
 
   .qo-fetch-orbit-ring {
-    @apply absolute inset-2 rounded-full border border-teal-400/35;
+    @apply absolute inset-2 rounded-full border border-orange-400/35;
     animation: qo-fetch-spin 3.2s linear infinite;
   }
 
@@ -1537,7 +1537,7 @@ body {
   }
 
   .qo-fetch-orbit-core {
-    @apply absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-300;
+    @apply absolute left-1/2 top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange-300;
     box-shadow: 0 0 18px 4px rgba(251, 146, 60, 0.55);
     animation: qo-pulse-soft 1.4s ease-in-out infinite;
   }
@@ -1553,7 +1553,7 @@ body {
   }
 
   .qo-fetch-kicker {
-    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-teal-300/90;
+    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-orange-300/90;
   }
 
   .qo-fetch-title {
@@ -1584,7 +1584,7 @@ body {
   }
 
   .qo-fetch-step-on {
-    @apply text-teal-100;
+    @apply text-orange-100;
   }
 
   .qo-fetch-step-dot {
@@ -1592,12 +1592,12 @@ body {
   }
 
   .qo-fetch-step-on .qo-fetch-step-dot {
-    @apply bg-teal-300;
+    @apply bg-orange-300;
     box-shadow: 0 0 8px rgba(251, 146, 60, 0.7);
   }
 
   .qo-fetch-log {
-    @apply mt-1 flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/25 px-2.5 py-1.5 font-mono text-[10px] text-teal-200/90;
+    @apply mt-1 flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/25 px-2.5 py-1.5 font-mono text-[10px] text-orange-200/90;
   }
 
   .qo-fetch-log-prompt {
@@ -1609,11 +1609,11 @@ body {
   }
 
   .qo-hours-panel {
-    @apply rounded-xl border border-teal-100 bg-teal-50/40 px-3 py-3;
+    @apply rounded-xl border border-orange-100 bg-orange-50/40 px-3 py-3;
   }
 
   .qo-hours-badge {
-    @apply inline-flex items-center rounded-md border border-teal-200 bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-teal-800;
+    @apply inline-flex items-center rounded-md border border-orange-200 bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-orange-800;
   }
 
   .qo-hours-grid {
@@ -1693,7 +1693,7 @@ body {
   }
 
   .qo-step-arrow-on {
-    @apply text-teal-500;
+    @apply text-orange-500;
   }
 
   .qo-step-pill {
@@ -1705,11 +1705,11 @@ body {
   }
 
   .qo-step-current {
-    @apply border-teal-200/80 bg-teal-50 text-teal-900;
+    @apply border-orange-200/80 bg-orange-50 text-orange-900;
   }
 
   .qo-step-current .qo-step-num {
-    @apply bg-teal-600 text-white;
+    @apply bg-orange-600 text-white;
   }
 
   .qo-step-done {
@@ -1762,7 +1762,7 @@ body {
   }
 
   .qo-panel-step-num {
-    @apply inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-teal-600 text-[10px] font-semibold text-white;
+    @apply inline-flex h-4.5 w-4.5 items-center justify-center rounded-full bg-orange-600 text-[10px] font-semibold text-white;
     width: 1.1rem;
     height: 1.1rem;
   }
@@ -1815,7 +1815,7 @@ body {
   }
 
   .qo-empty-icon {
-    @apply mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl text-teal-700 border border-teal-200/80;
+    @apply mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl text-orange-700 border border-orange-200/80;
     background: #fff7ed;
   }
 
@@ -1856,7 +1856,7 @@ body {
   }
 
   .qo-readiness-fill {
-    @apply h-full rounded-full bg-teal-600 transition-[width] duration-300 ease-out;
+    @apply h-full rounded-full bg-orange-600 transition-[width] duration-300 ease-out;
   }
 
   .qo-field-chip {
@@ -2024,7 +2024,7 @@ body {
   }
 
   .qo-success-row-copy {
-    @apply shrink-0 text-[11px] font-semibold text-teal-700 hover:text-teal-900;
+    @apply shrink-0 text-[11px] font-semibold text-orange-700 hover:text-orange-900;
   }
 
   .qo-success-message {

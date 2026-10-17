@@ -3055,8 +3055,8 @@ export default function Dashboard() {
                   )}
                 </Link>
                 {!sidebarCollapsed && (
-                  <div className="space-y-0.5 px-0.5">
-                    <p className="text-[11px] text-slate-200 leading-snug">
+                  <div className="min-w-0 space-y-0.5 px-0.5">
+                    <p className="truncate whitespace-nowrap text-[11px] leading-snug text-slate-200">
                       Signed in as{" "}
                       <span className="font-semibold text-white">
                         {adminSession?.displayName?.trim() ||
@@ -3064,12 +3064,25 @@ export default function Dashboard() {
                           "Admin"}
                       </span>
                     </p>
-                    <p className="text-[10px] text-slate-400 leading-snug">
+                    <p className="truncate whitespace-nowrap text-[10px] leading-snug text-slate-400">
                       {(() => {
-                        const h = new Date().getHours();
-                        if (h < 12) return "Good morning";
-                        if (h < 17) return "Good afternoon";
-                        return "Good evening";
+                        const fullName =
+                          adminSession?.displayName?.trim() ||
+                          adminSession?.email?.split("@")[0] ||
+                          "Admin";
+                        const firstName = fullName.split(/\s+/)[0];
+                        const hour = new Date().getHours();
+                        const part =
+                          hour < 5
+                            ? "Night"
+                            : hour < 12
+                              ? "Morning"
+                              : hour < 17
+                                ? "Afternoon"
+                                : hour < 21
+                                  ? "Evening"
+                                  : "Night";
+                        return `Good ${part}, ${firstName}`;
                       })()}
                     </p>
                   </div>
@@ -3187,7 +3200,7 @@ export default function Dashboard() {
                 }}
                 placeholder="Search menus"
                 aria-label="Search menus"
-                className="h-8 w-full rounded-md border border-slate-200 bg-white pl-7 pr-7 text-[12px] text-slate-800 outline-none placeholder:text-slate-400 focus:border-teal-500"
+                className="h-8 w-full rounded-md border border-slate-200 bg-white pl-7 pr-7 text-[12px] text-slate-800 outline-none placeholder:text-slate-400 focus:border-orange-500"
               />
               <button
                 type="button"
@@ -3270,14 +3283,14 @@ export default function Dashboard() {
                 >
                   {!opts?.nested && (
                     <span
-                      className={`shrink-0 ${isActive ? "text-teal-600" : "text-slate-400"}`}
+                      className={`shrink-0 ${isActive ? "text-orange-600" : "text-slate-400"}`}
                     >
                       {item.icon}
                     </span>
                   )}
                   {opts?.nested && (
                     <span
-                      className={`h-1.5 w-1.5 rounded-full shrink-0 ${isActive ? "bg-teal-600" : "bg-slate-300"}`}
+                      className={`h-1.5 w-1.5 rounded-full shrink-0 ${isActive ? "bg-orange-600" : "bg-slate-300"}`}
                     />
                   )}
                   {!sidebarCollapsed && (
@@ -3372,7 +3385,7 @@ export default function Dashboard() {
                             <span
                               className={`shrink-0 ${
                                 branchActive || activeTab === entry.name
-                                  ? "text-teal-600"
+                                  ? "text-orange-600"
                                   : "text-slate-400"
                               }`}
                             >
@@ -3860,13 +3873,13 @@ export default function Dashboard() {
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button
                 type="button"
-                className="group text-left rounded-xl border border-slate-200 bg-white px-4 py-4 hover:border-teal-300 hover:bg-teal-50/40 transition-colors"
+                className="group text-left rounded-xl border border-slate-200 bg-white px-4 py-4 hover:border-orange-300 hover:bg-orange-50/40 transition-colors"
                 onClick={() => {
                   setOnboardChooserOpen(false);
                   setActiveTab("Business Onboarding");
                 }}
               >
-                <span className="block text-[13px] font-semibold text-slate-900 group-hover:text-teal-900">
+                <span className="block text-[13px] font-semibold text-slate-900 group-hover:text-orange-900">
                   Form based
                 </span>
                 <span className="mt-1 block text-[12px] leading-snug text-slate-500">
@@ -3875,13 +3888,13 @@ export default function Dashboard() {
               </button>
               <button
                 type="button"
-                className="group text-left rounded-xl border border-slate-200 bg-white px-4 py-4 hover:border-teal-300 hover:bg-teal-50/40 transition-colors"
+                className="group text-left rounded-xl border border-slate-200 bg-white px-4 py-4 hover:border-orange-300 hover:bg-orange-50/40 transition-colors"
                 onClick={() => {
                   setOnboardChooserOpen(false);
                   setActiveTab("Quick Onboard");
                 }}
               >
-                <span className="block text-[13px] font-semibold text-slate-900 group-hover:text-teal-900">
+                <span className="block text-[13px] font-semibold text-slate-900 group-hover:text-orange-900">
                   Quick onboarding
                 </span>
                 <span className="mt-1 block text-[12px] leading-snug text-slate-500">
@@ -4048,7 +4061,7 @@ function LeadsContent({
             label: "Today",
             value: stats.today,
             filter: "today" as const,
-            tone: "bg-teal-50 text-teal-800 border-teal-100",
+            tone: "bg-orange-50 text-orange-800 border-orange-100",
           },
           {
             label: "This week",
@@ -4103,7 +4116,7 @@ function LeadsContent({
                 sourceFilter === "Generated on profile") ||
               (stat.label === "Circulated" &&
                 sourceFilter === "Circulated in category")
-                ? "ring-2 ring-teal-500/25"
+                ? "ring-2 ring-orange-500/25"
                 : ""
             }`}
           >
@@ -4170,7 +4183,7 @@ function LeadsContent({
               setMerchantFilter("All Merchants");
               setDateFilter("all");
             }}
-            className="ml-auto text-teal-700 hover:underline font-medium"
+            className="ml-auto text-orange-700 hover:underline font-medium"
           >
             Clear filters
           </button>
@@ -4869,7 +4882,7 @@ function planChipClass(plan: string): string {
   const p = (plan || "").toLowerCase();
   if (p.includes("pro"))
     return "bg-indigo-50 text-indigo-700 border-indigo-200";
-  if (p.includes("growth")) return "bg-teal-50 text-teal-700 border-teal-200";
+  if (p.includes("growth")) return "bg-orange-50 text-orange-700 border-orange-200";
   return "bg-slate-50 text-slate-600 border-slate-200";
 }
 
@@ -4932,7 +4945,7 @@ function PaginationFooter({
           <select
             value={rowsPerPage}
             onChange={(e) => onRowsPerPageChange(Number(e.target.value))}
-            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40"
+            className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/40"
           >
             {MERCHANT_ROWS_PER_PAGE_OPTIONS.map((option) => (
               <option key={option} value={option}>
@@ -5850,7 +5863,7 @@ function MerchantsContent({
   ).length;
 
   const filterSelectClass =
-    "h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40 transition-colors";
+    "h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/40 transition-colors";
 
   const toolbar = (
     <div className="merchant-toolbar">
@@ -5975,7 +5988,7 @@ function MerchantsContent({
           <button
             type="button"
             onClick={clearFilters}
-            className="h-9 px-3 rounded-lg text-xs font-medium text-teal-700 hover:bg-teal-50 border border-transparent hover:border-teal-100 transition-colors"
+            className="h-9 px-3 rounded-lg text-xs font-medium text-orange-700 hover:bg-orange-50 border border-transparent hover:border-orange-100 transition-colors"
           >
             Clear filters
           </button>
@@ -6075,7 +6088,7 @@ function MerchantsContent({
                               })}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[11px] font-medium text-teal-700 hover:underline"
+                              className="text-[11px] font-medium text-orange-700 hover:underline"
                             >
                               Profile
                             </a>
@@ -6184,7 +6197,7 @@ function MerchantsContent({
                         ? "No active partners yet"
                         : "No partners match your filters"}
                       {hasActiveFilters ? (
-                        <button type="button" onClick={clearFilters} className="mt-2 block text-xs font-medium text-teal-700 hover:underline">
+                        <button type="button" onClick={clearFilters} className="mt-2 block text-xs font-medium text-orange-700 hover:underline">
                           Clear search and filters
                         </button>
                       ) : null}
@@ -6246,7 +6259,7 @@ function MerchantsContent({
                             href={getBusinessProfileUrl({ id: req.id, businessName: req.name })}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[11px] font-medium text-teal-700 hover:underline"
+                            className="text-[11px] font-medium text-orange-700 hover:underline"
                           >
                             Profile
                           </a>
@@ -6294,7 +6307,7 @@ function MerchantsContent({
                         ? "All caught up — no pending requests"
                         : "No pending partners match your filters"}
                       {hasActiveFilters ? (
-                        <button type="button" onClick={clearFilters} className="mt-2 block text-xs font-medium text-teal-700 hover:underline">
+                        <button type="button" onClick={clearFilters} className="mt-2 block text-xs font-medium text-orange-700 hover:underline">
                           Clear search and filters
                         </button>
                       ) : null}
@@ -6529,7 +6542,7 @@ function MoviesContent({
 
   const fieldLabel = "block text-xs font-medium text-slate-600 mb-1";
   const fieldInput =
-    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40";
+    "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/15 focus:border-orange-500/40";
 
   const renderMovieForm = (
     movie: Partial<Movie>,
@@ -6641,12 +6654,12 @@ function MoviesContent({
             htmlFor={`poster-upload-${isEditing ? "edit" : "new"}`}
             className={`flex flex-col items-center justify-center gap-2 w-full aspect-[2/3] max-h-56 rounded-lg border border-dashed text-xs text-slate-500 cursor-pointer overflow-hidden ${
               uploading
-                ? "border-teal-300 bg-teal-50/40 cursor-not-allowed"
-                : "border-slate-200 bg-slate-50 hover:border-teal-300"
+                ? "border-orange-300 bg-orange-50/40 cursor-not-allowed"
+                : "border-slate-200 bg-slate-50 hover:border-orange-300"
             }`}
           >
             {uploading ? (
-              <span className="tabular-nums text-teal-700 font-medium">
+              <span className="tabular-nums text-orange-700 font-medium">
                 {uploadProgress}% uploading…
               </span>
             ) : movie.poster_url ? (
@@ -6685,7 +6698,7 @@ function MoviesContent({
           type="button"
           onClick={isEditing ? handleSave : handleCreate}
           disabled={!canManage || !movie.name || uploading}
-          className="px-4 py-2 bg-teal-700 text-white text-sm font-medium rounded-lg hover:bg-teal-800 disabled:opacity-50"
+          className="px-4 py-2 bg-orange-700 text-white text-sm font-medium rounded-lg hover:bg-orange-800 disabled:opacity-50"
         >
           {isEditing ? "Save changes" : "Save movie"}
         </button>
@@ -6712,7 +6725,7 @@ function MoviesContent({
           <button
             type="button"
             onClick={() => setIsAddingMovie(true)}
-            className="rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-teal-800"
+            className="rounded-lg bg-orange-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-orange-800"
           >
             Add movie
           </button>
@@ -6781,7 +6794,7 @@ function MoviesContent({
                   setYearFilter("all");
                   setPosterFilter("all");
                 }}
-                className="ml-auto text-teal-700 hover:underline font-medium"
+                className="ml-auto text-orange-700 hover:underline font-medium"
               >
                 Clear filters
               </button>
@@ -6813,7 +6826,7 @@ function MoviesContent({
                         <button
                           type="button"
                           onClick={() => setEditingMovie(movie)}
-                          className="rounded-md bg-white/95 p-1.5 text-slate-700 hover:text-teal-700"
+                          className="rounded-md bg-white/95 p-1.5 text-slate-700 hover:text-orange-700"
                           title="Edit"
                         >
                           <svg
@@ -6895,7 +6908,7 @@ function MoviesContent({
                 <button
                   type="button"
                   onClick={() => setIsAddingMovie(true)}
-                  className="mt-3 rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-teal-800"
+                  className="mt-3 rounded-lg bg-orange-700 px-3.5 py-2 text-sm font-medium text-white hover:bg-orange-800"
                 >
                   Add first movie
                 </button>

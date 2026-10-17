@@ -58,7 +58,7 @@ function StatCard({
   onClick?: () => void;
 }) {
   const styles = {
-    primary: { kpi: "admin-kpi-primary", icon: "bg-teal-600 text-white" },
+    primary: { kpi: "admin-kpi-primary", icon: "bg-orange-600 text-white" },
     emerald: { kpi: "admin-kpi-success", icon: "bg-emerald-500 text-white" },
     sky: { kpi: "admin-kpi-neutral", icon: "bg-slate-600 text-white" },
     amber: { kpi: "admin-kpi-secondary", icon: "bg-amber-500 text-white" },
@@ -141,7 +141,7 @@ function QuickLink({
       onClick={onClick}
       className="group flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left hover:border-slate-300 hover:bg-slate-50 transition-colors w-full"
     >
-      <div className="p-2 rounded-lg bg-slate-100 text-slate-600 group-hover:bg-teal-50 group-hover:text-teal-700 transition-colors">
+      <div className="p-2 rounded-lg bg-slate-100 text-slate-600 group-hover:bg-orange-50 group-hover:text-orange-700 transition-colors">
         <Icon className="w-5 h-5" />
       </div>
       <div className="flex-1 min-w-0">
@@ -562,7 +562,7 @@ export default function DashboardContent({
             <button
               type="button"
               onClick={() => setActiveTab("Merchants")}
-              className="text-xs font-medium text-teal-700 hover:underline"
+              className="text-xs font-medium text-orange-700 hover:underline"
             >
               Open merchants
             </button>
@@ -592,7 +592,7 @@ export default function DashboardContent({
           {stats.onboarding.self + stats.onboarding.admin > 0 && (
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 flex">
               <div
-                className="h-full bg-teal-600"
+                className="h-full bg-orange-600"
                 style={{
                   width: `${(stats.onboarding.self / (stats.onboarding.self + stats.onboarding.admin)) * 100}%`,
                 }}
@@ -687,7 +687,7 @@ export default function DashboardContent({
           <div className="admin-card-header">
             <div>
               <h3 className="admin-card-title flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-teal-600" />
+                <BarChart3 className="w-4 h-4 text-orange-600" />
                 Growth trajectory
               </h3>
               <p className="admin-card-description">
@@ -701,7 +701,7 @@ export default function DashboardContent({
                 Users ({stats.weekSignups.users})
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm bg-teal-600" />
+                <span className="w-2.5 h-2.5 rounded-sm bg-orange-600" />
                 Partners ({stats.weekSignups.merchants})
               </span>
             </div>
@@ -746,7 +746,7 @@ export default function DashboardContent({
         {canViewFinancialData && (
           <div className="xl:col-span-4 admin-card p-4">
             <h3 className="admin-card-title flex items-center gap-2">
-              <Layers className="w-4 h-4 text-teal-600" />
+              <Layers className="w-4 h-4 text-orange-600" />
               Partner plan mix
             </h3>
             <p className="admin-card-description mb-3">
@@ -762,7 +762,7 @@ export default function DashboardContent({
                 {
                   label: "Growth — Monthly",
                   count: stats.plans.growthMonthly,
-                  color: "bg-teal-600",
+                  color: "bg-orange-600",
                 },
                 {
                   label: "Pro — Annual",
@@ -816,7 +816,7 @@ export default function DashboardContent({
           <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-teal-700" />
+                <Wallet className="w-4 h-4 text-orange-700" />
                 Platform revenue
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -889,7 +889,7 @@ export default function DashboardContent({
                 <button
                   type="button"
                   onClick={() => setActiveTab("Payments & Subscriptions")}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:underline"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-orange-700 hover:underline"
                 >
                   Full financial ledger <ArrowRight className="w-3.5 h-3.5" />
                 </button>
@@ -978,7 +978,7 @@ export default function DashboardContent({
           <div className="admin-card-header">
             <div>
               <h3 className="admin-card-title flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                <CheckCircle2 className="w-4 h-4 text-orange-600" />
                 Listing approval queue
               </h3>
               <p className="admin-card-description">
@@ -1079,7 +1079,7 @@ export default function DashboardContent({
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center px-6">
-                <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600 mb-3">
+                <div className="p-3 rounded-2xl bg-orange-50 text-orange-600 mb-3">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <p className="text-sm font-medium text-slate-900">
@@ -1145,7 +1145,7 @@ export default function DashboardContent({
         {/* Platform health */}
         <div className={`${canViewLoginLogs || canViewListingsQueue ? "xl:col-span-4" : "xl:col-span-12"} admin-card p-4`}>
           <h3 className="admin-card-title flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-teal-700" />
+            <TrendingUp className="w-4 h-4 text-orange-700" />
             Platform health
           </h3>
           <p className="admin-card-description mb-3">
@@ -1203,7 +1203,7 @@ export default function DashboardContent({
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-teal-600 transition-all"
+                    className="h-full rounded-full bg-orange-600 transition-all"
                     style={{ width: `${Math.min(row.value, 100)}%` }}
                   />
                 </div>
@@ -1230,7 +1230,7 @@ export default function DashboardContent({
                 onClick={() => setActivityFilter(type)}
                 className={`px-2.5 py-1 rounded-md text-[11px] font-semibold capitalize transition-colors ${
                   activityFilter === type
-                    ? "bg-teal-700 text-white"
+                    ? "bg-orange-700 text-white"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
                 }`}
               >
