@@ -215,6 +215,76 @@
   }
 }
 
+:global(html[data-admin-theme="dark"]) .root {
+  background: #171717;
+  color: #e7e5e4;
+}
+
+:global(html[data-admin-theme="controller"]) .root {
+  background: #1c1917;
+  color: #f5f5f4;
+}
+
+:global(html[data-admin-theme="silver"]) .root {
+  background: #16181d;
+  color: #e2e8f0;
+}
+
+:global(html[data-admin-theme="dark"]) .root::after,
+:global(html[data-admin-theme="controller"]) .root::after,
+:global(html[data-admin-theme="silver"]) .root::after {
+  background: radial-gradient(ellipse at 50% 46%, transparent 32%, rgba(0, 0, 0, 0.45) 100%);
+}
+
+:global(html[data-admin-theme="dark"]) .glow {
+  background: radial-gradient(ellipse at 50% 46%, rgba(64, 64, 64, 0.85) 0%, rgba(23, 23, 23, 0) 70%);
+}
+
+:global(html[data-admin-theme="controller"]) .glow {
+  background: radial-gradient(ellipse at 50% 46%, rgba(120, 72, 24, 0.45) 0%, rgba(28, 25, 23, 0) 70%);
+}
+
+:global(html[data-admin-theme="silver"]) .glow {
+  background: radial-gradient(ellipse at 50% 46%, rgba(71, 85, 105, 0.55) 0%, rgba(22, 24, 29, 0) 70%);
+}
+
+:global(html[data-admin-theme="dark"]) .brand,
+:global(html[data-admin-theme="dark"]) .headline,
+:global(html[data-admin-theme="dark"]) .headlineOut,
+:global(html[data-admin-theme="dark"]) .line,
+:global(html[data-admin-theme="controller"]) .brand,
+:global(html[data-admin-theme="controller"]) .headline,
+:global(html[data-admin-theme="controller"]) .headlineOut,
+:global(html[data-admin-theme="controller"]) .line,
+:global(html[data-admin-theme="silver"]) .brand,
+:global(html[data-admin-theme="silver"]) .headline,
+:global(html[data-admin-theme="silver"]) .headlineOut,
+:global(html[data-admin-theme="silver"]) .line {
+  color: #f5f5f4;
+}
+
+:global(html[data-admin-theme="dark"]) .statusLine,
+:global(html[data-admin-theme="dark"]) .resultOk,
+:global(html[data-admin-theme="dark"]) .resultIdle,
+:global(html[data-admin-theme="dark"]) .legal,
+:global(html[data-admin-theme="controller"]) .statusLine,
+:global(html[data-admin-theme="controller"]) .resultOk,
+:global(html[data-admin-theme="controller"]) .resultIdle,
+:global(html[data-admin-theme="controller"]) .legal,
+:global(html[data-admin-theme="silver"]) .statusLine,
+:global(html[data-admin-theme="silver"]) .resultOk,
+:global(html[data-admin-theme="silver"]) .resultIdle,
+:global(html[data-admin-theme="silver"]) .legal {
+  color: #a8a29e;
+}
+
+:global(html[data-admin-theme="dark"]) .spinner,
+:global(html[data-admin-theme="controller"]) .spinner,
+:global(html[data-admin-theme="silver"]) .spinner {
+  border-color: rgba(255, 255, 255, 0.16);
+  border-top-color: #f5f5f4;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .glow,
   .brand,

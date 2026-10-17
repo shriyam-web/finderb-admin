@@ -96,7 +96,11 @@ import {
   type LockModalCopy,
 } from "../../lib/lockModal";
 import {
+  applyAdminConsoleTheme,
   readAdminColorMode,
+  readLaunchTheme,
+  rememberAdminThemeRole,
+  resolveAdminConsoleTheme,
   writeAdminColorMode,
   type AdminColorMode,
 } from "../../lib/adminColorMode";
@@ -1084,42 +1088,25 @@ export default function Dashboard() {
   }, [adminSession?.role]);
 
 
-  // Apply console theme to <html> for dark / gold / silver modes.
+  // Keep the launch theme until we know whether a session is still signed in.
   useEffect(() => {
-    const root = document.documentElement;
-    const themeClasses = [
-      "admin-theme-controller",
-      "admin-theme-dark",
-      "admin-theme-silver",
-    ] as const;
-    root.classList.remove(...themeClasses);
-    document.body.classList.remove(...themeClasses);
-    if (resolvedTheme === "controller") {
-      root.setAttribute("data-admin-theme", "controller");
-      root.classList.add("admin-theme-controller");
-      document.body.classList.add("admin-theme-controller");
-    } else if (resolvedTheme === "silver") {
-      root.setAttribute("data-admin-theme", "silver");
-      root.classList.add("admin-theme-silver");
-      document.body.classList.add("admin-theme-silver");
-    } else if (resolvedTheme === "dark") {
-      root.setAttribute("data-admin-theme", "dark");
-      root.classList.add("admin-theme-dark");
-      document.body.classList.add("admin-theme-dark");
-    } else {
-      root.removeAttribute("data-admin-theme");
+    if (!sessionReady) {
+      applyAdminConsoleTheme(readLaunchTheme());
+      return;
     }
-    return () => {
-      root.removeAttribute("data-admin-theme");
-      root.classList.remove(...themeClasses);
-      document.body.classList.remove(...themeClasses);
-    };
-  }, [resolvedTheme]);
+    if (adminSession?.role) rememberAdminThemeRole(adminSession.role);
+    applyAdminConsoleTheme(
+      adminSession
+        ? resolveAdminConsoleTheme(adminSession.role, readAdminColorMode(adminSession.role))
+        : readLaunchTheme(),
+    );
+  }, [sessionReady, adminSession, colorMode, resolvedTheme]);
 
   const toggleColorMode = () => {
     const next: AdminColorMode = colorMode === "dark" ? "light" : "dark";
     setColorMode(next);
     writeAdminColorMode(next);
+    rememberAdminThemeRole(adminSession?.role);
   };
 
   useEffect(() => {
@@ -1193,12 +1180,17 @@ export default function Dashboard() {
         }),
       );
       setPlatformClockLabel(
-        now.toLocaleTimeString("en-IN", {
+        `${now.toLocaleDateString("en-GB", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })} · ${now.toLocaleTimeString("en-IN", {
           hour: "2-digit",
           minute: "2-digit",
           second: "2-digit",
           hour12: true,
-        }),
+        })}`,
       );
     };
     formatClock();
@@ -1330,6 +1322,7 @@ export default function Dashboard() {
       clearAdminFloatingPositions();
       localStorage.removeItem("admin_session");
       setAdminSession(null);
+      applyAdminConsoleTheme(readLaunchTheme());
       router.push("/");
     });
   }, [router]);
@@ -3024,9 +3017,13 @@ export default function Dashboard() {
                           "Admin"}
                       </span>
                     </p>
-                    <p className="text-[10px] text-slate-400 capitalize leading-snug">
-                      {adminSession?.role?.replace(/_/g, " ") || "Administrator"}{" "}
-                      · FinderB console
+                    <p className="text-[10px] text-slate-400 leading-snug">
+                      {(() => {
+                        const h = new Date().getHours();
+                        if (h < 12) return "Good morning";
+                        if (h < 17) return "Good afternoon";
+                        return "Good evening";
+                      })()}
                     </p>
                   </div>
                 )}
@@ -3087,26 +3084,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          {!sidebarCollapsed && (
-            <>
-              <p className="mt-2.5 text-[11px] text-slate-500 leading-snug font-medium px-0.5">
-                {(() => {
-                  const h = new Date().getHours();
-                  const greet =
-                    h < 12
-                      ? "Good morning"
-                      : h < 17
-                        ? "Good afternoon"
-                        : "Good evening";
-                  const name =
-                    adminSession?.displayName?.trim() ||
-                    adminSession?.email?.split("@")[0] ||
-                    "Admin";
-                  return `${greet}, ${name}`;
-                })()}
-              </p>
-            </>
-          )}
         </div>
 
         <nav className="flex-1 px-1.5 py-1 overflow-y-auto sidebar-scrollbar">

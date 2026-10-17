@@ -2819,3 +2819,69 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
     padding-bottom: 0;
   }
 }
+
+html[data-admin-theme="dark"] .admin-login {
+  background: #171717;
+}
+
+html[data-admin-theme="controller"] .admin-login {
+  background: #1c1917;
+}
+
+html[data-admin-theme="silver"] .admin-login {
+  background: #16181d;
+}
+
+html[data-admin-theme="dark"] .admin-login-panel {
+  background: #111827;
+  color: #e7e5e4;
+}
+
+html[data-admin-theme="controller"] .admin-login-panel {
+  background: #292524;
+  color: #f5f5f4;
+}
+
+html[data-admin-theme="silver"] .admin-login-panel {
+  background: #1e2229;
+  color: #e2e8f0;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel h1,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel label {
+  color: #f5f5f4;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel p {
+  color: #a8a29e;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel input {
+  color: #f5f5f4 !important;
+  border-bottom-color: rgba(255, 255, 255, 0.22) !important;
+  caret-color: #f5f5f4;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel input::placeholder {
+  color: #78716c;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel input:-webkit-autofill {
+  -webkit-text-fill-color: #f5f5f4;
+  box-shadow: inset 0 0 0 1000px #1c1917;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel ul {
+  background: #1c1917;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel li button {
+  color: #e7e5e4;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel li button:hover,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel li button[aria-selected="true"] {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}

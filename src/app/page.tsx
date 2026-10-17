@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -20,6 +20,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import AdminEntryScreen, { markAdminEntryHandoff } from "../components/AdminEntryScreen";
+import { applyAdminConsoleTheme, readLaunchTheme } from "../lib/adminColorMode";
 import OtpCodeBoxes from "../components/OtpCodeBoxes";
 
 type AdminPayload = {
@@ -84,21 +85,9 @@ export default function Home() {
   const [gate, setGate] = useState<"entry" | "form">("entry");
   const router = useRouter();
 
-  useEffect(() => {
-    // Login must stay light — clear leftover dark/controller theme from prior session.
-    const root = document.documentElement;
-    root.removeAttribute("data-admin-theme");
-    root.classList.remove(
-      "admin-theme-controller",
-      "admin-theme-dark",
-      "admin-theme-silver",
-    );
-    document.body.classList.remove(
-      "admin-theme-controller",
-      "admin-theme-dark",
-      "admin-theme-silver",
-    );
-  }, []);
+  useLayoutEffect(() => {
+    applyAdminConsoleTheme(readLaunchTheme());
+  }, [gate]);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -278,7 +267,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#f5f7fa]">
+    <div className="admin-login flex min-h-screen bg-[#f5f7fa]">
       <aside className="relative hidden w-[46%] overflow-hidden border-r border-stone-800! bg-stone-950 text-white lg:flex">
         <div
           className="pointer-events-none absolute inset-0 opacity-40"
@@ -340,7 +329,7 @@ export default function Home() {
         </div>
       </aside>
 
-      <main className="flex flex-1 items-center justify-center bg-white px-6 py-10 sm:px-12">
+      <main className="admin-login-panel flex flex-1 items-center justify-center bg-white px-6 py-10 sm:px-12">
         <div className="w-full max-w-[400px]">
           <div className="mb-12 flex items-center gap-[0.4em] text-lg font-normal leading-none tracking-tight text-slate-800 lg:hidden">
             <Image src="/fb-mark.png" alt="" width={18} height={18} className="h-[1em] w-[1em] object-contain" priority />

@@ -47,6 +47,11 @@ export default function RootLayout({
       className={`h-full antialiased ${inter.variable} ${plusJakarta.variable}`}
     >
       <body className="min-h-full flex flex-col font-sans">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var root=document.documentElement;function paint(theme){["admin-theme-controller","admin-theme-dark","admin-theme-silver"].forEach(function(name){root.classList.remove(name)});if(!theme){root.removeAttribute("data-admin-theme");return}root.setAttribute("data-admin-theme",theme);root.classList.add("admin-theme-"+theme)}var raw=localStorage.getItem("admin_session");var session=raw?JSON.parse(raw):null;var signedIn=!!(session&&session.id);var mode=localStorage.getItem("admin_color_mode");var role=signedIn?session.role:localStorage.getItem("admin_color_role");var dark=signedIn?(mode==="dark"||(mode!=="light"&&(role==="developer"||role==="controller"))):mode==="dark";if(!dark){paint(null);return}paint(role==="developer"?"controller":role==="controller"?"silver":"dark")}catch(e){}})();`,
+          }}
+        />
         <AppProviders>{children}</AppProviders>
       </body>
     </html>
