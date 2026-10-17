@@ -482,7 +482,7 @@ html[data-admin-theme="dark"] .admin-sign-out {
   background: linear-gradient(180deg, #fb7185 0%, #e11d48 55%, #be123c 100%) !important;
   border-color: #be123c !important;
   color: #fff !important;
-  box-shadow: 0 6px 14px rgba(225, 29, 72, 0.28) !important;
+  box-shadow: none !important;
 }
 
 html[data-admin-theme="dark"] .admin-sign-out:hover {

@@ -641,7 +641,7 @@ body {
     font-size: 0.75rem;
     font-weight: 700;
     line-height: 1;
-    box-shadow: 0 6px 14px rgba(225, 29, 72, 0.22);
+    box-shadow: none;
     transition:
       filter 0.15s ease,
       transform 0.15s ease;
@@ -830,13 +830,14 @@ body {
   .admin-role-badge-developer {
     background: linear-gradient(180deg, #fdba74 0%, #c2410c 100%);
     border-color: #f97316;
-    color: #7c2d12;
+    color: #ffffff;
     font-weight: 800;
   }
 
-  .admin-role-badge-developer .admin-role-badge-dot {
-    background: #7c2d12;
-    box-shadow: 0 0 0 3px rgba(4, 47, 46, 0.16);
+  .admin-role-badge-mark {
+    width: 0.9rem;
+    height: 0.9rem;
+    flex-shrink: 0;
   }
 
   .admin-sign-out {
@@ -853,7 +854,7 @@ body {
     font-size: 0.75rem;
     font-weight: 700;
     line-height: 1;
-    box-shadow: 0 6px 14px rgba(225, 29, 72, 0.22);
+    box-shadow: none;
     transition:
       filter 0.15s ease,
       transform 0.15s ease;

@@ -102,7 +102,6 @@ import {
 } from "../../lib/adminColorMode";
 import {
   effectiveSiteMode,
-  siteModeLabel,
   type SiteMode,
 } from "../../lib/siteRuntime";
 import {
@@ -1033,6 +1032,7 @@ export default function Dashboard() {
   const [isSidebarResizing, setIsSidebarResizing] = useState(false);
   const [platformTimeLabel, setPlatformTimeLabel] = useState("");
   const [platformDateLabel, setPlatformDateLabel] = useState("");
+  const [platformClockLabel, setPlatformClockLabel] = useState("");
   const [colorMode, setColorMode] = useState<AdminColorMode>("light");
   const {
     unreadCount: whatsNewUnreadCount,
@@ -1192,9 +1192,17 @@ export default function Dashboard() {
           year: "numeric",
         }),
       );
+      setPlatformClockLabel(
+        now.toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: true,
+        }),
+      );
     };
     formatClock();
-    const timer = setInterval(formatClock, 60_000);
+    const timer = setInterval(formatClock, 1000);
     return () => clearInterval(timer);
   }, []);
 
@@ -2987,35 +2995,27 @@ export default function Dashboard() {
             <div
               className={`relative z-[1] flex ${sidebarCollapsed ? "flex-col items-center gap-2" : "items-start justify-between gap-2"}`}
             >
-              <Link
-                href="/dashboard"
-                className={`flex flex-col min-w-0 gap-2 ${sidebarCollapsed ? "items-center" : ""}`}
-              >
-                <Image
-                  src="/logo-white.png"
-                  alt="FinderB"
-                  width={sidebarCollapsed ? 44 : 132}
-                  height={sidebarCollapsed ? 44 : 36}
-                  className="object-contain object-left"
-                  priority
-                />
+              <div className={`min-w-0 flex flex-col gap-2 ${sidebarCollapsed ? "items-center" : ""}`}>
+                <Link
+                  href="/dashboard"
+                  className={`flex items-center min-w-0 gap-2.5 ${sidebarCollapsed ? "justify-center" : ""}`}
+                >
+                  <Image
+                    src="/fb-mark.png"
+                    alt=""
+                    width={28}
+                    height={28}
+                    className="h-7 w-7 object-contain"
+                    priority
+                  />
+                  {!sidebarCollapsed && (
+                    <span className="text-[1.15rem] font-medium leading-none tracking-tight text-white">
+                      Admin
+                    </span>
+                  )}
+                </Link>
                 {!sidebarCollapsed && (
                   <div className="space-y-0.5 px-0.5">
-                    <p
-                      className={`text-[11px] font-semibold tracking-[0.16em] uppercase ${
-                        isDeveloper
-                          ? "text-amber-200"
-                          : isController
-                            ? "text-slate-300"
-                            : "text-teal-200"
-                      }`}
-                    >
-                      {isDeveloper
-                        ? "Developer suite"
-                        : isController
-                          ? "Controller suite"
-                          : "Control deck"}
-                    </p>
                     <p className="text-[11px] text-slate-200 leading-snug">
                       Signed in as{" "}
                       <span className="font-semibold text-white">
@@ -3030,7 +3030,7 @@ export default function Dashboard() {
                     </p>
                   </div>
                 )}
-              </Link>
+              </div>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -3089,20 +3089,7 @@ export default function Dashboard() {
           </div>
           {!sidebarCollapsed && (
             <>
-              <div className="mt-2.5 flex items-center justify-between gap-2 px-0.5">
-                <span
-                  className={`admin-status-pill ${siteMode === "normal" ? "admin-status-live" : "admin-status-warn"} !text-[9px] !py-0.5 !px-1.5`}
-                >
-                  {siteMode === "normal" && (
-                    <span className="admin-status-dot !w-1 !h-1" />
-                  )}
-                  {siteModeLabel(siteMode)}
-                </span>
-                <span className="text-[10px] text-slate-400 tabular-nums font-semibold">
-                  {platformTimeLabel || "—"}
-                </span>
-              </div>
-              <p className="mt-1.5 text-[11px] text-slate-500 leading-snug font-medium px-0.5">
+              <p className="mt-2.5 text-[11px] text-slate-500 leading-snug font-medium px-0.5">
                 {(() => {
                   const h = new Date().getHours();
                   const greet =
@@ -3475,18 +3462,37 @@ export default function Dashboard() {
             </div>
             <div className="admin-topbar-actions">
               <span
-                className={`admin-role-badge capitalize ${
+                className={`admin-role-badge ${
                   isDeveloper
-                    ? "admin-role-badge-developer"
+                    ? "normal-case admin-role-badge-developer"
                     : isController
-                      ? "admin-role-badge-controller"
+                      ? "capitalize admin-role-badge-controller"
                       : adminSession?.role === "super_admin"
-                        ? "admin-role-badge-super"
-                        : "admin-role-badge-admin"
+                        ? "capitalize admin-role-badge-super"
+                        : "capitalize admin-role-badge-admin"
                 }`}
               >
-                <span className="admin-role-badge-dot" aria-hidden />
-                {adminSession?.role?.replace("_", " ") || "Admin"}
+                {isDeveloper ? (
+                  <svg
+                    className="admin-role-badge-mark"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M8 8L4 12l4 4M16 8l4 4-4 4"
+                    />
+                  </svg>
+                ) : (
+                  <span className="admin-role-badge-dot" aria-hidden />
+                )}
+                {isDeveloper
+                  ? "developer"
+                  : adminSession?.role?.replace("_", " ") || "Admin"}
               </span>
               {canToggleColorMode && (
                 <button
@@ -3623,8 +3629,8 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
-            <p className="text-xs text-slate-400 tabular-nums hidden sm:block font-semibold">
-              {platformDateLabel || "—"}
+            <p className="text-xs text-slate-500 tabular-nums hidden sm:block font-semibold">
+              {platformClockLabel || "—"}
             </p>
           </div>
         </div>

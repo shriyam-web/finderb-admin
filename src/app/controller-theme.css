@@ -176,7 +176,7 @@ html[data-admin-theme="controller"] .admin-role-badge-controller {
 
 html[data-admin-theme="controller"] .admin-role-badge-developer {
   background: linear-gradient(180deg, #fdba74 0%, #c2410c 100%) !important;
-  color: #7c2d12 !important;
+  color: #ffffff !important;
   border-color: #f97316 !important;
   font-weight: 800 !important;
 }
@@ -185,7 +185,7 @@ html[data-admin-theme="controller"] .admin-sign-out {
   background: linear-gradient(180deg, #fb7185 0%, #e11d48 55%, #be123c 100%) !important;
   border-color: #be123c !important;
   color: #fff !important;
-  box-shadow: 0 6px 14px rgba(225, 29, 72, 0.3) !important;
+  box-shadow: none !important;
 }
 
 html[data-admin-theme="controller"] .admin-sign-out:hover {
