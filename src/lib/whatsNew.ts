@@ -80,6 +80,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Public badges have their own merchant tab",
+    body: "Open a merchant and use the Badges tab. Overview only lists which marks are on the public profile.\n\nA business that already qualifies gets the mark by itself. Auto keeps it on while they still qualify. On forces a mark onto the profile. Off hides it.\n\nBest in Category — rating 4 or above, at least 3 visible reviews, replies within about 4 hours, and profile completion above 90%.\nQuick reply — average lead reply within 1 hour, and at least 5 leads opened.\nHighly rated — public rating 4.7 or above, and at least 10 visible reviews.\nPopular this month — most profile views or most leads this month among active businesses in the same category and city.\nNew on FinderB — the listing went live fewer than 30 days ago.\nFinderB Trusted — only an admin can turn this on. It does not award itself.",
+    published_at: "2026-10-18T02:40:00+05:30",
+  },
+  {
     title: "Broadcast permissions are split, and new owners cannot edit for 15 days",
     body: "Tab access now lists Broadcast Notification and Broadcast Email separately. Granting one does not grant the other.\n\nAfter an ownership transfer, the new owner cannot change the listing for 15 days: name, contact, photos, and other business details stay as they were. They can edit after that window. Reverse transfer still restores the previous login during those 15 days.",
     published_at: "2026-10-17T05:00:00+05:30",

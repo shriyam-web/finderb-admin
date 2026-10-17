@@ -38,7 +38,9 @@ function profileCompletionPercent(row: Record<string, unknown>): number {
     "youtubeUrl", "whatsappNumber",
   ];
   let completed = keys.filter((key) => (key === "profilePictureUrl" ? hasListingPhoto(row) : filled(key))).length;
-  const ownerOk = String(row.ownerName || "").trim().length > 0 && indianMobileOk(row.ownerMobile);
+  const ownerName = String(row.owner_name || row.ownerName || "").trim();
+  const ownerMobile = row.owner_mobile || row.ownerMobile;
+  const ownerOk = ownerName.length > 0 && indianMobileOk(ownerMobile);
   if (ownerOk) completed += 1;
   const lat = Number(row.latitude);
   const lng = Number(row.longitude);
@@ -137,36 +139,48 @@ async function fallbackCounts(
     .limit(80);
   const ids = (peers.data || []).map((row) => String(row.id));
   if (!ids.includes(businessId)) ids.push(businessId);
-  const totals = await Promise.all(
-    ids.map(async (id) => {
-      const [views, leads] = await Promise.all([
-        supabase
-          .from("profile_views")
-          .select("id", { count: "exact", head: true })
-          .eq("business_id", id)
-          .gte("viewed_at", since),
-        supabase
-          .from("leads")
-          .select("id", { count: "exact", head: true })
-          .eq("business_id", id)
-          .gte("created_at", since),
-      ]);
-      return { business_id: id, views: views.count || 0, leads: leads.count || 0 };
-    }),
-  );
-  return totals;
+  const [views, leads] = await Promise.all([
+    supabase.from("profile_views").select("business_id").in("business_id", ids).gte("viewed_at", since).limit(4000),
+    supabase.from("leads").select("business_id").in("business_id", ids).gte("created_at", since).limit(4000),
+  ]);
+  const viewCounts = new Map<string, number>();
+  const leadCounts = new Map<string, number>();
+  for (const row of views.data || []) {
+    const id = String((row as { business_id?: string }).business_id || "");
+    if (id) viewCounts.set(id, (viewCounts.get(id) || 0) + 1);
+  }
+  for (const row of leads.data || []) {
+    const id = String((row as { business_id?: string }).business_id || "");
+    if (id) leadCounts.set(id, (leadCounts.get(id) || 0) + 1);
+  }
+  return ids.map((id) => ({
+    business_id: id,
+    views: viewCounts.get(id) || 0,
+    leads: leadCounts.get(id) || 0,
+  }));
 }
 
-export async function loadMerchantBadgeReports(businessId: string): Promise<{
+const PROFILE_COLUMNS =
+  "id, category, city, status, createdAt, listingLiveAt, badgeOverrides, review, businessName, displayName, publicPhone, owner_name, owner_mobile, businessAddress, state, country, about, profilePictureUrl, images, timings, yearsInBusiness, website, facebookUrl, instagramUrl, youtubeUrl, whatsappNumber, latitude, longitude, paymentModes";
+
+const reportCache = new Map<string, { at: number; result: { reports: BadgeReport[]; overridesReady: boolean } }>();
+
+export function clearMerchantBadgeCache(businessId: string) {
+  reportCache.delete(businessId);
+}
+
+export async function loadMerchantBadgeReports(
+  businessId: string,
+  fresh = false,
+): Promise<{
   reports: BadgeReport[];
   overridesReady: boolean;
 }> {
+  const cached = reportCache.get(businessId);
+  if (!fresh && cached && Date.now() - cached.at < 20_000) return cached.result;
+
   const supabase = createClient();
-  const full = await supabase
-    .from("Business")
-    .select("id, category, city, status, createdAt, listingLiveAt, badgeOverrides, review, businessName, displayName, publicPhone, ownerName, ownerMobile, businessAddress, state, country, about, profilePictureUrl, image, images, timings, yearsInBusiness, website, facebookUrl, instagramUrl, youtubeUrl, whatsappNumber, latitude, longitude, paymentModes")
-    .eq("id", businessId)
-    .maybeSingle();
+  const full = await supabase.from("Business").select(PROFILE_COLUMNS).eq("id", businessId).maybeSingle();
 
   let row = full.data;
   let overridesReady = !full.error;
@@ -183,15 +197,18 @@ export async function loadMerchantBadgeReports(businessId: string): Promise<{
   }
   if (!row) throw new Error("Business not found");
 
-  const leads = await supabase
+  const leadsQuery = supabase
     .from("leads")
     .select("created_at, merchant_read_at")
     .eq("business_id", businessId);
+  const [leads, rank] = await Promise.all([
+    leadsQuery,
+    monthRank(supabase, businessId, String(row.category || ""), String(row.city || "")),
+  ]);
   const reply = replyStats(leads.data || []);
   const rating = publicRating(row.review);
-  const rank = await monthRank(supabase, businessId, String(row.category || ""), String(row.city || ""));
 
-  return {
+  const result = {
     overridesReady,
     reports: buildBadgeReports({
       repliedCount: reply.count,
@@ -206,6 +223,8 @@ export async function loadMerchantBadgeReports(businessId: string): Promise<{
       overrides: parseBadgeOverrides(row.badgeOverrides),
     }),
   };
+  reportCache.set(businessId, { at: Date.now(), result });
+  return result;
 }
 
 export async function saveBadgeOverride(
@@ -221,6 +240,7 @@ export async function saveBadgeOverride(
   }
   if (mode === "auto") delete next[id];
   else next[id] = mode;
+  clearMerchantBadgeCache(businessId);
 
   const { error } = await supabase.from("Business").update({ badgeOverrides: next }).eq("id", businessId);
   if (error) throw new Error(error.message);

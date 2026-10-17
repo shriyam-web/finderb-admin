@@ -16,12 +16,22 @@ function adminActor() {
   }
 }
 
+function eligibilityLabel(badge: BadgeReport): string {
+  if (badge.id === "trusted") return badge.active ? "Awarded by admin" : "Admin award only";
+  if (badge.earned && badge.override === "off") return "Self eligible · hidden";
+  if (badge.earned) return "Self eligible · on automatically";
+  if (badge.active) return "Not self eligible · forced on";
+  return "Not self eligible";
+}
+
 export default function MerchantBadgePanel({
   businessId,
   canManage,
+  mode = "full",
 }: {
   businessId: string;
   canManage: boolean;
+  mode?: "summary" | "full";
 }) {
   const [reports, setReports] = useState<BadgeReport[] | null>(null);
   const [overridesReady, setOverridesReady] = useState(true);
@@ -30,7 +40,6 @@ export default function MerchantBadgePanel({
 
   useEffect(() => {
     let cancelled = false;
-    setReports(null);
     setError("");
     void loadMerchantBadgeReports(businessId)
       .then((result) => {
@@ -40,6 +49,7 @@ export default function MerchantBadgePanel({
       })
       .catch((loadError: unknown) => {
         if (cancelled) return;
+        setReports([]);
         setError(loadError instanceof Error ? loadError.message : "Could not load badges");
       });
     return () => {
@@ -53,7 +63,7 @@ export default function MerchantBadgePanel({
     setError("");
     try {
       await saveBadgeOverride(businessId, badge.id, mode, reports);
-      const next = await loadMerchantBadgeReports(businessId);
+      const next = await loadMerchantBadgeReports(businessId, true);
       setReports(next.reports);
       setOverridesReady(next.overridesReady);
       const summary =
@@ -76,12 +86,30 @@ export default function MerchantBadgePanel({
     }
   };
 
+  const showing = (reports || []).filter((badge) => badge.active);
+
+  if (mode === "summary") {
+    return (
+      <section className="rounded-lg border border-slate-200 bg-white p-3">
+        <p className="text-xs font-semibold text-slate-900">Public badges</p>
+        {error ? <p className="mt-1 text-[11px] text-red-700">{error}</p> : null}
+        {!reports && !error ? <p className="mt-1 text-[11px] text-slate-500">Checking…</p> : null}
+        {reports && !error ? (
+          <p className="mt-1 text-[11px] leading-4 text-slate-600">
+            {showing.length ? showing.map((badge) => badge.label).join(" · ") : "None showing on the profile."}
+          </p>
+        ) : null}
+        <p className="mt-1 text-[11px] text-slate-500">Eligibility and switches are on the Badges tab.</p>
+      </section>
+    );
+  }
+
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-3 space-y-3">
-      <div>
+    <section className="space-y-3">
+      <div className="rounded-lg border border-slate-200 bg-white p-3">
         <p className="text-xs font-semibold text-slate-900">Public badges</p>
         <p className="text-[11px] text-slate-500 mt-0.5">
-          These turn on when the business qualifies. On forces the mark onto the profile. Off hides it. Auto follows the rules again. Best in Category can be forced on or off here. FinderB Trusted only appears when an admin turns it on.
+          A badge that already qualifies turns on by itself. Auto keeps that. On forces it on. Off hides it. FinderB Trusted stays off until an admin turns it on.
         </p>
       </div>
       {!overridesReady ? (
@@ -91,7 +119,7 @@ export default function MerchantBadgePanel({
       ) : null}
       {error ? <p className="text-[11px] text-red-700">{error}</p> : null}
       {!reports ? (
-        <p className="text-[11px] text-slate-500">Checking eligibility…</p>
+        <p className="text-[11px] text-slate-500">Checking…</p>
       ) : (
         reports.map((badge) => (
           <div key={badge.id} className="rounded-md border border-slate-100 bg-slate-50/70 p-2.5 space-y-2">
@@ -106,11 +134,8 @@ export default function MerchantBadgePanel({
               ) : (
                 <span className="text-[11px] font-semibold text-slate-700">{badge.label}</span>
               )}
-              <span className={`text-[11px] font-medium ${badge.earned ? "text-emerald-700" : "text-slate-500"}`}>
-                {badge.id === "trusted" ? "Admin award" : badge.earned ? "Eligible" : "Not eligible"}
-              </span>
-              <span className={`text-[11px] font-semibold ${badge.active ? "text-emerald-800" : "text-slate-500"}`}>
-                {badge.active ? "Showing on profile" : "Hidden"}
+              <span className={`text-[11px] font-medium ${badge.earned || badge.active ? "text-emerald-700" : "text-slate-500"}`}>
+                {eligibilityLabel(badge)}
               </span>
             </div>
             <p className="text-[11px] leading-4 text-slate-600">{badge.detail}</p>

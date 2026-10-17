@@ -145,7 +145,7 @@ type MerchantDetailModalProps = {
   onHideLoginPassword?: () => void;
 };
 
-type TabId = "overview" | "business" | "kyc" | "billing" | "gallery" | "audit";
+type TabId = "overview" | "business" | "kyc" | "billing" | "gallery" | "badges" | "audit";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -153,6 +153,7 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "kyc", label: "KYC" },
   { id: "billing", label: "Billing" },
   { id: "gallery", label: "Gallery" },
+  { id: "badges", label: "Badges" },
   { id: "audit", label: "Audit" },
 ];
 
@@ -1453,7 +1454,7 @@ export default function MerchantDetailModal({
                   </div>
                 )}
 
-                <MerchantBadgePanel businessId={display.id} canManage={canManage} />
+                <MerchantBadgePanel businessId={display.id} canManage={canManage} mode="summary" />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                   <Section title="Contact">
@@ -2309,6 +2310,10 @@ export default function MerchantDetailModal({
                   </div>
                 )}
               </div>
+            )}
+
+            {tab === "badges" && (
+              <MerchantBadgePanel businessId={display.id} canManage={canManage} />
             )}
 
             {tab === "audit" && (
