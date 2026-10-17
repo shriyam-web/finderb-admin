@@ -963,10 +963,10 @@ function allSidebarTabNames(): string[] {
 }
 
 const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
-  { label: "Overview", items: ["Dashboard"] },
   {
-    label: "Operations",
+    label: "Home",
     items: [
+      "Dashboard",
       "Users",
       {
         name: "Merchants",
@@ -978,38 +978,33 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
           { name: "Quick Onboard", label: "Quick Onboard" },
         ],
       },
+    ],
+  },
+  {
+    label: "Requests",
+    items: [
       "Merchant Support Login",
       "Leads",
       "Reviews",
       "Change Requests",
       "Ownership Requests",
-      "Job Reports",
     ],
   },
+  { label: "Payments", items: ["Payments & Subscriptions"] },
+  { label: "Jobs", items: ["FinderB Jobs", "Job Reports"] },
   {
-    label: "Content & Media",
-    items: [
-      "Categories",
-      "Movies",
-      "Tourist Places",
-      "Blogs",
-      "YouTube Playlists",
-      "FinderB Jobs",
-      "News",
-    ],
+    label: "Content",
+    items: ["Categories", "Blogs", "YouTube Playlists", "Tourist Places"],
   },
-  {
-    label: "Platform",
-    items: [
-      "Payments & Subscriptions",
-      "Broadcasts",
-      "Broadcast Email",
-      "Settings",
-      "Manage Admins",
-    ],
-  },
-  { label: "Coming soon", items: ["FinderB E-commerce"] },
+  { label: "Broadcasts", items: ["Broadcasts", "Broadcast Email"] },
+  { label: "Platform", items: ["Settings", "Manage Admins"] },
+  { label: "Inactive", items: ["News", "Movies", "FinderB E-commerce"] },
 ];
+
+function reportFetchError(label: string, error: { code?: string } | null | undefined) {
+  if (!error || error.code === "ADMIN_SESSION") return;
+  console.error(label, error);
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -1048,6 +1043,9 @@ export default function Dashboard() {
   const [onboardChooserOpen, setOnboardChooserOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [navSearchOpen, setNavSearchOpen] = useState(false);
+  const [navQuery, setNavQuery] = useState("");
+  const navSearchRef = useRef<HTMLInputElement>(null);
   const [showAdminProfile, setShowAdminProfile] = useState(false);
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
   const [futureShiningTabs, setFutureShiningTabs] = useState<string[]>([]);
@@ -1456,6 +1454,12 @@ export default function Dashboard() {
   }, [sessionReady, bootMinElapsed, isLoginLocked]);
 
   useEffect(() => {
+    if (!navSearchOpen) return;
+    navSearchRef.current?.focus();
+  }, [navSearchOpen]);
+
+  useEffect(() => {
+    if (!adminSession?.id) return;
     const fetchData = async () => {
       let refreshFailed = false;
       try {
@@ -1472,7 +1476,7 @@ export default function Dashboard() {
           .order("position", { ascending: true });
 
         if (catError) {
-          console.error("❌ Category fetch error:", catError);
+          reportFetchError("❌ Category fetch error:", catError);
           const missingTable =
             catError.message?.toLowerCase().includes("public.categories") ||
             catError.message
@@ -1519,7 +1523,7 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (movieError) {
-          console.error("❌ Movie fetch error:", movieError);
+          reportFetchError("❌ Movie fetch error:", movieError);
         } else {
           console.log("✅ Movies fetched:", movieData?.length || 0);
           if (movieData) setMovies(movieData);
@@ -1532,7 +1536,7 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (tpError) {
-          console.error("❌ Tourist places fetch error:", tpError);
+          reportFetchError("❌ Tourist places fetch error:", tpError);
         } else {
           console.log("✅ Tourist places fetched:", tpData?.length || 0);
           if (tpData) setTouristPlaces(tpData);
@@ -1549,14 +1553,14 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (newsError) {
-          console.error("❌ News fetch error:", newsError);
+          reportFetchError("❌ News fetch error:", newsError);
         } else {
           console.log("✅ News fetched:", newsData?.length || 0);
           if (newsData) setNews(newsData);
         }
 
         if (blogError) {
-          console.error("❌ Blogs fetch error:", blogError);
+          reportFetchError("❌ Blogs fetch error:", blogError);
         } else {
           console.log("✅ Blogs fetched:", blogData?.length || 0);
           if (blogData) setBlogs(blogData);
@@ -1592,7 +1596,7 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (jobError) {
-          console.error("❌ FinderB jobs fetch error:", jobError);
+          reportFetchError("❌ FinderB jobs fetch error:", jobError);
         } else {
           console.log("✅ FinderB jobs fetched:", jobData?.length || 0);
           if (jobData) {
@@ -1623,7 +1627,7 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (leadError) {
-          console.error("❌ Lead fetch error:", leadError);
+          reportFetchError("❌ Lead fetch error:", leadError);
         } else {
           console.log("✅ Leads fetched:", leadData?.length || 0);
           if (leadData) {
@@ -1642,7 +1646,7 @@ export default function Dashboard() {
           .select("*")
           .order("createdAt", { ascending: false });
         if (userError) {
-          console.error("❌ User fetch error:", userError);
+          reportFetchError("❌ User fetch error:", userError);
         } else {
           console.log("✅ Users fetched:", userData?.length || 0);
           if (userData) setUsers(userData);
@@ -1655,7 +1659,7 @@ export default function Dashboard() {
           .order("createdAt", { ascending: false });
 
         if (merchantError) {
-          console.error("❌ Business fetch error:", merchantError);
+          reportFetchError("❌ Business fetch error:", merchantError);
           setFetchError(
             `Failed to fetch business data: ${merchantError.message}`,
           );
@@ -1685,13 +1689,13 @@ export default function Dashboard() {
           .order("created_at", { ascending: false });
 
         if (paymentError) {
-          console.error("❌ Merchant payments fetch error:", paymentError);
+          reportFetchError("❌ Merchant payments fetch error:", paymentError);
         } else {
           setMerchantPaymentRows(paymentData ?? []);
         }
       } catch (error: any) {
         refreshFailed = true;
-        console.error("❌ Unexpected error during fetch:", error);
+        reportFetchError("❌ Unexpected error during fetch:", error);
         setFetchError(`Unexpected error: ${error?.message || "Unknown error"}`);
       } finally {
         setDataLoading(false);
@@ -1704,7 +1708,7 @@ export default function Dashboard() {
     };
 
     fetchData();
-  }, [panelRefresh]);
+  }, [panelRefresh, adminSession?.id]);
 
   useEffect(() => {
     const fetchAdmins = async () => {
@@ -3063,6 +3067,31 @@ export default function Dashboard() {
               <div className="flex items-center gap-1">
                 <button
                   type="button"
+                  onClick={() => {
+                    if (sidebarCollapsed) setSidebarCollapsed(false);
+                    setNavSearchOpen((open) => {
+                      if (open) setNavQuery("");
+                      return !open;
+                    });
+                  }}
+                  className={`admin-btn-ghost !p-1 !text-slate-300 hover:!text-white hover:!bg-white/10 ${
+                    navSearchOpen ? "!bg-white/10 !text-white" : ""
+                  }`}
+                  aria-label={navSearchOpen ? "Close menu search" : "Search menus"}
+                  aria-expanded={navSearchOpen}
+                  title="Search menus"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
                   onClick={toggleSidebarCollapsed}
                   className="admin-btn-ghost !p-1 hidden lg:inline-flex !text-slate-300 hover:!text-white hover:!bg-white/10"
                   aria-label={
@@ -3118,17 +3147,79 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {navSearchOpen && !sidebarCollapsed && (
+          <div className="px-2 pb-1">
+            <div className="relative">
+              <svg
+                className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"
+                />
+              </svg>
+              <input
+                ref={navSearchRef}
+                value={navQuery}
+                onChange={(event) => setNavQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setNavQuery("");
+                    setNavSearchOpen(false);
+                  }
+                }}
+                placeholder="Search menus"
+                aria-label="Search menus"
+                className="h-8 w-full rounded-md border border-slate-200 bg-white pl-7 pr-7 text-[12px] text-slate-800 outline-none placeholder:text-slate-400 focus:border-teal-500"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setNavQuery("");
+                  setNavSearchOpen(false);
+                }}
+                className="absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close search"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
         <nav className="flex-1 px-1.5 py-1 overflow-y-auto sidebar-scrollbar">
           {NAV_GROUPS.map((group) => {
             const menuByName = new Map(menuItems.map((m) => [m.name, m]));
+            const menuQuery = navSearchOpen ? navQuery.trim().toLowerCase() : "";
+            const matchesQuery = (name: string, label?: string) => {
+              if (!menuQuery) return true;
+              return (
+                name.toLowerCase().includes(menuQuery) ||
+                (label || "").toLowerCase().includes(menuQuery)
+              );
+            };
             const visibleEntries = group.items.filter((entry) => {
               if (isNavBranch(entry)) {
-                return (
+                const present =
                   menuByName.has(entry.name) ||
-                  entry.children.some((c) => menuByName.has(c.name))
+                  entry.children.some((c) => menuByName.has(c.name));
+                if (!present) return false;
+                if (!menuQuery) return true;
+                return (
+                  matchesQuery(entry.name) ||
+                  entry.children.some((c) => matchesQuery(c.name, c.label))
                 );
               }
-              return menuByName.has(entry);
+              if (!menuByName.has(entry)) return false;
+              return matchesQuery(entry);
             });
             if (visibleEntries.length === 0) return null;
 
@@ -3208,6 +3299,7 @@ export default function Dashboard() {
 
             return (
               <div key={group.label} className="admin-nav-group">
+                <p className="admin-nav-group-label">{group.label}</p>
                 <div className="space-y-px">
                   {visibleEntries.map((entry) => {
                     if (!isNavBranch(entry)) {
@@ -3219,9 +3311,12 @@ export default function Dashboard() {
                       menuByName.get(entry.name) ||
                       ALL_MENU_ITEMS.find((m) => m.name === entry.name);
                     if (!parentItem) return null;
-                    const childVisible = entry.children.filter((c) =>
-                      menuByName.has(c.name),
-                    );
+                    const parentMatches = matchesQuery(entry.name);
+                    const childVisible = entry.children.filter((c) => {
+                      if (!menuByName.has(c.name)) return false;
+                      if (!menuQuery || parentMatches) return true;
+                      return matchesQuery(c.name, c.label);
+                    });
                     const parentClickable = menuByName.has(entry.name);
                     if (childVisible.length === 0) {
                       // No nested tabs visible — fall back to a plain Merchants item
@@ -3235,7 +3330,9 @@ export default function Dashboard() {
                       childVisible.some((c) => c.name === activeTab);
                     // Only merchantsNavOpen controls expand/collapse — don't
                     // force-open while a nested tab is active (that blocked collapse).
-                    const open = !sidebarCollapsed && merchantsNavOpen;
+                    const open =
+                      !sidebarCollapsed &&
+                      (menuQuery ? childVisible.length > 0 : merchantsNavOpen);
                     const inMerchantsSection = branchActive;
 
                     return (
@@ -3327,6 +3424,26 @@ export default function Dashboard() {
               </div>
             );
           })}
+          {navSearchOpen &&
+            navQuery.trim() &&
+            !NAV_GROUPS.some((group) =>
+              group.items.some((entry) => {
+                const q = navQuery.trim().toLowerCase();
+                if (typeof entry !== "string") {
+                  return (
+                    entry.name.toLowerCase().includes(q) ||
+                    entry.children.some(
+                      (child) =>
+                        child.name.toLowerCase().includes(q) ||
+                        child.label.toLowerCase().includes(q),
+                    )
+                  );
+                }
+                return entry.toLowerCase().includes(q);
+              }),
+            ) && (
+              <p className="px-2.5 py-3 text-[12px] text-slate-400">No menus match.</p>
+            )}
         </nav>
 
         <div className="admin-sidebar-footer">

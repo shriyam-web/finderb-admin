@@ -544,7 +544,7 @@ export default function Home() {
                         }
                       }}
                       className={`${LINE_INPUT} pr-2`}
-                      placeholder="admin@finderb.com"
+                      placeholder="Enter your email"
                       role="combobox"
                       aria-expanded={emailSuggestions.length > 0 && emailHint >= 0}
                       aria-autocomplete="list"
