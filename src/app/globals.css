@@ -2171,41 +2171,73 @@ body {
   }
 }
 
-.custom-scrollbar {
+html {
   scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-color: rgba(68, 64, 60, 0.38) transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+html::-webkit-scrollbar,
+.custom-scrollbar::-webkit-scrollbar,
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
+html::-webkit-scrollbar-track,
+.custom-scrollbar::-webkit-scrollbar-track,
+.sidebar-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+html::-webkit-scrollbar-thumb,
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
   border-radius: 999px;
+  background: rgba(68, 64, 60, 0.38) padding-box;
+  transition: background 0.2s ease;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+html::-webkit-scrollbar-thumb:hover,
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #fb923c, #ea580c) padding-box;
+}
+
+.custom-scrollbar,
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(68, 64, 60, 0.38) transparent;
 }
 
 .sidebar-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
-
-.sidebar-scrollbar::-webkit-scrollbar {
-  width: 3px;
+  scrollbar-color: transparent transparent;
 }
 
 .sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 999px;
+  background: transparent padding-box;
+}
+
+.sidebar-scrollbar:hover {
+  scrollbar-color: rgba(68, 64, 60, 0.45) transparent;
+}
+
+.sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(68, 64, 60, 0.45) padding-box;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #fb923c, #ea580c) padding-box;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) {
+  scrollbar-color: rgba(255, 255, 255, 0.28) transparent;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"])::-webkit-scrollbar-thumb,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .custom-scrollbar::-webkit-scrollbar-thumb,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .sidebar-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28) padding-box;
 }
 
 .admin-lock-modal-root {
