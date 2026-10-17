@@ -19,6 +19,7 @@ import {
   Store,
   UsersRound,
 } from "lucide-react";
+import AdminEntryScreen, { markAdminEntryHandoff } from "../components/AdminEntryScreen";
 import OtpCodeBoxes from "../components/OtpCodeBoxes";
 
 type AdminPayload = {
@@ -57,6 +58,7 @@ export default function Home() {
   const [otpCode, setOtpCode] = useState("");
   const [codeInvalid, setCodeInvalid] = useState(false);
   const [resendIn, setResendIn] = useState(0);
+  const [gate, setGate] = useState<"entry" | "form">("entry");
   const router = useRouter();
 
   useEffect(() => {
@@ -73,12 +75,7 @@ export default function Home() {
       "admin-theme-dark",
       "admin-theme-silver",
     );
-
-    const session = localStorage.getItem("admin_session");
-    if (session) {
-      router.push("/dashboard");
-    }
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -241,6 +238,21 @@ export default function Home() {
 
   const isEmailStep = step === "email";
 
+  if (gate === "entry") {
+    return (
+      <AdminEntryScreen
+        onResolved={(destination) => {
+          if (destination === "dashboard") {
+            markAdminEntryHandoff();
+            router.push("/dashboard");
+            return;
+          }
+          setGate("form");
+        }}
+      />
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-[#f5f7fa]">
       <aside className="relative hidden w-[46%] overflow-hidden border-r border-slate-800! bg-slate-950 text-white lg:flex">
@@ -248,7 +260,7 @@ export default function Home() {
           className="pointer-events-none absolute inset-0 opacity-40"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(45,212,191,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(45,212,191,0.1) 1px, transparent 1px)",
+              "linear-gradient(rgba(147,197,253,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(147,197,253,0.16) 1px, transparent 1px)",
             backgroundSize: "32px 32px",
             maskImage: "radial-gradient(ellipse at 30% 40%, black 30%, transparent 75%)",
           }}
@@ -257,12 +269,9 @@ export default function Home() {
         <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-cyan-500/15 blur-3xl" />
 
         <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
-          <div className="flex items-center gap-4">
-            <Image src="/logo-white.png" alt="FinderB" width={151} height={34} className="object-contain" priority />
-            <span className="inline-flex items-center gap-2 rounded-full border border-teal-400/30! bg-teal-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-teal-200">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-400" />
-              Control deck
-            </span>
+          <div className="flex items-center gap-3">
+            <Image src="/fb-mark.png" alt="" width={44} height={44} className="h-11 w-11 object-contain" priority />
+            <span className="text-xl font-semibold tracking-tight text-white">Admin</span>
           </div>
 
           <div className="max-w-md space-y-10">
@@ -309,22 +318,12 @@ export default function Home() {
 
       <main className="flex flex-1 items-center justify-center bg-white px-6 py-10 sm:px-12">
         <div className="w-full max-w-[400px]">
-          <div className="mb-12 flex flex-col items-start lg:hidden">
-            <Image src="/logo1.png" alt="FinderB" width={151} height={34} className="object-contain" priority />
-            <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-teal-700">
-              Control deck
-            </p>
+          <div className="mb-12 flex items-center gap-3 lg:hidden">
+            <Image src="/fb-mark.png" alt="" width={40} height={40} className="h-10 w-10 object-contain" priority />
+            <span className="text-lg font-semibold tracking-tight text-slate-800">Admin</span>
           </div>
 
           <div>
-            <div className="mb-8 flex items-center gap-1.5" aria-label={`Step ${isEmailStep ? 2 : 1} of 2`}>
-              <span className="h-1 w-8 rounded-full bg-teal-600" />
-              <span className={`h-1 w-8 rounded-full transition-colors duration-300 ${isEmailStep ? "bg-teal-600" : "bg-slate-200"}`} />
-              <span className="ml-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Step {isEmailStep ? 2 : 1} of 2
-              </span>
-            </div>
-
             <div className="mb-9">
               <h1 className="text-[1.75rem] font-semibold tracking-tight text-slate-900">
                 {isEmailStep ? "Check your email" : "Welcome back"}

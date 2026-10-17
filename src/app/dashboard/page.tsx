@@ -26,7 +26,7 @@ import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
-import AdminBootLoader from "../../components/AdminBootLoader";
+import AdminEntryScreen from "../../components/AdminEntryScreen";
 import AccessRestrictedPanel from "../../components/AccessRestrictedPanel";
 import WhatsNewPanel, {
   useWhatsNewUnreadCount,
@@ -1083,11 +1083,6 @@ export default function Dashboard() {
     setColorMode(readAdminColorMode(adminSession?.role));
   }, [adminSession?.role]);
 
-  // Keep the boot screen up briefly so the intro can play out.
-  useEffect(() => {
-    const id = window.setTimeout(() => setBootMinElapsed(true), 4500);
-    return () => window.clearTimeout(id);
-  }, []);
 
   // Apply console theme to <html> for dark / gold / silver modes.
   useEffect(() => {
@@ -1270,10 +1265,7 @@ export default function Dashboard() {
     const validateSession = async () => {
       try {
         const sessionStr = localStorage.getItem("admin_session");
-        if (!sessionStr) {
-          router.push("/");
-          return;
-        }
+        if (!sessionStr) return;
 
         const session = JSON.parse(sessionStr);
         const supabase = createClient();
@@ -1287,7 +1279,6 @@ export default function Dashboard() {
         if (error || !data || data.is_disabled) {
           clearAdminFloatingPositions();
           localStorage.removeItem("admin_session");
-          router.push("/");
           return;
         }
 
@@ -1318,7 +1309,6 @@ export default function Dashboard() {
       } catch {
         clearAdminFloatingPositions();
         localStorage.removeItem("admin_session");
-        router.push("/");
       } finally {
         setSessionReady(true);
       }
@@ -2937,8 +2927,20 @@ export default function Dashboard() {
     }
   };
 
-  if (!sessionReady || !adminSession || !bootMinElapsed) {
-    return <AdminBootLoader />;
+  if (!bootMinElapsed) {
+    return (
+      <AdminEntryScreen
+        respectHandoff
+        status={!sessionReady ? "checking" : adminSession ? "dashboard" : "login"}
+        onResolved={(destination) => {
+          if (destination === "login") {
+            router.push("/");
+            return;
+          }
+          setBootMinElapsed(true);
+        }}
+      />
+    );
   }
 
   return (

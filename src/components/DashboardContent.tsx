@@ -394,7 +394,10 @@ export default function DashboardContent({
           <p className="px-4 py-6 text-sm text-slate-500">Loading the queue…</p>
         ) : todoRows.length === 0 ? (
           <div className="todo-clear">
-            <h3>All caught up</h3>
+            <p className="todo-kudos" aria-hidden>
+              🎉
+            </p>
+            <h3>Kudos</h3>
             <p>
               Nothing needs a decision right now. Listings, reviews, claims, and reports will show up here as soon as they arrive.
             </p>
