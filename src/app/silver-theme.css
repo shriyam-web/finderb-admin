@@ -549,3 +549,24 @@ html[data-admin-theme="silver"] .admin-whats-new-fab {
   color: #f8fafc !important;
   box-shadow: none !important;
 }
+
+html[data-admin-theme="silver"] .admin-login-panel input[type="email"],
+html[data-admin-theme="silver"] .admin-login-panel input[type="password"],
+html[data-admin-theme="silver"] .admin-login-panel input[type="text"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.42) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-admin-theme="silver"] .admin-login-panel input:focus {
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  box-shadow: none !important;
+  outline: none !important;
+}

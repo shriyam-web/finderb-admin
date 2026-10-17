@@ -51,11 +51,14 @@ export function markAdminEntryHandoff() {
 export default function AdminEntryScreen({
   status,
   respectHandoff = false,
+  loaderOnly = false,
   onResolved,
 }: {
   /** When omitted, this screen checks the saved session itself. */
   status?: "checking" | EntryDestination;
   respectHandoff?: boolean;
+  /** Spinner only. Used after a welcome screen already played. */
+  loaderOnly?: boolean;
   onResolved: (destination: EntryDestination) => void;
 }) {
   const [selfStatus, setSelfStatus] = useState<"checking" | EntryDestination>("checking");
@@ -69,7 +72,7 @@ export default function AdminEntryScreen({
   const liveStatus = status ?? selfStatus;
 
   useEffect(() => {
-    if (status !== undefined) return;
+    if (loaderOnly || status !== undefined) return;
     let cancelled = false;
     void probeSession().then((next) => {
       if (!cancelled) setSelfStatus(next);
@@ -77,9 +80,10 @@ export default function AdminEntryScreen({
     return () => {
       cancelled = true;
     };
-  }, [status]);
+  }, [loaderOnly, status]);
 
   useEffect(() => {
+    if (loaderOnly) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let handoff = false;
     if (respectHandoff) {
@@ -92,7 +96,7 @@ export default function AdminEntryScreen({
     origin.current = handoff ? Date.now() - welcomeMs - 200 : Date.now();
     const id = window.setInterval(() => setTick((value) => value + 1), 200);
     return () => window.clearInterval(id);
-  }, [respectHandoff]);
+  }, [loaderOnly, respectHandoff]);
 
   const reducedNow =
     typeof window !== "undefined" &&
@@ -118,7 +122,7 @@ export default function AdminEntryScreen({
     phase === "result" && liveStatus !== "checking" ? liveStatus : null;
 
   useEffect(() => {
-    if (phase !== "result" || !destination || finished.current) return;
+    if (loaderOnly || phase !== "result" || !destination || finished.current) return;
     if (continued.current && liveStatus === "checking") return;
     const timer = window.setTimeout(() => {
       if (finished.current) return;
@@ -126,7 +130,32 @@ export default function AdminEntryScreen({
       onResolvedRef.current(destination);
     }, resultMs);
     return () => window.clearTimeout(timer);
-  }, [phase, destination, liveStatus, resultMs]);
+  }, [loaderOnly, phase, destination, liveStatus, resultMs]);
+
+  if (loaderOnly) {
+    return (
+      <div className={styles.root} role="status" aria-live="polite" data-phase="checking">
+        <div className={styles.brand}>
+          <Image
+            src="/fb-mark.png"
+            alt=""
+            width={20}
+            height={20}
+            className={styles.mark}
+            priority
+          />
+          <span>Admin</span>
+        </div>
+        <div className={styles.stage}>
+          <p className={styles.statusLine}>
+            <span className={styles.spinner} aria-hidden />
+            Checking your session
+          </p>
+        </div>
+        <p className={styles.legal}>&copy; 2026 Maagaa Connect Private Limited</p>
+      </div>
+    );
+  }
 
   const resultCopy =
     destination === "dashboard"

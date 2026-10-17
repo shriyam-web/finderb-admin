@@ -2848,6 +2848,45 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   color: #d6d3d1;
 }
 
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-hero {
+  background-color: #0c0a09 !important;
+  color: #f5f5f4 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-hero h2,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-hero h2 span:not(.text-orange-200) {
+  color: #fafaf9 !important;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-hero h2 .text-orange-200,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-hero h2 span.text-orange-200 {
+  color: #fdba74 !important;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-hero > div p,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-hero .text-slate-300,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-hero .text-slate-400,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-hero .text-slate-500 {
+  color: #d6d3d1 !important;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-card {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f5f5f4 !important;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-card p.font-semibold,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-card .font-semibold {
+  color: #ffffff !important;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-card p.text-xs,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-card .text-xs {
+  color: #d6d3d1 !important;
+}
+
 html[data-admin-theme="dark"] .admin-login {
   background: #171717;
 }
@@ -2884,19 +2923,69 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   color: #a8a29e;
 }
 
-html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel input {
-  color: #f5f5f4 !important;
-  border-bottom-color: rgba(255, 255, 255, 0.22) !important;
-  caret-color: #f5f5f4;
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel {
+  color-scheme: dark;
+}
+
+html[data-admin-theme="dark"] .admin-login-panel input[type="email"],
+html[data-admin-theme="dark"] .admin-login-panel input[type="password"],
+html[data-admin-theme="dark"] .admin-login-panel input[type="text"],
+html[data-admin-theme="controller"] .admin-login-panel input[type="email"],
+html[data-admin-theme="controller"] .admin-login-panel input[type="password"],
+html[data-admin-theme="controller"] .admin-login-panel input[type="text"],
+html[data-admin-theme="silver"] .admin-login-panel input[type="email"],
+html[data-admin-theme="silver"] .admin-login-panel input[type="password"],
+html[data-admin-theme="silver"] .admin-login-panel input[type="text"] {
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.42) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  caret-color: #f8fafc;
+}
+
+html[data-admin-theme="dark"] .admin-login-panel input:focus,
+html[data-admin-theme="controller"] .admin-login-panel input:focus,
+html[data-admin-theme="silver"] .admin-login-panel input:focus {
+  border: 0 !important;
+  border-bottom: 1px solid #fb923c !important;
+  box-shadow: none !important;
+  outline: none !important;
+  background: transparent !important;
 }
 
 html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel input::placeholder {
   color: #78716c;
 }
 
-html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel input:-webkit-autofill {
-  -webkit-text-fill-color: #f5f5f4;
-  box-shadow: inset 0 0 0 1000px #1c1917;
+html[data-admin-theme="dark"] .admin-login-panel input:-webkit-autofill,
+html[data-admin-theme="dark"] .admin-login-panel input:-webkit-autofill:hover,
+html[data-admin-theme="dark"] .admin-login-panel input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc;
+  box-shadow: inset 0 0 0 1000px #111827 !important;
+  transition: background-color 9999s ease-out;
+}
+
+html[data-admin-theme="controller"] .admin-login-panel input:-webkit-autofill,
+html[data-admin-theme="controller"] .admin-login-panel input:-webkit-autofill:hover,
+html[data-admin-theme="controller"] .admin-login-panel input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc;
+  box-shadow: inset 0 0 0 1000px #292524 !important;
+  transition: background-color 9999s ease-out;
+}
+
+html[data-admin-theme="silver"] .admin-login-panel input:-webkit-autofill,
+html[data-admin-theme="silver"] .admin-login-panel input:-webkit-autofill:hover,
+html[data-admin-theme="silver"] .admin-login-panel input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc;
+  box-shadow: inset 0 0 0 1000px #1e2229 !important;
+  transition: background-color 9999s ease-out;
 }
 
 html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-login-panel ul {

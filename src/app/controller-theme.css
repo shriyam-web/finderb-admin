@@ -491,3 +491,24 @@ html[data-admin-theme="controller"] .admin-shell .qo-success {
   border-color: rgba(251, 191, 36, 0.24) !important;
   color: #f5f5f4 !important;
 }
+
+html[data-admin-theme="controller"] .admin-login-panel input[type="email"],
+html[data-admin-theme="controller"] .admin-login-panel input[type="password"],
+html[data-admin-theme="controller"] .admin-login-panel input[type="text"] {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #fafaf9 !important;
+  -webkit-text-fill-color: #fafaf9 !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.42) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-admin-theme="controller"] .admin-login-panel input:focus {
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid #f59e0b !important;
+  box-shadow: none !important;
+  outline: none !important;
+}

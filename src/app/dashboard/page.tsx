@@ -8,6 +8,7 @@ import {
   Dispatch,
   SetStateAction,
   useEffect,
+  useLayoutEffect,
   useCallback,
   useMemo,
   useRef,
@@ -1015,6 +1016,23 @@ export default function Dashboard() {
   const [adminSession, setAdminSession] = useState<any>(null);
   const [sessionReady, setSessionReady] = useState(false);
   const [bootMinElapsed, setBootMinElapsed] = useState(false);
+  const [arrival, setArrival] = useState<"unknown" | "fresh" | "login">("unknown");
+
+  useLayoutEffect(() => {
+    const fromLogin = new URLSearchParams(window.location.search).get("from") === "login";
+    setArrival(fromLogin ? "login" : "fresh");
+  }, []);
+
+  useEffect(() => {
+    if (arrival !== "login" || !sessionReady) return;
+    if (!adminSession) {
+      router.replace("/");
+      return;
+    }
+    window.history.replaceState(null, "", "/dashboard");
+    setBootMinElapsed(true);
+  }, [arrival, sessionReady, adminSession, router]);
+
   const [lockModalCopy, setLockModalCopy] = useState<LockModalCopy>(
     DEFAULT_LOCK_MODAL_COPY,
   );
@@ -2940,6 +2958,9 @@ export default function Dashboard() {
   }
 
   if (!bootMinElapsed) {
+    if (arrival !== "fresh") {
+      return <AdminEntryScreen loaderOnly status="checking" onResolved={() => {}} />;
+    }
     return (
       <AdminEntryScreen
         respectHandoff

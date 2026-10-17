@@ -88,7 +88,7 @@ function SlideToContinue({
   return (
     <div
       ref={trackRef}
-      className="admin-slide relative mt-9 h-12 w-full touch-none overflow-hidden rounded-full bg-stone-100 md:hidden"
+      className="admin-slide relative mt-9 h-12 w-full touch-none overflow-hidden rounded-full bg-stone-100"
     >
       <span className="pointer-events-none absolute inset-0 flex items-center justify-center pl-8 text-sm font-medium text-stone-500">
         {busy ? "Checking…" : "Slide to continue"}
@@ -240,7 +240,7 @@ export default function Home() {
         startedAt: new Date().toISOString(),
       }),
     );
-    router.push("/dashboard");
+    router.push("/dashboard?from=login");
   };
 
   const verifyCode = async (code: string) => {
@@ -338,7 +338,7 @@ export default function Home() {
         onResolved={(destination) => {
           if (destination === "dashboard") {
             markAdminEntryHandoff();
-            router.push("/dashboard");
+            router.push("/dashboard?from=login");
             return;
           }
           setGate("form");
@@ -349,7 +349,7 @@ export default function Home() {
 
   return (
     <div className="admin-login flex min-h-screen bg-[#f5f7fa]">
-      <aside className="relative hidden w-[46%] overflow-hidden border-r border-stone-800! bg-stone-950 text-white lg:flex">
+      <aside className="admin-login-hero relative hidden w-[46%] overflow-hidden border-r border-white/10 bg-[#0c0a09] text-white lg:flex">
         <div
           className="pointer-events-none absolute inset-0 opacity-40"
           style={{
@@ -385,7 +385,7 @@ export default function Home() {
               {HIGHLIGHTS.map(({ label, desc, Icon }) => (
                 <li
                   key={label}
-                  className="rounded-xl border border-white/10! bg-white/[0.04] px-4 py-3.5 backdrop-blur-sm transition-colors hover:border-teal-400/30! hover:bg-white/[0.07]"
+                  className="admin-login-card rounded-xl border border-white/10 bg-white/[0.05] px-4 py-3.5 backdrop-blur-sm transition-colors hover:border-teal-400/30 hover:bg-white/[0.08]"
                 >
                   <span className="mb-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-teal-400/15 text-teal-300">
                     <Icon className="h-4 w-4" aria-hidden />
@@ -396,7 +396,7 @@ export default function Home() {
               ))}
             </ul>
 
-            <div className="flex items-center gap-3 rounded-xl border border-white/10! bg-white/[0.03] px-4 py-3">
+            <div className="admin-login-card flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
               <ShieldCheck className="h-5 w-5 shrink-0 text-teal-300" aria-hidden />
               <p className="text-xs leading-relaxed text-slate-300">
                 Every sign-in needs your password and a one-time email code. Console activity is logged.
@@ -609,23 +609,6 @@ export default function Home() {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="admin-btn-primary mt-9! hidden h-11 w-full text-[15px] font-semibold max-md:!hidden md:inline-flex"
-                >
-                  {isLoading ? (
-                    <>
-                      <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden />
-                      Checking…
-                    </>
-                  ) : (
-                    <>
-                      Continue
-                      <ArrowRight className="h-4 w-4" aria-hidden />
-                    </>
-                  )}
-                </button>
                 <SlideToContinue
                   busy={isLoading}
                   onConfirm={(form) => form?.requestSubmit()}
