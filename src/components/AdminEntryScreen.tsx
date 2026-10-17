@@ -8,7 +8,7 @@ import styles from "./AdminEntryScreen.module.css";
 export type EntryDestination = "dashboard" | "login";
 
 const HANDOFF_KEY = "finderb-admin-entry-handoff";
-const WELCOME_MS = 2600;
+const WELCOME_MS = 900;
 const CHECK_MS = 900;
 const RESULT_MS = 1400;
 
@@ -125,43 +125,31 @@ export default function AdminEntryScreen({
   return (
     <div className={styles.root} role="status" aria-live="polite" data-phase={phase}>
 
-      {phase === "welcome" ? (
-        <div className={styles.welcome}>
+      <div className={styles.stage}>
+        <h1 className={styles.headline}>
           <Image
             src="/fb-mark.png"
             alt=""
-            width={88}
-            height={88}
+            width={28}
+            height={28}
             className={styles.mark}
             priority
           />
-          <h1 className={styles.headline}>Welcome to FinderB Admin</h1>
-        </div>
-      ) : (
-        <div className={styles.panel}>
-          <div className={styles.brandRow}>
-            <Image
-              src="/fb-mark.png"
-              alt=""
-              width={44}
-              height={44}
-              className={styles.markSmall}
-              priority
-            />
-            <span className={styles.adminWord}>Admin</span>
-          </div>
+          <span>Welcome to FinderB Admin</span>
+        </h1>
+        <div className={styles.statusSlot}>
           {phase === "checking" ? (
             <p className={styles.statusLine}>
               <span className={styles.spinner} aria-hidden />
               Checking your session
             </p>
-          ) : (
+          ) : phase === "result" ? (
             <p className={destination === "dashboard" ? styles.resultOk : styles.resultIdle}>
               {resultCopy}
             </p>
-          )}
+          ) : null}
         </div>
-      )}
+      </div>
     </div>
   );
 }

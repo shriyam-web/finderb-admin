@@ -47,8 +47,31 @@ const LINE_INPUT =
 const LINE_FOCUS_BAR =
   "pointer-events-none absolute inset-x-0 bottom-0 h-0.5 origin-left scale-x-0 bg-teal-600 transition-transform duration-300 peer-focus:scale-x-100";
 
+const EMAIL_DOMAINS = [
+  "gmail.com",
+  "outlook.com",
+  "hotmail.com",
+  "yahoo.com",
+  "icloud.com",
+  "live.com",
+  "rediffmail.com",
+  "finderb.com",
+];
+
+function emailDomainSuggestions(value: string): string[] {
+  const at = value.lastIndexOf("@");
+  if (at <= 0) return [];
+  const local = value.slice(0, at);
+  if (!local.trim() || /\s/.test(local)) return [];
+  const typed = value.slice(at + 1).toLowerCase();
+  return EMAIL_DOMAINS.filter((domain) => domain.startsWith(typed) && domain !== typed).map(
+    (domain) => `${local}@${domain}`,
+  );
+}
+
 export default function Home() {
   const [username, setUsername] = useState("");
+  const [emailHint, setEmailHint] = useState(0);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -237,6 +260,7 @@ export default function Home() {
   };
 
   const isEmailStep = step === "email";
+  const emailSuggestions = emailDomainSuggestions(username);
 
   if (gate === "entry") {
     return (
@@ -269,9 +293,9 @@ export default function Home() {
         <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-cyan-500/15 blur-3xl" />
 
         <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
-          <div className="flex items-center gap-3">
-            <Image src="/fb-mark.png" alt="" width={44} height={44} className="h-11 w-11 object-contain" priority />
-            <span className="text-xl font-semibold tracking-tight text-white">Admin</span>
+          <div className="flex items-center gap-[0.4em] text-xl font-normal leading-none tracking-tight text-white">
+            <Image src="/fb-mark.png" alt="" width={20} height={20} className="h-[1em] w-[1em] object-contain" priority />
+            <span>Admin</span>
           </div>
 
           <div className="max-w-md space-y-10">
@@ -318,14 +342,14 @@ export default function Home() {
 
       <main className="flex flex-1 items-center justify-center bg-white px-6 py-10 sm:px-12">
         <div className="w-full max-w-[400px]">
-          <div className="mb-12 flex items-center gap-3 lg:hidden">
-            <Image src="/fb-mark.png" alt="" width={40} height={40} className="h-10 w-10 object-contain" priority />
-            <span className="text-lg font-semibold tracking-tight text-slate-800">Admin</span>
+          <div className="mb-12 flex items-center gap-[0.4em] text-lg font-normal leading-none tracking-tight text-slate-800 lg:hidden">
+            <Image src="/fb-mark.png" alt="" width={18} height={18} className="h-[1em] w-[1em] object-contain" priority />
+            <span>Admin</span>
           </div>
 
           <div>
             <div className="mb-9">
-              <h1 className="text-[1.75rem] font-semibold tracking-tight text-slate-900">
+              <h1 className="text-[1.75rem] font-normal tracking-tight text-slate-900">
                 {isEmailStep ? "Check your email" : "Welcome back"}
               </h1>
               {isEmailStep ? (
@@ -422,11 +446,68 @@ export default function Home() {
                       autoComplete="email"
                       autoFocus
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        setEmailHint(0);
+                      }}
+                      onKeyDown={(event) => {
+                        if (!emailSuggestions.length) return;
+                        if (emailHint < 0) {
+                          if (event.key === "ArrowDown") {
+                            event.preventDefault();
+                            setEmailHint(0);
+                          }
+                          return;
+                        }
+                        if (event.key === "ArrowDown") {
+                          event.preventDefault();
+                          setEmailHint((index) => (index + 1) % emailSuggestions.length);
+                        } else if (event.key === "ArrowUp") {
+                          event.preventDefault();
+                          setEmailHint((index) => (index - 1 + emailSuggestions.length) % emailSuggestions.length);
+                        } else if (event.key === "Enter" || event.key === "Tab") {
+                          event.preventDefault();
+                          setUsername(emailSuggestions[emailHint] ?? emailSuggestions[0]);
+                          setEmailHint(0);
+                        } else if (event.key === "Escape") {
+                          setEmailHint(-1);
+                        }
+                      }}
                       className={`${LINE_INPUT} pr-2`}
                       placeholder="admin@finderb.com"
+                      role="combobox"
+                      aria-expanded={emailSuggestions.length > 0 && emailHint >= 0}
+                      aria-autocomplete="list"
                     />
                     <span className={LINE_FOCUS_BAR} aria-hidden />
+                    {emailSuggestions.length > 0 && emailHint >= 0 && (
+                      <ul
+                        className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-[0_12px_40px_rgba(15,23,42,0.08)]"
+                        role="listbox"
+                      >
+                        {emailSuggestions.map((suggestion, index) => (
+                          <li key={suggestion}>
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={index === emailHint}
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                setUsername(suggestion);
+                                setEmailHint(0);
+                              }}
+                              className={`block w-full px-3 py-2 text-left text-sm ${
+                                index === emailHint
+                                  ? "bg-slate-100 text-slate-900"
+                                  : "text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              {suggestion}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
                 <div>
