@@ -593,7 +593,7 @@ export default function DashboardContent({
           )}
           <div className="mt-4">
             <p className="mb-2 text-[11px] font-medium text-slate-500">
-              Last 8 weeks · teal is self registered, amber is added by admin
+              Last 8 weeks · orange is self registered, amber is added by admin
             </p>
             <AdminBarChart
               height={180}
@@ -602,7 +602,7 @@ export default function DashboardContent({
                 values: { self: week.self, admin: week.admin },
               }))}
               series={[
-                { key: "self", label: "Self registered", color: "#0d9488" },
+                { key: "self", label: "Self registered", color: "#ea580c" },
                 { key: "admin", label: "Added by admin", color: "#f59e0b" },
               ]}
             />
@@ -696,7 +696,7 @@ export default function DashboardContent({
               height={200}
               series={[
                 { key: "users", label: "Users", color: "#334155" },
-                { key: "merchants", label: "Partners", color: "#0d9488" },
+                { key: "merchants", label: "Partners", color: "#ea580c" },
               ]}
               data={chartData.map((d) => ({
                 label: d.label,

@@ -47,7 +47,7 @@ html[data-admin-theme="silver"] body {
 html[data-admin-theme="silver"] .admin-shell {
   background:
     radial-gradient(1100px 560px at 90% -10%, rgba(148, 163, 184, 0.08), transparent 55%),
-    linear-gradient(165deg, #22262e 0%, #16181d 45%, #2c313a 100%) !important;
+    linear-gradient(165deg, #08090c 0%, #16181d 45%, #2c313a 100%) !important;
   color: #e2e8f0 !important;
 }
 
@@ -62,7 +62,7 @@ html[data-admin-theme="silver"] .admin-chrome-sticky {
 
 /* ——— Sidebar ——— */
 html[data-admin-theme="silver"] .admin-sidebar {
-  background: linear-gradient(180deg, #22262e 0%, #2c313a 50%, #3a414c 100%) !important;
+  background: linear-gradient(180deg, #000 0%, #2c313a 50%, #16181d 100%) !important;
   border-right: 1px solid rgba(148, 163, 184, 0.22) !important;
   color: #cbd5e1 !important;
 }
@@ -91,9 +91,9 @@ html[data-admin-theme="silver"] .admin-brand-splash-glow {
 }
 
 html[data-admin-theme="silver"] .admin-nav-item-active {
-  background: rgba(148, 163, 184, 0.12) !important;
-  color: #e2e8f0 !important;
-  box-shadow: inset 3px 0 0 0 #94a3b8 !important;
+  background: #3f3f46 !important;
+  color: #fafafa !important;
+  box-shadow: none !important;
 }
 
 html[data-admin-theme="silver"] .admin-nav-item-idle {
@@ -175,9 +175,9 @@ html[data-admin-theme="silver"] .admin-role-badge-controller {
 }
 
 html[data-admin-theme="silver"] .admin-role-badge-developer {
-  background: linear-gradient(180deg, #5eead4 0%, #0f766e 100%) !important;
-  color: #042f2e !important;
-  border-color: #14b8a6 !important;
+  background: linear-gradient(180deg, #fdba74 0%, #c2410c 100%) !important;
+  color: #7c2d12 !important;
+  border-color: #f97316 !important;
   font-weight: 800 !important;
 }
 

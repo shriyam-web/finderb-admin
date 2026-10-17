@@ -161,7 +161,7 @@ export default function AdminProfileModal({
             className="pointer-events-none absolute inset-0 opacity-40"
             style={{
               backgroundImage:
-                "linear-gradient(rgba(45,212,191,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(45,212,191,0.1) 1px, transparent 1px)",
+                "linear-gradient(rgba(251,146,60,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(251,146,60,0.12) 1px, transparent 1px)",
               backgroundSize: "22px 22px",
             }}
           />

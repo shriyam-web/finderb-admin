@@ -14,11 +14,11 @@
   content: "";
   position: absolute;
   left: 50%;
-  top: 44%;
+  top: 42%;
   width: min(72vw, 820px);
   height: min(46vh, 420px);
   transform: translate(-50%, -50%);
-  background: radial-gradient(ellipse at center, rgba(191, 219, 254, 0.72), rgba(245, 246, 248, 0) 70%);
+  background: radial-gradient(ellipse at center, rgba(255, 237, 213, 0.85), rgba(245, 246, 248, 0) 70%);
   pointer-events: none;
   animation: entryBloom 1.6s ease both;
 }
@@ -30,32 +30,30 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 1.35rem;
   animation: entryArrive 1.05s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.headline {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4em;
-  margin: 0;
-  font-size: clamp(1.25rem, 2.3vw, 1.7rem);
-  font-weight: 400;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  color: #1e293b;
+.mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: contain;
+  margin-bottom: 0.85rem;
+  box-shadow: none;
+  filter: none;
 }
 
-.mark {
-  width: 1em;
-  height: 1em;
-  object-fit: contain;
-  flex: none;
+.headline {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: #1c1917;
 }
 
 .statusSlot {
   min-height: 1.5rem;
+  margin-top: 1.15rem;
 }
 
 .statusLine,
@@ -76,7 +74,7 @@
 }
 
 .resultOk {
-  color: #1d4ed8;
+  color: #c2410c;
 }
 
 .resultIdle {
@@ -87,9 +85,22 @@
   width: 0.8rem;
   height: 0.8rem;
   border-radius: 999px;
-  border: 1.5px solid #dbeafe;
-  border-top-color: #2563eb;
+  border: 1.5px solid #ffedd5;
+  border-top-color: #ea580c;
   animation: entrySpin 0.8s linear infinite;
+}
+
+.legal {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1.75rem;
+  margin: 0;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: #9ca3af;
 }
 
 @keyframes entryArrive {

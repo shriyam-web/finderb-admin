@@ -66,7 +66,7 @@ html:is(
   --color-stone-950: #f8fafc;
 
   /* Pale tint chips would otherwise stay near-white with light text */
-  --color-teal-50: #1e3a5f;
+  --color-teal-50: #3a2418;
   --color-emerald-50: #064e3b;
   --color-amber-50: #422006;
   --color-orange-50: #431407;
@@ -77,10 +77,10 @@ html:is(
   --color-yellow-50: #422006;
 
   /* hover:text-teal-900 / text-teal-800 on dark surfaces */
-  --color-teal-700: #93c5fd;
-  --color-teal-800: #bfdbfe;
-  --color-teal-900: #dbeafe;
-  --color-teal-950: #eff6ff;
+  --color-teal-700: #fdba74;
+  --color-teal-800: #fed7aa;
+  --color-teal-900: #ffedd5;
+  --color-teal-950: #fff7ed;
   --color-emerald-700: #6ee7b7;
   --color-emerald-800: #a7f3d0;
   --color-emerald-900: #d1fae5;
@@ -226,7 +226,7 @@ html:is(
 ) .qo-panel-paste {
   background:
     linear-gradient(var(--surface), var(--surface)) padding-box,
-    linear-gradient(160deg, #93c5fd, #64748b 45%, #fde68a) border-box !important;
+    linear-gradient(160deg, #fdba74, #64748b 45%, #fde68a) border-box !important;
 }
 
 html:is(

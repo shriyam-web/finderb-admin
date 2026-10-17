@@ -1381,7 +1381,7 @@ export default function PaymentsContent({
           <AdminBarChart
             height={180}
             mode="single"
-            series={[{ key: "amount", label: "Revenue", color: "#0d9488" }]}
+            series={[{ key: "amount", label: "Revenue", color: "#ea580c" }]}
             data={revenueChart.map((day) => ({
               label: day.label,
               values: { amount: day.amountPaise },
@@ -1516,7 +1516,7 @@ export default function PaymentsContent({
           <AdminBarChart
             height={180}
             mode="single"
-            series={[{ key: "amount", label: "Revenue", color: "#1d4ed8" }]}
+            series={[{ key: "amount", label: "Revenue", color: "#c2410c" }]}
             data={monthRevenueChart.map((row) => ({
               label: row.label,
               values: { amount: row.amountPaise },
@@ -1548,7 +1548,7 @@ export default function PaymentsContent({
           <AdminBarChart
             height={180}
             mode="single"
-            series={[{ key: "amount", label: "Revenue", color: "#0f766e" }]}
+            series={[{ key: "amount", label: "Revenue", color: "#c2410c" }]}
             data={weekRevenueChart.map((row) => ({
               label: row.label,
               values: { amount: row.amountPaise },

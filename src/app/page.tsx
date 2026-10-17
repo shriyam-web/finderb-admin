@@ -279,18 +279,18 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-[#f5f7fa]">
-      <aside className="relative hidden w-[46%] overflow-hidden border-r border-slate-800! bg-slate-950 text-white lg:flex">
+      <aside className="relative hidden w-[46%] overflow-hidden border-r border-stone-800! bg-stone-950 text-white lg:flex">
         <div
           className="pointer-events-none absolute inset-0 opacity-40"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(147,197,253,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(147,197,253,0.16) 1px, transparent 1px)",
+              "linear-gradient(rgba(253,186,116,0.14) 1px, transparent 1px), linear-gradient(90deg, rgba(253,186,116,0.14) 1px, transparent 1px)",
             backgroundSize: "32px 32px",
             maskImage: "radial-gradient(ellipse at 30% 40%, black 30%, transparent 75%)",
           }}
         />
         <div className="pointer-events-none absolute -right-24 top-6 h-80 w-80 rounded-full bg-teal-400/20 blur-3xl" />
-        <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-cyan-500/15 blur-3xl" />
+        <div className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-orange-400/10 blur-3xl" />
 
         <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
           <div className="flex items-center gap-[0.4em] text-xl font-normal leading-none tracking-tight text-white">
@@ -302,7 +302,7 @@ export default function Home() {
             <div>
               <h2 className="text-4xl font-semibold leading-[1.15] tracking-tight text-white xl:text-[2.75rem]">
                 Operate FinderB with{" "}
-                <span className="bg-gradient-to-r from-teal-300 to-cyan-300 bg-clip-text text-transparent">
+                <span className="text-orange-200">
                   clarity and speed.
                 </span>
               </h2>

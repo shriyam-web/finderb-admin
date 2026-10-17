@@ -126,17 +126,15 @@ export default function AdminEntryScreen({
     <div className={styles.root} role="status" aria-live="polite" data-phase={phase}>
 
       <div className={styles.stage}>
-        <h1 className={styles.headline}>
-          <Image
-            src="/fb-mark.png"
-            alt=""
-            width={28}
-            height={28}
-            className={styles.mark}
-            priority
-          />
-          <span>Welcome to FinderB Admin</span>
-        </h1>
+        <Image
+          src="/fb-mark.png"
+          alt=""
+          width={44}
+          height={44}
+          className={styles.mark}
+          priority
+        />
+        <h1 className={styles.headline}>Welcome to FinderB Admin</h1>
         <div className={styles.statusSlot}>
           {phase === "checking" ? (
             <p className={styles.statusLine}>
@@ -150,6 +148,7 @@ export default function AdminEntryScreen({
           ) : null}
         </div>
       </div>
+      <p className={styles.legal}>&copy; 2026 Maagaa Connect Private Limited</p>
     </div>
   );
 }

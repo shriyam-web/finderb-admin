@@ -81,7 +81,7 @@ html:is([data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-she
 html:is([data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-shell .text-sky-800,
 html:is([data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-shell .text-indigo-700,
 html:is([data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-shell .text-indigo-800 {
-  color: #93c5fd !important;
+  color: #fdba74 !important;
 }
 
 html[data-admin-theme="dark"] .admin-alert-error,
@@ -113,7 +113,7 @@ html:is([data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-sid
 
 html[data-admin-theme="dark"] .admin-sidebar-footer .text-teal-700,
 html:is([data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-sidebar-footer .text-teal-700 {
-  color: #93c5fd !important;
+  color: #fdba74 !important;
 }
 
 html[data-admin-theme="controller"] .admin-sidebar-footer .text-teal-700 {
