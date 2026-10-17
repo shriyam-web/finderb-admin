@@ -3337,14 +3337,14 @@ export default function Dashboard() {
                 .toUpperCase()}
             </button>
           ) : (
-            <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2.5">
+            <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-1.5 py-1.5">
               <button
                 type="button"
                 onClick={() => setShowAdminProfile(true)}
-                className="w-full flex items-center gap-2 rounded-lg px-0.5 py-0.5 text-left hover:bg-slate-50 transition-colors"
+                className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-0.5 py-0.5 text-left hover:bg-slate-50"
                 title="Open your profile"
               >
-                <div className="admin-avatar-dark">
+                <div className="admin-avatar-dark !h-7 !w-7 !text-[10px]">
                   {(
                     adminSession?.displayName?.trim() ||
                     adminSession?.email ||
@@ -3353,30 +3353,33 @@ export default function Dashboard() {
                     .charAt(0)
                     .toUpperCase()}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-bold text-slate-900 truncate leading-tight">
+                <div className="min-w-0">
+                  <p className="truncate text-[12px] font-semibold leading-tight text-slate-900">
                     {adminSession?.displayName?.trim() ||
                       adminSession?.email?.split("@")[0] ||
                       "Admin"}
                   </p>
-                  <p className="text-[10px] text-slate-500 truncate capitalize leading-tight mt-0.5 font-medium">
+                  <p className="truncate text-[10px] font-medium capitalize leading-tight text-slate-500">
                     {adminSession?.role?.replace(/_/g, " ") || "Administrator"}
-                    <span className="text-teal-700"> · View profile</span>
                   </p>
                 </div>
               </button>
-              <div className="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
-                <span className="text-[9px] text-slate-400 tabular-nums truncate font-medium">
-                  {platformDateLabel || "—"}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="text-[10px] font-bold text-slate-500 hover:text-rose-600 transition-colors"
-                >
-                  Sign out
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                aria-label="Sign out"
+                title="Sign out"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"
+                  />
+                </svg>
+              </button>
             </div>
           )}
         </div>
