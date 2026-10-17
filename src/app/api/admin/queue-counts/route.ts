@@ -61,6 +61,84 @@ async function todoRows(
   return data as unknown as Record<string, unknown>[];
 }
 
+const ENGAGE_AFTER_MS = 7 * 24 * 60 * 60 * 1000;
+
+function audienceValues(audience: unknown): string[] {
+  if (!Array.isArray(audience)) return [];
+  return audience.map((item) => String(item || "").trim().toLowerCase()).filter(Boolean);
+}
+
+function isEveryoneSend(row: Record<string, unknown>): boolean {
+  const status = String(row.status || "sent").trim().toLowerCase();
+  if (status === "queued" || status === "scheduled" || status === "cancelled") return false;
+  if (row.target_user_id || row.target_business_id) return false;
+  const audience = audienceValues(row.target_audience);
+  if (audience.includes("direct-user") || audience.includes("direct-business")) return false;
+  return true;
+}
+
+async function engagementTodos(supabase: SupabaseClient): Promise<QueueTodoItem[]> {
+  const full = await supabase
+    .from("broadcasts")
+    .select("id, target_audience, target_user_id, target_business_id, status, created_at")
+    .order("created_at", { ascending: false })
+    .limit(200);
+  const fallback =
+    full.error
+      ? await supabase
+          .from("broadcasts")
+          .select("id, target_audience, created_at")
+          .order("created_at", { ascending: false })
+          .limit(200)
+      : null;
+  const rows = (full.error ? fallback?.data : full.data) || [];
+  const now = Date.now();
+  const latest = (matches: (audience: string[]) => boolean) => {
+    for (const row of rows as Record<string, unknown>[]) {
+      if (!isEveryoneSend(row)) continue;
+      if (!matches(audienceValues(row.target_audience))) continue;
+      const created = String(row.created_at || "");
+      const at = new Date(created).getTime();
+      if (Number.isNaN(at)) continue;
+      return { created, age: now - at };
+    }
+    return null;
+  };
+  const users = latest((audience) => audience.some((value) => value === "users" || value === "all"));
+  const businesses = latest((audience) =>
+    audience.some((value) => value === "merchants" || value === "businesses" || value === "all"),
+  );
+  const items: QueueTodoItem[] = [];
+  const overdue = (hit: { created: string; age: number } | null) => !hit || hit.age >= ENGAGE_AFTER_MS;
+  if (overdue(users)) {
+    items.push({
+      id: "engage-users",
+      tab: "Broadcasts",
+      title: "Send a notification to users",
+      detail: users
+        ? "It's been 7 days since you have not sent any notification to the users. Send a notification to users now to keep them engaged with the app."
+        : "No notification has gone to all users yet. Send a notification to users now to keep them engaged with the app.",
+      targetId: null,
+      waitingSince: users?.created || new Date(now - ENGAGE_AFTER_MS - 60_000).toISOString(),
+      kind: "engagement",
+    });
+  }
+  if (overdue(businesses)) {
+    items.push({
+      id: "engage-businesses",
+      tab: "Broadcasts",
+      title: "Send a notification to businesses",
+      detail: businesses
+        ? "It's been 7 days since you have not sent any notification to the businesses. Send a notification to businesses now to keep them engaged with the app."
+        : "No notification has gone to all businesses yet. Send a notification to businesses now to keep them engaged with the app.",
+      targetId: null,
+      waitingSince: businesses?.created || new Date(now - ENGAGE_AFTER_MS - 60_000).toISOString(),
+      kind: "engagement",
+    });
+  }
+  return items;
+}
+
 async function exactCount(
   supabase: SupabaseClient,
   table: string,
@@ -199,6 +277,10 @@ export async function GET(request: Request) {
         kind: "job-report",
       })),
     ];
+
+    if (allowed("Broadcasts")) {
+      items.push(...(await engagementTodos(supabase)));
+    }
 
     return NextResponse.json({
       success: true,

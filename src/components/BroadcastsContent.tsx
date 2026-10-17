@@ -8,6 +8,12 @@ import {
 } from "../lib/broadcastFields";
 import { formatDateTimeInr } from "../lib/formatDateTime";
 import { ADMIN_PANEL_REFRESH } from "../lib/adminPanelRefresh";
+import {
+  RECIPIENT_FILTERS,
+  compareRecipientHistory,
+  matchesRecipientFilter,
+  notificationRecipient,
+} from "../lib/broadcastRecipient";
 
 type Broadcast = {
   id: string;
@@ -50,6 +56,8 @@ export default function BroadcastsContent({
   const [rows, setRows] = useState<Broadcast[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
+  const [recipientFilter, setRecipientFilter] = useState("all");
+  const [sortBy, setSortBy] = useState<"newest" | "recipient">("newest");
 
   const load = async () => {
     if (!adminId) return;
@@ -97,7 +105,19 @@ export default function BroadcastsContent({
   const showCta = Boolean(ctaUrl.trim() || ctaLabel.trim());
   const previewCta = resolveBroadcastCta({ cta_url: ctaUrl, cta_label: ctaLabel });
   const queue = rows.filter((row) => row.status === "queued" || row.status === "scheduled");
-  const history = rows.filter((row) => row.status !== "queued" && row.status !== "scheduled");
+  const history = useMemo(() => {
+    return rows
+      .filter((row) => row.status !== "queued" && row.status !== "scheduled")
+      .map((row) => ({ row, who: notificationRecipient(row) }))
+      .filter((item) => matchesRecipientFilter(item.who.kind, recipientFilter))
+      .sort((a, b) =>
+        compareRecipientHistory(
+          { kind: a.who.kind, at: a.row.created_at },
+          { kind: b.who.kind, at: b.row.created_at },
+          sortBy,
+        ),
+      );
+  }, [recipientFilter, rows, sortBy]);
 
   const who = useMemo(() => {
     if (mode === "one") return target ? target.name : "One person";
@@ -383,7 +403,7 @@ export default function BroadcastsContent({
                         {row.status === "scheduled" && row.scheduled_at
                           ? `Scheduled ${formatDateTimeInr(row.scheduled_at)}`
                           : "Held in the queue"}
-                        {row.target_label ? ` · ${row.target_label}` : ""}
+                        {` · ${notificationRecipient(row).label}`}
                       </p>
                     </div>
                     {canManage ? (
@@ -407,14 +427,41 @@ export default function BroadcastsContent({
           <div className="admin-card-header">
             <div>
               <h2 className="admin-card-title">Sent</h2>
-              <p className="admin-card-description">Reads out of how many it was sent to</p>
+              <p className="admin-card-description">Who received it, and how many opened it</p>
             </div>
+          </div>
+          <div className="flex flex-wrap gap-2 border-b border-slate-100 px-4 py-3">
+            <label className="block text-[11px] font-medium text-slate-500">
+              Recipient
+              <select
+                value={recipientFilter}
+                onChange={(event) => setRecipientFilter(event.target.value)}
+                className="admin-input mt-1"
+              >
+                {RECIPIENT_FILTERS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-[11px] font-medium text-slate-500">
+              Sort
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value === "recipient" ? "recipient" : "newest")}
+                className="admin-input mt-1"
+              >
+                <option value="newest">Newest first</option>
+                <option value="recipient">By recipient</option>
+              </select>
+            </label>
           </div>
           <div className="max-h-[480px] divide-y divide-slate-100 overflow-y-auto">
             {history.length === 0 ? (
-              <p className="px-4 py-8 text-sm text-slate-400">No notifications sent yet.</p>
+              <p className="px-4 py-8 text-sm text-slate-400">No notifications for this recipient.</p>
             ) : (
-              history.map((row) => {
+              history.map(({ row, who }) => {
                 const reads = Number(row.read_count || 0);
                 const sentTo = Number(row.recipient_count || 0);
                 return (
@@ -424,9 +471,9 @@ export default function BroadcastsContent({
                       <p className="shrink-0 text-[11px] text-slate-400">{formatDateTimeInr(row.created_at)}</p>
                     </div>
                     <p className="mt-1 text-xs text-slate-500 line-clamp-2">{row.message}</p>
-                    <p className="mt-1.5 text-[11px] font-medium text-slate-600">
+                    <p className="mt-1.5 text-[11px] font-medium text-slate-700">{who.label}</p>
+                    <p className="mt-0.5 text-[11px] font-medium text-slate-500">
                       {reads} of {sentTo || "—"} read
-                      {row.target_label ? ` · ${row.target_label}` : ""}
                     </p>
                   </article>
                 );

@@ -168,6 +168,7 @@ const TODO_TONES: Record<string, { label: string; soft: string; ink: string; bor
   change: { label: "Change", soft: "#fef3c7", ink: "#b45309", border: "#fde68a" },
   ownership: { label: "Ownership", soft: "#dbeafe", ink: "#1d4ed8", border: "#bfdbfe" },
   "job-report": { label: "Job", soft: "#ede9fe", ink: "#6d28d9", border: "#ddd6fe" },
+  engagement: { label: "Engage", soft: "#ccfbf1", ink: "#0f766e", border: "#99f6e4" },
   fallback: { label: "Queue", soft: "#f1f5f9", ink: "#334155", border: "#e2e8f0" },
 };
 
