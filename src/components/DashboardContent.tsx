@@ -172,6 +172,7 @@ const TODO_TONES: Record<string, { label: string }> = {
   merchant: { label: "Listing" },
   job: { label: "Job" },
   blog: { label: "Draft" },
+  "blog-cadence": { label: "Blog" },
   more: { label: "More" },
   fallback: { label: "Queue" },
 };
@@ -287,6 +288,9 @@ export default function DashboardContent({
   }) => void;
 }) {
   const todoRows = useLeavingTodos(todos);
+  const [todoLimit, setTodoLimit] = useState(10);
+  const visibleTodos = todoRows.slice(0, todoLimit);
+  const hiddenTodoCount = todoRows.filter((row) => !row.leaving).length - todoLimit;
   const [showRevenue, setShowRevenue] = useState(false);
   const [activityFilter, setActivityFilter] = useState<
     "all" | "user" | "merchant" | "lead"
@@ -419,7 +423,7 @@ export default function DashboardContent({
           </div>
         ) : (
           <div className="todo-list">
-            {todoRows.map((item, index) => {
+            {visibleTodos.map((item, index) => {
               const tone = TODO_TONES[item.kind] || TODO_TONES.fallback;
               const waited = waitingLabel(item.waitingSince);
               return (
@@ -449,6 +453,15 @@ export default function DashboardContent({
                 </button>
               );
             })}
+            {hiddenTodoCount > 0 ? (
+              <button
+                type="button"
+                className="admin-btn-primary mt-2 w-full"
+                onClick={() => setTodoLimit((count) => count + 10)}
+              >
+                Load more
+              </button>
+            ) : null}
           </div>
         )}
       </section>

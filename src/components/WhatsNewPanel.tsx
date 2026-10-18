@@ -134,6 +134,13 @@ export default function WhatsNewPanel({
     setMarkingId(null);
   };
 
+  const latestUnread = entries.find((entry) => !entry.isRead) ?? null;
+
+  const handleMarkLatest = async () => {
+    if (!latestUnread) return;
+    await handleMarkRead(latestUnread.id);
+  };
+
   const handleMarkAll = async () => {
     const unreadIds = entries.filter((e) => !e.isRead).map((e) => e.id);
     if (!unreadIds.length) return;
@@ -261,6 +268,14 @@ export default function WhatsNewPanel({
             </div>
 
             <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5">
+              <button
+                type="button"
+                className="admin-btn-primary admin-solid-btn !text-xs"
+                disabled={!latestUnread || markingId === latestUnread.id}
+                onClick={() => void handleMarkLatest()}
+              >
+                {latestUnread && markingId === latestUnread.id ? "Saving…" : "Mark latest read"}
+              </button>
               <button
                 type="button"
                 className="admin-btn-secondary !text-xs"

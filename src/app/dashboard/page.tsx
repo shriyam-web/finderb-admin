@@ -2201,6 +2201,25 @@ export default function Dashboard() {
           kind: "more",
         });
       }
+      const publishedAt = blogs
+        .filter((blog) => blog.status === "published")
+        .map((blog) => new Date(blog.published_at || blog.updated_at || 0).getTime())
+        .filter((time) => Number.isFinite(time) && time > 0);
+      const latestPost = publishedAt.length ? Math.max(...publishedAt) : 0;
+      const tenDays = 10 * 24 * 60 * 60 * 1000;
+      if (!latestPost || Date.now() - latestPost >= tenDays) {
+        items.push({
+          id: "blog-cadence",
+          tab: "Blogs",
+          title: "Post a blog",
+          detail: latestPost
+            ? "10 days have passed since the last published blog."
+            : "Publish a blog. This returns every 10 days.",
+          targetId: null,
+          waitingSince: latestPost ? new Date(latestPost).toISOString() : null,
+          kind: "blog-cadence",
+        });
+      }
     }
     return byOldestWait(items);
   }, [adminSession, merchantRequests, queueItems, finderBJobs, blogs]);
@@ -2608,8 +2627,16 @@ export default function Dashboard() {
       return;
     }
 
+    const publishedAt =
+      item.status === "published" && !item.published_at
+        ? new Date().toISOString()
+        : item.published_at;
     setBlogs((prev) =>
-      prev.map((b) => (b.id === item.id ? ({ ...b, ...item } as Blog) : b)),
+      prev.map((b) =>
+        b.id === item.id
+          ? ({ ...b, ...item, published_at: publishedAt, updated_at: new Date().toISOString() } as Blog)
+          : b,
+      ),
     );
     alert(`Article updated successfully!`);
   };

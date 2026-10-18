@@ -377,9 +377,11 @@ body {
     cursor: grabbing;
   }
 
-  .admin-refresh-fab.is-busy {
+  .admin-refresh-fab.is-busy,
+  .admin-refresh-fab:disabled {
     cursor: progress;
-    opacity: 0.92;
+    opacity: 1;
+    background: #c2410c;
   }
 
   .admin-refresh-fab-icon {
@@ -706,6 +708,13 @@ body {
 
   .admin-btn-primary:hover {
     background: #c2410c;
+  }
+
+  .admin-btn-primary.admin-solid-btn,
+  .admin-btn-primary.admin-solid-btn:disabled {
+    opacity: 1;
+    background: #ea580c;
+    color: #fff;
   }
 
   .admin-btn-secondary {
@@ -2665,9 +2674,9 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   cursor: pointer;
   max-height: 92px;
   overflow: hidden;
-  background: var(--todo-bg);
-  color: var(--todo-ink);
-  box-shadow: inset 0 0 0 1px var(--todo-line);
+  background: var(--todo-bg) !important;
+  color: var(--todo-ink) !important;
+  box-shadow: none;
   animation: todo-in 280ms ease;
 }
 
@@ -2684,23 +2693,20 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   pointer-events: none;
 }
 
-.todo-card[data-tone="0"] { --todo-bg: #ffe4e6; --todo-ink: #9f1239; --todo-soft: #fff1f2; --todo-line: rgba(159, 18, 57, 0.14); }
-.todo-card[data-tone="1"] { --todo-bg: #ffedd5; --todo-ink: #9a3412; --todo-soft: #fff7ed; --todo-line: rgba(154, 52, 18, 0.14); }
-.todo-card[data-tone="2"] { --todo-bg: #e0e7ff; --todo-ink: #3730a3; --todo-soft: #eef2ff; --todo-line: rgba(55, 48, 163, 0.14); }
-.todo-card[data-tone="3"] { --todo-bg: #ffedd5; --todo-ink: #7c2d12; --todo-soft: #fff7ed; --todo-line: rgba(30, 58, 138, 0.14); }
-.todo-card[data-tone="4"] { --todo-bg: #ede9fe; --todo-ink: #5b21b6; --todo-soft: #f5f3ff; --todo-line: rgba(91, 33, 182, 0.14); }
-.todo-card[data-tone="5"] { --todo-bg: #fce7f3; --todo-ink: #9d174d; --todo-soft: #fdf2f8; --todo-line: rgba(157, 23, 77, 0.14); }
-.todo-card[data-tone="6"] { --todo-bg: #fef3c7; --todo-ink: #92400e; --todo-soft: #fffbeb; --todo-line: rgba(146, 64, 14, 0.16); }
-.todo-card[data-tone="7"] { --todo-bg: #e0f2fe; --todo-ink: #0c4a6e; --todo-soft: #f0f9ff; --todo-line: rgba(12, 74, 110, 0.14); }
+.todo-card[data-tone="0"] { --todo-bg: #e11d48; --todo-ink: #fff; --todo-soft: rgba(0, 0, 0, 0.22); --todo-line: transparent; }
+.todo-card[data-tone="1"] { --todo-bg: #ea580c; --todo-ink: #fff; --todo-soft: rgba(0, 0, 0, 0.22); --todo-line: transparent; }
+.todo-card[data-tone="2"] { --todo-bg: #4f46e5; --todo-ink: #fff; --todo-soft: rgba(0, 0, 0, 0.22); --todo-line: transparent; }
+.todo-card[data-tone="3"] { --todo-bg: #0369a1; --todo-ink: #fff; --todo-soft: rgba(0, 0, 0, 0.22); --todo-line: transparent; }
+.todo-card[data-tone="4"] { --todo-bg: #7c3aed; --todo-ink: #fff; --todo-soft: rgba(0, 0, 0, 0.22); --todo-line: transparent; }
+.todo-card[data-tone="5"] { --todo-bg: #db2777; --todo-ink: #fff; --todo-soft: rgba(0, 0, 0, 0.22); --todo-line: transparent; }
+.todo-card[data-tone="6"] { --todo-bg: #d97706; --todo-ink: #fff; --todo-soft: rgba(0, 0, 0, 0.22); --todo-line: transparent; }
+.todo-card[data-tone="7"] { --todo-bg: #0f766e; --todo-ink: #fff; --todo-soft: rgba(0, 0, 0, 0.22); --todo-line: transparent; }
 
-html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .todo-card[data-tone="0"] { --todo-bg: #4c1d2e; --todo-ink: #ffe4e6; --todo-soft: #881337; --todo-line: rgba(254, 205, 211, 0.18); }
-html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .todo-card[data-tone="1"] { --todo-bg: #4a2c14; --todo-ink: #ffedd5; --todo-soft: #9a3412; --todo-line: rgba(254, 215, 170, 0.18); }
-html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .todo-card[data-tone="2"] { --todo-bg: #312e81; --todo-ink: #e0e7ff; --todo-soft: #4338ca; --todo-line: rgba(199, 210, 254, 0.18); }
-html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .todo-card[data-tone="3"] { --todo-bg: #1e3a5f; --todo-ink: #ffedd5; --todo-soft: #9a3412; --todo-line: rgba(191, 219, 254, 0.18); }
-html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .todo-card[data-tone="4"] { --todo-bg: #3b2764; --todo-ink: #ede9fe; --todo-soft: #5b21b6; --todo-line: rgba(221, 214, 254, 0.18); }
-html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .todo-card[data-tone="5"] { --todo-bg: #4a1942; --todo-ink: #fce7f3; --todo-soft: #9d174d; --todo-line: rgba(251, 207, 232, 0.18); }
-html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .todo-card[data-tone="6"] { --todo-bg: #4a3410; --todo-ink: #fef3c7; --todo-soft: #92400e; --todo-line: rgba(253, 230, 138, 0.2); }
-html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .todo-card[data-tone="7"] { --todo-bg: #0c3a52; --todo-ink: #e0f2fe; --todo-soft: #075985; --todo-line: rgba(186, 230, 253, 0.18); }
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-refresh-fab {
+  background: #c2410c !important;
+  color: #fff !important;
+  opacity: 1 !important;
+}
 
 .todo-index {
   display: flex;
@@ -2754,7 +2760,7 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   white-space: nowrap;
   font-size: 12px;
   color: var(--todo-ink);
-  opacity: 0.78;
+  opacity: 1;
 }
 
 .todo-chevron {
@@ -2762,7 +2768,7 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   width: 16px;
   flex-shrink: 0;
   color: var(--todo-ink);
-  opacity: 0.55;
+  opacity: 1;
 }
 
 .todo-clear {
