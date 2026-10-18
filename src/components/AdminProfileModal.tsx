@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
+import AdminChangePassword from "./AdminChangePassword";
 import AdminOverlay from "./AdminOverlay";
 
 type AdminSession = {
@@ -52,6 +53,7 @@ export default function AdminProfileModal({
     tone: "success" | "error";
     text: string;
   } | null>(null);
+  const [changingPassword, setChangingPassword] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,176 +155,152 @@ export default function AdminProfileModal({
     }
   };
 
+  const accessLabel =
+    role === "developer"
+      ? "Full console access, including Manage Admins"
+      : role === "controller"
+        ? "All tabs except Manage Admins"
+        : role === "super_admin"
+          ? "Tab access is assigned by a Developer"
+          : null;
+
   return (
     <AdminOverlay>
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-        <div className="relative overflow-hidden bg-slate-950 px-5 pt-5 pb-6 text-white">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-40"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(251,146,60,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(251,146,60,0.12) 1px, transparent 1px)",
-              backgroundSize: "22px 22px",
-            }}
+      <div className="admin-card w-full max-w-lg shadow-xl">
+        {changingPassword ? (
+          <AdminChangePassword
+            adminId={session.id}
+            email={email}
+            onClose={() => setChangingPassword(false)}
           />
-          <div className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-teal-400/25 blur-3xl" />
-          <div className="relative flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-teal-400/30 bg-teal-400/10 text-lg font-semibold text-teal-200">
-                {displayName.charAt(0).toUpperCase()}
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-50 text-lg font-semibold text-orange-800">
+                  {displayName.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
+                    Your profile
+                  </p>
+                  <h2 className="truncate text-lg font-semibold text-slate-900">{displayName}</h2>
+                  <p className="truncate text-sm text-slate-500">{email}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-[11px] font-medium tracking-[0.16em] uppercase text-teal-200/80">
-                  Your profile
-                </p>
-                <h2 className="text-lg font-semibold truncate">{displayName}</h2>
-                <p className="text-sm text-slate-300 truncate">{email}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg p-1.5 text-slate-300 hover:bg-white/10 hover:text-white"
-              aria-label="Close"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+              <button
+                type="button"
+                onClick={onClose}
+                className="admin-btn-secondary !px-2.5 !py-1.5 text-xs"
+                aria-label="Close"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
+                Close
+              </button>
+            </div>
 
-        <div className="p-5 space-y-4">
-          {loading ? (
-            <p className="text-sm text-slate-500">Loading profile…</p>
-          ) : (
-            <>
-              <div className="rounded-xl border border-slate-200 px-3 py-3 space-y-2">
-                <label
-                  htmlFor="admin-display-name"
-                  className="block text-[11px] font-medium text-slate-500"
-                >
-                  Profile name
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    id="admin-display-name"
-                    value={nameDraft}
-                    onChange={(e) => {
-                      setNameDraft(e.target.value);
-                      setNameNote(null);
-                    }}
-                    maxLength={60}
-                    className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/15 focus:border-teal-500/40"
-                    placeholder="Your name"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveName}
-                    disabled={savingName || !nameDraft.trim()}
-                    className="shrink-0 rounded-lg bg-teal-700 px-3.5 py-2 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-50"
-                  >
-                    {savingName ? "Saving…" : "Save"}
-                  </button>
-                </div>
-                {nameNote && (
-                  <p
-                    className={`text-xs ${
-                      nameNote.tone === "success"
-                        ? "text-emerald-700"
-                        : "text-rose-600"
-                    }`}
-                  >
-                    {nameNote.text}
-                  </p>
-                )}
-                <p className="text-[11px] text-slate-400">
-                  Shown in the sidebar instead of your email username.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5">
-                  <p className="text-[11px] text-slate-500">Role</p>
-                  <p className="text-sm font-semibold text-slate-900 capitalize mt-0.5">
-                    {role.replace(/_/g, " ")}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5">
-                  <p className="text-[11px] text-slate-500">Status</p>
-                  <p
-                    className={`text-sm font-semibold mt-0.5 ${
-                      row?.is_disabled ? "text-rose-700" : "text-emerald-700"
-                    }`}
-                  >
-                    {row?.is_disabled ? "Disabled" : "Active"}
-                  </p>
-                </div>
-                <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 col-span-2">
-                  <p className="text-[11px] text-slate-500">Joined</p>
-                  <p className="text-sm font-semibold text-slate-900 mt-0.5">
-                    {joined}
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-slate-200 px-3 py-2.5">
-                <p className="text-[11px] text-slate-500 mb-1.5">Access</p>
-                {role === "developer" || role === "controller" ? (
-                  <p className="text-sm font-medium text-slate-800">
-                    {role === "developer"
-                      ? "Full console access including Manage Admins"
-                      : "All tabs except Manage Admins"}
-                  </p>
-                ) : role === "super_admin" ? (
-                  <p className="text-sm font-medium text-slate-800">
-                    Tab access is assigned by a Developer
-                  </p>
-                ) : tabs && tabs.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {tabs.map((tab) => (
-                      <span
-                        key={tab}
-                        className="rounded-full bg-teal-50 text-teal-800 px-2 py-0.5 text-[11px] font-medium"
+            <div className="space-y-5 px-5 py-5">
+              {loading ? (
+                <p className="text-sm text-slate-500">Loading profile…</p>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label htmlFor="admin-display-name" className="text-sm font-medium text-slate-800">
+                      Profile name
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="admin-display-name"
+                        value={nameDraft}
+                        onChange={(e) => {
+                          setNameDraft(e.target.value);
+                          setNameNote(null);
+                        }}
+                        maxLength={60}
+                        className="admin-input"
+                        placeholder="Your name"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveName}
+                        disabled={savingName || !nameDraft.trim()}
+                        className="admin-btn-primary shrink-0"
                       >
-                        {tab}
-                      </span>
-                    ))}
+                        {savingName ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      This name appears in the sidebar.
+                    </p>
+                    {nameNote ? (
+                      <p className={`text-xs ${nameNote.tone === "success" ? "text-emerald-700" : "text-rose-600"}`}>
+                        {nameNote.text}
+                      </p>
+                    ) : null}
                   </div>
-                ) : (
-                  <p className="text-sm text-slate-500">No tab permissions set</p>
-                )}
-              </div>
-            </>
-          )}
 
-          <div className="flex gap-2 pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Close
-            </button>
-            <button
-              type="button"
-              onClick={onSignOut}
-              className="flex-1 rounded-lg bg-rose-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
+                  <dl className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
+                    <div>
+                      <dt className="text-[11px] text-slate-400">Role</dt>
+                      <dd className="mt-1 text-sm font-medium capitalize text-slate-900">
+                        {role.replace(/_/g, " ")}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px] text-slate-400">Status</dt>
+                      <dd className={`mt-1 text-sm font-medium ${row?.is_disabled ? "text-rose-700" : "text-emerald-700"}`}>
+                        {row?.is_disabled ? "Disabled" : "Active"}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px] text-slate-400">Joined</dt>
+                      <dd className="mt-1 text-sm font-medium text-slate-900">{joined}</dd>
+                    </div>
+                  </dl>
+
+                  <div className="border-t border-slate-100 pt-4">
+                    <p className="text-[11px] text-slate-400">Access</p>
+                    {accessLabel ? (
+                      <p className="mt-1.5 text-sm text-slate-800">{accessLabel}</p>
+                    ) : tabs && tabs.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {tabs.map((tab) => (
+                          <span
+                            key={tab}
+                            className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                          >
+                            {tab}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-1.5 text-sm text-slate-500">No tab permissions set</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-slate-900">Password</p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Confirm your current password, then a code sent to your email.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setChangingPassword(true)}
+                      className="admin-btn-secondary shrink-0"
+                    >
+                      Change
+                    </button>
+                  </div>
+                </>
+              )}
+
+              <button type="button" onClick={onSignOut} className="text-sm font-medium text-rose-700 hover:text-rose-800">
+                Sign out
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </AdminOverlay>
   );

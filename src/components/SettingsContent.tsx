@@ -10,6 +10,8 @@ import {
   parseFinderbTimestamp,
 } from "../lib/formatDateTime";
 import { PaginationControls, useClientPage } from "./AdminListControls";
+import AdminChangePassword from "./AdminChangePassword";
+import AdminOverlay from "./AdminOverlay";
 import SiteModePanel from "./SiteModePanel";
 
 export interface Settings {
@@ -71,6 +73,7 @@ export default function SettingsContent({
   canViewLoginLogs = false,
   isDeveloper = false,
   adminId = "",
+  adminEmail = "",
   onSiteModeChange,
 }: {
   settings: Settings;
@@ -80,9 +83,11 @@ export default function SettingsContent({
   canViewLoginLogs?: boolean;
   isDeveloper?: boolean;
   adminId?: string;
+  adminEmail?: string;
   onSiteModeChange?: (mode: SiteMode) => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
+  const [changingPassword, setChangingPassword] = useState(false);
   const loginPage = useClientPage(loginLogs, 10, String(loginLogs.length));
 
   useEffect(() => {
@@ -135,6 +140,32 @@ export default function SettingsContent({
           </p>
         )}
       </div>
+
+      {adminId && adminEmail ? (
+        <div className="admin-card max-w-xl p-5 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Password</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Change the password for {adminEmail}. FinderB asks for your current password, then emails you a code, before the new password is saved.
+            </p>
+          </div>
+          <button type="button" onClick={() => setChangingPassword(true)} className="admin-btn-primary shrink-0">
+            Change password
+          </button>
+        </div>
+      ) : null}
+
+      {changingPassword && adminId && adminEmail ? (
+        <AdminOverlay>
+          <div className="admin-card w-full max-w-lg shadow-xl">
+            <AdminChangePassword
+              adminId={adminId}
+              email={adminEmail}
+              onClose={() => setChangingPassword(false)}
+            />
+          </div>
+        </AdminOverlay>
+      ) : null}
 
       {isDeveloper && adminId ? (
         <SiteModePanel adminId={adminId} onModeChange={onSiteModeChange} />

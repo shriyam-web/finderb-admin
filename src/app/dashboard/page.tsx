@@ -2990,6 +2990,7 @@ export default function Dashboard() {
             canViewLoginLogs={isDeveloper}
             isDeveloper={isDeveloper}
             adminId={adminSession?.id || ""}
+            adminEmail={adminSession?.email || ""}
             onSiteModeChange={handleSiteModeChange}
           />
         );
