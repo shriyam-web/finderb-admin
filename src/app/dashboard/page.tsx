@@ -5824,9 +5824,7 @@ function MerchantsContent({
   const handleSaveMerchant = async (updates: Partial<BusinessData>) => {
     if (!canManage || !selectedBusiness) return;
 
-    const mixedName =
-      mixedNameLanguageError(String(updates.businessName || "")) ||
-      mixedNameLanguageError(String(updates.displayName || ""));
+    const mixedName = mixedNameLanguageError(String(updates.displayName || ""));
     if (mixedName) {
       toast(mixedName, "error");
       throw new Error(mixedName);

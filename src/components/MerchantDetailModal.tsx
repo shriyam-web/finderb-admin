@@ -1148,9 +1148,7 @@ export default function MerchantDetailModal({
     }
   };
 
-  const nameLanguageError =
-    mixedNameLanguageError(draft.businessName || "") ||
-    mixedNameLanguageError(draft.displayName || "");
+  const nameLanguageError = mixedNameLanguageError(draft.displayName || "");
 
   const handleSave = async () => {
     if (nameLanguageError) return;

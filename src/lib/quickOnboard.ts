@@ -379,8 +379,6 @@ function collectFieldIssues(fields: QuickOnboardAiFields): {
   if (fields.displayName && fields.displayName.length > 50) {
     errors.push("Display name must be 50 characters or fewer.");
   }
-  const businessNameLanguage = mixedNameLanguageError(fields.businessName);
-  if (fields.businessName && businessNameLanguage) errors.push(businessNameLanguage);
   const displayNameLanguage = mixedNameLanguageError(fields.displayName);
   if (fields.displayName && displayNameLanguage) errors.push(displayNameLanguage);
   // ownerFullName is optional — fill later on the merchant profile if unknown.

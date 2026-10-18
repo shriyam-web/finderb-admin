@@ -302,9 +302,6 @@ export default function MerchantRegistrationContent({
       next.businessName = "Legal business name must be at least 2 characters.";
     } else if (form.businessName.trim().length > 50) {
       next.businessName = "Business name must be 50 characters or fewer.";
-    } else {
-      const mixed = mixedNameLanguageError(form.businessName);
-      if (mixed) next.businessName = mixed;
     }
     if (
       form.displayName.trim() &&
@@ -737,7 +734,6 @@ export default function MerchantRegistrationContent({
                   id="businessName"
                   label="Legal business name *"
                   error={errors.businessName}
-                  hint={NAME_SINGLE_LANGUAGE_HINT}
                 >
                   <input
                     id="businessName"

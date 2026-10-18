@@ -124,8 +124,6 @@ export function validateAndNormalizeMerchantRegistration(
   if (businessName.length > 50) {
     return { ok: false, error: "Business name must be 50 characters or fewer." };
   }
-  const businessNameLanguage = mixedNameLanguageError(businessName);
-  if (businessNameLanguage) return { ok: false, error: businessNameLanguage };
 
   const displayNameRaw = data.displayName?.trim() ?? "";
   if (displayNameRaw && displayNameRaw.length < MIN_NAME_LENGTH) {
