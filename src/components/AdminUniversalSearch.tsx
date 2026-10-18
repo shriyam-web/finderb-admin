@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "../../utils/supabase/client";
 import {
   clipText,
@@ -80,7 +81,10 @@ export default function AdminUniversalSearch({
   const [reviewDocs, setReviewDocs] = useState<SearchDoc[]>([]);
   const [remoteReady, setRemoteReady] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const fieldRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [popBox, setPopBox] = useState<{ top: number; left: number; width: number } | null>(null);
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
 
@@ -628,7 +632,9 @@ export default function AdminUniversalSearch({
   useEffect(() => {
     if (!open) return;
     const onPointer = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target) || popRef.current?.contains(target)) return;
+      setOpen(false);
     };
     window.addEventListener("mousedown", onPointer);
     return () => window.removeEventListener("mousedown", onPointer);
@@ -636,6 +642,24 @@ export default function AdminUniversalSearch({
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const rect = fieldRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const width = Math.min(448, window.innerWidth - 24);
+      const left = Math.min(Math.max(12, rect.right - width), window.innerWidth - width - 12);
+      setPopBox({ top: rect.bottom + 8, left, width });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
   }, [open]);
 
   const choose = (hit: SearchHit) => {
@@ -647,7 +671,7 @@ export default function AdminUniversalSearch({
   return (
     <div className="admin-universal-search" ref={rootRef}>
       {open ? (
-        <div className="admin-universal-search-field">
+        <div className="admin-universal-search-field" ref={fieldRef}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -681,46 +705,55 @@ export default function AdminUniversalSearch({
           <button type="button" className="admin-universal-search-close" onClick={() => setOpen(false)} aria-label="Close search">
             Esc
           </button>
-          {query.trim() ? (
-            <div className="admin-universal-search-pop admin-card" id="admin-universal-search-list" role="listbox">
-              {hits.length === 0 ? (
-                <p className="admin-universal-search-empty">
-                  {remoteReady ? "No matches. Try a name, email, phone, city, or id." : "Searching records…"}
-                </p>
-              ) : (
-                hits.map((hit, index) => (
-                  <button
-                    key={hit.key}
-                    type="button"
-                    role="option"
-                    aria-selected={index === active}
-                    className={`admin-universal-search-hit ${index === active ? "is-active" : ""}`}
-                    onMouseEnter={() => setActive(index)}
-                    onClick={() => choose(hit)}
-                  >
-                    <span className="admin-universal-search-kind">{hit.kind}</span>
-                    <span className="admin-universal-search-copy">
-                      <span className="admin-universal-search-title">
-                        <Highlight text={hit.title} query={query} />
-                      </span>
-                      {hit.subtitle ? (
-                        <span className="admin-universal-search-sub">
-                          <Highlight text={hit.subtitle} query={query} />
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="admin-universal-search-tab">{hit.tab}</span>
-                  </button>
-                ))
-              )}
-            </div>
-          ) : (
-            <div className="admin-universal-search-pop admin-card">
-              <p className="admin-universal-search-empty">
-                Find a user, merchant, lead, payment, review, job, blog, or menu. Ctrl K opens this from anywhere.
-              </p>
-            </div>
-          )}
+          {popBox
+            ? createPortal(
+                <div
+                  ref={popRef}
+                  className="admin-universal-search-pop admin-card"
+                  id="admin-universal-search-list"
+                  role="listbox"
+                  style={{ top: popBox.top, left: popBox.left, width: popBox.width }}
+                >
+                  {query.trim() ? (
+                    hits.length === 0 ? (
+                      <p className="admin-universal-search-empty">
+                        {remoteReady ? "No matches. Try a name, email, phone, city, or id." : "Searching records…"}
+                      </p>
+                    ) : (
+                      hits.map((hit, index) => (
+                        <button
+                          key={hit.key}
+                          type="button"
+                          role="option"
+                          aria-selected={index === active}
+                          className={`admin-universal-search-hit ${index === active ? "is-active" : ""}`}
+                          onMouseEnter={() => setActive(index)}
+                          onClick={() => choose(hit)}
+                        >
+                          <span className="admin-universal-search-kind">{hit.kind}</span>
+                          <span className="admin-universal-search-copy">
+                            <span className="admin-universal-search-title">
+                              <Highlight text={hit.title} query={query} />
+                            </span>
+                            {hit.subtitle ? (
+                              <span className="admin-universal-search-sub">
+                                <Highlight text={hit.subtitle} query={query} />
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="admin-universal-search-tab">{hit.tab}</span>
+                        </button>
+                      ))
+                    )
+                  ) : (
+                    <p className="admin-universal-search-empty">
+                      Find a user, merchant, lead, payment, review, job, blog, or menu. Ctrl K opens this from anywhere.
+                    </p>
+                  )}
+                </div>,
+                document.body,
+              )
+            : null}
         </div>
       ) : (
         <button
