@@ -4,6 +4,7 @@ import {
 } from "./indianPhone";
 import { validateRegistrationPassword } from "./merchantPasswordPolicy";
 import { normalizePaymentModes } from "./paymentModes";
+import { mixedNameLanguageError } from "./singleLanguageName";
 
 export const REGISTRATION_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const MIN_NAME_LENGTH = 2;
@@ -123,6 +124,8 @@ export function validateAndNormalizeMerchantRegistration(
   if (businessName.length > 50) {
     return { ok: false, error: "Business name must be 50 characters or fewer." };
   }
+  const businessNameLanguage = mixedNameLanguageError(businessName);
+  if (businessNameLanguage) return { ok: false, error: businessNameLanguage };
 
   const displayNameRaw = data.displayName?.trim() ?? "";
   if (displayNameRaw && displayNameRaw.length < MIN_NAME_LENGTH) {
@@ -134,6 +137,8 @@ export function validateAndNormalizeMerchantRegistration(
   if (displayNameRaw.length > 50) {
     return { ok: false, error: "Display name must be 50 characters or fewer." };
   }
+  const displayNameLanguage = mixedNameLanguageError(displayNameRaw);
+  if (displayNameLanguage) return { ok: false, error: displayNameLanguage };
 
   const category = data.category?.trim() ?? "";
   if (!category)

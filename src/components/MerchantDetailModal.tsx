@@ -19,6 +19,10 @@ import {
 } from "../lib/merchantAudit";
 import { createClient } from "../../utils/supabase/client";
 import {
+  NAME_SINGLE_LANGUAGE_HINT,
+  mixedNameLanguageError,
+} from "../lib/singleLanguageName";
+import {
   applyPlanPreset,
   collapsePlanExpiry,
   dateInputToIso,
@@ -1144,7 +1148,12 @@ export default function MerchantDetailModal({
     }
   };
 
+  const nameLanguageError =
+    mixedNameLanguageError(draft.businessName || "") ||
+    mixedNameLanguageError(draft.displayName || "");
+
   const handleSave = async () => {
+    if (nameLanguageError) return;
     setIsSaving(true);
     try {
       await onSave({
@@ -1470,6 +1479,13 @@ export default function MerchantDetailModal({
                       editing={editable}
                       onChange={(v) => patchDraft({ displayName: v || null })}
                     />
+                    {editable ? (
+                      <p
+                        className={`text-[11px] leading-snug ${nameLanguageError ? "font-medium text-rose-600" : "text-slate-400"}`}
+                      >
+                        {nameLanguageError || NAME_SINGLE_LANGUAGE_HINT}
+                      </p>
+                    ) : null}
                     <Field
                       label="Owner"
                       value={display.fullName || ""}

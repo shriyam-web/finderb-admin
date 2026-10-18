@@ -26,6 +26,7 @@ import {
   primaryBusinessCategory,
   splitBusinessCategories,
 } from "../lib/categoryLabel";
+import { mixedNameLanguageError } from "../lib/singleLanguageName";
 
 type AdminSession = {
   id: string;
@@ -1610,7 +1611,8 @@ export default function QuickOnboardContent({
                         tone={fieldTone(
                           "businessName",
                           draft.businessName.trim().length >= 2 &&
-                            draft.businessName.trim().length <= 50,
+                            draft.businessName.trim().length <= 50 &&
+                            !mixedNameLanguageError(draft.businessName),
                         )}
                       />
                       <FieldStatus
@@ -1728,6 +1730,9 @@ export default function QuickOnboardContent({
                           patchDraft({ businessName: e.target.value.slice(0, 50) })
                         }
                       />
+                      <span className="block text-[11px] leading-snug text-slate-400">
+                        One language only. Hindi and English together will not be saved.
+                      </span>
                     </label>
                     <label className="space-y-1">
                       <span className="admin-label">Display name</span>

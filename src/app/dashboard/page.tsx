@@ -67,6 +67,7 @@ import type { MerchantRequest } from "../../lib/merchantRequest";
 import { getBusinessProfileUrl } from "../../lib/site";
 import { requestListingLiveEmail } from "../../lib/requestListingLiveEmail";
 import { diffAuditChanges, logMerchantAudit } from "../../lib/merchantAudit";
+import { mixedNameLanguageError } from "../../lib/singleLanguageName";
 import {
   CATEGORY_LEAD_BADGE,
   DIRECT_LEAD_BADGE,
@@ -5822,6 +5823,14 @@ function MerchantsContent({
 
   const handleSaveMerchant = async (updates: Partial<BusinessData>) => {
     if (!canManage || !selectedBusiness) return;
+
+    const mixedName =
+      mixedNameLanguageError(String(updates.businessName || "")) ||
+      mixedNameLanguageError(String(updates.displayName || ""));
+    if (mixedName) {
+      toast(mixedName, "error");
+      throw new Error(mixedName);
+    }
 
     const previousStatus = String(selectedBusiness.status || "");
     const supabase = createClient();
