@@ -22,8 +22,6 @@ import {
 import AdminEntryScreen, { markAdminEntryHandoff } from "../components/AdminEntryScreen";
 import { applyAdminConsoleTheme, readLaunchTheme } from "../lib/adminColorMode";
 import OtpCodeBoxes from "../components/OtpCodeBoxes";
-import PwaInstallButton from "../components/PwaInstallButton";
-
 type AdminPayload = {
   id: string;
   email: string;
@@ -417,12 +415,11 @@ export default function Home() {
 
       <main className="admin-login-panel flex flex-1 items-center justify-center bg-white px-6 py-10 sm:px-12">
         <div className="w-full max-w-[400px]">
-          <div className="mb-6 flex items-center justify-between gap-3 lg:hidden">
+          <div className="mb-6 flex items-center gap-3 lg:hidden">
             <div className="flex items-center gap-[0.4em] text-lg font-normal leading-none tracking-tight text-slate-800">
               <Image src="/fb-mark.png" alt="" width={18} height={18} className="h-[1em] w-[1em] object-contain" priority />
               <span>Admin</span>
             </div>
-            <PwaInstallButton />
           </div>
 
           <div>

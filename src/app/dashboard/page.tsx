@@ -27,7 +27,6 @@ import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import AdminContentLoader from "../../components/AdminContentLoader";
 import AdminUniversalSearch from "../../components/AdminUniversalSearch";
-import PwaInstallButton from "../../components/PwaInstallButton";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
 import AdminEntryScreen, { consumeAdminEntryHandoff } from "../../components/AdminEntryScreen";
@@ -3682,7 +3681,6 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="admin-topbar-actions">
-              <PwaInstallButton />
               <AdminUniversalSearch
                 adminId={adminSession?.id ?? null}
                 tabs={menuItems.map((item) => item.name)}

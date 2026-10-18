@@ -7,25 +7,22 @@ type InstallPrompt = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-function isStandalone() {
+function runningAsApp() {
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
-    ("standalone" in navigator && Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    ("standalone" in navigator &&
+      Boolean((navigator as Navigator & { standalone?: boolean }).standalone))
   );
 }
 
 export default function PwaInstallButton() {
-  const [mobile, setMobile] = useState(false);
-  const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
-  const [iosHelp, setIosHelp] = useState(false);
-  const [installed, setInstalled] = useState(false);
+  const [promptEvent, setPromptEvent] = useState<InstallPrompt | null>(null);
+  const [open, setOpen] = useState(false);
+  const [installing, setInstalling] = useState(false);
 
   useEffect(() => {
-    const media = window.matchMedia("(max-width: 767px)");
-    const sync = () => setMobile(media.matches);
-    sync();
-    setInstalled(isStandalone());
-    media.addEventListener("change", sync);
+    if (runningAsApp()) return;
 
     if ("serviceWorker" in navigator) {
       void navigator.serviceWorker.register("/sw.js").catch(() => {});
@@ -33,51 +30,50 @@ export default function PwaInstallButton() {
 
     const onPrompt = (event: Event) => {
       event.preventDefault();
-      setPrompt(event as InstallPrompt);
+      setPromptEvent(event as InstallPrompt);
+      setOpen(true);
     };
     const onInstalled = () => {
-      setInstalled(true);
-      setPrompt(null);
-      setIosHelp(false);
+      setPromptEvent(null);
+      setOpen(false);
     };
+
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
     return () => {
-      media.removeEventListener("change", sync);
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
 
-  if (!mobile || installed) return null;
+  if (!open || !promptEvent) return null;
 
   const install = async () => {
-    if (prompt) {
-      await prompt.prompt();
-      const choice = await prompt.userChoice;
-      if (choice.outcome === "accepted") setInstalled(true);
-      setPrompt(null);
-      return;
+    setInstalling(true);
+    try {
+      await promptEvent.prompt();
+      await promptEvent.userChoice;
+      setPromptEvent(null);
+      setOpen(false);
+    } catch {
+      setInstalling(false);
     }
-    setIosHelp(true);
   };
 
   return (
-    <>
-      <button type="button" className="admin-pwa-install" onClick={() => void install()}>
-        Install
-      </button>
-      {iosHelp ? (
-        <div className="admin-pwa-sheet" role="dialog" aria-label="Install FinderB Admin">
-          <p className="text-sm font-semibold">Install FinderB Admin</p>
-          <p className="mt-1 text-xs leading-relaxed text-slate-600">
-            Open the browser menu and choose Install app, or on iPhone tap Share and then Add to Home Screen.
-          </p>
-          <button type="button" className="admin-btn-secondary mt-3 !text-xs" onClick={() => setIosHelp(false)}>
-            Close
+    <div className="admin-pwa-modal" role="dialog" aria-modal="true" aria-labelledby="admin-pwa-title">
+      <div className="admin-pwa-card">
+        <img src="/icon-192.png" alt="" width={64} height={64} />
+        <h2 id="admin-pwa-title">Install FinderB Admin</h2>
+        <div className="admin-pwa-actions">
+          <button type="button" className="admin-pwa-later" onClick={() => setOpen(false)}>
+            Later
+          </button>
+          <button type="button" className="admin-pwa-go" onClick={() => void install()} disabled={installing}>
+            {installing ? "Installing…" : "Install"}
           </button>
         </div>
-      ) : null}
-    </>
+      </div>
+    </div>
   );
 }

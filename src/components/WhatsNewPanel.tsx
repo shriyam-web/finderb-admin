@@ -61,7 +61,14 @@ export default function WhatsNewPanel({
   });
 
   useEffect(() => {
-    setFabPos(readFabPosition(WHATS_NEW_FAB_POS_KEY));
+    const saved = readFabPosition(WHATS_NEW_FAB_POS_KEY);
+    if (!saved) return;
+    setFabPos(clampFab(saved.x, saved.y, 180, 48));
+    const onResize = () => {
+      setFabPos((current) => (current ? clampFab(current.x, current.y, 180, 48) : current));
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
   const panelUnread = useMemo(

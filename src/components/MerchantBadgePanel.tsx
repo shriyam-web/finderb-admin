@@ -111,6 +111,9 @@ export default function MerchantBadgePanel({
         <p className="text-[11px] text-slate-500 mt-0.5">
           A badge that already qualifies turns on by itself. Auto keeps that. On forces it on. Off hides it. FinderB Trusted stays off until an admin turns it on.
         </p>
+        <p className="text-[11px] text-slate-500 mt-1">
+          Whatever changes are made here will be reflected after half an hour on the business&apos;s public profile.
+        </p>
       </div>
       {!overridesReady ? (
         <p className="rounded-md bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
