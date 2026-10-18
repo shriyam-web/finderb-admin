@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import OtpCodeBoxes from "./OtpCodeBoxes";
 import {
   adminPasswordChecks,
@@ -25,6 +26,7 @@ export default function AdminChangePassword({
   const [nextPassword, setNextPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showNext, setShowNext] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
@@ -217,31 +219,44 @@ export default function AdminChangePassword({
           <div className="space-y-3">
             <label className="block space-y-1.5">
               <span className="text-sm font-medium text-slate-800">New password</span>
-              <input
-                type={showNext ? "text" : "password"}
-                autoComplete="new-password"
-                className="admin-input"
-                value={nextPassword}
-                onChange={(event) => setNextPassword(event.target.value)}
-              />
+              <div className="relative">
+                <input
+                  type={showNext ? "text" : "password"}
+                  autoComplete="new-password"
+                  className="admin-input !pr-10"
+                  value={nextPassword}
+                  onChange={(event) => setNextPassword(event.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNext((value) => !value)}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700"
+                  aria-label={showNext ? "Hide password" : "Show password"}
+                >
+                  {showNext ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+                </button>
+              </div>
             </label>
             <label className="block space-y-1.5">
               <span className="text-sm font-medium text-slate-800">Confirm new password</span>
-              <input
-                type={showNext ? "text" : "password"}
-                autoComplete="new-password"
-                className="admin-input"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-              />
+              <div className="relative">
+                <input
+                  type={showConfirm ? "text" : "password"}
+                  autoComplete="new-password"
+                  className="admin-input !pr-10"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((value) => !value)}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-700"
+                  aria-label={showConfirm ? "Hide password" : "Show password"}
+                >
+                  {showConfirm ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+                </button>
+              </div>
             </label>
-            <button
-              type="button"
-              className="text-xs font-medium text-slate-500"
-              onClick={() => setShowNext((value) => !value)}
-            >
-              {showNext ? "Hide passwords" : "Show passwords"}
-            </button>
             <ul className="space-y-1.5">
               {checks.map((item) => (
                 <li key={item.id} className={`text-xs ${item.met ? "text-emerald-700" : "text-slate-500"}`}>
