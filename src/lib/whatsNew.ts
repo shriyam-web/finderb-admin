@@ -80,6 +80,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Change your password from profile or Settings",
+    body: "Open Your profile, or the Settings tab, and press Change password.\n\nFinderB asks for your current password, then emails a 6-digit code. The new password opens only after that code. Type it twice. It needs at least 8 characters, letters and a number, plus an uppercase letter or a symbol. Common passwords are rejected.\n\nWhen it is saved, a confirmation email is sent. The new password is stored in the same secure form used at sign-in. You stay signed in on this browser.",
+    published_at: "2026-10-18T13:50:00+05:30",
+  },
+  {
     title: "Search the whole panel from the top bar",
     body: "A search icon sits to the left of your role, next to the theme switch. Open it, or press Ctrl K.\n\nType a name, email, phone, city, business, or id. It looks through users, merchants, leads, payments, reviews, jobs, blogs, categories, places, broadcasts, requests, and the menus.\n\nPick a result and that tab opens. When the record can open, it opens too: a user, a merchant, a lead, a review, a job, or a draft.\n\nThe name column on Users stays fixed when you scroll right. Click a user's name to open their details.",
     published_at: "2026-10-18T05:35:00+05:30",
