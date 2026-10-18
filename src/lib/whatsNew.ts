@@ -80,6 +80,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Search the whole panel from the top bar",
+    body: "A search icon sits to the left of your role, next to the theme switch. Open it, or press Ctrl K.\n\nType a name, email, phone, city, business, or id. It looks through users, merchants, leads, payments, reviews, jobs, blogs, categories, places, broadcasts, requests, and the menus.\n\nPick a result and that tab opens. When the record can open, it opens too: a user, a merchant, a lead, a review, a job, or a draft.\n\nThe name column on Users stays fixed when you scroll right. Click a user's name to open their details.",
+    published_at: "2026-10-18T05:35:00+05:30",
+  },
+  {
     title: "Admin sign-in is slower to attack",
     body: "Password sign-in now stops after 5 attempts in a minute, for that network and for that email address.\n\nThe email code can be sent again only after 60 seconds. That wait is on the server, so refreshing the page does not skip it. Five codes is the most one sign-in will email.\n\nFive wrong codes end that sign-in. Enter the password again to get a new code.\n\nA missing account takes the same time to reject as a wrong password.",
     published_at: "2026-10-18T03:30:00+05:30",
