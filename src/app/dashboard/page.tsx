@@ -27,6 +27,7 @@ import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import AdminContentLoader from "../../components/AdminContentLoader";
 import AdminUniversalSearch from "../../components/AdminUniversalSearch";
+import PwaInstallButton from "../../components/PwaInstallButton";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
 import AdminEntryScreen, { consumeAdminEntryHandoff } from "../../components/AdminEntryScreen";
@@ -3667,7 +3668,7 @@ export default function Dashboard() {
                   />
                 </svg>
               </button>
-              <div className="admin-breadcrumb hidden sm:flex">
+              <div className="admin-breadcrumb">
                 <button
                   type="button"
                   className="admin-breadcrumb-home"
@@ -3681,6 +3682,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="admin-topbar-actions">
+              <PwaInstallButton />
               <AdminUniversalSearch
                 adminId={adminSession?.id ?? null}
                 tabs={menuItems.map((item) => item.name)}
@@ -3876,7 +3878,7 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
-            <p className="hidden text-right text-xs font-semibold tabular-nums text-slate-700 sm:block">
+            <p className="admin-command-clock text-right text-xs font-semibold tabular-nums text-slate-700">
               <span className="font-medium text-slate-500">{platformDateLabel || "—"}</span>
               <span className="px-1.5 text-slate-300" aria-hidden>·</span>
               <span>{platformClockLabel || "—"}</span>
@@ -4711,7 +4713,7 @@ function UsersContent({
               placeholder="Search by name, email, or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="admin-search w-72"
+              className="admin-search w-full sm:w-72"
             />
             <svg
               className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
@@ -4883,7 +4885,7 @@ function UsersContent({
 
       {selectedUser ? (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4" onClick={() => setSelectedUser(null)}>
-          <div className="admin-card w-full max-w-md p-5" onClick={(event) => event.stopPropagation()}>
+          <div className="user-detail-modal admin-card w-full max-w-md max-h-[90vh] overflow-auto p-5" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-400">User</p>

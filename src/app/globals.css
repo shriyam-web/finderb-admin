@@ -604,15 +604,9 @@ body {
   }
 
   .admin-theme-toggle-label {
-    display: none;
+    display: inline;
     padding-right: 0.35rem;
     min-width: 2.4rem;
-  }
-
-  @media (min-width: 640px) {
-    .admin-theme-toggle-label {
-      display: inline;
-    }
   }
 
   .admin-topbar-actions {
@@ -780,7 +774,7 @@ body {
   }
 
   .admin-role-badge {
-    @apply hidden sm:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold tracking-wide;
+    @apply inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold tracking-wide;
   }
 
   .admin-role-badge-dot {
@@ -3171,4 +3165,188 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
 
 html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search mark {
   background: rgba(234, 88, 12, 0.35);
+}
+
+.admin-pwa-install {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.1rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #c2410c;
+  background: #ea580c;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-pwa-sheet {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 420;
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+  background: #fff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+}
+
+@media (max-width: 767px) {
+  .admin-topbar {
+    height: auto;
+    min-height: 3.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 0.45rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+  }
+
+  .admin-topbar-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-left: auto;
+  }
+
+  .admin-breadcrumb {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .admin-breadcrumb-current {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-universal-search-field input {
+    width: min(16rem, calc(100vw - 6.5rem));
+  }
+
+  .admin-page-header > div {
+    width: 100%;
+  }
+
+  .admin-page-header .flex {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .admin-search {
+    width: 100%;
+  }
+
+  .admin-command-bar {
+    align-items: flex-start;
+  }
+
+  .admin-command-clock {
+    display: block;
+    width: 100%;
+    text-align: left;
+  }
+
+  .admin-table.admin-table-pin th:first-child,
+  .admin-table.admin-table-pin td:first-child {
+    position: static;
+    left: auto;
+    z-index: auto;
+    box-shadow: none;
+  }
+
+  .admin-table [class*="min-w-"] {
+    min-width: 0;
+  }
+
+  .admin-modal-overlay,
+  .fixed.inset-0.flex {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .admin-modal,
+  .admin-modal-lg,
+  .fixed.inset-0.flex > * {
+    width: 100%;
+    max-width: none;
+    max-height: 100dvh;
+    height: 100dvh;
+    border-radius: 0;
+    overflow: auto;
+  }
+
+  .merchant-detail-overlay {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .merchant-detail-modal {
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    border: 0;
+  }
+
+  .merchant-detail-head {
+    flex-wrap: wrap;
+  }
+
+  .merchant-detail-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .merchant-detail-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .merchant-detail-tabs button {
+    flex: 0 0 auto;
+  }
+
+  .merchant-detail-modal .mdm-pair {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+  }
+
+  .merchant-detail-modal .mdm-pair .w-56,
+  .merchant-detail-modal .mdm-pair .text-right {
+    width: 100%;
+    max-width: none;
+    text-align: left;
+  }
+
+  .merchant-gallery-actions {
+    opacity: 1;
+    inset: auto 0 0 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0.35rem;
+    background: rgba(15, 23, 42, 0.88);
+  }
+
+  .user-detail-modal {
+    max-height: 100dvh;
+    overflow: auto;
+  }
+
+  .user-detail-modal dl > div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+  }
+
+  .user-detail-modal dd {
+    text-align: left;
+  }
 }

@@ -356,7 +356,7 @@ function Row({
 }) {
   return (
     <LockedHint>
-      <div className="flex items-start justify-between gap-4 px-3 py-2">
+      <div className="mdm-pair flex items-start justify-between gap-4 px-3 py-2">
         <span className="text-xs text-slate-500 shrink-0">{label}</span>
         <span
           className={`text-xs text-slate-900 text-right break-all ${mono ? "font-mono" : "font-medium"}`}
@@ -394,7 +394,7 @@ function LinkRow({
   if (!trimmed) return <Row label={label} value={null} />;
   return (
     <LockedHint>
-      <div className="flex items-start justify-between gap-4 px-3 py-2">
+      <div className="mdm-pair flex items-start justify-between gap-4 px-3 py-2">
         <span className="text-xs text-slate-500 shrink-0">{label}</span>
         <a
           href={trimmed}
@@ -447,7 +447,7 @@ function ProfileQr({
     .replace(/^-|-$/g, "");
 
   return (
-    <div className="flex items-start justify-between gap-4 px-3 py-2">
+    <div className="mdm-pair flex items-start justify-between gap-4 px-3 py-2">
       <span className="text-xs text-slate-500 shrink-0">Profile QR</span>
       <div className="flex flex-col items-end gap-2">
         {dataUrl ? (
@@ -532,7 +532,7 @@ function Field({
   }
 
   return (
-    <div className="flex items-center justify-between gap-4 px-3 py-1.5">
+    <div className="mdm-pair flex items-center justify-between gap-4 px-3 py-1.5">
       <label className="text-xs text-slate-500 shrink-0">{label}</label>
       <div className="w-56 max-w-[62%]">
         {type === "select" && options ? (
@@ -693,7 +693,7 @@ function SelectRow({
     value && !options.includes(value) ? [value, ...options] : options;
 
   return (
-    <div className="flex items-center justify-between gap-4 px-3 py-1.5">
+    <div className="mdm-pair flex items-center justify-between gap-4 px-3 py-1.5">
       <label className="text-xs text-slate-500 shrink-0">{label}</label>
       <div className="w-56 max-w-[62%]">
         <select
@@ -1286,11 +1286,11 @@ export default function MerchantDetailModal({
   return (
     <EditModeContext.Provider value={editable}>
       {createPortal(
-        <div className="fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl border border-slate-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="merchant-detail-overlay fixed inset-0 z-[200] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="merchant-detail-modal bg-white rounded-xl border border-slate-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
           {/* Header */}
           <div className="px-5 pt-4 pb-0 border-b border-slate-200 shrink-0">
-            <div className="flex items-start justify-between gap-4">
+            <div className="merchant-detail-head flex items-start justify-between gap-4">
               <div className="flex items-start gap-3 min-w-0">
                 {display.profilePictureUrl ? (
                   <img
@@ -1353,7 +1353,7 @@ export default function MerchantDetailModal({
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="merchant-detail-actions flex items-center gap-2 shrink-0 flex-wrap">
                 {canManage &&
                   (isEditing ? (
                     <>
@@ -1406,7 +1406,7 @@ export default function MerchantDetailModal({
             </div>
 
             {/* Tabs */}
-            <nav className="flex gap-1 mt-3 -mb-px">
+            <nav className="merchant-detail-tabs flex gap-1 mt-3 -mb-px">
               {visibleTabs.map((t) => (
                 <button
                   key={t.id}
@@ -1761,7 +1761,7 @@ export default function MerchantDetailModal({
                       <TagsRow label="Keywords" values={display.keywords} />
                     )}
                     {editable ? (
-                      <div className="flex items-center justify-between gap-4 px-3 py-1.5">
+                      <div className="mdm-pair flex items-center justify-between gap-4 px-3 py-1.5">
                         <label className="text-xs text-slate-500 shrink-0">
                           Discount offer
                         </label>
@@ -2279,7 +2279,7 @@ export default function MerchantDetailModal({
                           </span>
                         )}
                         {canManage && (
-                          <div className="absolute inset-0 bg-slate-900/55 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5">
+                          <div className="merchant-gallery-actions absolute inset-0 bg-slate-900/55 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5">
                             {onReorderImages && (
                               <span className="text-[10px] font-medium text-white/90">
                                 ⋮⋮ Drag to move

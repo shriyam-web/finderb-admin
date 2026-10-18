@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import AppProviders from "../components/AppProviders";
 import "./globals.css";
@@ -25,6 +25,12 @@ const plusJakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "Admin | FinderB",
   description: "FinderB admin dashboard",
+  applicationName: "FinderB Admin",
+  appleWebApp: {
+    capable: true,
+    title: "FinderB Admin",
+    statusBarStyle: "black-translucent",
+  },
   icons: {
     icon: [
       { url: "/icon.png?v=3", type: "image/png", sizes: "any" },
@@ -34,6 +40,13 @@ export const metadata: Metadata = {
     shortcut: "/icon.png?v=3",
     apple: [{ url: "/icon.png?v=3", type: "image/png" }],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#c2410c",
 };
 
 export default function RootLayout({
