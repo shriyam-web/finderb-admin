@@ -359,13 +359,24 @@ export default function WhatsNewPanel({
   );
 }
 
+function browserSupabase() {
+  if (typeof window === "undefined") return null;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return createClient();
+}
+
 /** Lightweight unread badge loader while the floating panel is closed. */
 export function useWhatsNewUnreadCount(adminId: string | null | undefined) {
-  const supabase = useMemo(() => createClient(), []);
+  // Prerender runs this hook on the server, where the browser client is unused.
+  const supabase = useMemo(() => browserSupabase(), []);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const refresh = useCallback(async () => {
-    if (!adminId) {
+    if (!adminId || !supabase) {
       setUnreadCount(0);
       return;
     }
