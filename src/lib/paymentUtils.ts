@@ -183,12 +183,7 @@ export function mapMerchantPaymentRow(row: MerchantPaymentRow): PaymentRecord {
     billingCycle,
     amountPaise: Number(row.amount_paise),
     amountDisplay: formatAmountInr(Number(row.amount_paise)),
-    status: settleCheckoutStatus({
-      status: String(row.status),
-      createdAt: row.created_at ? String(row.created_at) : null,
-      paymentId: row.payment_id ? String(row.payment_id) : null,
-      paymentType: row.payment_type ? String(row.payment_type) : null,
-    }),
+    status: String(row.status),
     paymentType: String(row.payment_type || "one_time"),
     orderId: row.order_id ? String(row.order_id) : null,
     paymentId: row.payment_id ? String(row.payment_id) : null,
@@ -232,8 +227,8 @@ export function buildLegacyPaymentFromBusiness(business: BusinessPaymentRow): Pa
   });
 
   return {
-    id: `legacy-${String(business.id ?? "unknown")}`,
-    businessId: String(business.id ?? ""),
+    id: `legacy-${business.id}`,
+    businessId: String(business.id),
     businessName: String(business.businessName ?? "—"),
     merchantEmail: String(business.email || business.workEmail || "—"),
     merchantMobile: String(business.mobile ?? "—"),
@@ -347,12 +342,12 @@ export type PaymentAnalytics = {
   completedCount: number;
   pendingCount: number;
   failedCount: number;
-  cancelledCount: number;
   activeSubscriptions: number;
   expiredSubscriptions: number;
   pendingSubscriptions: number;
   autoDebitEnabled: number;
   autoDebitActive: number;
+  cancelledCount: number;
   expiring7d: number;
   expiring30d: number;
   expiredPlans: number;
@@ -470,13 +465,13 @@ export function computePaymentAnalytics(
   const completed = payments.filter((p) => p.status === "completed");
   const pending = payments.filter((p) => p.status === "pending");
   const failed = payments.filter((p) => p.status === "failed");
-  const cancelled = payments.filter((p) => p.status === "cancelled");
-  const genuineOpens = payments.filter((p) => isGenuinePaymentIssue(p)).length;
 
   const now = new Date();
   const today = sumRange(completed, istRangeStart("today", now));
   const week = sumRange(completed, istRangeStart("week", now));
   const month = sumRange(completed, istRangeStart("month", now));
+  const cancelled = payments.filter((p) => p.status === "cancelled");
+  const genuineOpens = payments.filter((p) => isGenuinePaymentIssue(p)).length;
 
   const totalRevenuePaise = completed.reduce((sum, p) => sum + p.amountPaise, 0);
   const monthlyRevenuePaise = completed
@@ -533,12 +528,12 @@ export function computePaymentAnalytics(
     completedCount: completed.length,
     pendingCount: pending.length,
     failedCount: failed.length,
-    cancelledCount: cancelled.length,
     activeSubscriptions,
     expiredSubscriptions,
     pendingSubscriptions,
     autoDebitEnabled,
     autoDebitActive,
+    cancelledCount: cancelled.length,
     expiring7d,
     expiring30d,
     expiredPlans: expiredSubscriptions,

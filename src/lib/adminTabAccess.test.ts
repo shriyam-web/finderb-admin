@@ -41,6 +41,7 @@ const ALL_TABS = [
   "YouTube Playlists",
   "FinderB Jobs",
   "Settings",
+  "Site Configurations",
   "Reviews",
   "Change Requests",
   "Ownership Requests",
@@ -66,7 +67,8 @@ function menuFor(session: AdminAccessSession) {
         name !== "Reviews" &&
         name !== "Change Requests" &&
         name !== "Ownership Requests" &&
-        name !== "Job Reports"
+        name !== "Job Reports" &&
+        name !== "Site Configurations"
       );
     }
     if (name === "Manage Admins" || COMING_SOON.has(name)) return false;
@@ -126,6 +128,16 @@ assert.equal(
 assert.equal(menuFor({ role: "controller" }).includes("Ownership Requests"), false);
 assert.equal(resolveTabAccess({ role: "controller" }, "Job Reports"), "none");
 assert.equal(menuFor({ role: "controller" }).includes("Job Reports"), false);
+assert.equal(resolveTabAccess({ role: "developer" }, "Site Configurations"), "edit");
+assert.equal(resolveTabAccess({ role: "controller" }, "Site Configurations"), "none");
+assert.equal(menuFor({ role: "controller" }).includes("Site Configurations"), false);
+assert.equal(
+  resolveTabAccess(
+    { role: "admin", allowed_tab_modes: { "Site Configurations": "edit" } },
+    "Site Configurations",
+  ),
+  "edit",
+);
 assert.equal(
   resolveTabAccess(
     { role: "admin", allowed_tab_modes: { "Ownership Requests": "edit" } },

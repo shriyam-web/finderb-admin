@@ -31,6 +31,23 @@ function countSince<T>(items: T[], getDate: (item: T) => string | null | undefin
   }).length;
 }
 
+function lastEightWeekBuckets(now: Date) {
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const end = now.getTime();
+  return Array.from({ length: 8 }, (_, index) => {
+    const age = 7 - index;
+    const bucketEnd = end - age * weekMs;
+    const bucketStart = bucketEnd - weekMs;
+    return {
+      label: new Date(bucketStart).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      self: 0,
+      admin: 0,
+      start: bucketStart,
+      end: bucketEnd,
+    };
+  });
+}
+
 function countToday<T>(items: T[], getDate: (item: T) => string | null | undefined): number {
   const today = new Date().toDateString();
   return items.filter((item) => {
@@ -182,31 +199,7 @@ export function computeDashboardStats(input: {
       unknown: unknownOnboarded,
       weekSelf,
       weekAdmin,
-      weeks: weekBuckets.map((week) => ({
-        label: week.label,
-        self: week.self,
-        admin: week.admin,
-      })),
+      weeks: weekBuckets.map(({ label, self, admin }) => ({ label, self, admin })),
     },
   };
-}
-
-function lastEightWeekBuckets(now: Date) {
-  const monday = new Date(now);
-  monday.setHours(0, 0, 0, 0);
-  const weekday = monday.getDay();
-  monday.setDate(monday.getDate() - (weekday === 0 ? 6 : weekday - 1));
-  return Array.from({ length: 8 }, (_, index) => {
-    const startDate = new Date(monday);
-    startDate.setDate(monday.getDate() - (7 - index) * 7);
-    const end = new Date(startDate);
-    end.setDate(startDate.getDate() + 7);
-    return {
-      start: startDate.getTime(),
-      end: end.getTime(),
-      label: startDate.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
-      self: 0,
-      admin: 0,
-    };
-  });
 }

@@ -55,13 +55,14 @@ export default function BroadcastsContent({
   const [showDatetime, setShowDatetime] = useState(true);
   const [when, setWhen] = useState("");
   const [rows, setRows] = useState<Broadcast[]>([]);
-  const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   const [recipientFilter, setRecipientFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"newest" | "recipient">("newest");
+  const [ready, setReady] = useState(false);
 
   const load = async () => {
+    if (!adminId) return;
     if (!adminId) {
       setReady(true);
       return;
@@ -496,3 +497,4 @@ export default function BroadcastsContent({
     </div>
   );
 }
+

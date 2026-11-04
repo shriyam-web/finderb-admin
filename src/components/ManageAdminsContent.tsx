@@ -63,6 +63,7 @@ export const ASSIGNABLE_ADMIN_TABS = [
   "YouTube Playlists",
   "FinderB Jobs",
   "Settings",
+  "Site Configurations",
   "Reviews",
   "Change Requests",
   "Ownership Requests",

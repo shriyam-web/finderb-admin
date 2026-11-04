@@ -45,6 +45,7 @@ const TAB_ALIASES: Record<string, string[]> = {
   Broadcasts: ["broadcast", "broadcasts", "notification", "notifications", "push"],
   "Broadcast Email": ["email", "emails", "mail", "resend"],
   Settings: ["settings", "setting", "maintenance", "site mode"],
+  "Site Configurations": ["site configuration", "pricing", "plan price", "contact", "promote"],
   "Manage Admins": ["admin", "admins", "controller", "developer", "staff"],
   News: ["news"],
   Movies: ["movie", "movies", "film", "films"],

@@ -183,7 +183,8 @@ export function resolveTabAccess(
     tab === "Reviews" ||
     tab === "Change Requests" ||
     tab === "Ownership Requests" ||
-    tab === "Job Reports"
+    tab === "Job Reports" ||
+    tab === "Site Configurations"
   ) {
     return modeFromAllowList(effectiveTabModes(session), tab);
   }

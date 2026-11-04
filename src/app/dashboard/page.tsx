@@ -55,6 +55,7 @@ import ManageAdminsContent from "../../components/ManageAdminsContent";
 import SuspiciousLoginModal from "../../components/SuspiciousLoginModal";
 import AdminOverlay from "../../components/AdminOverlay";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
+import SiteConfigurationsContent from "../../components/SiteConfigurationsContent";
 import { reportAdminSession } from "../../lib/adminSessionActivity";
 import { planLabel, MERCHANT_PLAN_PRESETS, resolvePlanPresetId } from "../../lib/merchantPlanAdmin";
 import {
@@ -896,6 +897,24 @@ const ALL_MENU_ITEMS = [
     ),
   },
   {
+    name: "Site Configurations",
+    icon: (
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M4 7h16M4 12h10M4 17h16"
+        />
+      </svg>
+    ),
+  },
+  {
     name: "Settings",
     icon: (
       <svg
@@ -1000,7 +1019,7 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
     items: ["Categories", "Blogs", "YouTube Playlists", "Tourist Places"],
   },
   { label: "Broadcasts", items: ["Broadcasts", "Broadcast Email"] },
-  { label: "Platform", items: ["Settings", "Manage Admins"] },
+  { label: "Platform", items: ["Site Configurations", "Settings", "Manage Admins"] },
   { label: "Inactive", items: ["News", "Movies", "FinderB E-commerce"] },
 ];
 
@@ -1822,7 +1841,8 @@ export default function Dashboard() {
         item.name !== "Reviews" &&
         item.name !== "Change Requests" &&
         item.name !== "Ownership Requests" &&
-        item.name !== "Job Reports"
+        item.name !== "Job Reports" &&
+        item.name !== "Site Configurations"
       );
     }
     if (isController) {
@@ -1866,6 +1886,8 @@ export default function Dashboard() {
         !hasTabAccess(adminSession, "Ownership Requests")) ||
       (activeTab === "Job Reports" &&
         !hasTabAccess(adminSession, "Job Reports")) ||
+      (activeTab === "Site Configurations" &&
+        !hasTabAccess(adminSession, "Site Configurations")) ||
       (!isController && COMING_SOON_TABS.has(activeTab))
     ) {
       if (firstAllowed) setActiveTab(firstAllowed);
@@ -2978,6 +3000,13 @@ export default function Dashboard() {
             focusId={
               todoFocus?.tab === "Ownership Requests" ? todoFocus.targetId : null
             }
+          />
+        );
+      case "Site Configurations":
+        return (
+          <SiteConfigurationsContent
+            adminId={adminSession?.id || ""}
+            canManage={hasFullTabAccess(adminSession, "Site Configurations")}
           />
         );
       case "Settings":
