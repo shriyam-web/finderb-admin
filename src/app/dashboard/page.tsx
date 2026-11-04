@@ -56,6 +56,7 @@ import SuspiciousLoginModal from "../../components/SuspiciousLoginModal";
 import AdminOverlay from "../../components/AdminOverlay";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
 import SiteConfigurationsContent from "../../components/SiteConfigurationsContent";
+import BusinessPromotionsContent from "../../components/BusinessPromotionsContent";
 import { reportAdminSession } from "../../lib/adminSessionActivity";
 import { planLabel, MERCHANT_PLAN_PRESETS, resolvePlanPresetId } from "../../lib/merchantPlanAdmin";
 import {
@@ -897,6 +898,14 @@ const ALL_MENU_ITEMS = [
     ),
   },
   {
+    name: "Business Promotions",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+      </svg>
+    ),
+  },
+  {
     name: "Site Configurations",
     icon: (
       <svg
@@ -1012,7 +1021,7 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
       "Ownership Requests",
     ],
   },
-  { label: "Payments", items: ["Payments & Subscriptions"] },
+  { label: "Payments", items: ["Payments & Subscriptions", "Business Promotions"] },
   { label: "Jobs", items: ["FinderB Jobs", "Job Reports"] },
   {
     label: "Content",
@@ -3000,6 +3009,13 @@ export default function Dashboard() {
             focusId={
               todoFocus?.tab === "Ownership Requests" ? todoFocus.targetId : null
             }
+          />
+        );
+      case "Business Promotions":
+        return (
+          <BusinessPromotionsContent
+            adminId={adminSession?.id || ""}
+            canManage={hasFullTabAccess(adminSession, "Business Promotions")}
           />
         );
       case "Site Configurations":
