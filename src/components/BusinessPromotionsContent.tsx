@@ -79,18 +79,36 @@ type AuditRow = {
   created_at: string;
 };
 
+type CustomRequest = {
+  id: string;
+  business_id: string;
+  budget_inr: number;
+  duration_days: number;
+  coverage: string;
+  pincode: string;
+  area: string;
+  goal: string;
+  phone: string;
+  note?: string | null;
+  status: string;
+  admin_note?: string | null;
+  created_at: string;
+  business: Business;
+};
+
 type Payload = {
   stats: Record<string, number>;
   orders: Order[];
   verifications: Verification[];
   packages: PackageRow[];
+  customRequests?: CustomRequest[];
   payments: Array<Record<string, unknown>>;
   audit: AuditRow[];
   errors?: string[];
   error?: string;
 };
 
-const SECTIONS = ["Overview", "Verification", "Orders", "Packages", "Payments"] as const;
+const SECTIONS = ["Overview", "Verification", "Orders", "Custom", "Packages", "Payments"] as const;
 const NEXT_STATUS: Record<string, string[]> = {
   payment_successful: ["under_review", "rejected", "cancelled", "refund_pending"],
   under_review: ["editing", "video_ready", "rejected", "cancelled", "refund_pending"],
@@ -219,6 +237,7 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
             ["Completed", data?.stats.completed],
             ["Rejected", data?.stats.rejected],
             ["Videos", data?.stats.videos],
+            ["Custom open", data?.stats.custom],
           ].map(([label, value]) => (
             <div className="bp-stat" key={String(label)}><b>{value ?? "—"}</b><span>{label}</span></div>
           ))}
@@ -336,6 +355,36 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
             ) : <p>Select an order to review the video, move the campaign and record results.</p>}
           </aside>
         </div>
+      ) : null}
+
+      {section === "Custom" ? (
+        <table className="bp-table">
+          <thead>
+            <tr><th>Request</th><th>Business</th><th>Plan</th><th>What to promote</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {(data?.customRequests || []).map((item) => (
+              <tr key={item.id}>
+                <td>{item.id}<br />{when(item.created_at)}</td>
+                <td>{item.business?.businessName || item.business_id}<br />{item.business?.fullName}<br />{item.phone}</td>
+                <td>{inr(item.budget_inr)} · {item.duration_days} days<br />{item.coverage}<br />{item.area} {item.pincode}</td>
+                <td>{item.goal}{item.note ? <><br />{item.note}</> : null}</td>
+                <td>
+                  {item.status.replaceAll("_", " ")}
+                  {item.admin_note ? <><br />{item.admin_note}</> : null}
+                  <div className="bp-actions">
+                    {["in_review", "quoted", "closed"].map((status) => (
+                      <button key={status} className="bp-btn" type="button" disabled={!canManage || busy} onClick={() => {
+                        const note = window.prompt("Note for this custom plan", item.admin_note || "") || "";
+                        void act({ action: "custom", id: item.id, status, note });
+                      }}>{status.replaceAll("_", " ")}</button>
+                    ))}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       ) : null}
 
       {section === "Packages" ? (

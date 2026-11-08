@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { canAccessTab, canEditTab } from "../../../../lib/adminTabAccess";
 import { PROMO_TAB, canMoveCampaign } from "../../../../lib/promotionOps";
-import { privateDownloadUrl, privateMediaConfigured, readStoredAssets } from "../../../../lib/privateMedia";
+import { privateDownloadUrl, readStoredAssets } from "../../../../lib/privateMedia";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -48,17 +48,20 @@ export async function GET(request: Request) {
   const admin = await loadAdmin(adminId);
   if (!admin || !canAccessTab(admin, PROMO_TAB)) return denied();
   const supabase = getSupabase();
-  const [ordersRes, verificationsRes, packagesRes, auditRes] = await Promise.all([
+  const [ordersRes, verificationsRes, packagesRes, auditRes, customRes] = await Promise.all([
     supabase.from("promotion_orders").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("business_verifications").select("*").order("created_at", { ascending: false }).limit(200),
     supabase.from("promotion_packages").select("*").order("sort_order"),
     supabase.from("promotion_audit").select("*").order("created_at", { ascending: false }).limit(300),
+    supabase.from("promotion_custom_requests").select("*").order("created_at", { ascending: false }).limit(200),
   ]);
   const orders = ordersRes.data || [];
   const verifications = verificationsRes.data || [];
+  const customRequests = customRes.data || [];
   const businesses = await businessesFor([
     ...orders.map((row) => String(row.business_id || "")),
     ...verifications.map((row) => String(row.business_id || "")),
+    ...customRequests.map((row) => String(row.business_id || "")),
   ]);
   const paid = orders.filter((row) => row.payment_status === "paid");
   return NextResponse.json({
@@ -71,28 +74,29 @@ export async function GET(request: Request) {
       active: orders.filter((row) => row.campaign_status === "ad_active").length,
       completed: orders.filter((row) => row.campaign_status === "completed").length,
       rejected: orders.filter((row) => row.campaign_status === "rejected").length,
-      videos: orders.filter((row) => row.video_public_id).length,
+      videos: orders.filter((row) => row.video_public_id || row.video_url).length,
+      custom: customRequests.filter((row) => row.status === "received" || row.status === "in_review").length,
     },
     orders: orders.map((row) => ({
       ...row,
-      video_url: row.video_public_id
+      video_url: (row.video_public_id
         ? privateDownloadUrl({
             publicId: String(row.video_public_id),
             resource: "video",
             format: String(row.video_format || ""),
           }, true)
-        : null,
+        : null) || (typeof row.video_url === "string" && row.video_url.startsWith("https://") ? row.video_url : null),
       business: businesses[String(row.business_id)] || null,
     })),
     verifications: verifications.map((row) => ({
       ...row,
-      shop_photo_url: row.shop_photo_public_id
+      shop_photo_url: (row.shop_photo_public_id
         ? privateDownloadUrl({
             publicId: String(row.shop_photo_public_id),
             resource: "image",
             format: String(row.shop_photo_format || ""),
           }, true)
-        : null,
+        : null) || (typeof row.shop_photo_url === "string" && row.shop_photo_url.startsWith("https://") ? row.shop_photo_url : null),
       document_urls: readStoredAssets(row.document_urls)
         .map((asset) => privateDownloadUrl(asset, true))
         .filter((url): url is string => Boolean(url)),
@@ -110,12 +114,11 @@ export async function GET(request: Request) {
       updated_at: row.updated_at,
     })),
     audit: auditRes.data || [],
-    errors: [
-      ordersRes.error,
-      verificationsRes.error,
-      packagesRes.error,
-      privateMediaConfigured() ? null : { message: "Add CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET to open verification files and videos." },
-    ].filter(Boolean).map((item) => item?.message),
+    customRequests: customRequests.map((row) => ({
+      ...row,
+      business: businesses[String(row.business_id)] || null,
+    })),
+    errors: [ordersRes.error, verificationsRes.error, packagesRes.error, customRes.error].filter(Boolean).map((item) => item?.message),
   });
 }
 
@@ -209,6 +212,27 @@ export async function POST(request: Request) {
       action: "metrics",
       metrics,
       note: "Actual campaign results",
+    });
+    return NextResponse.json({ success: true });
+  }
+
+  if (action === "custom") {
+    const status = String(body.status || "");
+    if (!["received", "in_review", "quoted", "closed"].includes(status)) {
+      return NextResponse.json({ error: "Choose a valid custom-plan status." }, { status: 400 });
+    }
+    const { error } = await supabase.from("promotion_custom_requests").update({
+      status,
+      admin_note: String(body.note || "").trim() || null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", body.id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await supabase.from("promotion_audit").insert({
+      actor_admin_id: admin.id,
+      business_id: null,
+      action: "custom_plan",
+      to_status: status,
+      note: `${body.id} ${String(body.note || "")}`.trim(),
     });
     return NextResponse.json({ success: true });
   }
