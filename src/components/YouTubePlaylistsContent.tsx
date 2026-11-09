@@ -477,7 +477,7 @@ export default function YouTubePlaylistsContent({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 max-w-full space-y-6">
       <div>
         <h1 className="text-xl font-bold text-slate-900">YouTube Playlists</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -497,8 +497,8 @@ export default function YouTubePlaylistsContent({
           Loading playlists…
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,20rem)_1fr]">
-          <aside className="space-y-4">
+        <div className="grid w-full min-w-0 gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
+          <aside className="min-w-0 space-y-4">
             {canManage ? (
               <form onSubmit={handleCreatePlaylist} className="admin-card p-4">
                 <h2 className="text-sm font-semibold text-slate-900">New playlist</h2>
@@ -590,7 +590,7 @@ export default function YouTubePlaylistsContent({
             </div>
           </aside>
 
-          <section className="space-y-4">
+          <section className="min-w-0 space-y-4">
             {!selectedPlaylist ? (
               <div className="admin-card border-dashed px-5 py-12 text-center text-sm text-slate-500">
                 Select or create a playlist to manage its videos.
@@ -605,7 +605,7 @@ export default function YouTubePlaylistsContent({
                         <input
                           value={editingTitle}
                           onChange={(e) => setEditingTitle(e.target.value)}
-                          className="admin-input mt-1 w-full max-w-md"
+                          className="admin-input mt-1 w-full"
                         />
                       </label>
                     ) : (
@@ -660,7 +660,7 @@ export default function YouTubePlaylistsContent({
                     )}
                   </div>
                   {selectedPlaylist.description ? (
-                    <p className="mt-3 text-sm text-slate-500">{selectedPlaylist.description}</p>
+                    <p className="mt-3 break-words text-sm text-slate-500">{selectedPlaylist.description}</p>
                   ) : null}
                 </div>
 
@@ -731,17 +731,17 @@ export default function YouTubePlaylistsContent({
                   ) : (
                     <ul className="divide-y divide-slate-100">
                       {videos.map((video, index) => (
-                        <li key={video.id} className="flex items-stretch gap-3 px-4 py-3">
+                        <li key={video.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start">
                           <img
                             src={video.thumbnail_url}
                             alt=""
-                            className="h-16 w-28 shrink-0 rounded-lg object-cover bg-slate-100"
+                            className="h-16 w-full max-w-28 shrink-0 rounded-lg object-cover bg-slate-100 sm:w-28"
                           />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold text-slate-900">
+                            <p className="break-words text-sm font-semibold text-slate-900">
                               {video.title}
                             </p>
-                            <p className="mt-0.5 truncate text-xs text-slate-500">
+                            <p className="mt-0.5 break-words text-xs text-slate-500">
                               {video.topic || "No topic"} · {video.youtube_video_id}
                               {" · "}
                               {video.is_published ? "Published" : "Draft"}
@@ -756,7 +756,7 @@ export default function YouTubePlaylistsContent({
                             </a>
                           </div>
                           {canManage ? (
-                            <div className="flex flex-col items-end gap-1">
+                            <div className="flex flex-row flex-wrap items-center gap-2 sm:flex-col sm:items-end">
                               <div className="flex gap-1">
                                 <button
                                   type="button"

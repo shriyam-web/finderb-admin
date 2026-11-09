@@ -38,8 +38,16 @@ function Field({
   );
 }
 
+type PromotionPrice = {
+  id: string;
+  name: string;
+  priceInr: number;
+  referenceInr: number;
+};
+
 export default function SiteConfigurationsContent({ adminId, canManage }: Props) {
   const [form, setForm] = useState<SiteConfigForm>(DEFAULT_SITE_CONFIG_FORM);
+  const [promotionPrices, setPromotionPrices] = useState<PromotionPrice[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -50,8 +58,14 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
     (async () => {
       try {
         const response = await fetch(`/api/admin/site-config?adminId=${encodeURIComponent(adminId)}`);
-        const body = (await response.json()) as { success?: boolean; config?: SiteConfigForm; error?: string };
+        const body = (await response.json()) as {
+          success?: boolean;
+          config?: SiteConfigForm;
+          promotionPrices?: PromotionPrice[];
+          error?: string;
+        };
         if (!cancelled && body.success && body.config) setForm(body.config);
+        if (!cancelled && body.success && body.promotionPrices) setPromotionPrices(body.promotionPrices);
         if (!cancelled && !body.success) setError(body.error || "Could not load site configuration.");
       } catch {
         if (!cancelled) setError("Could not load site configuration.");
@@ -72,11 +86,11 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
       const response = await fetch("/api/admin/site-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId, config: form }),
+        body: JSON.stringify({ adminId, config: form, promotionPrices }),
       });
       const body = (await response.json()) as { success?: boolean; error?: string };
       if (!body.success) setError(body.error || "Could not save.");
-      else setMessage("Saved. The website and app pick this up within a few seconds. A new Growth price applies to the next checkout, and a new monthly Razorpay plan is created when that amount changes. Existing mandates stay on their current plan.");
+      else setMessage("Saved. The website and app pick this up within a few seconds. A new Growth price applies to the next checkout, and a new monthly Razorpay plan is created when that amount changes. Existing mandates stay on their current plan. Promotion prices apply to the next Promote your business online checkout. Orders already placed keep the price the merchant paid.");
     } catch {
       setError("Could not save.");
     } finally {
@@ -90,6 +104,15 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
       ...current,
       pricing: { ...current.pricing, [key]: Number.isFinite(amount) ? amount : 0 },
     }));
+  };
+
+  const setPromotionPrice = (id: string, key: "priceInr" | "referenceInr", value: string) => {
+    const amount = Number(value);
+    setPromotionPrices((current) =>
+      current.map((item) =>
+        item.id === id ? { ...item, [key]: Number.isFinite(amount) ? amount : 0 } : item,
+      ),
+    );
   };
 
   const setContact = (key: keyof SiteConfigForm["contact"], value: string | boolean) => {
@@ -108,7 +131,7 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Site Configurations</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Plan prices, public contact details, and the Promote Your Business Online switch. Developer access only, until you grant this tab to someone else.
+          Plan prices, Promote your business online prices, and public contact details. Developer access only, until you grant this tab to someone else.
         </p>
       </div>
 
@@ -160,7 +183,7 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
           <div>
             <h2 className="text-sm font-semibold text-slate-900">Promote Your Business Online</h2>
             <p className="mt-1 text-xs text-slate-500">
-              Off hides the feature and its pages. On shows them. The feature itself is added in a later update; this switch is already in control.
+              Off hides the feature and its pages. On shows them. The prices below are what merchants pay. Changing a price does not change an order that is already placed.
             </p>
           </div>
           <button
@@ -187,6 +210,28 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
         <p className="mt-3 text-sm font-medium text-slate-800">
           {form.features.promoteBusinessOnline ? "Visible" : "Hidden"}
         </p>
+        {promotionPrices.length > 0 ? (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {promotionPrices.map((item) => (
+              <div key={item.id} className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
+                <Field
+                  label={`${item.name} offer price`}
+                  type="number"
+                  disabled={!canManage}
+                  value={String(item.priceInr)}
+                  onChange={(value) => setPromotionPrice(item.id, "priceInr", value)}
+                />
+                <Field
+                  label={`${item.name} MRP`}
+                  type="number"
+                  disabled={!canManage}
+                  value={String(item.referenceInr)}
+                  onChange={(value) => setPromotionPrice(item.id, "referenceInr", value)}
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}

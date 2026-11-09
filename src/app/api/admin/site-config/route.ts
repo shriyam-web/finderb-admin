@@ -4,6 +4,7 @@ import { canAccessTab, canEditTab } from "../../../../lib/adminTabAccess";
 import {
   DEFAULT_SITE_CONFIG_FORM,
   SITE_CONFIG_ID,
+  parsePromotionPrices,
   parseSiteConfigForm,
   type SiteConfigForm,
 } from "../../../../lib/siteConfigAdmin";
@@ -63,7 +64,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: "You cannot open Site Configurations." }, { status: 403 });
     }
     const stored = await loadStoredConfig();
-    return NextResponse.json({ success: true, config: stored.form });
+    const { data: packages } = await getSupabase()
+      .from("promotion_packages")
+      .select("id, name, price_inr, reference_inr, sort_order")
+      .order("sort_order", { ascending: true });
+    const promotionPrices = (packages || []).map((row) => ({
+      id: String(row.id),
+      name: String(row.name || row.id),
+      priceInr: Number(row.price_inr) || 0,
+      referenceInr: Number(row.reference_inr) || 0,
+    }));
+    return NextResponse.json({ success: true, config: stored.form, promotionPrices });
   } catch (error) {
     console.error("[site-config] get failed", error);
     return NextResponse.json(
@@ -75,7 +86,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { adminId?: string; config?: unknown };
+    const body = (await request.json()) as { adminId?: string; config?: unknown; promotionPrices?: unknown };
     const adminId = body.adminId?.trim() || "";
     if (!adminId) {
       return NextResponse.json({ success: false, error: "Admin session is required." }, { status: 400 });
@@ -86,6 +97,11 @@ export async function POST(request: Request) {
         { success: false, error: "You cannot change Site Configurations." },
         { status: 403 },
       );
+    }
+
+    const parsedPrices = parsePromotionPrices(body.promotionPrices);
+    if (!parsedPrices.ok) {
+      return NextResponse.json({ success: false, error: parsedPrices.error }, { status: 400 });
     }
 
     const form = parseSiteConfigForm(body.config);
@@ -105,6 +121,22 @@ export async function POST(request: Request) {
         { success: false, error: "Site configuration could not be saved. The storage table may be missing." },
         { status: 500 },
       );
+    }
+    for (const price of parsedPrices.prices) {
+      const { error: priceError } = await supabase
+        .from("promotion_packages")
+        .update({
+          price_inr: price.priceInr,
+          reference_inr: price.referenceInr,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", price.id);
+      if (priceError) {
+        return NextResponse.json(
+          { success: false, error: "Promotion package prices could not be saved." },
+          { status: 500 },
+        );
+      }
     }
     return NextResponse.json({ success: true, config: form });
   } catch (error) {

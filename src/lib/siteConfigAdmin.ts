@@ -80,6 +80,37 @@ function flag(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
 }
 
+export type PromotionPriceInput = {
+  id: string;
+  priceInr: number;
+  referenceInr: number;
+};
+
+export function parsePromotionPrices(
+  raw: unknown,
+): { ok: true; prices: PromotionPriceInput[] } | { ok: false; error: string } {
+  if (raw == null) return { ok: true, prices: [] };
+  if (!Array.isArray(raw)) return { ok: false, error: "Check the promotion package prices." };
+  const prices: PromotionPriceInput[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") {
+      return { ok: false, error: "Check the promotion package prices." };
+    }
+    const row = item as Record<string, unknown>;
+    const id = String(row.id || "").trim();
+    const priceInr = Math.round(Number(row.priceInr));
+    const referenceInr = Math.round(Number(row.referenceInr));
+    if (!/^[a-z0-9_-]{1,40}$/i.test(id) || !Number.isFinite(priceInr) || priceInr < 1 || priceInr > 10_000_000) {
+      return { ok: false, error: "Check the offer price for each promotion package." };
+    }
+    if (!Number.isFinite(referenceInr) || referenceInr < priceInr || referenceInr > 10_000_000) {
+      return { ok: false, error: "Each promotion MRP must be at least the offer price." };
+    }
+    prices.push({ id, priceInr, referenceInr });
+  }
+  return { ok: true, prices };
+}
+
 export function parseSiteConfigForm(raw: unknown): SiteConfigForm {
   const row = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const pricing = (row.pricing && typeof row.pricing === "object" ? row.pricing : {}) as Record<string, unknown>;
