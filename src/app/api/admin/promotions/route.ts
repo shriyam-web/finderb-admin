@@ -121,7 +121,7 @@ export async function GET(request: Request) {
     errors: [ordersRes.error, verificationsRes.error, packagesRes.error, customRes.error]
       .filter(Boolean)
       .map((item) => item?.message)
-      .filter((message): message is string => Boolean(message) && !message.includes("CLOUDINARY_API_KEY")),
+      .filter((message) => typeof message === "string" && !message.includes("CLOUDINARY_API_KEY")),
   });
 }
 

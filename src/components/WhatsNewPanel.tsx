@@ -7,6 +7,7 @@ import {
   fetchWhatsNewEntries,
   markAllWhatsNewRead,
   markWhatsNewRead,
+  removeWhatsNewEntry,
   type WhatsNewEntry,
 } from "../lib/whatsNew";
 import { useAdminToast } from "./AdminToast";
@@ -28,6 +29,7 @@ type Props = {
   onOpen: () => void;
   onClose: () => void;
   adminId: string;
+  canRemove: boolean;
   unreadCount: number;
   onUnreadCountChange: (count: number) => void;
 };
@@ -37,6 +39,7 @@ export default function WhatsNewPanel({
   onOpen,
   onClose,
   adminId,
+  canRemove,
   unreadCount,
   onUnreadCountChange,
 }: Props) {
@@ -47,6 +50,7 @@ export default function WhatsNewPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
   const [fabPos, setFabPos] = useState<FabPos | null>(null);
   const [draggingFab, setDraggingFab] = useState(false);
@@ -139,6 +143,28 @@ export default function WhatsNewPanel({
       return next;
     });
     setMarkingId(null);
+  };
+
+  const handleRemove = async (entry: WhatsNewEntry) => {
+    if (!canRemove || removingId) return;
+    const confirmed = window.confirm(
+      `Remove "${entry.title}" from What's New for every admin?`,
+    );
+    if (!confirmed) return;
+    setRemovingId(entry.id);
+    const { error: removeError } = await removeWhatsNewEntry(entry.id);
+    if (removeError) {
+      toast(removeError, "error");
+      setRemovingId(null);
+      return;
+    }
+    setEntries((prev) => {
+      const next = prev.filter((item) => item.id !== entry.id);
+      onUnreadCountChange(next.filter((item) => !item.isRead).length);
+      return next;
+    });
+    setRemovingId(null);
+    toast("Removed for every admin", "success");
   };
 
   const latestUnread = entries.find((entry) => !entry.isRead) ?? null;
@@ -335,7 +361,17 @@ export default function WhatsNewPanel({
                     <p className="mt-1.5 text-[12.5px] text-slate-600 leading-relaxed whitespace-pre-wrap">
                       {entry.body}
                     </p>
-                    <div className="mt-2.5 flex items-center justify-end">
+                    <div className="mt-2.5 flex items-center justify-end gap-2">
+                      {canRemove && (
+                        <button
+                          type="button"
+                          className="admin-btn-danger !text-[11px] !py-1 !px-2.5"
+                          disabled={removingId === entry.id}
+                          onClick={() => void handleRemove(entry)}
+                        >
+                          {removingId === entry.id ? "Removing…" : "Remove"}
+                        </button>
+                      )}
                       {entry.isRead ? (
                         <span className="text-[11px] text-slate-400">Read</span>
                       ) : (

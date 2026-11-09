@@ -23,7 +23,8 @@ export async function fetchWhatsNewEntries(
   supabase: SupabaseClient,
   adminId: string,
 ): Promise<{ entries: WhatsNewEntry[]; unreadCount: number; error: string | null }> {
-  await ensureWhatsNewSeeds(supabase).catch(() => undefined);
+  const removed = await removedWhatsNewTitles(supabase);
+  await ensureWhatsNewSeeds(supabase, removed).catch(() => undefined);
 
   const [{ data: items, error: itemsError }, { data: reads, error: readsError }] =
     await Promise.all([
@@ -56,7 +57,9 @@ export async function fetchWhatsNewEntries(
     ((reads || []) as ReadRow[]).map((row) => [row.item_id, row.read_at]),
   );
 
-  const entries: WhatsNewEntry[] = ((items || []) as WhatsNewItem[]).map(
+  const entries: WhatsNewEntry[] = ((items || []) as WhatsNewItem[])
+    .filter((item) => !removed.has(item.title))
+    .map(
     (item) => {
       const readAt = readMap.get(item.id) ?? null;
       return {
@@ -153,14 +156,27 @@ const WHATS_NEW_SEEDS: Array<{
   },
 ];
 
+async function removedWhatsNewTitles(supabase: SupabaseClient): Promise<Set<string>> {
+  const titles = new Set(RETIRED_WHATS_NEW_TITLES);
+  const { data, error } = await supabase.from("admin_whats_new_removed").select("title");
+  if (error || !data) return titles;
+  for (const row of data as Array<{ title?: string }>) {
+    if (row.title) titles.add(row.title);
+  }
+  return titles;
+}
+
 async function ensureWhatsNewSeeds(
   supabase: SupabaseClient,
+  removed: Set<string>,
 ): Promise<void> {
-  await supabase.from("admin_whats_new").delete().in("title", RETIRED_WHATS_NEW_TITLES);
+  if (removed.size) {
+    await supabase.from("admin_whats_new").delete().in("title", [...removed]);
+  }
   const { data } = await supabase.from("admin_whats_new").select("title, body");
   const existing = (data || []) as Array<{ title: string; body: string }>;
   const titles = new Set(existing.map((row) => row.title));
-  const missing = WHATS_NEW_SEEDS.filter((item) => !titles.has(item.title));
+  const missing = WHATS_NEW_SEEDS.filter((item) => !titles.has(item.title) && !removed.has(item.title));
   if (missing.length) {
     await supabase.from("admin_whats_new").insert(missing);
   }
@@ -180,6 +196,27 @@ async function ensureWhatsNewSeeds(
       .update({ body: promo.body, published_at: promo.published_at })
       .eq("title", promo.title);
   }
+}
+
+export async function removeWhatsNewEntry(itemId: string): Promise<{ error: string | null }> {
+  let token = "";
+  try {
+    const raw = localStorage.getItem("admin_session");
+    token = raw ? String((JSON.parse(raw) as { token?: string }).token || "") : "";
+  } catch {
+    token = "";
+  }
+  const response = await fetch("/api/admin/whats-new", {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-session": token,
+    },
+    body: JSON.stringify({ id: itemId }),
+  });
+  const body = (await response.json().catch(() => null)) as { error?: string } | null;
+  if (!response.ok) return { error: body?.error || "That update could not be removed." };
+  return { error: null };
 }
 
 export async function markWhatsNewRead(

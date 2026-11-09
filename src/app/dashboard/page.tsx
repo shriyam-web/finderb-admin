@@ -3976,6 +3976,7 @@ export default function Dashboard() {
           onOpen={() => setWhatsNewOpen(true)}
           onClose={() => setWhatsNewOpen(false)}
           adminId={adminSession.id}
+          canRemove={isDeveloper}
           unreadCount={whatsNewUnreadCount}
           onUnreadCountChange={setWhatsNewUnreadCount}
         />
