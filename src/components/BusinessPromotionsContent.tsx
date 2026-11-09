@@ -51,7 +51,10 @@ type Verification = {
   document_type?: string | null;
   document_urls?: Array<string | null>;
   submitted_at?: string | null;
+  reviewed_at?: string | null;
   rejection_reason?: string | null;
+  declaration_accepted?: boolean | null;
+  accuracy_m?: number | null;
   business: Business;
 };
 
@@ -123,7 +126,14 @@ function when(value?: string | null) {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return date.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Kolkata",
+  });
 }
 
 function words(value?: string | null) {
@@ -288,90 +298,85 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
       ) : null}
 
       {section === "Verification" ? (
-        <div className="admin-card">
-          <div className="admin-table-wrap">
-            <table className="admin-table admin-table-compact">
-              <thead>
-                <tr>
-                  <th>Business</th>
-                  <th>Owner</th>
-                  <th>Status</th>
-                  <th>Shop</th>
-                  <th>Proof</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(data?.verifications || []).length === 0 ? <Empty>No shop checks yet.</Empty> : null}
-                {(data?.verifications || []).map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <p className="font-medium">{item.business?.businessName || item.business_id}</p>
-                      <p className="admin-card-description">{item.business?.category || item.business?.city || "—"}</p>
-                    </td>
-                    <td>
-                      <p>{item.business?.fullName || "—"}</p>
-                      <p className="admin-card-description">{item.business?.mobile || item.business?.email || "—"}</p>
-                    </td>
-                    <td>
-                      <StatusPill value={item.status} />
-                      <p className="admin-card-description mt-1">{when(item.submitted_at)}</p>
-                      {item.rejection_reason ? <p className="admin-card-description">{item.rejection_reason}</p> : null}
-                    </td>
-                    <td>
-                      {item.shop_photo_url ? (
-                        <a href={item.shop_photo_url} target="_blank" rel="noreferrer" className="font-medium underline">
-                          Photograph
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                      <p className="admin-card-description">
-                        {item.latitude ?? "—"}, {item.longitude ?? "—"}
-                      </p>
-                    </td>
-                    <td>
-                      {(item.document_urls || []).filter((url): url is string => Boolean(url)).map((url) => (
-                        <a key={url} href={url} target="_blank" rel="noreferrer" className="block font-medium underline">
-                          {words(item.document_type)}
-                        </a>
-                      ))}
-                      {(item.document_urls || []).filter(Boolean).length === 0 ? "—" : null}
-                    </td>
-                    <td>
-                      <div className="flex flex-wrap gap-2">
-                        <button type="button" className="admin-btn-primary !text-xs !py-1.5" disabled={!canManage || busy} onClick={() => void act({ action: "verification", id: item.id, status: "approved" })}>
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-btn-secondary !text-xs !py-1.5"
-                          disabled={!canManage || busy}
-                          onClick={() => {
-                            const reason = window.prompt("Rejection reason");
-                            if (reason) void act({ action: "verification", id: item.id, status: "rejected", reason });
-                          }}
-                        >
-                          Reject
-                        </button>
-                        <button
-                          type="button"
-                          className="admin-btn-secondary !text-xs !py-1.5"
-                          disabled={!canManage || busy}
-                          onClick={() => {
-                            const reason = window.prompt("What should the merchant send again?");
-                            if (reason) void act({ action: "verification", id: item.id, status: "resubmission_required", reason });
-                          }}
-                        >
-                          Ask again
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="grid gap-3">
+          {(data?.verifications || []).length === 0 ? (
+            <div className="admin-card">
+              <p className="admin-empty">No shop checks yet.</p>
+            </div>
+          ) : null}
+          {(data?.verifications || []).map((item) => {
+            const pending = item.status === "submitted" || item.status === "under_review";
+            const proofs = (item.document_urls || []).filter((url): url is string => Boolean(url));
+            return (
+              <article key={item.id} className="admin-card">
+                <div className="admin-card-header">
+                  <div>
+                    <h2 className="admin-card-title">{item.business?.businessName || item.business_id}</h2>
+                    <p className="admin-card-description">
+                      {item.business?.fullName || "Owner not on file"}
+                      {item.business?.mobile ? ` · ${item.business.mobile}` : ""}
+                      {item.business?.email ? ` · ${item.business.email}` : ""}
+                    </p>
+                  </div>
+                  <StatusPill value={item.status} />
+                </div>
+                <div className="grid gap-2 p-4 pt-0 text-sm">
+                  <p className="admin-card-description">
+                    {[item.business?.category, item.business?.city, item.business?.businessAddress].filter(Boolean).join(" · ") || "Address not on file"}
+                  </p>
+                  <p>Sent {when(item.submitted_at)}{item.reviewed_at ? ` · Updated ${when(item.reviewed_at)}` : ""}</p>
+                  <p>Certificate: {words(item.document_type)}. Declaration {item.declaration_accepted ? "accepted" : "not recorded"}.</p>
+                  <p>
+                    Location {item.latitude ?? "—"}, {item.longitude ?? "—"}
+                    {item.accuracy_m != null ? ` · about ${Math.round(Number(item.accuracy_m))} m` : ""}
+                  </p>
+                  <p className="flex flex-wrap gap-3">
+                    {item.shop_photo_url ? (
+                      <a href={item.shop_photo_url} target="_blank" rel="noreferrer" className="font-medium underline">Selfie</a>
+                    ) : <span>Selfie missing</span>}
+                    {proofs.map((url, index) => (
+                      <a key={url} href={url} target="_blank" rel="noreferrer" className="font-medium underline">
+                        Certificate{proofs.length > 1 ? ` ${index + 1}` : ""}
+                      </a>
+                    ))}
+                    {proofs.length === 0 ? <span>Certificate missing</span> : null}
+                  </p>
+                  {item.rejection_reason ? <p className="admin-card-description">{item.rejection_reason}</p> : null}
+                  {pending ? (
+                    <div className="flex flex-wrap gap-2">
+                      <button type="button" className="admin-btn-primary !text-xs !py-1.5" disabled={!canManage || busy} onClick={() => void act({ action: "verification", id: item.id, status: "approved" })}>
+                        Approve
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn-secondary !text-xs !py-1.5"
+                        disabled={!canManage || busy}
+                        onClick={() => {
+                          const reason = window.prompt("Rejection reason");
+                          if (reason) void act({ action: "verification", id: item.id, status: "rejected", reason });
+                        }}
+                      >
+                        Reject
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn-secondary !text-xs !py-1.5"
+                        disabled={!canManage || busy}
+                        onClick={() => {
+                          const reason = window.prompt("What should the merchant send again?");
+                          if (reason) void act({ action: "verification", id: item.id, status: "resubmission_required", reason });
+                        }}
+                      >
+                        Ask again
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="admin-card-description">This check is {words(item.status)}. The decision buttons stay hidden.</p>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
       ) : null}
 
