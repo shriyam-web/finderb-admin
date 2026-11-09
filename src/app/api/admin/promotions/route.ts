@@ -79,13 +79,14 @@ export async function GET(request: Request) {
     },
     orders: orders.map((row) => ({
       ...row,
-      video_url: (row.video_public_id
-        ? privateDownloadUrl({
-            publicId: String(row.video_public_id),
-            resource: "video",
-            format: String(row.video_format || ""),
-          }, true)
-        : null) || (typeof row.video_url === "string" && row.video_url.startsWith("https://") ? row.video_url : null),
+      video_url: (typeof row.video_url === "string" && row.video_url.startsWith("https://") ? row.video_url : null)
+        || (row.video_public_id
+          ? privateDownloadUrl({
+              publicId: String(row.video_public_id),
+              resource: "video",
+              format: String(row.video_format || ""),
+            }, true)
+          : null),
       business: businesses[String(row.business_id)] || null,
     })),
     verifications: verifications.map((row) => ({
