@@ -325,21 +325,22 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
                     {[item.business?.category, item.business?.city, item.business?.businessAddress].filter(Boolean).join(" · ") || "Address not on file"}
                   </p>
                   <p>Sent {when(item.submitted_at)}{item.reviewed_at ? ` · Updated ${when(item.reviewed_at)}` : ""}</p>
-                  <p>Certificate: {words(item.document_type)}. Declaration {item.declaration_accepted ? "accepted" : "not recorded"}.</p>
+                  <p>Live camera only. The certificate and the selfie are photographed on the spot. A gallery photo is not accepted for either.</p>
+                  <p>Certificate type: {words(item.document_type)}. Declaration {item.declaration_accepted ? "accepted" : "not recorded"}.</p>
                   <p>
                     Location {item.latitude ?? "—"}, {item.longitude ?? "—"}
                     {item.accuracy_m != null ? ` · about ${Math.round(Number(item.accuracy_m))} m` : ""}
                   </p>
                   <p className="flex flex-wrap gap-3">
                     {item.shop_photo_url ? (
-                      <a href={item.shop_photo_url} target="_blank" rel="noreferrer" className="font-medium underline">Selfie</a>
-                    ) : <span>Selfie missing</span>}
+                      <a href={item.shop_photo_url} target="_blank" rel="noreferrer" className="font-medium underline">Live selfie</a>
+                    ) : <span>Live selfie missing</span>}
                     {proofs.map((url, index) => (
                       <a key={url} href={url} target="_blank" rel="noreferrer" className="font-medium underline">
-                        Certificate{proofs.length > 1 ? ` ${index + 1}` : ""}
+                        Live certificate{proofs.length > 1 ? ` ${index + 1}` : ""}
                       </a>
                     ))}
-                    {proofs.length === 0 ? <span>Certificate missing</span> : null}
+                    {proofs.length === 0 ? <span>Live certificate missing</span> : null}
                   </p>
                   {item.rejection_reason ? <p className="admin-card-description">{item.rejection_reason}</p> : null}
                   {pending ? (
@@ -478,10 +479,10 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
                   </p>
                   {open.video_url ? (
                     <a href={open.video_url} target="_blank" rel="noreferrer" className="text-sm font-medium underline">
-                      Download uploaded video
+                      Gallery video
                     </a>
                   ) : (
-                    <p className="admin-card-description">No video yet.</p>
+                    <p className="admin-card-description">No gallery video yet. The merchant can upload one from their gallery.</p>
                   )}
                   <p className="admin-card-description">
                     Gateway {open.razorpay_order_id || "—"} · {open.razorpay_payment_id || "unpaid"}
