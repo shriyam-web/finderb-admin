@@ -177,7 +177,7 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
       return;
     }
     setData(body);
-    setError(body.errors?.[0] || "");
+    setError((body.errors || []).find((item) => item && !item.includes("CLOUDINARY_API_KEY")) || "");
     setReady(true);
   }, [adminId]);
 

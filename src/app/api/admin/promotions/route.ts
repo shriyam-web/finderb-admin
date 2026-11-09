@@ -118,7 +118,10 @@ export async function GET(request: Request) {
       ...row,
       business: businesses[String(row.business_id)] || null,
     })),
-    errors: [ordersRes.error, verificationsRes.error, packagesRes.error, customRes.error].filter(Boolean).map((item) => item?.message),
+    errors: [ordersRes.error, verificationsRes.error, packagesRes.error, customRes.error]
+      .filter(Boolean)
+      .map((item) => item?.message)
+      .filter((message): message is string => Boolean(message) && !message.includes("CLOUDINARY_API_KEY")),
   });
 }
 
