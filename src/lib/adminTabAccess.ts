@@ -167,6 +167,12 @@ function modeFromAllowList(
     return modes["Payments & Subscriptions"];
   }
 
+  if (normalized === "Ads Request") {
+    const inherited =
+      modes["Business Promotions"] || modes["Payments & Subscriptions"];
+    if (inherited === "read" || inherited === "edit") return inherited;
+  }
+
   return "none";
 }
 

@@ -47,6 +47,7 @@ const TAB_ALIASES: Record<string, string[]> = {
   Settings: ["settings", "setting", "maintenance", "site mode"],
   "Site Configurations": ["site configuration", "pricing", "plan price", "contact", "promote switch"],
   "Business Promotions": ["promote", "promotion", "verification", "campaign", "booster", "ads"],
+  "Ads Request": ["ad request", "ads request", "ad approval", "video approval", "deny ad"],
   "Manage Admins": ["admin", "admins", "controller", "developer", "staff"],
   News: ["news"],
   Movies: ["movie", "movies", "film", "films"],

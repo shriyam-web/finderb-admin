@@ -58,6 +58,7 @@ import AdminOverlay from "../../components/AdminOverlay";
 import SettingsContent, { Settings } from "../../components/SettingsContent";
 import SiteConfigurationsContent from "../../components/SiteConfigurationsContent";
 import BusinessPromotionsContent from "../../components/BusinessPromotionsContent";
+import AdsRequestsContent from "../../components/AdsRequestsContent";
 import { reportAdminSession } from "../../lib/adminSessionActivity";
 import { planLabel, MERCHANT_PLAN_PRESETS, resolvePlanPresetId } from "../../lib/merchantPlanAdmin";
 import {
@@ -450,6 +451,7 @@ type SidebarQueueCounts = {
   changeRequests: number;
   ownershipRequests: number;
   jobReports: number;
+  adsRequests: number;
 };
 
 type AdminTodo = {
@@ -473,6 +475,7 @@ const EMPTY_QUEUE_COUNTS: SidebarQueueCounts = {
   changeRequests: 0,
   ownershipRequests: 0,
   jobReports: 0,
+  adsRequests: 0,
 };
 
 const SIDEBAR_MIN = 220;
@@ -907,6 +910,14 @@ const ALL_MENU_ITEMS = [
     ),
   },
   {
+    name: "Ads Request",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      </svg>
+    ),
+  },
+  {
     name: "Site Configurations",
     icon: (
       <svg
@@ -1020,6 +1031,7 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
       "Reviews",
       "Change Requests",
       "Ownership Requests",
+      "Ads Request",
     ],
   },
   { label: "Payments", items: ["Payments & Subscriptions", "Business Promotions"] },
@@ -1420,6 +1432,7 @@ export default function Dashboard() {
             changeRequests: Number(data.counts.changeRequests) || 0,
             ownershipRequests: Number(data.counts.ownershipRequests) || 0,
             jobReports: Number(data.counts.jobReports) || 0,
+            adsRequests: Number(data.counts.adsRequests) || 0,
           });
           setQueueItems(Array.isArray(data.items) ? data.items : []);
         }
@@ -2141,6 +2154,7 @@ export default function Dashboard() {
     if (name === "Change Requests") return queueCounts.changeRequests;
     if (name === "Ownership Requests") return queueCounts.ownershipRequests;
     if (name === "Job Reports") return queueCounts.jobReports;
+    if (name === "Ads Request") return queueCounts.adsRequests;
     return 0;
   };
 
@@ -3017,6 +3031,14 @@ export default function Dashboard() {
           <BusinessPromotionsContent
             adminId={adminSession?.id || ""}
             canManage={hasFullTabAccess(adminSession, "Business Promotions")}
+          />
+        );
+      case "Ads Request":
+        return (
+          <AdsRequestsContent
+            adminId={adminSession?.id || ""}
+            canManage={hasFullTabAccess(adminSession, "Ads Request")}
+            focusId={todoFocus?.tab === "Ads Request" ? todoFocus.targetId : null}
           />
         );
       case "Site Configurations":

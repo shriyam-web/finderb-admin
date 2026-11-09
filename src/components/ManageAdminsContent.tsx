@@ -58,6 +58,7 @@ export const ASSIGNABLE_ADMIN_TABS = [
   "Tourist Places",
   "Payments & Subscriptions",
   "Business Promotions",
+  "Ads Request",
   "Broadcasts",
   "Broadcast Email",
   "Blogs",

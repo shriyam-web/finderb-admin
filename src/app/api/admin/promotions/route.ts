@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { canAccessTab, canEditTab } from "../../../../lib/adminTabAccess";
-import { PROMO_TAB, canMoveCampaign } from "../../../../lib/promotionOps";
+import { PROMO_TAB } from "../../../../lib/promotionOps";
 import { privateDownloadUrl, readStoredAssets } from "../../../../lib/privateMedia";
 
 function getSupabase() {
@@ -159,12 +159,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   }
 
+  if (action === "deleteVerification") {
+    const id = String(body.id || "");
+    const { data: row, error: readError } = await supabase
+      .from("business_verifications")
+      .select("id, business_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (readError) return NextResponse.json({ error: readError.message }, { status: 500 });
+    if (!row) return NextResponse.json({ error: "That verification was not found." }, { status: 404 });
+    const businessId = String(row.business_id || "");
+    const { error } = await supabase.from("business_verifications").delete().eq("business_id", businessId);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    await supabase.from("promotion_audit").insert({
+      verification_id: id,
+      business_id: businessId,
+      actor_admin_id: admin.id,
+      action: "verification_deleted",
+      note: "Verification removed. The business must apply again from the start.",
+    });
+    return NextResponse.json({ success: true });
+  }
+
   if (action === "status") {
     const { data: order } = await supabase.from("promotion_orders").select("id, campaign_status, payment_status").eq("id", body.id).maybeSingle();
     if (!order) return NextResponse.json({ error: "Order not found." }, { status: 404 });
     const next = String(body.status || "");
-    if (next === "payment_successful" || !canMoveCampaign(String(order.campaign_status), next)) {
-      return NextResponse.json({ error: "That status change is not allowed." }, { status: 400 });
+    const manual = ["under_review", "editing", "video_ready", "ad_active", "completed", "rejected", "cancelled", "refund_pending", "refunded"];
+    if (!manual.includes(next)) {
+      return NextResponse.json({ error: "Choose a status from the list." }, { status: 400 });
+    }
+    if (["editing", "video_ready", "ad_active", "completed"].includes(next) && order.payment_status !== "paid") {
+      return NextResponse.json({ error: "Payment has to be received before this status." }, { status: 400 });
     }
     if (["rejected", "cancelled", "refund_pending", "refunded"].includes(next) && !String(body.note || "").trim()) {
       return NextResponse.json({ error: "Add a reason for this change." }, { status: 400 });

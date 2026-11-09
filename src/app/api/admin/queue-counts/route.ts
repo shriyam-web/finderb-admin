@@ -139,6 +139,19 @@ async function engagementTodos(supabase: SupabaseClient): Promise<QueueTodoItem[
   return items;
 }
 
+function adRequestPending(row: Record<string, unknown>): boolean {
+  if (String(row.payment_status || "pending") === "paid") return false;
+  const closed = ["rejected", "cancelled", "refund_pending", "refunded", "completed"];
+  if (closed.includes(String(row.campaign_status || ""))) return false;
+  const stored = String(row.ad_review_status || "");
+  if (stored === "approved" || stored === "denied") return false;
+  if (stored === "pending") return true;
+  return Boolean(
+    row.video_public_id ||
+      (typeof row.video_url === "string" && row.video_url.startsWith("https://")),
+  );
+}
+
 async function exactCount(
   supabase: SupabaseClient,
   table: string,
@@ -267,7 +280,7 @@ export async function GET(request: Request) {
         waitingSince: when(row),
         kind: "ownership",
       })),
-      ...reportRows.map((row) => ({
+      ...      reportRows.map((row) => ({
         id: `job-report-${row.id}`,
         tab: "Job Reports",
         title: clip(row.job_title) || "Reported job",
@@ -277,6 +290,32 @@ export async function GET(request: Request) {
         kind: "job-report",
       })),
     ];
+
+    let adsRequests = 0;
+    if (allowed("Ads Request")) {
+      const adRows = await supabase
+        .from("promotion_orders")
+        .select("id, package_snapshot, ad_review_status, video_public_id, video_url, payment_status, campaign_status, created_at, target_area")
+        .neq("payment_status", "paid")
+        .order("created_at", { ascending: true })
+        .limit(200);
+      const waiting = ((adRows.data || []) as unknown as Record<string, unknown>[]).filter(adRequestPending);
+      adsRequests = waiting.length;
+      for (const row of waiting.slice(0, 20)) {
+        const snap = (row.package_snapshot && typeof row.package_snapshot === "object"
+          ? row.package_snapshot
+          : {}) as Record<string, unknown>;
+        items.push({
+          id: `ad-${row.id}`,
+          tab: "Ads Request",
+          title: String(snap.name || "Ad request"),
+          detail: clip(row.target_area) || "Waiting for an ad decision",
+          targetId: String(row.id || ""),
+          waitingSince: when(row),
+          kind: "ad-request",
+        });
+      }
+    }
 
     if (allowed("Broadcasts")) {
       items.push(...(await engagementTodos(supabase)));
@@ -289,6 +328,7 @@ export async function GET(request: Request) {
         changeRequests,
         ownershipRequests,
         jobReports,
+        adsRequests,
       },
       items,
     });

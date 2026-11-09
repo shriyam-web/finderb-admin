@@ -20,7 +20,7 @@ type Order = {
   id: string;
   business_id: string;
   package_id: string;
-  package_snapshot: { name?: string; durationDays?: number; coverage?: string; referenceInr?: number };
+  package_snapshot: { name?: string; durationDays?: number; coverage?: string; referenceInr?: number; audience?: string; content?: string };
   video_url?: string | null;
   target_pincode?: string | null;
   target_area?: string | null;
@@ -113,14 +113,6 @@ type Payload = {
 };
 
 const SECTIONS = ["Overview", "Verification", "Orders", "Custom", "Packages", "Payments"] as const;
-const NEXT_STATUS: Record<string, string[]> = {
-  payment_successful: ["under_review", "rejected", "cancelled", "refund_pending"],
-  under_review: ["editing", "video_ready", "rejected", "cancelled", "refund_pending"],
-  editing: ["video_ready", "under_review", "rejected"],
-  video_ready: ["ad_active", "editing", "rejected"],
-  ad_active: ["completed"],
-  refund_pending: ["refunded", "cancelled"],
-};
 
 function when(value?: string | null) {
   if (!value) return "—";
@@ -177,6 +169,8 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
   const [selected, setSelected] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [metrics, setMetrics] = useState({ reach: "", views: "", visits: "" });
+  const [statusChoice, setStatusChoice] = useState<Record<string, string>>({});
+  const [campaignChoice, setCampaignChoice] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     const response = await fetch(`/api/admin/promotions?adminId=${encodeURIComponent(adminId)}`);
@@ -305,7 +299,6 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
             </div>
           ) : null}
           {(data?.verifications || []).map((item) => {
-            const pending = item.status === "submitted" || item.status === "under_review";
             const proofs = (item.document_urls || []).filter((url): url is string => Boolean(url));
             return (
               <article key={item.id} className="admin-card">
@@ -342,35 +335,52 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
                     {proofs.length === 0 ? <span>Certificate missing</span> : null}
                   </p>
                   {item.rejection_reason ? <p className="admin-card-description">{item.rejection_reason}</p> : null}
-                  {pending ? (
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" className="admin-btn-primary !text-xs !py-1.5" disabled={!canManage || busy} onClick={() => void act({ action: "verification", id: item.id, status: "approved" })}>
-                        Approve
-                      </button>
+                  {canManage ? (
+                    <div>
                       <button
                         type="button"
                         className="admin-btn-secondary !text-xs !py-1.5"
-                        disabled={!canManage || busy}
+                        disabled={busy}
                         onClick={() => {
-                          const reason = window.prompt("Rejection reason");
-                          if (reason) void act({ action: "verification", id: item.id, status: "rejected", reason });
+                          const name = item.business?.businessName || "this business";
+                          if (window.confirm(`Delete the verification for ${name}? They will have to photograph the certificate and selfie again from the start.`)) {
+                            void act({ action: "deleteVerification", id: item.id });
+                          }
                         }}
                       >
-                        Reject
-                      </button>
-                      <button
-                        type="button"
-                        className="admin-btn-secondary !text-xs !py-1.5"
-                        disabled={!canManage || busy}
-                        onClick={() => {
-                          const reason = window.prompt("What should the merchant send again?");
-                          if (reason) void act({ action: "verification", id: item.id, status: "resubmission_required", reason });
-                        }}
-                      >
-                        Ask again
+                        Delete application
                       </button>
                     </div>
                   ) : null}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      className="admin-input !w-auto !py-1.5 text-xs"
+                      value={statusChoice[item.id] || (item.status === "submitted" ? "under_review" : item.status)}
+                      onChange={(event) => setStatusChoice((current) => ({ ...current, [item.id]: event.target.value }))}
+                    >
+                      <option value="under_review">Checking</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Needs a change</option>
+                      <option value="resubmission_required">Send it again</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="admin-btn-primary !text-xs !py-1.5"
+                      disabled={!canManage || busy}
+                      onClick={() => {
+                        const status = statusChoice[item.id] || (item.status === "submitted" ? "under_review" : item.status);
+                        if (status === "rejected" || status === "resubmission_required") {
+                          const reason = window.prompt(status === "rejected" ? "What needs to change?" : "What should the merchant send again?");
+                          if (!reason) return;
+                          void act({ action: "verification", id: item.id, status, reason });
+                          return;
+                        }
+                        void act({ action: "verification", id: item.id, status });
+                      }}
+                    >
+                      Update status
+                    </button>
+                  </div>
                 </div>
               </article>
             );
@@ -471,6 +481,12 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
                     {open.target_area || "—"}, {open.target_pincode || "—"}
                     <span className="admin-card-description block">{open.target_coverage || "—"}</span>
                   </p>
+                  {open.package_snapshot?.audience || open.package_snapshot?.content ? (
+                    <p className="text-sm">
+                      {open.package_snapshot?.audience || "—"}
+                      <span className="admin-card-description block">{open.package_snapshot?.content || "—"}</span>
+                    </p>
+                  ) : null}
                   <p className="admin-card-description">
                     Start {when(open.campaign_started_at)} · End {when(open.campaign_ended_at)}
                   </p>
@@ -485,18 +501,36 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
                     Gateway {open.razorpay_order_id || "—"} · {open.razorpay_payment_id || "unpaid"}
                   </p>
                   {open.rejection_reason ? <div className="admin-alert-error">{open.rejection_reason}</div> : null}
-                  <div className="flex flex-wrap gap-2">
-                    {(NEXT_STATUS[open.campaign_status] || []).map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        className="admin-btn-secondary !text-xs !py-1.5"
-                        disabled={!canManage || busy}
-                        onClick={() => void act({ action: "status", id: open.id, status: item, note })}
-                      >
-                        {words(item)}
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      className="admin-input !w-auto !py-1.5 text-xs"
+                      value={campaignChoice[open.id] || open.campaign_status}
+                      onChange={(event) => setCampaignChoice((current) => ({ ...current, [open.id]: event.target.value }))}
+                    >
+                      {open.campaign_status === "payment_pending" ? <option value="payment_pending">Waiting for payment</option> : null}
+                      {open.campaign_status === "payment_successful" ? <option value="payment_successful">Payment received</option> : null}
+                      <option value="under_review">Checking the ad</option>
+                      <option value="editing">FinderB is making the ad</option>
+                      <option value="video_ready">Ad is ready</option>
+                      <option value="ad_active">Ads are live</option>
+                      <option value="completed">Ads finished</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="cancelled">Cancelled</option>
+                      <option value="refund_pending">Refund pending</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="admin-btn-primary !text-xs !py-1.5"
+                      disabled={!canManage || busy}
+                      onClick={() => {
+                        const status = campaignChoice[open.id] || open.campaign_status;
+                        if (status === open.campaign_status) return;
+                        void act({ action: "status", id: open.id, status, note });
+                      }}
+                    >
+                      Update status
+                    </button>
                   </div>
                   <input className="admin-input" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Reason or note" />
                   {open.campaign_status === "completed" || open.campaign_status === "ad_active" ? (

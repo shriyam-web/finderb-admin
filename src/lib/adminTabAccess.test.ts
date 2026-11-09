@@ -45,6 +45,7 @@ const ALL_TABS = [
   "Reviews",
   "Change Requests",
   "Ownership Requests",
+  "Ads Request",
   "Job Reports",
   "News",
   "FinderB E-commerce",
@@ -134,6 +135,20 @@ assert.equal(
     "Business Promotions",
   ),
   "edit",
+);
+assert.equal(
+  resolveTabAccess(
+    { role: "admin", allowed_tab_modes: { "Payments & Subscriptions": "edit" } },
+    "Ads Request",
+  ),
+  "edit",
+);
+assert.equal(
+  resolveTabAccess(
+    { role: "admin", allowed_tab_modes: { Merchants: "edit" } },
+    "Ads Request",
+  ),
+  "none",
 );
 assert.equal(resolveTabAccess({ role: "developer" }, "Site Configurations"), "edit");
 assert.equal(resolveTabAccess({ role: "controller" }, "Site Configurations"), "none");

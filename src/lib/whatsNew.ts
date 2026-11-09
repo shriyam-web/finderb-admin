@@ -85,6 +85,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Ads Request checks each ad before payment",
+    body: "Ads Request is a new tab under Requests. Its name shines in the sidebar for 30 days.\n\nA verified business can make more than one ad. After the video is saved, that ad waits here. Payment stays closed until you approve it.\n\nOpen the video, the target, and the ad content. Approve it, deny it with a reason, or delete an unpaid request. Business verification is still on Business Promotions. Anyone who can open Business Promotions can open Ads Request.",
+    published_at: "2026-11-09T15:50:00+05:30",
+  },
+  {
     title: "Business Promotions is a new tab under Payments",
     body: "Business Promotions is new. Its name shines in the sidebar for 30 days, the same way other new tabs do.\n\nOpen Payments, then Business Promotions. The page uses the admin theme, including dark mode. It has shop verifications, promotion orders, custom plans, package prices, and promotion payments.\n\nPayments & Subscriptions is still the plan ledger. Anyone who can open that tab can open Business Promotions. The name stops shining after 30 days.",
     published_at: "2026-11-09T11:40:00+05:30",
