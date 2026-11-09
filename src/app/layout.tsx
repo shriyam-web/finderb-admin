@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import AppProviders from "../components/AppProviders";
 import "./globals.css";
 import "./controller-theme.css";
@@ -8,16 +8,16 @@ import "./dark-theme.css";
 import "./theme-contrast.css";
 import "./theme-visibility.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+const inter = localFont({
+  src: "../fonts/Inter-latin.woff2",
+  weight: "400 700",
   variable: "--font-sans-ui",
   display: "swap",
 });
 
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+const plusJakarta = localFont({
+  src: "../fonts/PlusJakartaSans-latin.woff2",
+  weight: "500 700",
   variable: "--font-whats-new",
   display: "swap",
 });
