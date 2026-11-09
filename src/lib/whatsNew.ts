@@ -80,6 +80,16 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Site Configurations is under Platform",
+    body: "Open Platform in the sidebar, then Site Configurations.\n\nThat tab sets the prices merchants are charged, the public contact details, and whether Promote your business online is visible. Growth and Pro each have an offer price and an MRP. Phone and address stay hidden until Show phone or Show address is on.\n\nA Developer account sees this tab. Other accounts see it only after a Developer grants Site Configurations in Manage Admins.",
+    published_at: "2026-11-08T12:00:00+05:30",
+  },
+  {
+    title: "Business Promotions is a new tab under Payments",
+    body: "Business Promotions is new. Its name shines in the sidebar for 30 days, the same way other new tabs do.\n\nOpen Payments, then Business Promotions. The page uses the admin theme, including dark mode. It has shop verifications, promotion orders, custom plans, package prices, and promotion payments.\n\nPayments & Subscriptions is still the plan ledger. Anyone who can open that tab can open Business Promotions. The name stops shining after 30 days.",
+    published_at: "2026-11-09T11:40:00+05:30",
+  },
+  {
     title: "Change your password from profile or Settings",
     body: "Open Your profile, or the Settings tab, and press Change password.\n\nFinderB asks for your current password, then emails a 6-digit code. The new password opens only after that code. Type it twice. It needs at least 8 characters, letters and a number, plus an uppercase letter or a symbol. Common passwords are rejected.\n\nWhen it is saved, a confirmation email is sent. The new password is stored in the same secure form used at sign-in. You stay signed in on this browser.",
     published_at: "2026-10-18T13:50:00+05:30",
@@ -163,6 +173,14 @@ async function ensureWhatsNewSeeds(
       .from("admin_whats_new")
       .update({ body: queues.body })
       .eq("title", queues.title);
+  }
+  const promo = WHATS_NEW_SEEDS.find((item) => item.title === "Business Promotions is a new tab under Payments");
+  const storedPromo = existing.find((row) => row.title === promo?.title);
+  if (promo && storedPromo && storedPromo.body !== promo.body) {
+    await supabase
+      .from("admin_whats_new")
+      .update({ body: promo.body, published_at: promo.published_at })
+      .eq("title", promo.title);
   }
 }
 

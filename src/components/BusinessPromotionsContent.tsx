@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AdminContentLoader from "./AdminContentLoader";
 import { inr } from "../lib/promotionOps";
 
 type Props = { adminId: string; canManage: boolean };
@@ -48,7 +49,7 @@ type Verification = {
   latitude?: number | null;
   longitude?: number | null;
   document_type?: string | null;
-  document_urls?: string[];
+  document_urls?: Array<string | null>;
   submitted_at?: string | null;
   rejection_reason?: string | null;
   business: Business;
@@ -125,11 +126,39 @@ function when(value?: string | null) {
   return date.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
+function words(value?: string | null) {
+  if (!value) return "—";
+  return value.replaceAll("_", " ");
+}
+
+function StatusPill({ value }: { value?: string | null }) {
+  const text = words(value);
+  const token = String(value || "");
+  const good = /paid|approved|active|completed|video_ready|quoted/.test(token);
+  const bad = /reject|fail|cancel|refund/.test(token);
+  return (
+    <span className={`admin-status-pill ${good ? "admin-status-live" : bad ? "admin-status-warn" : ""}`}>
+      {text}
+    </span>
+  );
+}
+
+function Empty({ children }: { children: string }) {
+  return (
+    <tr>
+      <td colSpan={8} className="admin-empty">
+        {children}
+      </td>
+    </tr>
+  );
+}
+
 export default function BusinessPromotionsContent({ adminId, canManage }: Props) {
   const [section, setSection] = useState<(typeof SECTIONS)[number]>("Overview");
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [packageId, setPackageId] = useState("all");
@@ -144,10 +173,12 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
     const body = (await response.json()) as Payload;
     if (!response.ok) {
       setError(body.error || "Promotions could not be loaded.");
+      setReady(true);
       return;
     }
     setData(body);
     setError(body.errors?.[0] || "");
+    setReady(true);
   }, [adminId]);
 
   useEffect(() => {
@@ -188,268 +219,459 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
   }, [orders, query, status, packageId, fromDate, toDate]);
   const open = orders.find((order) => order.id === selected) || null;
   const history = (data?.audit || []).filter((row) => row.order_id === open?.id);
+  const stats = data?.stats || {};
+
+  if (!ready) return <AdminContentLoader label="Loading promotions" />;
 
   return (
-    <div className="bp-root">
-      <style>{`
-        .bp-root { color: #0f172a; }
-        .bp-root h2 { margin: 0; font-size: 22px; font-weight: 650; }
-        .bp-root p { margin: 4px 0 0; color: #64748b; font-size: 13px; }
-        .bp-tabs, .bp-stats, .bp-filters { display: flex; gap: 8px; flex-wrap: wrap; }
-        .bp-tabs { margin: 16px 0; }
-        .bp-tabs button, .bp-btn { border: 1px solid #e2e8f0; background: #fff; border-radius: 8px; padding: 7px 12px; font-size: 13px; cursor: pointer; }
-        .bp-tabs button[data-on="true"] { background: #153551; color: #fff; border-color: #153551; }
-        .bp-stats { margin-bottom: 16px; }
-        .bp-stat { min-width: 140px; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; }
-        .bp-stat b { display: block; font-size: 20px; }
-        .bp-stat span { color: #64748b; font-size: 12px; }
-        .bp-card, .bp-table { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; }
-        .bp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .bp-table th, .bp-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
-        .bp-table th { color: #64748b; font-weight: 600; font-size: 12px; }
-        .bp-filters { margin-bottom: 12px; }
-        .bp-filters input, .bp-filters select, .bp-field { border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
-        .bp-split { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .8fr); gap: 12px; }
-        .bp-card { padding: 14px; }
-        .bp-error { color: #b91c1c; font-size: 13px; margin-bottom: 10px; }
-        .bp-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-        .bp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-        @media (max-width: 900px) { .bp-split { grid-template-columns: 1fr; } }
-      `}</style>
-      <h2>Business Promotions</h2>
-      <p>Verification, orders and campaign results. This does not change Live Leads subscriptions.</p>
-      {error ? <p className="bp-error">{error}</p> : null}
-      <div className="bp-tabs">
+    <div className="space-y-4 font-sans">
+      <div className="admin-platform-hero">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <h1 className="admin-page-title">Business Promotions</h1>
+            <p className="admin-page-subtitle">
+              Shop checks, promotion orders, and the money collected for ads. This does not change Live Leads plans.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span className="admin-metric-chip">
+                Orders <strong>{stats.orders ?? 0}</strong>
+              </span>
+              <span className="admin-metric-chip">
+                Collected <strong>{inr(stats.revenue || 0)}</strong>
+              </span>
+              <span className="admin-metric-chip">
+                Awaiting check <strong>{(data?.verifications || []).filter((item) => item.status === "submitted" || item.status === "under_review").length}</strong>
+              </span>
+            </div>
+          </div>
+          <button type="button" onClick={() => void load()} disabled={busy} className="admin-btn-primary self-start shrink-0">
+            {busy ? "Saving…" : "Refresh"}
+          </button>
+        </div>
+      </div>
+
+      {error ? <div className="admin-alert-error">{error}</div> : null}
+
+      <div className="admin-segmented flex-wrap">
         {SECTIONS.map((item) => (
-          <button key={item} type="button" data-on={section === item} onClick={() => setSection(item)}>{item}</button>
+          <button
+            key={item}
+            type="button"
+            onClick={() => setSection(item)}
+            className={`admin-segmented-btn ${section === item ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}
+          >
+            {item}
+          </button>
         ))}
       </div>
 
       {section === "Overview" ? (
-        <div className="bp-stats">
+        <div className="admin-kpi-grid">
           {[
-            ["Orders", data?.stats.orders],
-            ["Revenue", inr(data?.stats.revenue || 0)],
-            ["Pending pay", data?.stats.pendingPayments],
-            ["Paid", data?.stats.paid],
-            ["In review", data?.stats.review],
-            ["Active", data?.stats.active],
-            ["Completed", data?.stats.completed],
-            ["Rejected", data?.stats.rejected],
-            ["Videos", data?.stats.videos],
-            ["Custom open", data?.stats.custom],
-          ].map(([label, value]) => (
-            <div className="bp-stat" key={String(label)}><b>{value ?? "—"}</b><span>{label}</span></div>
+            ["Orders", stats.orders, "admin-kpi-primary"],
+            ["Collected", inr(stats.revenue || 0), "admin-kpi-success"],
+            ["Pending pay", stats.pendingPayments, "admin-kpi-neutral"],
+            ["Paid", stats.paid, "admin-kpi-success"],
+            ["In review", stats.review, "admin-kpi-secondary"],
+            ["Ads live", stats.active, "admin-kpi-primary"],
+            ["Completed", stats.completed, "admin-kpi-success"],
+            ["Rejected", stats.rejected, "admin-kpi-neutral"],
+            ["Videos in", stats.videos, "admin-kpi-secondary"],
+            ["Custom open", stats.custom, "admin-kpi-primary"],
+          ].map(([label, value, tone]) => (
+            <div key={String(label)} className={`admin-kpi ${tone}`}>
+              <p className="admin-kpi-label">{label}</p>
+              <p className="admin-kpi-value">{value ?? "—"}</p>
+            </div>
           ))}
         </div>
       ) : null}
 
       {section === "Verification" ? (
-        <table className="bp-table">
-          <thead>
-            <tr><th>Business</th><th>Owner</th><th>Status</th><th>Shop</th><th>Documents</th><th>Action</th></tr>
-          </thead>
-          <tbody>
-            {(data?.verifications || []).map((item) => (
-              <tr key={item.id}>
-                <td>{item.business?.businessName || item.business_id}<br />{item.business?.category}</td>
-                <td>{item.business?.fullName}<br />{item.business?.mobile}</td>
-                <td>{item.status.replaceAll("_", " ")}<br />{when(item.submitted_at)}{item.rejection_reason ? <><br />{item.rejection_reason}</> : null}</td>
-                <td>
-                  {item.shop_photo_url ? <a href={item.shop_photo_url} target="_blank" rel="noreferrer">Photograph</a> : "—"}
-                  <br />{item.latitude}, {item.longitude}
-                </td>
-                <td>
-                  {(item.document_urls || []).map((url) => (
-                    <div key={url}><a href={url} target="_blank" rel="noreferrer">{item.document_type}</a></div>
-                  ))}
-                </td>
-                <td>
-                  <div className="bp-actions">
-                    <button className="bp-btn" type="button" disabled={!canManage || busy} onClick={() => void act({ action: "verification", id: item.id, status: "approved" })}>Approve</button>
-                    <button className="bp-btn" type="button" disabled={!canManage || busy} onClick={() => {
-                      const reason = window.prompt("Rejection reason");
-                      if (reason) void act({ action: "verification", id: item.id, status: "rejected", reason });
-                    }}>Reject</button>
-                    <button className="bp-btn" type="button" disabled={!canManage || busy} onClick={() => {
-                      const reason = window.prompt("What should the merchant send again?");
-                      if (reason) void act({ action: "verification", id: item.id, status: "resubmission_required", reason });
-                    }}>Resubmit</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : null}
-
-      {section === "Orders" ? (
-        <div className="bp-split">
-          <div>
-            <div className="bp-filters">
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Business, order or pincode" />
-              <select value={packageId} onChange={(event) => setPackageId(event.target.value)}>
-                <option value="all">All packages</option>
-                {(data?.packages || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-              </select>
-              <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
-              <input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} />
-              <select value={status} onChange={(event) => setStatus(event.target.value)}>
-                <option value="all">All statuses</option>
-                {["pending", "paid", "payment_successful", "under_review", "editing", "video_ready", "ad_active", "completed", "rejected", "refund_pending", "refunded"].map((item) => (
-                  <option key={item} value={item}>{item.replaceAll("_", " ")}</option>
-                ))}
-              </select>
-            </div>
-            <table className="bp-table">
+        <div className="admin-card">
+          <div className="admin-table-wrap">
+            <table className="admin-table admin-table-compact">
               <thead>
-                <tr><th>Order</th><th>Business</th><th>Package</th><th>Amount</th><th>Payment</th><th>Campaign</th><th>Area</th></tr>
+                <tr>
+                  <th>Business</th>
+                  <th>Owner</th>
+                  <th>Status</th>
+                  <th>Shop</th>
+                  <th>Proof</th>
+                  <th>Action</th>
+                </tr>
               </thead>
               <tbody>
-                {filtered.map((order) => (
-                  <tr key={order.id} onClick={() => setSelected(order.id)} style={{ cursor: "pointer", background: selected === order.id ? "#f8fafc" : undefined }}>
-                    <td>{order.id}<br />{when(order.created_at)}</td>
-                    <td>{order.business?.businessName}<br />{order.business?.category}</td>
-                    <td>{order.package_snapshot?.name || order.package_id}</td>
-                    <td>{inr(order.amount_inr)}</td>
-                    <td>{order.payment_status}</td>
-                    <td>{order.campaign_status.replaceAll("_", " ")}</td>
-                    <td>{order.target_area} {order.target_pincode}</td>
+                {(data?.verifications || []).length === 0 ? <Empty>No shop checks yet.</Empty> : null}
+                {(data?.verifications || []).map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <p className="font-medium">{item.business?.businessName || item.business_id}</p>
+                      <p className="admin-card-description">{item.business?.category || item.business?.city || "—"}</p>
+                    </td>
+                    <td>
+                      <p>{item.business?.fullName || "—"}</p>
+                      <p className="admin-card-description">{item.business?.mobile || item.business?.email || "—"}</p>
+                    </td>
+                    <td>
+                      <StatusPill value={item.status} />
+                      <p className="admin-card-description mt-1">{when(item.submitted_at)}</p>
+                      {item.rejection_reason ? <p className="admin-card-description">{item.rejection_reason}</p> : null}
+                    </td>
+                    <td>
+                      {item.shop_photo_url ? (
+                        <a href={item.shop_photo_url} target="_blank" rel="noreferrer" className="font-medium underline">
+                          Photograph
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                      <p className="admin-card-description">
+                        {item.latitude ?? "—"}, {item.longitude ?? "—"}
+                      </p>
+                    </td>
+                    <td>
+                      {(item.document_urls || []).filter((url): url is string => Boolean(url)).map((url) => (
+                        <a key={url} href={url} target="_blank" rel="noreferrer" className="block font-medium underline">
+                          {words(item.document_type)}
+                        </a>
+                      ))}
+                      {(item.document_urls || []).filter(Boolean).length === 0 ? "—" : null}
+                    </td>
+                    <td>
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" className="admin-btn-primary !text-xs !py-1.5" disabled={!canManage || busy} onClick={() => void act({ action: "verification", id: item.id, status: "approved" })}>
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-btn-secondary !text-xs !py-1.5"
+                          disabled={!canManage || busy}
+                          onClick={() => {
+                            const reason = window.prompt("Rejection reason");
+                            if (reason) void act({ action: "verification", id: item.id, status: "rejected", reason });
+                          }}
+                        >
+                          Reject
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-btn-secondary !text-xs !py-1.5"
+                          disabled={!canManage || busy}
+                          onClick={() => {
+                            const reason = window.prompt("What should the merchant send again?");
+                            if (reason) void act({ action: "verification", id: item.id, status: "resubmission_required", reason });
+                          }}
+                        >
+                          Ask again
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <aside className="bp-card">
-            {open ? (
-              <>
-                <strong>{open.package_snapshot?.name || open.package_id}</strong>
-                <p>{open.id} · {inr(open.amount_inr)} · {open.payment_status}</p>
-                <p>{open.business?.businessName} · {open.business?.fullName} · {open.business?.mobile}</p>
-                <p>{open.target_area}, {open.target_pincode} · {open.target_coverage}</p>
-                <p>Start {when(open.campaign_started_at)} · End {when(open.campaign_ended_at)}</p>
-                {open.video_url ? <p><a href={open.video_url} target="_blank" rel="noreferrer">Download uploaded video</a></p> : <p>No video yet.</p>}
-                <p>Gateway {open.razorpay_order_id || "—"} · {open.razorpay_payment_id || "unpaid"}</p>
-                {open.rejection_reason ? <p className="bp-error">{open.rejection_reason}</p> : null}
-                <div className="bp-actions">
-                  {(NEXT_STATUS[open.campaign_status] || []).map((item) => (
-                    <button key={item} className="bp-btn" type="button" disabled={!canManage || busy} onClick={() => void act({ action: "status", id: open.id, status: item, note })}>
-                      {item.replaceAll("_", " ")}
-                    </button>
-                  ))}
-                </div>
-                <input className="bp-field" style={{ width: "100%", marginTop: 8 }} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Reason or note" />
-                {open.campaign_status === "completed" || open.campaign_status === "ad_active" ? (
-                  <div className="bp-actions">
-                    <input className="bp-field" value={metrics.reach} onChange={(event) => setMetrics({ ...metrics, reach: event.target.value })} placeholder="Reach" />
-                    <input className="bp-field" value={metrics.views} onChange={(event) => setMetrics({ ...metrics, views: event.target.value })} placeholder="Views" />
-                    <input className="bp-field" value={metrics.visits} onChange={(event) => setMetrics({ ...metrics, visits: event.target.value })} placeholder="Visits" />
-                    <button className="bp-btn" type="button" disabled={!canManage || busy} onClick={() => void act({ action: "metrics", id: open.id, ...metrics })}>Save results</button>
-                  </div>
-                ) : null}
-                <p>History</p>
-                {history.map((row) => (
-                  <p key={row.id}>{when(row.created_at)} · {row.action} {row.from_status || ""} {row.to_status || ""} {row.note || ""}</p>
+        </div>
+      ) : null}
+
+      {section === "Orders" ? (
+        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.8fr)] gap-4">
+          <div className="admin-card">
+            <div className="admin-card-header">
+              <div>
+                <h2 className="admin-card-title">Orders</h2>
+                <p className="admin-card-description">{filtered.length} shown</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 p-3">
+              <input className="admin-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Business, order or pincode" />
+              <select className="admin-input" value={packageId} onChange={(event) => setPackageId(event.target.value)}>
+                <option value="all">All packages</option>
+                {(data?.packages || []).map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
                 ))}
-              </>
-            ) : <p>Select an order to review the video, move the campaign and record results.</p>}
+              </select>
+              <input className="admin-input" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} aria-label="From" />
+              <input className="admin-input" type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} aria-label="To" />
+              <select className="admin-input" value={status} onChange={(event) => setStatus(event.target.value)}>
+                <option value="all">All statuses</option>
+                {["pending", "paid", "payment_successful", "under_review", "editing", "video_ready", "ad_active", "completed", "rejected", "refund_pending", "refunded"].map((item) => (
+                  <option key={item} value={item}>{words(item)}</option>
+                ))}
+              </select>
+            </div>
+            <div className="admin-table-wrap">
+              <table className="admin-table admin-table-compact">
+                <thead>
+                  <tr>
+                    <th>Order</th>
+                    <th>Business</th>
+                    <th>Package</th>
+                    <th>Amount</th>
+                    <th>Payment</th>
+                    <th>Campaign</th>
+                    <th>Area</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? <Empty>No orders match these filters.</Empty> : null}
+                  {filtered.map((order) => (
+                    <tr
+                      key={order.id}
+                      onClick={() => setSelected(order.id)}
+                      className={`cursor-pointer ${selected === order.id ? "admin-row-selected" : ""}`}
+                    >
+                      <td>
+                        <p className="font-medium">{order.id}</p>
+                        <p className="admin-card-description">{when(order.created_at)}</p>
+                      </td>
+                      <td>
+                        <p>{order.business?.businessName || "—"}</p>
+                        <p className="admin-card-description">{order.business?.category || "—"}</p>
+                      </td>
+                      <td>{order.package_snapshot?.name || order.package_id}</td>
+                      <td className="tabular-nums">{inr(order.amount_inr)}</td>
+                      <td><StatusPill value={order.payment_status} /></td>
+                      <td><StatusPill value={order.campaign_status} /></td>
+                      <td>
+                        {order.target_area || "—"}
+                        <p className="admin-card-description">{order.target_pincode}</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <aside className="admin-card h-fit">
+            <div className="admin-card-header">
+              <h2 className="admin-card-title">{open ? open.package_snapshot?.name || open.package_id : "Order"}</h2>
+            </div>
+            <div className="p-4 space-y-3">
+              {open ? (
+                <>
+                  <p className="admin-card-description">
+                    {open.id} · {inr(open.amount_inr)}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <StatusPill value={open.payment_status} />
+                    <StatusPill value={open.campaign_status} />
+                  </div>
+                  <p className="text-sm">
+                    {open.business?.businessName || "—"}
+                    <span className="admin-card-description block">
+                      {open.business?.fullName || "—"} · {open.business?.mobile || "—"}
+                    </span>
+                  </p>
+                  <p className="text-sm">
+                    {open.target_area || "—"}, {open.target_pincode || "—"}
+                    <span className="admin-card-description block">{open.target_coverage || "—"}</span>
+                  </p>
+                  <p className="admin-card-description">
+                    Start {when(open.campaign_started_at)} · End {when(open.campaign_ended_at)}
+                  </p>
+                  {open.video_url ? (
+                    <a href={open.video_url} target="_blank" rel="noreferrer" className="text-sm font-medium underline">
+                      Download uploaded video
+                    </a>
+                  ) : (
+                    <p className="admin-card-description">No video yet.</p>
+                  )}
+                  <p className="admin-card-description">
+                    Gateway {open.razorpay_order_id || "—"} · {open.razorpay_payment_id || "unpaid"}
+                  </p>
+                  {open.rejection_reason ? <div className="admin-alert-error">{open.rejection_reason}</div> : null}
+                  <div className="flex flex-wrap gap-2">
+                    {(NEXT_STATUS[open.campaign_status] || []).map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        className="admin-btn-secondary !text-xs !py-1.5"
+                        disabled={!canManage || busy}
+                        onClick={() => void act({ action: "status", id: open.id, status: item, note })}
+                      >
+                        {words(item)}
+                      </button>
+                    ))}
+                  </div>
+                  <input className="admin-input" value={note} onChange={(event) => setNote(event.target.value)} placeholder="Reason or note" />
+                  {open.campaign_status === "completed" || open.campaign_status === "ad_active" ? (
+                    <div className="grid grid-cols-1 gap-2">
+                      <input className="admin-input" value={metrics.reach} onChange={(event) => setMetrics({ ...metrics, reach: event.target.value })} placeholder="Reach" />
+                      <input className="admin-input" value={metrics.views} onChange={(event) => setMetrics({ ...metrics, views: event.target.value })} placeholder="Views" />
+                      <input className="admin-input" value={metrics.visits} onChange={(event) => setMetrics({ ...metrics, visits: event.target.value })} placeholder="Visits" />
+                      <button type="button" className="admin-btn-primary" disabled={!canManage || busy} onClick={() => void act({ action: "metrics", id: open.id, ...metrics })}>
+                        Save results
+                      </button>
+                    </div>
+                  ) : null}
+                  <div>
+                    <p className="admin-card-title">History</p>
+                    {history.length === 0 ? <p className="admin-card-description mt-1">No notes yet.</p> : null}
+                    {history.map((row) => (
+                      <p key={row.id} className="admin-card-description mt-1">
+                        {when(row.created_at)} · {words(row.action)} {words(row.from_status)} → {words(row.to_status)} {row.note || ""}
+                      </p>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="admin-card-description">Select an order to review the video, move the campaign, and record results.</p>
+              )}
+            </div>
           </aside>
         </div>
       ) : null}
 
       {section === "Custom" ? (
-        <table className="bp-table">
-          <thead>
-            <tr><th>Request</th><th>Business</th><th>Plan</th><th>What to promote</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {(data?.customRequests || []).map((item) => (
-              <tr key={item.id}>
-                <td>{item.id}<br />{when(item.created_at)}</td>
-                <td>{item.business?.businessName || item.business_id}<br />{item.business?.fullName}<br />{item.phone}</td>
-                <td>{inr(item.budget_inr)} · {item.duration_days} days<br />{item.coverage}<br />{item.area} {item.pincode}</td>
-                <td>{item.goal}{item.note ? <><br />{item.note}</> : null}</td>
-                <td>
-                  {item.status.replaceAll("_", " ")}
-                  {item.admin_note ? <><br />{item.admin_note}</> : null}
-                  <div className="bp-actions">
-                    {["in_review", "quoted", "closed"].map((status) => (
-                      <button key={status} className="bp-btn" type="button" disabled={!canManage || busy} onClick={() => {
-                        const note = window.prompt("Note for this custom plan", item.admin_note || "") || "";
-                        void act({ action: "custom", id: item.id, status, note });
-                      }}>{status.replaceAll("_", " ")}</button>
-                    ))}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="admin-card">
+          <div className="admin-table-wrap">
+            <table className="admin-table admin-table-compact">
+              <thead>
+                <tr>
+                  <th>Request</th>
+                  <th>Business</th>
+                  <th>Plan</th>
+                  <th>What to promote</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.customRequests || []).length === 0 ? <Empty>No custom plans yet.</Empty> : null}
+                {(data?.customRequests || []).map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <p className="font-medium">{item.id}</p>
+                      <p className="admin-card-description">{when(item.created_at)}</p>
+                    </td>
+                    <td>
+                      <p>{item.business?.businessName || item.business_id}</p>
+                      <p className="admin-card-description">{item.business?.fullName || "—"}</p>
+                      <p className="admin-card-description">{item.phone}</p>
+                    </td>
+                    <td>
+                      <p className="tabular-nums">{inr(item.budget_inr)} · {item.duration_days} days</p>
+                      <p className="admin-card-description">{item.coverage}</p>
+                      <p className="admin-card-description">{item.area} {item.pincode}</p>
+                    </td>
+                    <td>
+                      {item.goal}
+                      {item.note ? <p className="admin-card-description">{item.note}</p> : null}
+                    </td>
+                    <td>
+                      <StatusPill value={item.status} />
+                      {item.admin_note ? <p className="admin-card-description mt-1">{item.admin_note}</p> : null}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {["in_review", "quoted", "closed"].map((next) => (
+                          <button
+                            key={next}
+                            type="button"
+                            className="admin-btn-secondary !text-xs !py-1.5"
+                            disabled={!canManage || busy}
+                            onClick={() => {
+                              const reply = window.prompt("Note for this custom plan", item.admin_note || "") || "";
+                              void act({ action: "custom", id: item.id, status: next, note: reply });
+                            }}
+                          >
+                            {words(next)}
+                          </button>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : null}
 
       {section === "Packages" ? (
-        <div className="bp-grid">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {(data?.packages || []).map((item) => (
-            <form key={item.id} className="bp-card" onSubmit={(event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              void act({
-                action: "package",
-                id: item.id,
-                name: form.get("name"),
-                price_inr: form.get("price_inr"),
-                reference_inr: form.get("reference_inr"),
-                duration_days: form.get("duration_days"),
-                coverage_label: form.get("coverage_label"),
-                reach_label: form.get("reach_label"),
-                views_label: form.get("views_label"),
-                visits_label: form.get("visits_label"),
-                sort_order: form.get("sort_order"),
-                active: form.get("active") === "on",
-                popular: form.get("popular") === "on",
-              });
-            }}>
-              <strong>{item.name}</strong>
-              <input className="bp-field" name="name" defaultValue={item.name} style={{ width: "100%", marginTop: 8 }} />
-              <input className="bp-field" name="price_inr" defaultValue={item.price_inr} style={{ width: "100%", marginTop: 8 }} />
-              <input className="bp-field" name="reference_inr" defaultValue={item.reference_inr} style={{ width: "100%", marginTop: 8 }} />
-              <input className="bp-field" name="duration_days" defaultValue={item.duration_days} style={{ width: "100%", marginTop: 8 }} />
-              <input className="bp-field" name="coverage_label" defaultValue={item.coverage_label} style={{ width: "100%", marginTop: 8 }} />
-              <input className="bp-field" name="reach_label" defaultValue={item.reach_label} style={{ width: "100%", marginTop: 8 }} />
-              <input className="bp-field" name="views_label" defaultValue={item.views_label} style={{ width: "100%", marginTop: 8 }} />
-              <input className="bp-field" name="visits_label" defaultValue={item.visits_label} style={{ width: "100%", marginTop: 8 }} />
-              <input className="bp-field" name="sort_order" defaultValue={item.sort_order} style={{ width: "100%", marginTop: 8 }} />
-              <label><input name="active" type="checkbox" defaultChecked={item.active} /> Active</label>
-              <label><input name="popular" type="checkbox" defaultChecked={item.popular} /> Popular</label>
-              <button className="bp-btn" type="submit" disabled={!canManage || busy}>Save package</button>
-              <p>Past orders keep the price the merchant paid.</p>
+            <form
+              key={item.id}
+              className="admin-card p-4 space-y-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                void act({
+                  action: "package",
+                  id: item.id,
+                  name: form.get("name"),
+                  price_inr: form.get("price_inr"),
+                  reference_inr: form.get("reference_inr"),
+                  duration_days: form.get("duration_days"),
+                  coverage_label: form.get("coverage_label"),
+                  reach_label: form.get("reach_label"),
+                  views_label: form.get("views_label"),
+                  visits_label: form.get("visits_label"),
+                  sort_order: form.get("sort_order"),
+                  active: form.get("active") === "on",
+                  popular: form.get("popular") === "on",
+                });
+              }}
+            >
+              <h2 className="admin-card-title">{item.name}</h2>
+              <p className="admin-card-description">Past orders keep the price the merchant paid.</p>
+              <label className="admin-card-description block">Name<input className="admin-input mt-1" name="name" defaultValue={item.name} /></label>
+              <label className="admin-card-description block">Price (₹)<input className="admin-input mt-1" name="price_inr" defaultValue={item.price_inr} /></label>
+              <label className="admin-card-description block">MRP (₹)<input className="admin-input mt-1" name="reference_inr" defaultValue={item.reference_inr} /></label>
+              <label className="admin-card-description block">Days<input className="admin-input mt-1" name="duration_days" defaultValue={item.duration_days} /></label>
+              <label className="admin-card-description block">Coverage<input className="admin-input mt-1" name="coverage_label" defaultValue={item.coverage_label} /></label>
+              <label className="admin-card-description block">Reach<input className="admin-input mt-1" name="reach_label" defaultValue={item.reach_label} /></label>
+              <label className="admin-card-description block">Views<input className="admin-input mt-1" name="views_label" defaultValue={item.views_label} /></label>
+              <label className="admin-card-description block">Visits<input className="admin-input mt-1" name="visits_label" defaultValue={item.visits_label} /></label>
+              <label className="admin-card-description block">Sort<input className="admin-input mt-1" name="sort_order" defaultValue={item.sort_order} /></label>
+              <label className="flex items-center gap-2 text-sm"><input name="active" type="checkbox" defaultChecked={item.active} /> Active</label>
+              <label className="flex items-center gap-2 text-sm"><input name="popular" type="checkbox" defaultChecked={item.popular} /> Popular</label>
+              <button className="admin-btn-primary" type="submit" disabled={!canManage || busy}>Save package</button>
             </form>
           ))}
         </div>
       ) : null}
 
       {section === "Payments" ? (
-        <table className="bp-table">
-          <thead>
-            <tr><th>Order</th><th>Merchant</th><th>Amount</th><th>Status</th><th>Razorpay order</th><th>Payment</th><th>Updated</th></tr>
-          </thead>
-          <tbody>
-            {(data?.payments || []).map((row) => {
-              const business = row.business as Business;
-              return (
-                <tr key={String(row.id)}>
-                  <td>{String(row.id)}</td>
-                  <td>{business?.businessName || "—"}</td>
-                  <td>{inr(Number(row.amount_inr || 0))}</td>
-                  <td>{String(row.payment_status)} · {String(row.campaign_status || "").replaceAll("_", " ")}</td>
-                  <td>{String(row.razorpay_order_id || "—")}</td>
-                  <td>{String(row.razorpay_payment_id || "—")}</td>
-                  <td>{when(String(row.updated_at || ""))}</td>
+        <div className="admin-card">
+          <div className="admin-table-wrap">
+            <table className="admin-table admin-table-compact">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Merchant</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Razorpay order</th>
+                  <th>Payment</th>
+                  <th>Updated</th>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {(data?.payments || []).length === 0 ? <Empty>No promotion payments yet.</Empty> : null}
+                {(data?.payments || []).map((row) => {
+                  const business = row.business as Business;
+                  return (
+                    <tr key={String(row.id)}>
+                      <td className="font-medium">{String(row.id)}</td>
+                      <td>{business?.businessName || "—"}</td>
+                      <td className="tabular-nums">{inr(Number(row.amount_inr || 0))}</td>
+                      <td>
+                        <div className="flex flex-wrap gap-1">
+                          <StatusPill value={String(row.payment_status || "")} />
+                          <StatusPill value={String(row.campaign_status || "")} />
+                        </div>
+                      </td>
+                      <td>{String(row.razorpay_order_id || "—")}</td>
+                      <td>{String(row.razorpay_payment_id || "—")}</td>
+                      <td>{when(String(row.updated_at || ""))}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : null}
     </div>
   );

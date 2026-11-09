@@ -294,6 +294,30 @@ html[data-admin-theme="dark"] .admin-table tbody tr:hover {
   background: rgba(251, 146, 60, 0.05) !important;
 }
 
+html[data-admin-theme="dark"] .admin-row-selected,
+html[data-admin-theme="dark"] .admin-row-selected:hover {
+  background: rgba(249, 115, 22, 0.14) !important;
+}
+
+html[data-admin-theme="dark"] .admin-segmented {
+  background: #141414 !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+html[data-admin-theme="dark"] .admin-segmented-btn-active {
+  background: #262626 !important;
+  color: #fdba74 !important;
+  border-color: rgba(249, 115, 22, 0.35) !important;
+}
+
+html[data-admin-theme="dark"] .admin-segmented-btn-idle {
+  color: #94a3b8 !important;
+}
+
+html[data-admin-theme="dark"] .admin-segmented-btn-idle:hover {
+  color: #fed7aa !important;
+}
+
 html[data-admin-theme="dark"] .admin-alert-error {
   background: rgba(225, 29, 72, 0.12) !important;
   border-color: rgba(251, 113, 133, 0.35) !important;

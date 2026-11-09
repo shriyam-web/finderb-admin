@@ -57,6 +57,7 @@ export const ASSIGNABLE_ADMIN_TABS = [
   "Movies",
   "Tourist Places",
   "Payments & Subscriptions",
+  "Business Promotions",
   "Broadcasts",
   "Broadcast Email",
   "Blogs",

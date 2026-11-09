@@ -128,6 +128,13 @@ assert.equal(
 assert.equal(menuFor({ role: "controller" }).includes("Ownership Requests"), false);
 assert.equal(resolveTabAccess({ role: "controller" }, "Job Reports"), "none");
 assert.equal(menuFor({ role: "controller" }).includes("Job Reports"), false);
+assert.equal(
+  resolveTabAccess(
+    { role: "admin", allowed_tab_modes: { "Payments & Subscriptions": "edit" } },
+    "Business Promotions",
+  ),
+  "edit",
+);
 assert.equal(resolveTabAccess({ role: "developer" }, "Site Configurations"), "edit");
 assert.equal(resolveTabAccess({ role: "controller" }, "Site Configurations"), "none");
 assert.equal(menuFor({ role: "controller" }).includes("Site Configurations"), false);

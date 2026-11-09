@@ -194,6 +194,27 @@ function matchesDateFilter(createdAt: string, filter: DateFilter): boolean {
   return created >= cutoff;
 }
 
+function inCustomRange(createdAt: string, from: string, to: string): boolean {
+  const created = parseFinderbTimestamp(createdAt);
+  if (!created) return false;
+  if (from && created < new Date(`${from}T00:00:00+05:30`)) return false;
+  if (to) {
+    const end = new Date(`${to}T00:00:00+05:30`);
+    end.setDate(end.getDate() + 1);
+    if (created >= end) return false;
+  }
+  return true;
+}
+
+function formatDayInput(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  return new Date(`${value}T00:00:00+05:30`).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function lifecycleBadgeClass(lifecycle: SubscriptionLifecycle) {
   if (lifecycle === "active")
     return "bg-emerald-500/10 text-emerald-700 border-emerald-200/80";
@@ -519,6 +540,7 @@ export default function PaymentsContent({
   businesses?: BusinessPaymentRow[];
 }) {
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [promoReceipts, setPromoReceipts] = useState<{ id: string; amountPaise: number; createdAt: string }[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadedOnce, setLoadedOnce] = useState(false);
@@ -553,6 +575,8 @@ export default function PaymentsContent({
   const [planFilter, setPlanFilter] = useState<PlanFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
   const [autoDebitFilter, setAutoDebitFilter] =
     useState<AutoDebitFilter>("all");
@@ -568,7 +592,7 @@ export default function PaymentsContent({
     if (billingFilter !== "all") count += 1;
     if (planFilter !== "all") count += 1;
     if (typeFilter !== "all") count += 1;
-    if (dateFilter !== "all") count += 1;
+    if (dateFilter !== "all" || fromDate || toDate) count += 1;
     if (expiryFilter !== "all") count += 1;
     if (autoDebitFilter !== "all") count += 1;
     if (mandateFilter !== "all") count += 1;
@@ -582,6 +606,8 @@ export default function PaymentsContent({
     planFilter,
     typeFilter,
     dateFilter,
+    fromDate,
+    toDate,
     expiryFilter,
     autoDebitFilter,
     mandateFilter,
@@ -597,6 +623,8 @@ export default function PaymentsContent({
     setPlanFilter("all");
     setTypeFilter("all");
     setDateFilter("all");
+    setFromDate("");
+    setToDate("");
     setExpiryFilter("all");
     setAutoDebitFilter("all");
     setMandateFilter("all");
@@ -658,6 +686,20 @@ export default function PaymentsContent({
         .order("created_at", { ascending: false });
 
       if (paymentError) throw new Error(paymentError.message);
+
+      const { data: promoRows, error: promoError } = await supabase
+        .from("promotion_orders")
+        .select("id, amount_inr, payment_status, created_at")
+        .eq("payment_status", "paid");
+      setPromoReceipts(
+        promoError
+          ? []
+          : (promoRows ?? []).map((row) => ({
+              id: String(row.id),
+              amountPaise: Number(row.amount_inr || 0) * 100,
+              createdAt: String(row.created_at),
+            })),
+      );
 
       let businessRows = businesses;
       if (businessRows.length === 0) {
@@ -748,6 +790,20 @@ export default function PaymentsContent({
     [search],
   );
 
+  const matchesMoneyDate = useCallback(
+    (createdAt: string) => {
+      if (fromDate || toDate) return inCustomRange(createdAt, fromDate, toDate);
+      return matchesDateFilter(createdAt, dateFilter);
+    },
+    [dateFilter, fromDate, toDate],
+  );
+
+  const applyDatePreset = (value: DateFilter) => {
+    setDateFilter(value);
+    setFromDate("");
+    setToDate("");
+  };
+
   const filteredPayments = useMemo(() => {
     return payments.filter((payment) => {
       if (statusFilter !== "all" && payment.status !== statusFilter)
@@ -760,7 +816,7 @@ export default function PaymentsContent({
         return false;
       if (typeFilter !== "all" && payment.paymentType !== typeFilter)
         return false;
-      if (!matchesDateFilter(payment.createdAt, dateFilter)) return false;
+      if (!matchesMoneyDate(payment.createdAt)) return false;
       if (
         !matchesSearch(
           payment.businessName,
@@ -783,7 +839,10 @@ export default function PaymentsContent({
     planFilter,
     typeFilter,
     dateFilter,
+    fromDate,
+    toDate,
     matchesSearch,
+    matchesMoneyDate,
   ]);
 
   const filteredSubscriptions = useMemo(() => {
@@ -848,6 +907,39 @@ export default function PaymentsContent({
     () => sumCompletedRevenue(filteredPayments),
     [filteredPayments],
   );
+
+  const generated = useMemo(() => {
+    const plans = payments.filter(
+      (payment) => payment.status === "completed" && matchesMoneyDate(payment.createdAt),
+    );
+    const promos = promoReceipts.filter((receipt) => matchesMoneyDate(receipt.createdAt));
+    const planPaise = plans.reduce((sum, payment) => sum + payment.amountPaise, 0);
+    const promoPaise = promos.reduce((sum, receipt) => sum + receipt.amountPaise, 0);
+    return {
+      paise: planPaise + promoPaise,
+      planPaise,
+      promoPaise,
+      count: plans.length + promos.length,
+    };
+  }, [payments, promoReceipts, matchesMoneyDate]);
+
+  const generatedRangeLabel = fromDate || toDate
+    ? [fromDate ? `From ${formatDayInput(fromDate)}` : "", toDate ? `until ${formatDayInput(toDate)}` : ""]
+        .filter(Boolean)
+        .join(" ")
+    : dateFilter === "all"
+      ? "All time"
+      : dateFilter === "today"
+        ? "Today"
+        : dateFilter === "this_week"
+          ? "This week"
+          : dateFilter === "7d"
+            ? "Last 7 days"
+            : dateFilter === "this_month" || dateFilter === "mtd"
+              ? "This month"
+              : dateFilter === "30d"
+                ? "Last 30 days"
+                : "Last 90 days";
 
   const sortedPayments = useMemo(() => {
     const list = [...filteredPayments];
@@ -1090,7 +1182,7 @@ export default function PaymentsContent({
             <SelectFilter
               label="Date range"
               value={dateFilter}
-              onChange={(v) => setDateFilter(v as DateFilter)}
+              onChange={(v) => applyDatePreset(v as DateFilter)}
               options={[
                 { value: "all", label: "All time" },
                 { value: "today", label: "Today" },
@@ -1302,6 +1394,56 @@ export default function PaymentsContent({
         </div>
       )}
 
+      <div className="admin-card p-5">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              FinderB generated
+            </p>
+            <p className="text-3xl font-bold tabular-nums text-slate-900 mt-1">
+              {formatAmountInr(generated.paise)}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              {generated.count} completed payment{generated.count === 1 ? "" : "s"} · {generatedRangeLabel}
+              {generated.promoPaise > 0
+                ? ` · ${formatAmountInr(generated.planPaise)} plans · ${formatAmountInr(generated.promoPaise)} promotions`
+                : " · plans and subscriptions"}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="text-[11px] font-medium text-slate-600">
+              From
+              <input
+                type="date"
+                value={fromDate}
+                max={toDate || undefined}
+                onChange={(event) => setFromDate(event.target.value)}
+                className="mt-1 block px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-800"
+              />
+            </label>
+            <label className="text-[11px] font-medium text-slate-600">
+              To
+              <input
+                type="date"
+                value={toDate}
+                min={fromDate || undefined}
+                onChange={(event) => setToDate(event.target.value)}
+                className="mt-1 block px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[11px] text-slate-800"
+              />
+            </label>
+            {(fromDate || toDate || dateFilter !== "all") && (
+              <button
+                type="button"
+                onClick={() => applyDatePreset("all")}
+                className="px-3 py-2 rounded-xl border border-slate-200 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                All time
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* KPI grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
@@ -1311,7 +1453,7 @@ export default function PaymentsContent({
           icon={Wallet}
           accent="primary"
           onClick={() => {
-            setDateFilter("today");
+            applyDatePreset("today");
             setStatusFilter("completed");
             setActiveTab("transactions");
           }}
@@ -1323,7 +1465,7 @@ export default function PaymentsContent({
           icon={TrendingUp}
           accent="emerald"
           onClick={() => {
-            setDateFilter("this_week");
+            applyDatePreset("this_week");
             setStatusFilter("completed");
             setActiveTab("transactions");
           }}
@@ -1335,7 +1477,7 @@ export default function PaymentsContent({
           icon={BarChart3}
           accent="sky"
           onClick={() => {
-            setDateFilter("this_month");
+            applyDatePreset("this_month");
             setStatusFilter("completed");
             setActiveTab("transactions");
           }}
@@ -1358,7 +1500,7 @@ export default function PaymentsContent({
         <button
           type="button"
           onClick={() => {
-            setDateFilter("7d");
+            applyDatePreset("7d");
             setStatusFilter("completed");
             setActiveTab("transactions");
           }}
@@ -1503,7 +1645,7 @@ export default function PaymentsContent({
         <button
           type="button"
           onClick={() => {
-            setDateFilter("this_month");
+            applyDatePreset("this_month");
             setStatusFilter("completed");
             setActiveTab("transactions");
           }}
@@ -1538,7 +1680,7 @@ export default function PaymentsContent({
         <button
           type="button"
           onClick={() => {
-            setDateFilter("this_week");
+            applyDatePreset("this_week");
             setStatusFilter("completed");
             setActiveTab("transactions");
           }}

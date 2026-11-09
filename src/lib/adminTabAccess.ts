@@ -159,6 +159,14 @@ function modeFromAllowList(
     return modes["Merchant Registration"];
   }
 
+  if (
+    normalized === "Business Promotions" &&
+    (modes["Payments & Subscriptions"] === "read" ||
+      modes["Payments & Subscriptions"] === "edit")
+  ) {
+    return modes["Payments & Subscriptions"];
+  }
+
   return "none";
 }
 

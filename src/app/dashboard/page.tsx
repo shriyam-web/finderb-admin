@@ -15,6 +15,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { createClient } from "../../../utils/supabase/client";
+import { deleteMerchantProfile } from "../../lib/deleteMerchant";
 import { stampListingLiveAt } from "../../lib/listingLiveAt";
 import { uploadToCloudinary } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
@@ -5803,10 +5804,10 @@ function MerchantsContent({
           business?.selectedPlan || listMerchant?.selectedPlan || null,
       };
       const supabase = createClient();
-      const { error } = await supabase.from("Business").delete().eq("id", id);
+      const { error } = await deleteMerchantProfile(supabase, id);
 
       if (error) {
-        toast("Error deleting merchant: " + error.message, "error");
+        toast("Error deleting merchant: " + error, "error");
         return;
       }
 

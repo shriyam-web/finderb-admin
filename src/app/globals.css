@@ -1029,6 +1029,10 @@ body {
     @apply text-slate-500 hover:text-slate-800;
   }
 
+  .admin-row-selected {
+    background: rgba(234, 88, 12, 0.08);
+  }
+
   .admin-empty {
     @apply py-16 text-center text-sm text-slate-400 font-medium;
   }

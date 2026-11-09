@@ -346,6 +346,30 @@ html[data-admin-theme="silver"] .admin-table tbody tr:hover {
   background: rgba(148, 163, 184, 0.06) !important;
 }
 
+html[data-admin-theme="silver"] .admin-row-selected,
+html[data-admin-theme="silver"] .admin-row-selected:hover {
+  background: rgba(148, 163, 184, 0.16) !important;
+}
+
+html[data-admin-theme="silver"] .admin-segmented {
+  background: #12141a !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+}
+
+html[data-admin-theme="silver"] .admin-segmented-btn-active {
+  background: #2c313a !important;
+  color: #f8fafc !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+}
+
+html[data-admin-theme="silver"] .admin-segmented-btn-idle {
+  color: #94a3b8 !important;
+}
+
+html[data-admin-theme="silver"] .admin-segmented-btn-idle:hover {
+  color: #e2e8f0 !important;
+}
+
 html[data-admin-theme="silver"] .admin-alert-error {
   background: rgba(225, 29, 72, 0.12) !important;
   border-color: rgba(251, 113, 133, 0.35) !important;

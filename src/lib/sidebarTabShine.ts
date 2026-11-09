@@ -14,6 +14,8 @@ export const SIDEBAR_TAB_INTRODUCED_ON: Record<string, string> = {
   "Change Requests": "2026-10-16",
   "Ownership Requests": "2026-10-16",
   "Job Reports": "2026-10-16",
+  "Business Promotions": "2026-11-09",
+  "Site Configurations": "2026-11-08",
 };
 
 type ShineStore = {
