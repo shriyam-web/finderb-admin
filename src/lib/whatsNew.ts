@@ -74,16 +74,13 @@ export async function fetchWhatsNewEntries(
   };
 }
 
+const RETIRED_WHATS_NEW_TITLES = ["Site Configurations is under Platform"];
+
 const WHATS_NEW_SEEDS: Array<{
   title: string;
   body: string;
   published_at: string;
 }> = [
-  {
-    title: "Site Configurations is under Platform",
-    body: "Open Platform in the sidebar, then Site Configurations.\n\nThat tab sets the prices merchants are charged, the public contact details, and whether Promote your business online is visible. Growth and Pro each have an offer price and an MRP. Phone and address stay hidden until Show phone or Show address is on.\n\nA Developer account sees this tab. Other accounts see it only after a Developer grants Site Configurations in Manage Admins.",
-    published_at: "2026-11-08T12:00:00+05:30",
-  },
   {
     title: "Business Promotions is a new tab under Payments",
     body: "Business Promotions is new. Its name shines in the sidebar for 30 days, the same way other new tabs do.\n\nOpen Payments, then Business Promotions. The page uses the admin theme, including dark mode. It has shop verifications, promotion orders, custom plans, package prices, and promotion payments.\n\nPayments & Subscriptions is still the plan ledger. Anyone who can open that tab can open Business Promotions. The name stops shining after 30 days.",
@@ -159,6 +156,7 @@ const WHATS_NEW_SEEDS: Array<{
 async function ensureWhatsNewSeeds(
   supabase: SupabaseClient,
 ): Promise<void> {
+  await supabase.from("admin_whats_new").delete().in("title", RETIRED_WHATS_NEW_TITLES);
   const { data } = await supabase.from("admin_whats_new").select("title, body");
   const existing = (data || []) as Array<{ title: string; body: string }>;
   const titles = new Set(existing.map((row) => row.title));
