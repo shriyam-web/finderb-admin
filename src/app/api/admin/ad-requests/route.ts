@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { canAccessTab, canEditTab } from "../../../../lib/adminTabAccess";
 import { privateDownloadUrl } from "../../../../lib/privateMedia";
+import { notifyAdApprovedOnSite } from "../../../../lib/notifyAdApproved";
 
 const TAB = "Ads Request";
 
@@ -142,6 +143,9 @@ export async function POST(request: Request) {
       from_status: order.ad_review_status,
       to_status: "approved",
     });
+    if (String(order.ad_review_status || "") !== "approved") {
+      await notifyAdApprovedOnSite(id);
+    }
     return NextResponse.json({ success: true });
   }
 

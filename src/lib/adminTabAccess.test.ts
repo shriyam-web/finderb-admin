@@ -59,9 +59,12 @@ function accessible(session: Parameters<typeof canAccessTab>[0]) {
 }
 
 function menuFor(session: AdminAccessSession) {
+  const unrestrictedController =
+    session.role === "controller" &&
+    (session.allowed_tab_modes == null);
   return ALL_TABS.filter((name) => {
     if (session.role === "developer") return true;
-    if (session.role === "controller") {
+    if (unrestrictedController) {
       return (
         name !== "Manage Admins" &&
         name !== "Merchant Support Login" &&
@@ -72,28 +75,33 @@ function menuFor(session: AdminAccessSession) {
         name !== "Site Configurations"
       );
     }
+    if (session.role === "controller") {
+      if (name === "Manage Admins") return false;
+      return canAccessTab(session, name);
+    }
     if (name === "Manage Admins" || COMING_SOON.has(name)) return false;
     return canAccessTab(session, name);
   });
 }
 
-// Developer owns every tab, including Manage Admins (taken from controller)
+// Developer owns every tab, including Manage Admins.
 assert.equal(resolveTabAccess({ role: "developer" }, "Manage Admins"), "edit");
 assert.equal(resolveTabAccess({ role: "developer" }, "News"), "edit");
 assert.equal(resolveTabAccess({ role: "developer" }, "Blogs"), "edit");
 assert.equal(canManageAdmins("developer"), true);
-assert.deepEqual(menuFor({ role: "developer" }).includes("Manage Admins"), true);
+assert.equal(menuFor({ role: "developer" }).includes("Manage Admins"), true);
 
-// Controller keeps operational tabs but not Manage Admins / Support Login
+// Controller with no saved list keeps the operational console.
 assert.equal(resolveTabAccess({ role: "controller" }, "Manage Admins"), "none");
-assert.equal(
-  resolveTabAccess({ role: "controller" }, "Merchant Support Login"),
-  "none",
-);
+assert.equal(resolveTabAccess({ role: "controller" }, "Merchant Support Login"), "none");
 assert.equal(resolveTabAccess({ role: "controller" }, "News"), "edit");
 assert.equal(resolveTabAccess({ role: "controller" }, "Blogs"), "edit");
+assert.equal(resolveTabAccess({ role: "controller" }, "Dashboard"), "edit");
 assert.equal(canManageAdmins("controller"), false);
 assert.equal(menuFor({ role: "controller" }).includes("Manage Admins"), false);
+assert.equal(menuFor({ role: "controller" }).includes("Blogs"), true);
+assert.equal(menuFor({ role: "controller" }).includes("Ads Request"), true);
+assert.equal(menuFor({ role: "controller" }).includes("Reviews"), false);
 assert.equal(
   resolveTabAccess(
     { role: "controller", allowed_tab_modes: { Blogs: "read" } },
@@ -108,51 +116,52 @@ assert.equal(
   ),
   "none",
 );
-assert.equal(
-  menuFor({ role: "controller" }).includes("Merchant Support Login"),
-  false,
+assert.deepEqual(
+  menuFor({ role: "controller", allowed_tab_modes: { Blogs: "read" } }),
+  ["Blogs"],
 );
-assert.equal(menuFor({ role: "controller" }).includes("Reviews"), false);
-assert.equal(menuFor({ role: "controller" }).includes("Change Requests"), false);
-assert.equal(
-  resolveTabAccess({ role: "controller" }, "Reviews"),
-  "none",
-);
-assert.equal(
-  resolveTabAccess({ role: "controller" }, "Change Requests"),
-  "none",
-);
-assert.equal(
-  resolveTabAccess({ role: "controller" }, "Ownership Requests"),
-  "none",
-);
-assert.equal(menuFor({ role: "controller" }).includes("Ownership Requests"), false);
+assert.equal(resolveTabAccess({ role: "controller" }, "Reviews"), "none");
+assert.equal(resolveTabAccess({ role: "controller" }, "Change Requests"), "none");
+assert.equal(resolveTabAccess({ role: "controller" }, "Ownership Requests"), "none");
 assert.equal(resolveTabAccess({ role: "controller" }, "Job Reports"), "none");
-assert.equal(menuFor({ role: "controller" }).includes("Job Reports"), false);
+assert.equal(resolveTabAccess({ role: "controller" }, "Site Configurations"), "none");
 assert.equal(
   resolveTabAccess(
     { role: "admin", allowed_tab_modes: { "Payments & Subscriptions": "edit" } },
     "Business Promotions",
   ),
-  "edit",
+  "none",
 );
 assert.equal(
   resolveTabAccess(
     { role: "admin", allowed_tab_modes: { "Payments & Subscriptions": "edit" } },
     "Ads Request",
   ),
-  "edit",
+  "none",
 );
 assert.equal(
   resolveTabAccess(
-    { role: "admin", allowed_tab_modes: { Merchants: "edit" } },
+    { role: "controller", allowed_tab_modes: { "Business Promotions": "edit" } },
     "Ads Request",
+  ),
+  "none",
+);
+assert.equal(
+  resolveTabAccess(
+    { role: "admin", allowed_tab_modes: { "Ads Request": "read" } },
+    "Ads Request",
+  ),
+  "read",
+);
+assert.equal(
+  resolveTabAccess(
+    { role: "admin", allowed_tab_modes: { "Business Promotions": "edit" } },
+    "Payments & Subscriptions",
   ),
   "none",
 );
 assert.equal(resolveTabAccess({ role: "developer" }, "Site Configurations"), "edit");
 assert.equal(resolveTabAccess({ role: "controller" }, "Site Configurations"), "none");
-assert.equal(menuFor({ role: "controller" }).includes("Site Configurations"), false);
 assert.equal(
   resolveTabAccess(
     { role: "admin", allowed_tab_modes: { "Site Configurations": "edit" } },
@@ -178,6 +187,22 @@ assert.equal(resolveTabAccess({ role: "developer" }, "Reviews"), "edit");
 assert.equal(isPremiumConsoleRole("developer"), true);
 assert.equal(isPremiumConsoleRole("controller"), false);
 assert.equal(isPremiumConsoleRole("super_admin"), false);
+
+// A partial grant never opens the rest of the console.
+for (const role of ["admin", "super_admin"] as const) {
+  const session = {
+    role,
+    allowed_tab_modes: { Merchants: "edit", Blogs: "read" } as const,
+  };
+  assert.deepEqual(accessible(session).sort(), ["Blogs", "Merchants"]);
+}
+{
+  const session = {
+    role: "controller" as const,
+    allowed_tab_modes: { Merchants: "edit", Blogs: "read" } as const,
+  };
+  assert.deepEqual(accessible(session).sort(), ["Blogs", "Merchants"]);
+}
 
 // Exactly 2 granted tabs — nothing else
 {

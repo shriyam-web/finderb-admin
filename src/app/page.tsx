@@ -156,7 +156,12 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState<"password" | "email">("password");
+  const [step, setStep] = useState<"password" | "email" | "forgot" | "reset">("password");
+  const [notice, setNotice] = useState("");
+  const [resetCode, setResetCode] = useState("");
+  const [nextPassword, setNextPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNextPassword, setShowNextPassword] = useState(false);
   const [challenge, setChallenge] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [codeInvalid, setCodeInvalid] = useState(false);
@@ -219,6 +224,76 @@ export default function Home() {
       setIsLoading(false);
     } catch {
       setError("An error occurred during login.");
+      setIsLoading(false);
+    }
+  };
+
+  const requestReset = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    setError("");
+    setNotice("");
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/admin/password/forgot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "request", email: username.trim() }),
+      });
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        message?: string;
+        retryAfter?: number;
+      };
+      if (!response.ok || !result.success) {
+        if (typeof result.retryAfter === "number") setResendIn(result.retryAfter);
+        setError(result.error || "Could not send the reset code.");
+        return;
+      }
+      setResetCode("");
+      setNextPassword("");
+      setConfirmPassword("");
+      setResendIn(60);
+      setNotice(result.message || "Check your email for the reset code.");
+      setStep("reset");
+    } catch {
+      setError("Could not send the reset code.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const saveReset = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/admin/password/forgot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reset",
+          email: username.trim(),
+          code: resetCode,
+          newPassword: nextPassword,
+          confirmPassword,
+        }),
+      });
+      const result = (await response.json()) as { success?: boolean; error?: string; message?: string };
+      if (!response.ok || !result.success) {
+        setError(result.error || "Could not reset the password.");
+        return;
+      }
+      setPassword("");
+      setResetCode("");
+      setNextPassword("");
+      setConfirmPassword("");
+      setNotice(result.message || "Password updated. Sign in with the new password.");
+      setStep("password");
+    } catch {
+      setError("Could not reset the password.");
+    } finally {
       setIsLoading(false);
     }
   };
@@ -425,17 +500,39 @@ export default function Home() {
           <div>
             <div className="mb-9">
               <h1 className="text-[1.75rem] font-normal tracking-tight text-slate-900">
-                {isEmailStep ? "Check your email" : "Welcome back"}
+                {step === "email"
+                  ? "Check your email"
+                  : step === "forgot"
+                    ? "Reset your password"
+                    : step === "reset"
+                      ? "Choose a new password"
+                      : "Welcome back"}
               </h1>
-              {isEmailStep ? (
+              {step === "email" ? (
                 <p className="mt-1.5 text-sm text-slate-500">
                   We sent a 6-digit code to{" "}
                   <span className="font-semibold text-slate-800">{username.trim() || "your email"}</span>
+                </p>
+              ) : step === "forgot" ? (
+                <p className="mt-1.5 text-sm text-slate-500">
+                  Enter the email on your admin account. We will send a reset code.
+                </p>
+              ) : step === "reset" ? (
+                <p className="mt-1.5 text-sm text-slate-500">
+                  Enter the code sent to{" "}
+                  <span className="font-semibold text-slate-800">{username.trim() || "your email"}</span>
+                  , then choose a new password.
                 </p>
               ) : (
                 <p className="mt-1.5 text-sm text-slate-500">Sign in with your authorized admin credentials.</p>
               )}
             </div>
+
+            {notice && !error ? (
+              <div className="mb-5 rounded-lg border border-teal-200 bg-teal-50 px-3 py-3 text-sm text-teal-900" role="status">
+                {notice}
+              </div>
+            ) : null}
 
             {error && (
               <div className="admin-alert-error mb-5 flex items-start gap-2.5 py-3" role="alert">
@@ -502,6 +599,139 @@ export default function Home() {
                     {resendIn > 0
                       ? `Resend in ${Math.floor(resendIn / 60)}:${String(resendIn % 60).padStart(2, "0")}`
                       : "Resend code"}
+                  </button>
+                </div>
+              </form>
+            ) : step === "forgot" ? (
+              <form onSubmit={(event) => void requestReset(event)} className="space-y-7">
+                <div>
+                  <label htmlFor="reset-email" className={LINE_LABEL}>
+                    Email address
+                  </label>
+                  <div className="group relative">
+                    <Mail className={LINE_ICON} aria-hidden />
+                    <input
+                      id="reset-email"
+                      type="email"
+                      required
+                      autoComplete="email"
+                      autoFocus
+                      value={username}
+                      onChange={(event) => setUsername(event.target.value)}
+                      className={`${LINE_INPUT} pr-2`}
+                      placeholder="Enter your email"
+                    />
+                    <span className={LINE_FOCUS_BAR} aria-hidden />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="admin-btn-primary h-11 w-full text-[15px] font-semibold"
+                >
+                  {isLoading ? "Sending…" : "Email me a code"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError("");
+                    setNotice("");
+                    setStep("password");
+                  }}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900"
+                >
+                  <ArrowLeft className="h-4 w-4" aria-hidden />
+                  Back to sign in
+                </button>
+              </form>
+            ) : step === "reset" ? (
+              <form onSubmit={(event) => void saveReset(event)} className="space-y-6">
+                <OtpCodeBoxes
+                  value={resetCode}
+                  onChange={(value) => {
+                    setResetCode(value);
+                    if (error) setError("");
+                  }}
+                  disabled={isLoading}
+                  autoFocus
+                />
+                <div>
+                  <label htmlFor="new-password" className={LINE_LABEL}>
+                    New password
+                  </label>
+                  <div className="group relative">
+                    <LockKeyhole className={LINE_ICON} aria-hidden />
+                    <input
+                      id="new-password"
+                      type={showNextPassword ? "text" : "password"}
+                      required
+                      autoComplete="new-password"
+                      value={nextPassword}
+                      onChange={(event) => setNextPassword(event.target.value)}
+                      className={`${LINE_INPUT} pr-10`}
+                      placeholder="At least 8 characters"
+                    />
+                    <span className={LINE_FOCUS_BAR} aria-hidden />
+                    <button
+                      type="button"
+                      onClick={() => setShowNextPassword((value) => !value)}
+                      className="absolute right-0 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-700"
+                      aria-label={showNextPassword ? "Hide password" : "Show password"}
+                    >
+                      {showNextPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="confirm-password" className={LINE_LABEL}>
+                    Confirm password
+                  </label>
+                  <div className="group relative">
+                    <LockKeyhole className={LINE_ICON} aria-hidden />
+                    <input
+                      id="confirm-password"
+                      type={showNextPassword ? "text" : "password"}
+                      required
+                      autoComplete="new-password"
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      className={`${LINE_INPUT} pr-2`}
+                      placeholder="Type it again"
+                    />
+                    <span className={LINE_FOCUS_BAR} aria-hidden />
+                  </div>
+                </div>
+                <p className="text-xs leading-relaxed text-slate-500">
+                  Use at least 8 characters, with letters, a number, and an uppercase letter or a symbol.
+                </p>
+                <button
+                  type="submit"
+                  disabled={isLoading || resetCode.length !== 6}
+                  className="admin-btn-primary h-11 w-full text-[15px] font-semibold"
+                >
+                  {isLoading ? "Saving…" : "Save password"}
+                </button>
+                <div className="flex items-center justify-between border-t border-slate-100! pt-5 text-sm">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError("");
+                      setNotice("");
+                      setStep("forgot");
+                    }}
+                    className="inline-flex items-center gap-1.5 font-medium text-slate-500 hover:text-slate-900"
+                  >
+                    <ArrowLeft className="h-4 w-4" aria-hidden />
+                    Change email
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isLoading || resendIn > 0}
+                    onClick={() => void requestReset()}
+                    className="inline-flex items-center gap-1.5 font-semibold text-teal-700 hover:text-teal-900 disabled:text-slate-400"
+                  >
+                    <RotateCw className="h-3.5 w-3.5" aria-hidden />
+                    {resendIn > 0 ? `Resend in ${resendIn}s` : "Resend code"}
                   </button>
                 </div>
               </form>
@@ -612,6 +842,19 @@ export default function Home() {
                       {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
                     </button>
                   </div>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError("");
+                      setNotice("");
+                      setStep("forgot");
+                    }}
+                    className="text-sm font-medium text-teal-700 hover:text-teal-900"
+                  >
+                    Forgot password?
+                  </button>
                 </div>
 
                 <SlideToContinue

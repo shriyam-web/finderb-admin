@@ -160,9 +160,7 @@ export default function AdminProfileModal({
       ? "Full console access, including Manage Admins"
       : role === "controller"
         ? "All tabs except Manage Admins"
-        : role === "super_admin"
-          ? "Tab access is assigned by a Developer"
-          : null;
+        : "Only the tabs a Developer assigned";
 
   return (
     <AdminOverlay>

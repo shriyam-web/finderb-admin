@@ -150,7 +150,7 @@ function modeFromAllowList(
   const direct = modes[normalized] ?? modes[tab];
   if (direct === "read" || direct === "edit") return direct;
 
-  // Legacy alias only — do not inherit unrelated tabs.
+  // Renamed tab only. A grant on one tab never opens a different tab.
   if (
     normalized === "Business Onboarding" &&
     (modes["Merchant Registration"] === "read" ||
@@ -159,29 +159,16 @@ function modeFromAllowList(
     return modes["Merchant Registration"];
   }
 
-  if (
-    normalized === "Business Promotions" &&
-    (modes["Payments & Subscriptions"] === "read" ||
-      modes["Payments & Subscriptions"] === "edit")
-  ) {
-    return modes["Payments & Subscriptions"];
-  }
-
-  if (normalized === "Ads Request") {
-    const inherited =
-      modes["Business Promotions"] || modes["Payments & Subscriptions"];
-    if (inherited === "read" || inherited === "edit") return inherited;
-  }
-
   return "none";
 }
 
 /**
  * Resolve access for a tab.
- * Developer always gets edit (including Manage Admins).
- * Controller gets edit on every tab except Manage Admins.
- * Everyone else is an explicit allow-list (modes, or legacy tabs as edit).
- * Missing tab ⇒ none. No inheritance between Merchants / Onboarding / Quick Onboard.
+ * Developer always gets edit, including Manage Admins.
+ * A controller with no saved list keeps the operational console.
+ * Once a Developer saves that controller's tabs, only those tabs remain.
+ * Admin and super_admin never see a tab that was not saved for them.
+ * A grant on one tab does not open a different tab.
  */
 export function resolveTabAccess(
   session: AdminAccessSession | null | undefined,
@@ -190,28 +177,21 @@ export function resolveTabAccess(
   if (!session) return "none";
   if (isDeveloperRole(session.role)) return "edit";
   if (tab === "Manage Admins") return "none";
-  // Sensitive support impersonation / review moderation: never auto-grant
-  // to controllers. Developer grants explicitly via Manage Admins.
-  if (
+  const explicitOnly =
     tab === "Merchant Support Login" ||
     tab === "Reviews" ||
     tab === "Change Requests" ||
     tab === "Ownership Requests" ||
     tab === "Job Reports" ||
-    tab === "Site Configurations"
-  ) {
-    return modeFromAllowList(effectiveTabModes(session), tab);
-  }
+    tab === "Site Configurations";
+  if (explicitOnly) return modeFromAllowList(effectiveTabModes(session), tab);
   if (isControllerRole(session.role)) {
-    // No saved allow-list means the controller still has every operational tab.
-    // Once a Developer saves tab access, that list is what the controller can open.
     if (session.allowed_tab_modes === null || session.allowed_tab_modes === undefined) {
       return "edit";
     }
     return modeFromAllowList(effectiveTabModes(session), tab);
   }
   if (tab === "News" || tab === "FinderB E-commerce") return "none";
-
   return modeFromAllowList(effectiveTabModes(session), tab);
 }
 

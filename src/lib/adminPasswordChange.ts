@@ -300,3 +300,167 @@ export async function changeAdminPassword(input: {
   );
   return { ok: true, emailed };
 }
+
+const RESET_PURPOSE = "admin-reset";
+
+async function storeResetCode(email: string, code: string): Promise<void> {
+  const client = service();
+  if (!client) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
+  const subject = email.trim().toLowerCase();
+  await client.from("otp_challenges").delete().eq("purpose", RESET_PURPOSE).eq("subject", subject);
+  const { error } = await client.from("otp_challenges").insert({
+    purpose: RESET_PURPOSE,
+    subject,
+    code_hash: hashValue("admin-reset", subject, code),
+    expires_at: new Date(Date.now() + OTP_TTL_MS).toISOString(),
+    attempts: 0,
+    send_count: 1,
+  });
+  if (!error) return;
+  const fallback = await client.from("otp_challenges").insert({
+    purpose: RESET_PURPOSE,
+    subject,
+    code_hash: hashValue("admin-reset", subject, code),
+    expires_at: new Date(Date.now() + OTP_TTL_MS).toISOString(),
+  });
+  if (fallback.error) throw new Error("Could not store the reset code.");
+}
+
+async function recentResetAge(email: string): Promise<number | null> {
+  const client = service();
+  if (!client) return null;
+  const { data } = await client
+    .from("otp_challenges")
+    .select("expires_at")
+    .eq("purpose", RESET_PURPOSE)
+    .eq("subject", email.trim().toLowerCase())
+    .maybeSingle();
+  const expiresAt = Date.parse(String(data?.expires_at || ""));
+  if (!Number.isFinite(expiresAt)) return null;
+  return OTP_TTL_MS - (expiresAt - Date.now());
+}
+
+export async function sendAdminResetCode(
+  email: string,
+): Promise<{ ok: true } | { ok: false; error: string; retryAfter?: number }> {
+  const normalized = email.trim().toLowerCase();
+  const age = await recentResetAge(normalized);
+  if (age != null && age >= 0 && age < RESEND_WAIT_MS) {
+    return {
+      ok: false,
+      error: "Please wait a minute before requesting another code.",
+      retryAfter: Math.ceil((RESEND_WAIT_MS - age) / 1000),
+    };
+  }
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  try {
+    await storeResetCode(normalized, code);
+  } catch (error) {
+    console.error(
+      "[admin-reset] store failed",
+      error instanceof Error ? error.message : "error",
+    );
+    return { ok: false, error: "Could not prepare the reset code. Please try again." };
+  }
+  const sent = await sendEmail(
+    normalized,
+    `${code} is your FinderB admin reset code`,
+    [
+      "FinderB Admin",
+      "",
+      "Use this code to set a new password for your admin account.",
+      "",
+      code,
+      "",
+      "It expires in 15 minutes. If you did not ask to reset your password, ignore this email.",
+    ].join("\n"),
+  );
+  if (!sent) {
+    await service()?.from("otp_challenges").delete().eq("purpose", RESET_PURPOSE).eq("subject", normalized);
+    return { ok: false, error: "Could not email the reset code. Try again in a moment." };
+  }
+  return { ok: true };
+}
+
+export async function consumeAdminResetCode(email: string, code: string): Promise<boolean> {
+  const digits = String(code || "").replace(/\D/g, "");
+  if (digits.length !== 6) return false;
+  const client = service();
+  if (!client) return false;
+  const subject = email.trim().toLowerCase();
+  const { data } = await client
+    .from("otp_challenges")
+    .select("id, code_hash, expires_at, attempts")
+    .eq("purpose", RESET_PURPOSE)
+    .eq("subject", subject)
+    .maybeSingle();
+  if (!data?.id) return false;
+  const expiresAt = Date.parse(String(data.expires_at || ""));
+  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+    await client.from("otp_challenges").delete().eq("id", data.id);
+    return false;
+  }
+  const attempts = Number(data.attempts || 0);
+  if (attempts >= 5) {
+    await client.from("otp_challenges").delete().eq("id", data.id);
+    return false;
+  }
+  if (!same(String(data.code_hash || ""), hashValue("admin-reset", subject, digits))) {
+    await client.from("otp_challenges").update({ attempts: attempts + 1 }).eq("id", data.id);
+    return false;
+  }
+  const { data: removed } = await client
+    .from("otp_challenges")
+    .delete()
+    .eq("id", data.id)
+    .eq("code_hash", data.code_hash)
+    .select("id");
+  return Boolean(removed?.length);
+}
+
+export async function resetForgottenAdminPassword(input: {
+  email: string;
+  code: string;
+  newPassword: string;
+  confirmPassword: string;
+  currentHash: string;
+  adminId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const next = input.newPassword.trim();
+  const confirm = input.confirmPassword.trim();
+  const policy = validateAdminPasswordChange({
+    newPassword: next,
+    confirmPassword: confirm,
+    email: input.email,
+  });
+  if (policy) return { ok: false, error: policy };
+  const sameAsCurrent = await verifyPassword(next, input.currentHash);
+  if (sameAsCurrent.valid) {
+    return { ok: false, error: "Choose a password that is different from your current one." };
+  }
+  const ok = await consumeAdminResetCode(input.email, input.code);
+  if (!ok) return { ok: false, error: "That code is incorrect or has expired." };
+  const client = service();
+  if (!client) return { ok: false, error: "Password storage is not available." };
+  const hashed = await hashPassword(next);
+  const { error } = await client.from("admins").update({ password: hashed }).eq("id", input.adminId);
+  if (error) {
+    console.error("[admin-reset] update failed", error.message);
+    return { ok: false, error: "Could not save the new password." };
+  }
+  await sendEmail(
+    input.email,
+    "Your FinderB admin password was reset",
+    [
+      "FinderB Admin",
+      "",
+      "The password for your admin account was just reset from the sign-in page.",
+      "",
+      "If you made this change, sign in with the new password.",
+      "If you did not, contact the Developer immediately.",
+      "",
+      `Time: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST`,
+    ].join("\n"),
+  );
+  return { ok: true };
+}

@@ -759,7 +759,7 @@ export default function ManageAdminsContent({
                             {admin.role === "controller" &&
                             admin.allowed_tab_modes == null
                               ? "All tabs"
-                              : `${admin.allowed_tabs?.length || 0} tabs`}
+                              : `${normalizeAccessFields(admin.allowed_tabs, admin.allowed_tab_modes).allowed_tabs.length} tabs`}
                           </button>
                         )}
                       </td>
@@ -955,7 +955,7 @@ export default function ManageAdminsContent({
                   >
                     {admin.role === "controller" && admin.allowed_tab_modes == null
                       ? "All tabs"
-                      : `${admin.allowed_tabs?.length || 0} tabs`}
+                      : `${normalizeAccessFields(admin.allowed_tabs, admin.allowed_tab_modes).allowed_tabs.length} tabs`}
                   </button>
                 )}
                 {canMutate && (

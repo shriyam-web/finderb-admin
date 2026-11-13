@@ -1851,12 +1851,7 @@ export default function Dashboard() {
   }, [activeTab, adminSession?.id, isDeveloper, panelRefresh]);
 
   const menuItems = ALL_MENU_ITEMS.filter((item) => {
-    // Developer sees every tab, including Manage Admins and coming soon.
-    if (isDeveloper) {
-      return true;
-    }
-    // Controller without a saved allow-list keeps operational tabs.
-    // A saved allow-list from the Developer replaces that.
+    if (isDeveloper) return true;
     if (isController && adminSession?.allowed_tab_modes == null) {
       return (
         item.name !== "Manage Admins" &&
@@ -1872,8 +1867,6 @@ export default function Dashboard() {
       if (item.name === "Manage Admins") return false;
       return hasTabAccess(adminSession, item.name);
     }
-    // Manage Admins + coming-soon placeholders stay off the allow-list.
-    // Never leak News / E-commerce just because some other tab was granted.
     if (item.name === "Manage Admins" || COMING_SOON_TABS.has(item.name)) {
       return false;
     }
