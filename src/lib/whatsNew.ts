@@ -85,6 +85,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Reset a forgotten password from the sign-in page",
+    body: "Forgot password? sits under the password field on the sign-in page.\n\nEnter the email on the admin account and press Email me a code. FinderB sends a 6-digit code. It expires in 15 minutes. Type the code, then a new password twice, and press Save password.\n\nThe new password needs at least 8 characters, letters and a number, plus an uppercase letter or a symbol. It cannot be the password you already use. You can ask for another code after 60 seconds. Five wrong codes end that reset.\n\nAn email that is missing or disabled gets the same notice, so the page does not say whether an account exists. When the password is saved, a confirmation email is sent. Sign in with the new password.\n\nThis is separate from Change password inside the panel, which still asks for the current password.",
+    published_at: "2026-11-14T04:10:00+05:30",
+  },
+  {
     title: "Ads Request checks each ad before payment",
     body: "Ads Request is a new tab under Requests. Its name shines in the sidebar for 30 days.\n\nA verified business can make more than one ad. After the video is saved, that ad waits here. Payment stays closed until you approve it.\n\nOpen the video, the target, and the ad content. Approve it, deny it with a reason, or delete an unpaid request. Business verification is still on Business Promotions. Anyone who can open Business Promotions can open Ads Request.",
     published_at: "2026-11-09T15:50:00+05:30",
