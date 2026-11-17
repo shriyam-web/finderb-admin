@@ -9,6 +9,7 @@ import {
   markWhatsNewRead,
   removeWhatsNewEntry,
   subscribeWhatsNewChanges,
+  WHATS_NEW_PAGE_SIZE,
   type WhatsNewEntry,
 } from "../lib/whatsNew";
 import { useAdminToast } from "./AdminToast";
@@ -50,7 +51,11 @@ export default function WhatsNewPanel({
   const supabase = useMemo(() => createClient(), []);
 
   const [entries, setEntries] = useState<WhatsNewEntry[]>([]);
+  const [total, setTotal] = useState(0);
+  const [unreadIds, setUnreadIds] = useState<string[]>([]);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [markingId, setMarkingId] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -78,18 +83,22 @@ export default function WhatsNewPanel({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const panelUnread = useMemo(
-    () => entries.filter((entry) => !entry.isRead).length,
-    [entries],
-  );
+  const shownRef = useRef(WHATS_NEW_PAGE_SIZE);
+  const headerUnread = hasLoaded ? unreadIds.length : unreadCount;
 
   const load = useCallback(async (mode: "initial" | "silent" = "initial") => {
     if (!adminId) return;
+    const limit = mode === "initial"
+      ? WHATS_NEW_PAGE_SIZE
+      : Math.max(WHATS_NEW_PAGE_SIZE, shownRef.current);
     if (mode === "initial") {
       setLoading(true);
       setError(null);
     }
-    const result = await fetchWhatsNewEntries(supabase, adminId);
+    const result = await fetchWhatsNewEntries(supabase, adminId, {
+      limit,
+      seed: mode === "initial",
+    });
     if (result.error) {
       if (mode === "initial") {
         setError(
@@ -99,10 +108,17 @@ export default function WhatsNewPanel({
             : result.error,
         );
         setEntries([]);
+        setTotal(0);
+        setUnreadIds([]);
+        setHasLoaded(true);
         onUnreadCountChange(0);
       }
     } else {
+      shownRef.current = result.entries.length;
       setEntries(result.entries);
+      setTotal(result.total);
+      setUnreadIds(result.unreadIds);
+      setHasLoaded(true);
       onUnreadCountChange(result.unreadCount);
     }
     if (mode === "initial") setLoading(false);
@@ -110,7 +126,8 @@ export default function WhatsNewPanel({
 
   useEffect(() => {
     if (!open) return;
-    void load();
+    shownRef.current = WHATS_NEW_PAGE_SIZE;
+    void load("initial");
   }, [open, load]);
 
   const seenTick = useRef(0);
@@ -151,15 +168,16 @@ export default function WhatsNewPanel({
       setMarkingId(null);
       return;
     }
-    setEntries((prev) => {
-      const next = prev.map((entry) =>
+    setEntries((prev) =>
+      prev.map((entry) =>
         entry.id === itemId
           ? { ...entry, isRead: true, readAt: new Date().toISOString() }
           : entry,
-      );
-      onUnreadCountChange(next.filter((entry) => !entry.isRead).length);
-      return next;
-    });
+      ),
+    );
+    const nextUnread = unreadIds.filter((id) => id !== itemId);
+    setUnreadIds(nextUnread);
+    onUnreadCountChange(nextUnread.length);
     setMarkingId(null);
   };
 
@@ -176,24 +194,44 @@ export default function WhatsNewPanel({
       setRemovingId(null);
       return;
     }
-    setEntries((prev) => {
-      const next = prev.filter((item) => item.id !== entry.id);
-      onUnreadCountChange(next.filter((item) => !item.isRead).length);
-      return next;
-    });
+    setEntries((prev) => prev.filter((item) => item.id !== entry.id));
+    setTotal((count) => Math.max(0, count - 1));
+    shownRef.current = Math.max(0, shownRef.current - 1);
+    const nextUnread = unreadIds.filter((id) => id !== entry.id);
+    setUnreadIds(nextUnread);
+    onUnreadCountChange(nextUnread.length);
     setRemovingId(null);
     toast("Removed for every admin", "success");
   };
 
-  const latestUnread = entries.find((entry) => !entry.isRead) ?? null;
+  const latestUnreadId = unreadIds[0] ?? null;
 
   const handleMarkLatest = async () => {
-    if (!latestUnread) return;
-    await handleMarkRead(latestUnread.id);
+    if (!latestUnreadId) return;
+    await handleMarkRead(latestUnreadId);
+  };
+
+  const handleLoadMore = async () => {
+    if (loadingMore || entries.length >= total) return;
+    const next = shownRef.current + WHATS_NEW_PAGE_SIZE;
+    setLoadingMore(true);
+    const result = await fetchWhatsNewEntries(supabase, adminId, {
+      limit: next,
+      seed: false,
+    });
+    if (result.error) {
+      toast(result.error, "error");
+    } else {
+      shownRef.current = result.entries.length;
+      setEntries(result.entries);
+      setTotal(result.total);
+      setUnreadIds(result.unreadIds);
+      onUnreadCountChange(result.unreadCount);
+    }
+    setLoadingMore(false);
   };
 
   const handleMarkAll = async () => {
-    const unreadIds = entries.filter((e) => !e.isRead).map((e) => e.id);
     if (!unreadIds.length) return;
     setMarkingAll(true);
     const { error: markError } = await markAllWhatsNewRead(
@@ -212,12 +250,13 @@ export default function WhatsNewPanel({
         entry.isRead ? entry : { ...entry, isRead: true, readAt: now },
       ),
     );
+    setUnreadIds([]);
     onUnreadCountChange(0);
     setMarkingAll(false);
     toast("All updates marked as read", "success");
   };
 
-  const badgeCount = open ? panelUnread : unreadCount;
+  const badgeCount = open && hasLoaded ? unreadIds.length : unreadCount;
 
   return (
     <>
@@ -306,7 +345,7 @@ export default function WhatsNewPanel({
                 </h2>
                 <p className="text-[12px] text-slate-500 mt-0.5">
                   Latest FinderB Admin enhancements
-                  {panelUnread > 0 ? ` · ${panelUnread} unread` : ""}
+                  {headerUnread > 0 ? ` · ${headerUnread} unread` : ""}
                 </p>
               </div>
               <button
@@ -322,15 +361,15 @@ export default function WhatsNewPanel({
               <button
                 type="button"
                 className="admin-btn-primary admin-solid-btn !text-xs"
-                disabled={!latestUnread || markingId === latestUnread.id}
+                disabled={!latestUnreadId || markingId === latestUnreadId}
                 onClick={() => void handleMarkLatest()}
               >
-                {latestUnread && markingId === latestUnread.id ? "Saving…" : "Mark latest read"}
+                {latestUnreadId && markingId === latestUnreadId ? "Saving…" : "Mark latest read"}
               </button>
               <button
                 type="button"
                 className="admin-btn-secondary !text-xs"
-                disabled={markingAll || panelUnread === 0}
+                disabled={markingAll || unreadIds.length === 0}
                 onClick={() => void handleMarkAll()}
               >
                 {markingAll ? "Marking…" : "Mark all read"}
@@ -405,6 +444,18 @@ export default function WhatsNewPanel({
                     </div>
                   </article>
                 ))}
+              {!loading && !error && entries.length < total && (
+                <div className="flex justify-center pt-1 pb-2">
+                  <button
+                    type="button"
+                    className="admin-btn-secondary !text-xs"
+                    disabled={loadingMore}
+                    onClick={() => void handleLoadMore()}
+                  >
+                    {loadingMore ? "Loading…" : "Load more"}
+                  </button>
+                </div>
+              )}
             </div>
           </aside>
         </AdminOverlay>
@@ -434,7 +485,7 @@ export function useWhatsNewUnreadCount(adminId: string | null | undefined) {
       setUnreadCount(0);
       return;
     }
-    const result = await fetchWhatsNewEntries(supabase, adminId);
+    const result = await fetchWhatsNewEntries(supabase, adminId, { limit: 1 });
     if (!result.error) setUnreadCount(result.unreadCount);
   }, [adminId, supabase]);
 

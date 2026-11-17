@@ -19,18 +19,43 @@ type ReadRow = {
   read_at: string;
 };
 
+export const WHATS_NEW_PAGE_SIZE = 15;
+
+const emptyWhatsNew = (error: string | null) => ({
+  entries: [] as WhatsNewEntry[],
+  total: 0,
+  unreadCount: 0,
+  unreadIds: [] as string[],
+  error,
+});
+
 export async function fetchWhatsNewEntries(
   supabase: SupabaseClient,
   adminId: string,
-): Promise<{ entries: WhatsNewEntry[]; unreadCount: number; error: string | null }> {
+  options?: { limit?: number; seed?: boolean },
+): Promise<{
+  entries: WhatsNewEntry[];
+  total: number;
+  unreadCount: number;
+  unreadIds: string[];
+  error: string | null;
+}> {
+  const limit = Math.max(1, options?.limit ?? WHATS_NEW_PAGE_SIZE);
   const removed = await removedWhatsNewTitles(supabase);
-  await ensureWhatsNewSeeds(supabase, removed).catch(() => undefined);
+  if (options?.seed !== false) {
+    await ensureWhatsNewSeeds(supabase, removed).catch(() => undefined);
+  }
 
-  const [{ data: items, error: itemsError }, { data: reads, error: readsError }] =
+  const [{ data: items, error: itemsError }, { data: catalog, error: catalogError }, { data: reads, error: readsError }] =
     await Promise.all([
       supabase
         .from("admin_whats_new")
         .select("id, title, body, published_at, created_by, created_at")
+        .order("published_at", { ascending: false })
+        .range(0, limit - 1),
+      supabase
+        .from("admin_whats_new")
+        .select("id, title")
         .order("published_at", { ascending: false }),
       supabase
         .from("admin_whats_new_reads")
@@ -38,41 +63,37 @@ export async function fetchWhatsNewEntries(
         .eq("admin_id", adminId),
     ]);
 
-  if (itemsError) {
-    return {
-      entries: [],
-      unreadCount: 0,
-      error: itemsError.message,
-    };
-  }
-  if (readsError) {
-    return {
-      entries: [],
-      unreadCount: 0,
-      error: readsError.message,
-    };
-  }
+  if (itemsError) return emptyWhatsNew(itemsError.message);
+  if (catalogError) return emptyWhatsNew(catalogError.message);
+  if (readsError) return emptyWhatsNew(readsError.message);
 
   const readMap = new Map(
     ((reads || []) as ReadRow[]).map((row) => [row.item_id, row.read_at]),
   );
 
+  const visibleCatalog = ((catalog || []) as Array<{ id: string; title: string }>).filter(
+    (item) => !removed.has(item.title),
+  );
+  const unreadIds = visibleCatalog
+    .filter((item) => !readMap.has(item.id))
+    .map((item) => item.id);
+
   const entries: WhatsNewEntry[] = ((items || []) as WhatsNewItem[])
     .filter((item) => !removed.has(item.title))
-    .map(
-    (item) => {
+    .map((item) => {
       const readAt = readMap.get(item.id) ?? null;
       return {
         ...item,
         isRead: Boolean(readAt),
         readAt,
       };
-    },
-  );
+    });
 
   return {
     entries,
-    unreadCount: entries.filter((entry) => !entry.isRead).length,
+    total: visibleCatalog.length,
+    unreadCount: unreadIds.length,
+    unreadIds,
     error: null,
   };
 }
@@ -84,6 +105,11 @@ const WHATS_NEW_SEEDS: Array<{
   body: string;
   published_at: string;
 }> = [
+  {
+    title: "What's New updates on its own",
+    body: "What's New is realtime now. A new notice shows up by itself, and the unread count moves with it. You do not need to refresh the page.\n\nThe latest 15 notices open first. Press Load more for the older ones.",
+    published_at: "2026-11-18T03:00:00+05:30",
+  },
   {
     title: "Photos and videos are moving to Amazon S3",
     body: "FinderB is switching media storage to Amazon Web Services S3, leaving Cloudinary behind. The move is already underway and finishes soon.\n\nIf a photo or video breaks, or a page shows the wrong picture, report it to the developer right away.",
