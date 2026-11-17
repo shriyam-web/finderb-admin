@@ -76,6 +76,15 @@ export type MerchantBusinessRecord = {
   razorpayFundAccountId: string | null;
   bankName: string | null;
   kycStatus: string;
+  kycMethod?: string | null;
+  kycLegalName?: string | null;
+  kycVerifiedAt?: string | null;
+  kycReferenceId?: string | null;
+  panMasked?: string | null;
+  udyamNumber?: string | null;
+  gstin?: string | null;
+  gstLegalName?: string | null;
+  gstStatus?: string | null;
   hasVerifiedBadge: boolean;
   paymentStatus: string;
   paymentId: string | null;
@@ -138,6 +147,7 @@ type MerchantDetailModalProps = {
   onReject: () => void;
   onToggleStatus: () => void;
   onToggleFinderBVerified: () => void;
+  onClearKyb: () => Promise<void>;
   onImageUpload: (files: File[]) => Promise<void>;
   onDeleteImage: (url: string) => Promise<void>;
   onSetProfilePicture: (url: string) => Promise<void>;
@@ -160,6 +170,22 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "badges", label: "Badges" },
   { id: "audit", label: "Audit" },
 ];
+
+function kycStatusLabel(business: MerchantBusinessRecord): string {
+  const status = (business.kycStatus || "pending").toLowerCase();
+  if (status === "verified" || status === "approved") {
+    const via =
+      business.kycMethod === "udyam"
+        ? "Udyam"
+        : business.kycMethod === "pan"
+          ? "PAN"
+          : "Cashfree";
+    return `Verified with ${via}`;
+  }
+  if (status === "revoked") return "Revoked by admin";
+  if (status === "rejected") return "Name did not match";
+  return "Not verified";
+}
 
 const WEEKDAYS = [
   "Monday",
@@ -902,6 +928,7 @@ export default function MerchantDetailModal({
   onReject,
   onToggleStatus,
   onToggleFinderBVerified,
+  onClearKyb,
   onImageUpload,
   onDeleteImage,
   onSetProfilePicture,
@@ -917,6 +944,7 @@ export default function MerchantDetailModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [isSavingExpiry, setIsSavingExpiry] = useState(false);
+  const [isClearingKyb, setIsClearingKyb] = useState(false);
   const [mapLink, setMapLink] = useState(() =>
     googleMapsLink(business.latitude, business.longitude),
   );
@@ -1442,7 +1470,7 @@ export default function MerchantDetailModal({
                         FinderB Verified badge
                       </p>
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        Green badge on the public listing. Independent of KYC.
+                        Public tick. A matching PAN or Udyam check turns this on. You can still switch it here.
                       </p>
                     </div>
                     {canManage ? (
@@ -1582,7 +1610,7 @@ export default function MerchantDetailModal({
                     />
                     <Row
                       label="KYC status"
-                      value={`${display.kycStatus || "pending"} (verification system not live)`}
+                      value={kycStatusLabel(display)}
                     />
                     <Row
                       label="FinderB rating"
@@ -1959,31 +1987,62 @@ export default function MerchantDetailModal({
             {tab === "kyc" && (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                  <Section title="KYC documents">
-                    <Row label="PAN number" value={display.panNumber} mono />
+                  <Section title="Cashfree verification">
+                    <Row label="Status" value={kycStatusLabel(display)} />
+                    <Row label="Check" value={display.kycMethod || "—"} />
+                    <Row label="Registered name" value={display.kycLegalName} />
+                    <Row label="PAN" value={display.panMasked} mono />
+                    <Row label="Udyam" value={display.udyamNumber} mono />
                     <Row
-                      label="Aadhaar number"
-                      value={display.aadharNumber}
+                      label="Verified at"
+                      value={
+                        display.kycVerifiedAt
+                          ? formatDateTimeInr(display.kycVerifiedAt)
+                          : "—"
+                      }
+                    />
+                    <Row
+                      label="Cashfree reference"
+                      value={display.kycReferenceId}
                       mono
                     />
-                    <Row label="KYC status" value={display.kycStatus} />
-                    <LinkRow
-                      label="PAN document"
-                      href={display.panUrl}
-                      text="View"
-                    />
-                    <LinkRow
-                      label="Aadhaar document"
-                      href={display.aadharUrl}
-                      text="View"
-                    />
-                    <LinkRow
-                      label="MSME / GST document"
-                      href={display.msmeGstUrl}
-                      text="View"
-                    />
+                    {canManage && (
+                      <div className="px-3 py-3">
+                        <button
+                          type="button"
+                          disabled={isClearingKyb}
+                          onClick={() => {
+                            setIsClearingKyb(true);
+                            void onClearKyb().finally(() => setIsClearingKyb(false));
+                          }}
+                          className="rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+                        >
+                          {isClearingKyb ? "Removing…" : "Remove verification and public tick"}
+                        </button>
+                        <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+                          The owner can submit PAN or Udyam again from the website or the app.
+                        </p>
+                      </div>
+                    )}
+                  </Section>
+                  <Section title="GSTIN">
+                    <Row label="GSTIN" value={display.gstin} mono />
+                    <Row label="GST legal name" value={display.gstLegalName} />
+                    <Row label="GST status" value={display.gstStatus} />
+                    <p className="px-3 py-2 text-[11px] leading-relaxed text-slate-500">
+                      GSTIN does not turn the tick on by itself. PAN or Udyam does.
+                    </p>
                   </Section>
                 </div>
+                {(display.panUrl || display.aadharUrl || display.msmeGstUrl || display.panNumber) && (
+                  <Section title="Older uploaded documents">
+                    <Row label="PAN number" value={display.panNumber} mono />
+                    <Row label="Aadhaar number" value={display.aadharNumber} mono />
+                    <LinkRow label="PAN document" href={display.panUrl} text="View" />
+                    <LinkRow label="Aadhaar document" href={display.aadharUrl} text="View" />
+                    <LinkRow label="MSME / GST document" href={display.msmeGstUrl} text="View" />
+                  </Section>
+                )}
 
                 {canViewFinancialData &&
                   (business.paymentId ||

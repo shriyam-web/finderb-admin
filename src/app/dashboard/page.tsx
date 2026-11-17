@@ -17,7 +17,7 @@ import { createPortal } from "react-dom";
 import { createClient } from "../../../utils/supabase/client";
 import { deleteMerchantProfile } from "../../lib/deleteMerchant";
 import { stampListingLiveAt } from "../../lib/listingLiveAt";
-import { uploadToCloudinary } from "../../utils/cloudinary";
+import { uploadAdminImage } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
 import FinderBJobsContent, {
   FinderBJob,
@@ -299,6 +299,15 @@ interface BusinessData {
   razorpayFundAccountId: string | null;
   bankName: string | null;
   kycStatus: string;
+  kycMethod?: string | null;
+  kycLegalName?: string | null;
+  kycVerifiedAt?: string | null;
+  kycReferenceId?: string | null;
+  panMasked?: string | null;
+  udyamNumber?: string | null;
+  gstin?: string | null;
+  gstLegalName?: string | null;
+  gstStatus?: string | null;
   hasVerifiedBadge: boolean;
   paymentStatus: string;
   paymentId: string | null;
@@ -2700,7 +2709,7 @@ export default function Dashboard() {
 
   const handleBlogImageUpload = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
-      uploadToCloudinary(file, (progress) => {
+      uploadAdminImage(file, "Blogs", (progress) => {
         console.log(`Upload progress: ${progress}%`);
       })
         .then(resolve)
@@ -5475,7 +5484,7 @@ function MerchantsContent({
       const uploadedUrls: string[] = [];
       for (const [i, file] of filesToUpload.entries()) {
         setUploadProgress({ current: i + 1, total: filesToUpload.length });
-        uploadedUrls.push(await uploadToCloudinary(file));
+        uploadedUrls.push(await uploadAdminImage(file, "Merchants"));
       }
 
       const supabase = createClient();
@@ -5799,6 +5808,54 @@ function MerchantsContent({
         : "FinderB verification disabled",
       "success",
     );
+  };
+
+  const clearBusinessKyb = async (id: string) => {
+    if (!canManage) return;
+    if (
+      !confirm(
+        "Remove this business verification and turn off the FinderB tick?",
+      )
+    ) {
+      return;
+    }
+    const cleared = {
+      kycStatus: "revoked",
+      isFinderBVerified: false,
+      hasVerifiedBadge: false,
+      kycMethod: null,
+      kycLegalName: null,
+      kycVerifiedAt: null,
+      kycReferenceId: null,
+      panMasked: null,
+      udyamNumber: null,
+      gstin: null,
+      gstLegalName: null,
+      gstStatus: null,
+    };
+    const supabase = createClient();
+    const { error } = await supabase.from("Business").update(cleared).eq("id", id);
+    if (error) {
+      toast("Could not remove verification: " + error.message, "error");
+      return;
+    }
+    setSelectedBusiness((prev) => (prev && prev.id === id ? { ...prev, ...cleared } : prev));
+    setActiveMerchants((prev) =>
+      prev.map((merchant) =>
+        merchant.id === id ? { ...merchant, isFinderBVerified: false } : merchant,
+      ),
+    );
+    await logMerchantAudit({
+      merchantId: id,
+      actor: adminSession,
+      action: "kyb.revoked",
+      summary: "Removed Cashfree business verification and the public tick",
+      changes: diffAuditChanges(
+        { kycStatus: selectedBusiness?.kycStatus || "pending" },
+        { kycStatus: "revoked" },
+      ),
+    });
+    toast("Business verification removed", "success");
   };
 
   const handleDeleteMerchant = async (id: string) => {
@@ -6607,6 +6664,7 @@ function MerchantsContent({
           onToggleStatus={() =>
             toggleMerchantStatus(selectedBusiness.id, selectedBusiness.status)
           }
+          onClearKyb={() => clearBusinessKyb(selectedBusiness.id)}
           onToggleFinderBVerified={() =>
             toggleFinderBVerified(
               selectedBusiness.id,
@@ -6723,7 +6781,7 @@ function MoviesContent({
     if (!canManage) return;
     try {
       setUploading(true);
-      const url = await uploadToCloudinary(file, (progress) => {
+      const url = await uploadAdminImage(file, "Movies", (progress) => {
         setUploadProgress(progress);
       });
 
@@ -7171,7 +7229,7 @@ function NewsContent({
   const handleImageUpload = async (file: File, isEditing: boolean) => {
     try {
       setUploading(true);
-      const url = await uploadToCloudinary(file, (progress) => {
+      const url = await uploadAdminImage(file, "News", (progress) => {
         setUploadProgress(progress);
       });
       if (isEditing && editingNews) {

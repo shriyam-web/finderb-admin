@@ -8,7 +8,7 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { uploadToCloudinary } from "../utils/cloudinary";
+import { uploadAdminImage } from "../utils/cloudinary";
 import {
   countPartnersForCategory,
   inferCategoryLevel,
@@ -436,7 +436,7 @@ export default function CategoriesContent({
     try {
       setUploading(type);
       setUploadProgress((prev) => ({ ...prev, [type]: 0 }));
-      const url = await uploadToCloudinary(file, (progress) => {
+      const url = await uploadAdminImage(file, "Categories", (progress) => {
         setUploadProgress((prev) => ({ ...prev, [type]: progress }));
       });
       if (isEditing && editingCategory) {

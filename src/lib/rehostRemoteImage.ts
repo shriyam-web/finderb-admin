@@ -1,3 +1,6 @@
+import { amazonImageStorageActive } from "./mediaEnv";
+import { storeServerImage } from "./mediaObject";
+
 /**
  * Server-side image rehost helpers for GMB / Place Photo URLs.
  * Cloudinary's remote-fetch often fails on Google redirect URLs, so we
@@ -60,6 +63,7 @@ export async function uploadBytesToCloudinary(
   bytes: Buffer,
   contentType: string,
 ): Promise<string | null> {
+  if (await amazonImageStorageActive()) return storeServerImage(bytes);
   const cfg = cloudinaryConfig();
   if (!cfg) return null;
 
@@ -91,6 +95,7 @@ export async function rehostRemoteImageUrl(
 ): Promise<string | null> {
   const fetched = await fetchRemoteImageBytes(imageUrl);
   if (!fetched) {
+    if (await amazonImageStorageActive()) return null;
     // Fallback: let Cloudinary pull the URL itself (works for some CDNs).
     const cfg = cloudinaryConfig();
     if (!cfg) return null;

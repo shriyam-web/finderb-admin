@@ -19,9 +19,9 @@ type PromotionPrice = {
   referenceInr: number;
 };
 
-type Section = "Plans" | "Promote" | "Contact";
+type Section = "Media" | "Plans" | "Promote" | "Contact";
 
-const SECTIONS: Section[] = ["Plans", "Promote", "Contact"];
+const SECTIONS: Section[] = ["Media", "Plans", "Promote", "Contact"];
 
 function rupees(amount: number) {
   return new Intl.NumberFormat("en-IN", {
@@ -99,6 +99,7 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
   const [form, setForm] = useState<SiteConfigForm>(DEFAULT_SITE_CONFIG_FORM);
   const [promotionPrices, setPromotionPrices] = useState<PromotionPrice[]>([]);
   const [section, setSection] = useState<Section>("Plans");
+  const [s3Configured, setS3Configured] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -113,10 +114,12 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
           success?: boolean;
           config?: SiteConfigForm;
           promotionPrices?: PromotionPrice[];
+          storage?: { s3Configured?: boolean };
           error?: string;
         };
         if (!cancelled && body.success && body.config) setForm(body.config);
         if (!cancelled && body.success && body.promotionPrices) setPromotionPrices(body.promotionPrices);
+        if (!cancelled && body.success) setS3Configured(Boolean(body.storage?.s3Configured));
         if (!cancelled && !body.success) setError(body.error || "Could not load site configuration.");
       } catch {
         if (!cancelled) setError("Could not load site configuration.");
@@ -181,7 +184,7 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
         <div className="min-w-0">
           <h1 className="admin-page-title">Site Configurations</h1>
           <p className="admin-page-subtitle">
-            Plan prices, Promote your business online, and the public contact details. A Developer sees this tab. Other accounts see it only after it is granted.
+            Photo storage, plan prices, Promote your business online, and the public contact details. A Developer sees this tab. Other accounts see it only after it is granted.
           </p>
         </div>
         <button
@@ -219,6 +222,54 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
           </button>
         ))}
       </div>
+
+      {section === "Media" ? (
+        <section className="admin-card p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 max-w-2xl">
+              <h2 className="admin-card-title">Photo storage</h2>
+              <p className="admin-card-description">
+                Saving Amazon S3 points the copied public photos and the copied promotion video at Amazon S3 on the website, the app, and Admin. New photos, promotion videos, CVs, and verification files then go to Amazon S3. Saving Cloudinary restores the copied addresses. Anything that was not copied stays on its current address. Verification files stay private.
+              </p>
+            </div>
+            <div className="admin-segmented shrink-0">
+              <button
+                type="button"
+                disabled={!canManage}
+                onClick={() => setForm((current) => ({ ...current, media: { provider: "cloudinary" } }))}
+                className={`admin-segmented-btn ${form.media.provider === "cloudinary" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"} disabled:opacity-50`}
+                aria-pressed={form.media.provider === "cloudinary"}
+              >
+                Cloudinary
+              </button>
+              <button
+                type="button"
+                disabled={!canManage}
+                onClick={() => {
+                  if (!s3Configured) {
+                    setMessage("");
+                    setError("Amazon S3 is not connected on this server yet. Photos stay on Cloudinary.");
+                    return;
+                  }
+                  setError("");
+                  setForm((current) => ({ ...current, media: { provider: "s3" } }));
+                }}
+                className={`admin-segmented-btn ${form.media.provider === "s3" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"} disabled:opacity-50`}
+                aria-pressed={form.media.provider === "s3"}
+              >
+                Amazon S3
+              </button>
+            </div>
+          </div>
+          <p className="admin-card-description mt-4">
+            {form.media.provider === "cloudinary"
+              ? "Cloudinary is selected. The website, the Android app, and this admin keep the current photos and uploads."
+              : s3Configured
+                ? "Amazon S3 is selected and connected. New public photos from the website, the Android app, and this admin go to Amazon S3 after you save."
+                : "Amazon S3 cannot be selected until storage is connected. Photos and uploads keep using Cloudinary."}
+          </p>
+        </section>
+      ) : null}
 
       {section === "Plans" ? (
         <div className="grid gap-4 lg:grid-cols-2">

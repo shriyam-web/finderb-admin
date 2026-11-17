@@ -8,6 +8,7 @@ import {
   parseSiteConfigForm,
   type SiteConfigForm,
 } from "../../../../lib/siteConfigAdmin";
+import { publicS3Env } from "../../../../lib/mediaEnv";
 
 const TAB = "Site Configurations";
 
@@ -74,7 +75,12 @@ export async function GET(request: Request) {
       priceInr: Number(row.price_inr) || 0,
       referenceInr: Number(row.reference_inr) || 0,
     }));
-    return NextResponse.json({ success: true, config: stored.form, promotionPrices });
+    return NextResponse.json({
+      success: true,
+      config: stored.form,
+      promotionPrices,
+      storage: { s3Configured: publicS3Env().ready },
+    });
   } catch (error) {
     console.error("[site-config] get failed", error);
     return NextResponse.json(
@@ -105,9 +111,28 @@ export async function POST(request: Request) {
     }
 
     const form = parseSiteConfigForm(body.config);
+    if (form.media.provider === "s3" && !publicS3Env().ready) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Amazon S3 is not connected on this server yet. Photos stay on Cloudinary.",
+        },
+        { status: 400 },
+      );
+    }
     const stored = await loadStoredConfig();
-    const next = { ...form, billing: stored.billing };
     const supabase = getSupabase();
+    const providerChanged = form.media.provider !== stored.form.media.provider;
+    if (providerChanged) {
+      const swapped = await supabase.rpc("apply_media_addresses", { target: form.media.provider });
+      if (swapped.error) {
+        return NextResponse.json(
+          { success: false, error: "The storage switch could not be applied. Current photos were left unchanged." },
+          { status: 500 },
+        );
+      }
+    }
+    const next = { ...form, billing: stored.billing };
     const { error } = await supabase.from("site_config").upsert(
       {
         id: SITE_CONFIG_ID,
@@ -117,6 +142,9 @@ export async function POST(request: Request) {
       { onConflict: "id" },
     );
     if (error) {
+      if (providerChanged) {
+        await supabase.rpc("apply_media_addresses", { target: stored.form.media.provider });
+      }
       return NextResponse.json(
         { success: false, error: "Site configuration could not be saved. The storage table may be missing." },
         { status: 500 },

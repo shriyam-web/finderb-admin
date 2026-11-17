@@ -11,7 +11,7 @@ import {
 import { createClient } from "../../utils/supabase/client";
 import AdminContentLoader from "./AdminContentLoader";
 import { useAdminPanelRefresh } from "../lib/adminPanelRefresh";
-import { uploadToCloudinary } from "../utils/cloudinary";
+import { uploadAdminImage } from "../utils/cloudinary";
 import {
   ListSearchInput,
   ListSelect,
@@ -259,7 +259,7 @@ export default function TouristPlacesContent({
     if (!canManage) return;
     try {
       setUploading(true);
-      const url = await uploadToCloudinary(file, (progress) => {
+      const url = await uploadAdminImage(file, "Tourist Places", (progress) => {
         setUploadProgress(progress);
       });
       if (isEditing && editingPlace) {

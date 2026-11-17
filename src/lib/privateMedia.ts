@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { presignPrivateDownload } from "./mediaObject";
 
 export type PrivateResource = "image" | "video" | "raw";
 
@@ -27,6 +28,11 @@ function signCloudinaryParams(params: Record<string, string>, apiSecret: string)
     .map((key) => `${key}=${params[key]}`.replace(/&/g, "%26"))
     .join("&");
   return crypto.createHash("sha1").update(toSign + apiSecret).digest("hex");
+}
+
+export async function openPrivateAsset(asset: StoredAsset, attachment = false): Promise<string | null> {
+  if (asset.publicId.startsWith("private/")) return presignPrivateDownload(asset.publicId);
+  return privateDownloadUrl(asset, attachment);
 }
 
 export function privateDownloadUrl(asset: StoredAsset, attachment = false): string | null {

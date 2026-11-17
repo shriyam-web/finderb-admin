@@ -29,6 +29,9 @@ export type SiteConfigForm = {
   features: {
     promoteBusinessOnline: boolean;
   };
+  media: {
+    provider: "cloudinary" | "s3";
+  };
 };
 
 export const DEFAULT_SITE_CONFIG_FORM: SiteConfigForm = {
@@ -60,6 +63,9 @@ export const DEFAULT_SITE_CONFIG_FORM: SiteConfigForm = {
   features: {
     promoteBusinessOnline: false,
   },
+  media: {
+    provider: "cloudinary",
+  },
 };
 
 function money(value: unknown, fallback: number): number {
@@ -78,6 +84,10 @@ function text(value: unknown, fallback: string, max = 180): string {
 
 function flag(value: unknown, fallback: boolean): boolean {
   return typeof value === "boolean" ? value : fallback;
+}
+
+export function parseMediaProvider(value: unknown): "cloudinary" | "s3" {
+  return value === "s3" ? "s3" : "cloudinary";
 }
 
 export type PromotionPriceInput = {
@@ -116,6 +126,7 @@ export function parseSiteConfigForm(raw: unknown): SiteConfigForm {
   const pricing = (row.pricing && typeof row.pricing === "object" ? row.pricing : {}) as Record<string, unknown>;
   const contact = (row.contact && typeof row.contact === "object" ? row.contact : {}) as Record<string, unknown>;
   const features = (row.features && typeof row.features === "object" ? row.features : {}) as Record<string, unknown>;
+  const media = (row.media && typeof row.media === "object" ? row.media : {}) as Record<string, unknown>;
   const base = DEFAULT_SITE_CONFIG_FORM;
   return {
     pricing: {
@@ -145,6 +156,9 @@ export function parseSiteConfigForm(raw: unknown): SiteConfigForm {
     },
     features: {
       promoteBusinessOnline: flag(features.promoteBusinessOnline, false),
+    },
+    media: {
+      provider: parseMediaProvider(media.provider),
     },
   };
 }

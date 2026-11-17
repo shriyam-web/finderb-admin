@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { canAccessTab, canEditTab } from "../../../../lib/adminTabAccess";
-import { privateDownloadUrl } from "../../../../lib/privateMedia";
+import { openPrivateAsset, readStoredAssets } from "../../../../lib/privateMedia";
 import { notifyAdApprovedOnSite } from "../../../../lib/notifyAdApproved";
 
 const TAB = "Ads Request";
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
   const businesses = await businessesFor(rows.map((row) => String(row.business_id || "")));
   return NextResponse.json({
     success: true,
-    rows: rows.map((row) => {
+    rows: await Promise.all(rows.map(async (row) => {
       const snap = (row.package_snapshot && typeof row.package_snapshot === "object"
         ? row.package_snapshot
         : {}) as Record<string, unknown>;
@@ -97,14 +97,14 @@ export async function GET(request: Request) {
         createdAt: row.created_at || null,
         videoUrl: (typeof row.video_url === "string" && row.video_url.startsWith("https://") ? row.video_url : null)
           || (row.video_public_id
-            ? privateDownloadUrl({
+            ? await openPrivateAsset({
                 publicId: String(row.video_public_id),
                 resource: "video",
                 format: String(row.video_format || ""),
               }, true)
             : null),
       };
-    }),
+    })),
   });
 }
 

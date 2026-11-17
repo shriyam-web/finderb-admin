@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { canAccessTab, canEditTab } from "../../../../lib/adminTabAccess";
 import { PROMO_TAB } from "../../../../lib/promotionOps";
-import { privateDownloadUrl, readStoredAssets } from "../../../../lib/privateMedia";
+import { openPrivateAsset, readStoredAssets } from "../../../../lib/privateMedia";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -77,32 +77,31 @@ export async function GET(request: Request) {
       videos: orders.filter((row) => row.video_public_id || row.video_url).length,
       custom: customRequests.filter((row) => row.status === "received" || row.status === "in_review").length,
     },
-    orders: orders.map((row) => ({
+    orders: await Promise.all(orders.map(async (row) => ({
       ...row,
       video_url: (typeof row.video_url === "string" && row.video_url.startsWith("https://") ? row.video_url : null)
         || (row.video_public_id
-          ? privateDownloadUrl({
+          ? await openPrivateAsset({
               publicId: String(row.video_public_id),
               resource: "video",
               format: String(row.video_format || ""),
             }, true)
           : null),
       business: businesses[String(row.business_id)] || null,
-    })),
-    verifications: verifications.map((row) => ({
+    }))),
+    verifications: await Promise.all(verifications.map(async (row) => ({
       ...row,
       shop_photo_url: (row.shop_photo_public_id
-        ? privateDownloadUrl({
+        ? await openPrivateAsset({
             publicId: String(row.shop_photo_public_id),
             resource: "image",
             format: String(row.shop_photo_format || ""),
           }, true)
         : null) || (typeof row.shop_photo_url === "string" && row.shop_photo_url.startsWith("https://") ? row.shop_photo_url : null),
-      document_urls: readStoredAssets(row.document_urls)
-        .map((asset) => privateDownloadUrl(asset, true))
+      document_urls: (await Promise.all(readStoredAssets(row.document_urls).map((asset) => openPrivateAsset(asset, true))))
         .filter((url): url is string => Boolean(url)),
       business: businesses[String(row.business_id)] || null,
-    })),
+    }))),
     packages: packagesRes.data || [],
     payments: orders.map((row) => ({
       id: row.id,
