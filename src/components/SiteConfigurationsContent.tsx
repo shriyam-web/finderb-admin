@@ -31,6 +31,15 @@ function rupees(amount: number) {
   }).format(Number.isFinite(amount) ? amount : 0);
 }
 
+function configurationSnapshot(form: SiteConfigForm, prices: PromotionPrice[]) {
+  return JSON.stringify({
+    form,
+    prices: prices
+      .map(({ id, priceInr, referenceInr }) => ({ id, priceInr, referenceInr }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+  });
+}
+
 function offPercent(price: number, retail: number) {
   if (!Number.isFinite(price) || !Number.isFinite(retail) || retail <= price || retail <= 0) return null;
   return Math.round((1 - price / retail) * 100);
@@ -102,6 +111,7 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
   const [s3Configured, setS3Configured] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savedSnapshot, setSavedSnapshot] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -117,8 +127,12 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
           storage?: { s3Configured?: boolean };
           error?: string;
         };
-        if (!cancelled && body.success && body.config) setForm(body.config);
-        if (!cancelled && body.success && body.promotionPrices) setPromotionPrices(body.promotionPrices);
+        if (!cancelled && body.success && body.config) {
+          const nextPrices = body.promotionPrices ?? [];
+          setForm(body.config);
+          setPromotionPrices(nextPrices);
+          setSavedSnapshot(configurationSnapshot(body.config, nextPrices));
+        }
         if (!cancelled && body.success) setS3Configured(Boolean(body.storage?.s3Configured));
         if (!cancelled && !body.success) setError(body.error || "Could not load site configuration.");
       } catch {
@@ -132,7 +146,12 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
     };
   }, [adminId]);
 
+  const dirty = savedSnapshot !== "" && configurationSnapshot(form, promotionPrices) !== savedSnapshot;
+
   const save = async () => {
+    if (!dirty) return;
+    const savingForm = form;
+    const savingPrices = promotionPrices;
     setSaving(true);
     setMessage("");
     setError("");
@@ -140,11 +159,14 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
       const response = await fetch("/api/admin/site-config", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminId, config: form, promotionPrices }),
+        body: JSON.stringify({ adminId, config: savingForm, promotionPrices: savingPrices }),
       });
       const body = (await response.json()) as { success?: boolean; error?: string };
       if (!body.success) setError(body.error || "Could not save.");
-      else setMessage("Saved. The website and app pick this up within a few seconds. A new Growth price applies to the next checkout. Existing mandates and promotion orders keep the price already charged.");
+      else {
+        setSavedSnapshot(configurationSnapshot(savingForm, savingPrices));
+        setMessage("Saved. The website and app pick this up within a few seconds. A new Growth price applies to the next checkout. Existing mandates and promotion orders keep the price already charged.");
+      }
     } catch {
       setError("Could not save.");
     } finally {
@@ -189,7 +211,7 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
         </div>
         <button
           type="button"
-          disabled={!canManage || saving}
+          disabled={!canManage || saving || !dirty}
           onClick={() => void save()}
           className="admin-btn-primary self-start shrink-0 disabled:opacity-50"
         >

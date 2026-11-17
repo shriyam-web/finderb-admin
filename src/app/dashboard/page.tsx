@@ -1123,6 +1123,7 @@ export default function Dashboard() {
   const {
     unreadCount: whatsNewUnreadCount,
     setUnreadCount: setWhatsNewUnreadCount,
+    liveTick: whatsNewLiveTick,
   } = useWhatsNewUnreadCount(adminSession?.id);
 
   useEffect(() => {
@@ -4003,6 +4004,7 @@ export default function Dashboard() {
           canRemove={isDeveloper}
           unreadCount={whatsNewUnreadCount}
           onUnreadCountChange={setWhatsNewUnreadCount}
+          liveTick={whatsNewLiveTick}
         />
       )}
 

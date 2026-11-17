@@ -8,6 +8,7 @@ import {
   markAllWhatsNewRead,
   markWhatsNewRead,
   removeWhatsNewEntry,
+  subscribeWhatsNewChanges,
   type WhatsNewEntry,
 } from "../lib/whatsNew";
 import { useAdminToast } from "./AdminToast";
@@ -32,6 +33,7 @@ type Props = {
   canRemove: boolean;
   unreadCount: number;
   onUnreadCountChange: (count: number) => void;
+  liveTick: number;
 };
 
 export default function WhatsNewPanel({
@@ -42,6 +44,7 @@ export default function WhatsNewPanel({
   canRemove,
   unreadCount,
   onUnreadCountChange,
+  liveTick,
 }: Props) {
   const { toast } = useAdminToast();
   const supabase = useMemo(() => createClient(), []);
@@ -80,31 +83,46 @@ export default function WhatsNewPanel({
     [entries],
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (mode: "initial" | "silent" = "initial") => {
     if (!adminId) return;
-    setLoading(true);
-    setError(null);
+    if (mode === "initial") {
+      setLoading(true);
+      setError(null);
+    }
     const result = await fetchWhatsNewEntries(supabase, adminId);
     if (result.error) {
-      setError(
-        result.error.includes("does not exist") ||
-          result.error.includes("schema cache")
-          ? "What's New tables are missing. Run db/create_admin_whats_new_tables.sql in Supabase."
-          : result.error,
-      );
-      setEntries([]);
-      onUnreadCountChange(0);
+      if (mode === "initial") {
+        setError(
+          result.error.includes("does not exist") ||
+            result.error.includes("schema cache")
+            ? "What's New tables are missing. Run db/create_admin_whats_new_tables.sql in Supabase."
+            : result.error,
+        );
+        setEntries([]);
+        onUnreadCountChange(0);
+      }
     } else {
       setEntries(result.entries);
       onUnreadCountChange(result.unreadCount);
     }
-    setLoading(false);
+    if (mode === "initial") setLoading(false);
   }, [adminId, onUnreadCountChange, supabase]);
 
   useEffect(() => {
     if (!open) return;
     void load();
   }, [open, load]);
+
+  const seenTick = useRef(0);
+  useEffect(() => {
+    if (!open) {
+      seenTick.current = liveTick;
+      return;
+    }
+    if (liveTick === 0 || liveTick === seenTick.current) return;
+    seenTick.current = liveTick;
+    void load("silent");
+  }, [open, liveTick, load]);
 
   const reloadIfOpen = useCallback(() => {
     if (open) void load();
@@ -420,11 +438,21 @@ export function useWhatsNewUnreadCount(adminId: string | null | undefined) {
     if (!result.error) setUnreadCount(result.unreadCount);
   }, [adminId, supabase]);
 
+  const [liveTick, setLiveTick] = useState(0);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!adminId || !supabase) return;
+    return subscribeWhatsNewChanges(supabase, () => {
+      setLiveTick((value) => value + 1);
+      void refresh();
+    });
+  }, [adminId, refresh, supabase]);
+
   useAdminPanelRefresh(refresh);
 
-  return { unreadCount, setUnreadCount, refreshUnread: refresh };
+  return { unreadCount, setUnreadCount, refreshUnread: refresh, liveTick };
 }

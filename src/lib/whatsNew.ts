@@ -250,6 +250,30 @@ export async function markWhatsNewRead(
   return { error: error?.message ?? null };
 }
 
+/** Hear a revision bump, then reload What's New through the signed-in admin proxy. */
+export function subscribeWhatsNewChanges(
+  supabase: SupabaseClient,
+  onChange: () => void,
+): () => void {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const notify = () => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => onChange(), 200);
+  };
+  const channel = supabase
+    .channel(`whats-new-${crypto.randomUUID()}`)
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "admin_whats_new_signal" },
+      () => notify(),
+    )
+    .subscribe();
+  return () => {
+    if (timer) clearTimeout(timer);
+    void supabase.removeChannel(channel);
+  };
+}
+
 export async function markAllWhatsNewRead(
   supabase: SupabaseClient,
   adminId: string,
