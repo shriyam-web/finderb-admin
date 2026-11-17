@@ -85,6 +85,11 @@ const WHATS_NEW_SEEDS: Array<{
   published_at: string;
 }> = [
   {
+    title: "Photos and videos are moving to Amazon S3",
+    body: "FinderB is switching media storage to Amazon Web Services S3, leaving Cloudinary behind. The move is already underway and finishes soon.\n\nIf a photo or video breaks, or a page shows the wrong picture, report it to the developer right away.",
+    published_at: "2026-11-18T02:35:00+05:30",
+  },
+  {
     title: "Reset a forgotten password from the sign-in page",
     body: "Forgot password? sits under the password field on the sign-in page.\n\nEnter the email on the admin account and press Email me a code. FinderB sends a 6-digit code. It expires in 15 minutes. Type the code, then a new password twice, and press Save password.\n\nThe new password needs at least 8 characters, letters and a number, plus an uppercase letter or a symbol. It cannot be the password you already use. You can ask for another code after 60 seconds. Five wrong codes end that reset.\n\nAn email that is missing or disabled gets the same notice, so the page does not say whether an account exists. When the password is saved, a confirmation email is sent. Sign in with the new password.\n\nThis is separate from Change password inside the panel, which still asks for the current password.",
     published_at: "2026-11-14T04:10:00+05:30",
