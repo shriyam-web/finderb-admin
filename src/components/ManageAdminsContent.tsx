@@ -11,9 +11,11 @@ import { createClient } from "../../utils/supabase/client";
 import {
   allowedTabsFromModes,
   canManageAdmins,
+  checkAssignedTabAccess,
   countGrantedTabs,
   normalizeAccessFields,
   sanitizeTabModes,
+  type TabAccessCheck,
   type TabAccessMode,
 } from "../lib/adminTabAccess";
 import {
@@ -77,6 +79,27 @@ const TAB_ACCESS_LABELS: Record<string, string> = {
   Broadcasts: "Broadcast Notification",
 };
 
+const TAB_ACCESS_GROUPS: { label: string; tabs: string[] }[] = [
+  { label: "Home", tabs: ["Dashboard", "Users", "Merchants", "Business Onboarding", "Quick Onboard"] },
+  { label: "Requests", tabs: ["Merchant Support Login", "Leads", "Reviews", "Reported Businesses", "Change Requests", "Ownership Requests", "Ads Request"] },
+  { label: "Payments", tabs: ["Payments & Subscriptions", "Business Promotions"] },
+  { label: "Jobs", tabs: ["FinderB Jobs", "Job Reports"] },
+  { label: "Content", tabs: ["Categories", "Blogs", "YouTube Playlists", "Tourist Places", "Movies"] },
+  { label: "Broadcasts", tabs: ["Broadcasts", "Broadcast Email"] },
+  { label: "Platform", tabs: ["Site Configurations", "Settings"] },
+];
+
+const ACCESS_CHECK_TABS = [
+  ...ASSIGNABLE_ADMIN_TABS,
+  "Manage Admins",
+  "News",
+  "FinderB E-commerce",
+];
+
+function tabAccessLabel(tab: string) {
+  return TAB_ACCESS_LABELS[tab] || tab;
+}
+
 type Props = {
   admins: AdminProfile[];
   setAdmins: Dispatch<SetStateAction<AdminProfile[]>>;
@@ -112,6 +135,56 @@ function formatJoined(iso: string) {
   });
 }
 
+function AccessReport({ report }: { report: TabAccessCheck }) {
+  if (report.developerSeesEverything) {
+    return (
+      <div className="mx-5 mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <p className="font-semibold">Not a match</p>
+        <p className="mt-1">
+          This is a developer account. They can open every tab, so this assignment list does not limit what they see.
+        </p>
+      </div>
+    );
+  }
+  if (report.ok) {
+    return (
+      <div className="mx-5 mb-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+        <p className="font-semibold">100% match</p>
+        <p className="mt-1">
+          {report.assigned.length === 0
+            ? "They will not see any tabs. That matches this empty assignment."
+            : `They will see exactly the ${report.assigned.length} tab${report.assigned.length === 1 ? "" : "s"} you assigned, with the same Read or Edit right.`}
+        </p>
+        {report.visible.length > 0 ? (
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {report.visible.map((item) => (
+              <li key={item.tab} className="rounded-full bg-white px-2 py-0.5 text-[11px] font-medium text-emerald-900">
+                {tabAccessLabel(item.tab)} · {item.mode === "edit" ? "Edit" : "Read"}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    );
+  }
+  return (
+    <div className="mx-5 mb-3 max-h-44 overflow-y-auto rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-950">
+      <p className="font-semibold">Not a match</p>
+      {report.assignedButHidden.length > 0 ? (
+        <p className="mt-2">Assigned, but they cannot open: {report.assignedButHidden.map(tabAccessLabel).join(", ")}.</p>
+      ) : null}
+      {report.visibleButNotAssigned.length > 0 ? (
+        <p className="mt-2">They can open, but you did not assign: {report.visibleButNotAssigned.map(tabAccessLabel).join(", ")}.</p>
+      ) : null}
+      {report.modeMismatch.length > 0 ? (
+        <p className="mt-2">
+          Right does not match: {report.modeMismatch.map((item) => `${tabAccessLabel(item.tab)} is set to ${item.assigned}, they would have ${item.actual}`).join("; ")}.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export default function ManageAdminsContent({
   admins,
   setAdmins,
@@ -131,6 +204,7 @@ export default function ManageAdminsContent({
   const [draftModes, setDraftModes] = useState<Record<string, TabAccessMode>>(
     {},
   );
+  const [accessReport, setAccessReport] = useState<TabAccessCheck | null>(null);
   const [savingTabs, setSavingTabs] = useState(false);
   const [visiblePasswords, setVisiblePasswords] = useState<
     Record<string, boolean>
@@ -379,6 +453,7 @@ export default function ManageAdminsContent({
   };
 
   const openPermissions = (admin: AdminProfile) => {
+    setAccessReport(null);
     setPermissionsAdmin(admin);
     const unrestrictedController =
       admin.role === "controller" &&
@@ -468,6 +543,7 @@ export default function ManageAdminsContent({
   };
 
   const setDraftTabMode = (tab: string, mode: TabAccessMode) => {
+    setAccessReport(null);
     setDraftModes((prev) => {
       const next = { ...prev };
       if (mode === "none") delete next[tab];
@@ -477,6 +553,8 @@ export default function ManageAdminsContent({
   };
 
   const grantedCount = countGrantedTabs(draftModes);
+  const editCount = ASSIGNABLE_ADMIN_TABS.filter((tab) => draftModes[tab] === "edit").length;
+  const readCount = ASSIGNABLE_ADMIN_TABS.filter((tab) => draftModes[tab] === "read").length;
 
   const colSpan = canManage ? 8 : 4;
 
@@ -1136,119 +1214,136 @@ export default function ManageAdminsContent({
             aria-label="Close"
             onClick={() => setPermissionsAdmin(null)}
           />
-          <div className="relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-t-xl border border-slate-200 bg-white sm:max-w-3xl sm:rounded-lg">
-            <div className="px-4 pt-4 pb-3 border-b border-slate-100">
-              <h3 className="text-base font-semibold text-slate-900 tracking-tight">
-                Tab access
-              </h3>
-              <p className="mt-0.5 text-xs text-slate-500 break-all">
-                {permissionsAdmin.email}
-              </p>
-              <p className="mt-2 text-[11px] text-slate-500 leading-snug">
-                Only tabs set to Read or Edit are visible. Everything else stays
-                hidden. Use Clear, then grant exactly the tabs you want — do not
-                leave old Edit grants on tabs you meant to revoke.
+          <div className="admin-card relative flex max-h-[92dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-orange-700">Permissions</p>
+                  <h3 className="mt-1 text-lg font-semibold text-slate-900">Tab access</h3>
+                  <p className="mt-1 break-all text-sm text-slate-600">{permissionsAdmin.email}</p>
+                </div>
+                <span className={roleBadgeClass(permissionsAdmin.role)}>{roleLabel(permissionsAdmin.role)}</span>
+              </div>
+              <p className="mt-3 max-w-2xl text-xs leading-5 text-slate-500">
+                Read lets them open the tab. Edit lets them change what is inside it. None keeps that tab hidden.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDraftModes(
-                      Object.fromEntries(
-                        ASSIGNABLE_ADMIN_TABS.map((tab) => [tab, "edit"]),
-                      ),
-                    )
-                  }
-                  className="text-[11px] font-semibold text-primary hover:underline"
-                >
-                  All edit
-                </button>
-                <span className="text-slate-300">·</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDraftModes(
-                      Object.fromEntries(
-                        ASSIGNABLE_ADMIN_TABS.map((tab) => [tab, "read"]),
-                      ),
-                    )
-                  }
-                  className="text-[11px] font-semibold text-slate-600 hover:underline"
-                >
-                  All read
-                </button>
-                <span className="text-slate-300">·</span>
-                <button
-                  type="button"
-                  onClick={() => setDraftModes({})}
-                  className="text-[11px] font-semibold text-slate-500 hover:underline"
-                >
-                  Clear
-                </button>
-                <span className="ml-auto text-[11px] tabular-nums text-slate-400">
-                  {grantedCount}/{ASSIGNABLE_ADMIN_TABS.length}
+                <span className="rounded-full bg-teal-700 px-2.5 py-1 text-[11px] font-semibold text-white">{editCount} edit</span>
+                <span className="rounded-full bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-white">{readCount} read</span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                  {ASSIGNABLE_ADMIN_TABS.length - grantedCount} hidden
                 </span>
+                <div className="ml-auto flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="admin-btn-secondary !px-2.5 !py-1 text-[11px]"
+                    onClick={() => {
+                      setAccessReport(null);
+                      setDraftModes(Object.fromEntries(ASSIGNABLE_ADMIN_TABS.map((tab) => [tab, "edit"])));
+                    }}
+                  >
+                    All edit
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-btn-secondary !px-2.5 !py-1 text-[11px]"
+                    onClick={() => {
+                      setAccessReport(null);
+                      setDraftModes(Object.fromEntries(ASSIGNABLE_ADMIN_TABS.map((tab) => [tab, "read"])));
+                    }}
+                  >
+                    All read
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-btn-secondary !px-2.5 !py-1 text-[11px]"
+                    onClick={() => {
+                      setAccessReport(null);
+                      setDraftModes({});
+                    }}
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
             </div>
-            <div className="grid flex-1 grid-cols-1 gap-1 overflow-y-auto px-3 py-3 md:grid-cols-2">
-              {ASSIGNABLE_ADMIN_TABS.map((tab) => {
-                const mode = draftModes[tab] ?? "none";
-                return (
-                  <div
-                    key={tab}
-                    className={`flex flex-col sm:flex-row sm:items-center gap-2 rounded-md px-2.5 py-2 ${
-                      mode !== "none" ? "bg-primary/5" : "hover:bg-slate-50"
-                    }`}
-                  >
-                    <span className="text-[13px] font-medium text-slate-800 sm:min-w-[10.5rem]">
-                      {TAB_ACCESS_LABELS[tab] || tab}
-                    </span>
-                    <div className="inline-flex rounded-md border border-slate-200 overflow-hidden ml-auto">
-                      {(
-                        [
-                          ["none", "None"],
-                          ["read", "Read"],
-                          ["edit", "Edit"],
-                        ] as const
-                      ).map(([value, label]) => (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setDraftTabMode(tab, value)}
-                          className={`px-2.5 py-1 text-[11px] font-semibold ${
-                            mode === value
-                              ? value === "edit"
-                                ? "bg-teal-700 text-white"
-                                : value === "read"
-                                  ? "bg-slate-700 text-white"
-                                  : "bg-slate-200 text-slate-700"
-                              : "bg-white text-slate-500 hover:bg-slate-50"
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-4">
+              {TAB_ACCESS_GROUPS.map((group) => (
+                <section key={group.label}>
+                  <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{group.label}</h4>
+                  <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                    {group.tabs.map((tab) => {
+                      const mode = draftModes[tab] ?? "none";
+                      return (
+                        <div
+                          key={tab}
+                          className={`flex flex-col gap-2 rounded-xl border px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between ${
+                            mode === "edit"
+                              ? "border-teal-200 bg-teal-50"
+                              : mode === "read"
+                                ? "border-slate-300 bg-slate-50"
+                                : "border-slate-200 bg-white"
                           }`}
                         >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
+                          <span className="text-sm font-medium text-slate-800">{tabAccessLabel(tab)}</span>
+                          <div className="inline-flex shrink-0 rounded-lg bg-slate-200/70 p-0.5">
+                            {(
+                              [
+                                ["none", "None"],
+                                ["read", "Read"],
+                                ["edit", "Edit"],
+                              ] as const
+                            ).map(([value, label]) => (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => setDraftTabMode(tab, value)}
+                                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${
+                                  mode === value
+                                    ? value === "edit"
+                                      ? "bg-teal-700 text-white"
+                                      : value === "read"
+                                        ? "bg-slate-800 text-white"
+                                        : "bg-white text-slate-700"
+                                    : "text-slate-500 hover:text-slate-800"
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </section>
+              ))}
             </div>
-            <div className="px-4 py-3 border-t border-slate-100 flex gap-2">
+            {accessReport ? <AccessReport report={accessReport} /> : null}
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-5 py-3">
               <button
                 type="button"
-                onClick={() => setPermissionsAdmin(null)}
-                className="admin-btn-secondary flex-1"
+                className="admin-btn-secondary"
+                onClick={() =>
+                  setAccessReport(
+                    checkAssignedTabAccess({
+                      role: permissionsAdmin.role,
+                      modes: draftModes,
+                      sidebarTabs: ACCESS_CHECK_TABS,
+                    }),
+                  )
+                }
               >
-                Cancel
+                Check access
               </button>
-              <button
-                type="button"
-                disabled={savingTabs}
-                onClick={handleSaveTabs}
-                className="admin-btn-primary flex-1"
-              >
-                {savingTabs ? "Saving…" : "Save"}
-              </button>
+              <div className="ml-auto flex gap-2">
+                <button type="button" onClick={() => setPermissionsAdmin(null)} className="admin-btn-secondary">
+                  Cancel
+                </button>
+                <button type="button" disabled={savingTabs} onClick={handleSaveTabs} className="admin-btn-primary">
+                  {savingTabs ? "Saving…" : "Save"}
+                </button>
+              </div>
             </div>
           </div>
         </AdminOverlay>

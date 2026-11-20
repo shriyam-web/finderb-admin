@@ -7,6 +7,7 @@ import {
   canAccessTab,
   canEditTab,
   canManageAdmins,
+  checkAssignedTabAccess,
   isConsoleLoginUnlocked,
   isPremiumConsoleRole,
   normalizeAccessFields,
@@ -421,5 +422,34 @@ assert.equal(
   formatLockModalBody("You'll be auto logged out in {countdown}.", 60),
   "You'll be auto logged out in 60 seconds.",
 );
+
+{
+  const names = ["Dashboard", "Merchants", "Reviews", "News", "Manage Admins", "FinderB E-commerce"];
+  const matched = checkAssignedTabAccess({
+    role: "admin",
+    modes: { Merchants: "edit", Reviews: "read" },
+    sidebarTabs: names,
+  });
+  assert.equal(matched.ok, true);
+  assert.deepEqual(
+    matched.visible.map((item) => `${item.tab}:${item.mode}`),
+    ["Merchants:edit", "Reviews:read"],
+  );
+  const limited = checkAssignedTabAccess({
+    role: "controller",
+    modes: { Reviews: "read" },
+    sidebarTabs: names,
+  });
+  assert.equal(limited.ok, true);
+  assert.deepEqual(limited.visible.map((item) => item.tab), ["Reviews"]);
+  const developer = checkAssignedTabAccess({
+    role: "developer",
+    modes: { Merchants: "edit" },
+    sidebarTabs: names,
+  });
+  assert.equal(developer.ok, false);
+  assert.equal(developer.developerSeesEverything, true);
+  assert.ok(developer.visibleButNotAssigned.includes("News"));
+}
 
 console.log("adminTabAccess tests: all passed");

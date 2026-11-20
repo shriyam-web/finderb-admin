@@ -101,6 +101,7 @@ import {
   isConsoleLoginUnlocked,
   isDeveloperRole,
   normalizeAccessFields,
+  visibleSidebarTabs,
   type TabAccessMode,
 } from "../../lib/adminTabAccess";
 import {
@@ -1930,29 +1931,9 @@ export default function Dashboard() {
     fetchLoginLogs();
   }, [activeTab, adminSession?.id, isDeveloper, panelRefresh]);
 
-  const menuItems = ALL_MENU_ITEMS.filter((item) => {
-    if (isDeveloper) return true;
-    if (isController && adminSession?.allowed_tab_modes == null) {
-      return (
-        item.name !== "Manage Admins" &&
-        item.name !== "Merchant Support Login" &&
-        item.name !== "Reviews" &&
-        item.name !== "Reported Businesses" &&
-        item.name !== "Change Requests" &&
-        item.name !== "Ownership Requests" &&
-        item.name !== "Job Reports" &&
-        item.name !== "Site Configurations"
-      );
-    }
-    if (isController) {
-      if (item.name === "Manage Admins") return false;
-      return hasTabAccess(adminSession, item.name);
-    }
-    if (item.name === "Manage Admins" || COMING_SOON_TABS.has(item.name)) {
-      return false;
-    }
-    return hasTabAccess(adminSession, item.name);
-  });
+  const menuItems = ALL_MENU_ITEMS.filter((item) =>
+    visibleSidebarTabs(adminSession, [item.name]).includes(item.name),
+  );
   const canViewFinancialData = hasTabAccess(
     adminSession,
     "Payments & Subscriptions",

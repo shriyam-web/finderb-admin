@@ -209,3 +209,94 @@ export function canEditTab(
 ): boolean {
   return resolveTabAccess(session, tab) === "edit";
 }
+
+const OPT_IN_SIDEBAR_TABS = new Set([
+  "Merchant Support Login",
+  "Reviews",
+  "Reported Businesses",
+  "Change Requests",
+  "Ownership Requests",
+  "Job Reports",
+  "Site Configurations",
+]);
+
+const COMING_SOON_SIDEBAR_TABS = new Set(["News", "FinderB E-commerce"]);
+
+/** Tabs this account would actually see in the sidebar. */
+export function visibleSidebarTabs(
+  session: AdminAccessSession | null | undefined,
+  tabNames: readonly string[],
+): string[] {
+  if (!session) return [];
+  const unrestrictedController =
+    isControllerRole(session.role) && session.allowed_tab_modes == null;
+  return tabNames.filter((name) => {
+    if (isDeveloperRole(session.role)) return true;
+    if (unrestrictedController) {
+      return name !== "Manage Admins" && !OPT_IN_SIDEBAR_TABS.has(name);
+    }
+    if (isControllerRole(session.role)) {
+      if (name === "Manage Admins") return false;
+      return canAccessTab(session, name);
+    }
+    if (name === "Manage Admins" || COMING_SOON_SIDEBAR_TABS.has(name)) return false;
+    return canAccessTab(session, name);
+  });
+}
+
+export type TabAccessCheck = {
+  ok: boolean;
+  developerSeesEverything: boolean;
+  assigned: { tab: string; mode: "read" | "edit" }[];
+  visible: { tab: string; mode: Exclude<TabAccessMode, "none"> }[];
+  assignedButHidden: string[];
+  visibleButNotAssigned: string[];
+  modeMismatch: { tab: string; assigned: "read" | "edit"; actual: "read" | "edit" }[];
+};
+
+/** Compare a draft assignment with the sidebar that account would open. */
+export function checkAssignedTabAccess(input: {
+  role?: string | null;
+  modes: Record<string, TabAccessMode>;
+  sidebarTabs: readonly string[];
+}): TabAccessCheck {
+  const modes = sanitizeTabModes(input.modes);
+  const session: AdminAccessSession = {
+    role: input.role,
+    allowed_tabs: allowedTabsFromModes(modes),
+    allowed_tab_modes: modes,
+  };
+  const assigned = allowedTabsFromModes(modes).map((tab) => ({
+    tab,
+    mode: modes[tab] as "read" | "edit",
+  }));
+  const developerSeesEverything = isDeveloperRole(input.role);
+  const visibleNames = visibleSidebarTabs(session, input.sidebarTabs);
+  const assignedNames = new Set(assigned.map((item) => item.tab));
+  const assignedButHidden = assigned
+    .map((item) => item.tab)
+    .filter((tab) => !visibleNames.includes(tab));
+  const visibleButNotAssigned = visibleNames.filter((tab) => !assignedNames.has(tab));
+  const modeMismatch = assigned.flatMap((item) => {
+    const actual = resolveTabAccess(session, item.tab);
+    if (actual === "none" || actual === item.mode) return [];
+    return [{ tab: item.tab, assigned: item.mode, actual }];
+  });
+  const visible = visibleNames.map((tab) => ({
+    tab,
+    mode: resolveTabAccess(session, tab) as Exclude<TabAccessMode, "none">,
+  }));
+  return {
+    ok:
+      !developerSeesEverything &&
+      assignedButHidden.length === 0 &&
+      visibleButNotAssigned.length === 0 &&
+      modeMismatch.length === 0,
+    developerSeesEverything,
+    assigned,
+    visible,
+    assignedButHidden,
+    visibleButNotAssigned,
+    modeMismatch,
+  };
+}

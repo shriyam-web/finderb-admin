@@ -906,57 +906,36 @@ export default function DashboardContent({
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-1.5 shrink-0">
+                  <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
                     {canEditListings ? (
                       <>
                         <button
                           type="button"
                           onClick={() => handleApprove(merchant)}
-                          className="admin-icon-btn !text-emerald-600 hover:!bg-emerald-50"
-                          title="Approve"
+                          className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700"
                         >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2.5"
-                              d="M5 13l4 4L19 7"
-                            />
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                           </svg>
+                          Approve
                         </button>
                         <button
                           type="button"
                           onClick={() => onSnooze(merchant)}
-                          className="admin-icon-btn"
-                          title="Snooze"
-                          aria-label="Snooze"
+                          className="admin-btn-secondary inline-flex items-center gap-1 !px-2 !py-1 text-[11px]"
                         >
-                          <span aria-hidden className="text-base leading-none">😴</span>
+                          <span aria-hidden className="text-sm leading-none">😴</span>
+                          Snooze
                         </button>
                         <button
                           type="button"
                           onClick={() => handleReject(merchant)}
-                          className="admin-icon-btn-danger"
-                          title="Reject"
+                          className="admin-btn-danger inline-flex items-center gap-1 !px-2 !py-1 text-[11px]"
                         >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M6 18L18 6M6 6l12 12"
-                            />
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                           </svg>
+                          Reject
                         </button>
                       </>
                     ) : (
