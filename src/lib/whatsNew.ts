@@ -21,6 +21,35 @@ type ReadRow = {
 
 export const WHATS_NEW_PAGE_SIZE = 15;
 
+function adminSessionHeaders(): Headers {
+  let token = "";
+  try {
+    const raw = localStorage.getItem("admin_session");
+    token = raw ? String((JSON.parse(raw) as { token?: string }).token || "") : "";
+  } catch {
+    token = "";
+  }
+  return new Headers({
+    accept: "application/json",
+    "x-admin-session": token,
+  });
+}
+
+async function adminGet(path: string): Promise<{ data: unknown[] | null; error: string | null }> {
+  const response = await fetch(`/api/admin/db/${path}`, {
+    headers: adminSessionHeaders(),
+    cache: "no-store",
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = body && typeof body === "object" && "message" in body
+      ? String((body as { message?: string }).message || "")
+      : "";
+    return { data: null, error: message || "Could not load What's New." };
+  }
+  return { data: Array.isArray(body) ? body : [], error: null };
+}
+
 const emptyWhatsNew = (error: string | null) => ({
   entries: [] as WhatsNewEntry[],
   total: 0,
@@ -41,27 +70,29 @@ export async function fetchWhatsNewEntries(
   error: string | null;
 }> {
   const limit = Math.max(1, options?.limit ?? WHATS_NEW_PAGE_SIZE);
-  const removed = await removedWhatsNewTitles(supabase);
-  if (options?.seed !== false) {
-    await ensureWhatsNewSeeds(supabase, removed).catch(() => undefined);
+  const [removedRows, itemsResult, catalogResult, readsResult] = await Promise.all([
+    adminGet("admin_whats_new_removed?select=title"),
+    adminGet(
+      `admin_whats_new?select=id,title,body,published_at,created_by,created_at&order=published_at.desc&limit=${limit}`,
+    ),
+    adminGet("admin_whats_new?select=id,title&order=published_at.desc"),
+    adminGet(
+      `admin_whats_new_reads?select=item_id,read_at&admin_id=eq.${encodeURIComponent(adminId)}`,
+    ),
+  ]);
+  const removed = new Set(RETIRED_WHATS_NEW_TITLES);
+  for (const row of (removedRows.data || []) as Array<{ title?: string }>) {
+    if (row.title) removed.add(row.title);
   }
-
-  const [{ data: items, error: itemsError }, { data: catalog, error: catalogError }, { data: reads, error: readsError }] =
-    await Promise.all([
-      supabase
-        .from("admin_whats_new")
-        .select("id, title, body, published_at, created_by, created_at")
-        .order("published_at", { ascending: false })
-        .range(0, limit - 1),
-      supabase
-        .from("admin_whats_new")
-        .select("id, title")
-        .order("published_at", { ascending: false }),
-      supabase
-        .from("admin_whats_new_reads")
-        .select("item_id, read_at")
-        .eq("admin_id", adminId),
-    ]);
+  if (options?.seed !== false) {
+    void ensureWhatsNewSeeds(supabase, removed).catch(() => undefined);
+  }
+  const items = itemsResult.data;
+  const itemsError = itemsResult.error ? { message: itemsResult.error } : null;
+  const catalog = catalogResult.data;
+  const catalogError = catalogResult.error ? { message: catalogResult.error } : null;
+  const reads = readsResult.data;
+  const readsError = readsResult.error ? { message: readsResult.error } : null;
 
   if (itemsError) return emptyWhatsNew(itemsError.message);
   if (catalogError) return emptyWhatsNew(catalogError.message);
@@ -71,23 +102,29 @@ export async function fetchWhatsNewEntries(
     ((reads || []) as ReadRow[]).map((row) => [row.item_id, row.read_at]),
   );
 
-  const visibleCatalog = ((catalog || []) as Array<{ id: string; title: string }>).filter(
-    (item) => !removed.has(item.title),
+  const visibleCatalog = uniqueWhatsNewTitles(
+    ((catalog || []) as Array<{ id: string; title: string }>).filter(
+      (item) => !removed.has(item.title),
+    ),
+  );
+  const readTitles = readWhatsNewTitles(
+    ((catalog || []) as Array<{ id: string; title: string }>),
+    readMap,
   );
   const unreadIds = visibleCatalog
-    .filter((item) => !readMap.has(item.id))
+    .filter((item) => !readTitles.has(item.title))
     .map((item) => item.id);
 
-  const entries: WhatsNewEntry[] = ((items || []) as WhatsNewItem[])
-    .filter((item) => !removed.has(item.title))
-    .map((item) => {
-      const readAt = readMap.get(item.id) ?? null;
-      return {
-        ...item,
-        isRead: Boolean(readAt),
-        readAt,
-      };
-    });
+  const entries = uniqueWhatsNewTitles(
+    ((items || []) as WhatsNewItem[]).filter((item) => !removed.has(item.title)),
+  ).map((item) => {
+    const readAt = readMap.get(item.id) ?? null;
+    return {
+      ...item,
+      isRead: readTitles.has(item.title),
+      readAt,
+    };
+  });
 
   return {
     entries,
@@ -96,6 +133,30 @@ export async function fetchWhatsNewEntries(
     unreadIds,
     error: null,
   };
+}
+
+function uniqueWhatsNewTitles<T extends { title: string }>(rows: T[]): T[] {
+  const seen = new Set<string>();
+  const unique: T[] = [];
+  for (const row of rows) {
+    if (seen.has(row.title)) continue;
+    seen.add(row.title);
+    unique.push(row);
+  }
+  return unique;
+}
+
+function readWhatsNewTitles(
+  catalog: Array<{ id: string; title: string }>,
+  readMap: Map<string, string>,
+): Set<string> {
+  const titleById = new Map(catalog.map((item) => [item.id, item.title]));
+  const titles = new Set<string>();
+  for (const itemId of readMap.keys()) {
+    const title = titleById.get(itemId);
+    if (title) titles.add(title);
+  }
+  return titles;
 }
 
 const RETIRED_WHATS_NEW_TITLES = ["Site Configurations is under Platform"];
@@ -197,41 +258,50 @@ const WHATS_NEW_SEEDS: Array<{
   },
 ];
 
-async function removedWhatsNewTitles(supabase: SupabaseClient): Promise<Set<string>> {
-  const titles = new Set(RETIRED_WHATS_NEW_TITLES);
-  const { data, error } = await supabase.from("admin_whats_new_removed").select("title");
-  if (error || !data) return titles;
-  for (const row of data as Array<{ title?: string }>) {
-    if (row.title) titles.add(row.title);
-  }
-  return titles;
-}
+let whatsNewSeedsChecked = false;
 
 async function ensureWhatsNewSeeds(
   supabase: SupabaseClient,
   removed: Set<string>,
 ): Promise<void> {
-  if (removed.size) {
-    await supabase.from("admin_whats_new").delete().in("title", [...removed]);
+  if (whatsNewSeedsChecked) return;
+  whatsNewSeedsChecked = true;
+  const { data, error } = await supabase.from("admin_whats_new").select("title").limit(1000);
+  if (error || !data) {
+    whatsNewSeedsChecked = false;
+    return;
   }
-  const { data } = await supabase.from("admin_whats_new").select("title, body");
-  const existing = (data || []) as Array<{ title: string; body: string }>;
-  const titles = new Set(existing.map((row) => row.title));
+  const titles = new Set((data as Array<{ title: string }>).map((row) => row.title));
+  const stale = [...removed].filter((title) => titles.has(title));
+  if (stale.length) {
+    await supabase.from("admin_whats_new").delete().in("title", stale);
+  }
   const missing = WHATS_NEW_SEEDS.filter((item) => !titles.has(item.title) && !removed.has(item.title));
   if (missing.length) {
-    await supabase.from("admin_whats_new").insert(missing);
+    await supabase.from("admin_whats_new").upsert(missing, {
+      onConflict: "title",
+      ignoreDuplicates: true,
+    });
   }
+  const patchTitles = [
+    "Four new sidebar queues",
+    "Business Promotions is a new tab under Payments",
+  ];
+  const { data: storedPatches } = await supabase
+    .from("admin_whats_new")
+    .select("title, body")
+    .in("title", patchTitles);
+  const storedByTitle = new Map(
+    ((storedPatches || []) as Array<{ title: string; body: string }>).map((row) => [row.title, row.body]),
+  );
   const queues = WHATS_NEW_SEEDS.find((item) => item.title === "Four new sidebar queues");
-  const stored = existing.find((row) => row.title === "Four new sidebar queues");
-  if (queues && stored && stored.body.includes("New sticker")) {
-    await supabase
-      .from("admin_whats_new")
-      .update({ body: queues.body })
-      .eq("title", queues.title);
+  const storedQueues = storedByTitle.get("Four new sidebar queues");
+  if (queues && storedQueues?.includes("New sticker")) {
+    await supabase.from("admin_whats_new").update({ body: queues.body }).eq("title", queues.title);
   }
   const promo = WHATS_NEW_SEEDS.find((item) => item.title === "Business Promotions is a new tab under Payments");
-  const storedPromo = existing.find((row) => row.title === promo?.title);
-  if (promo && storedPromo && storedPromo.body !== promo.body) {
+  const storedPromo = promo ? storedByTitle.get(promo.title) : undefined;
+  if (promo && storedPromo && storedPromo !== promo.body) {
     await supabase
       .from("admin_whats_new")
       .update({ body: promo.body, published_at: promo.published_at })

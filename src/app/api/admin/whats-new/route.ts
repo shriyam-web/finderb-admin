@@ -68,7 +68,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "That update could not be removed." }, { status: 500 });
     }
 
-    const { error: deleteError } = await supabase.from("admin_whats_new").delete().eq("id", id);
+    const { error: deleteError } = await supabase.from("admin_whats_new").delete().eq("title", title);
     if (deleteError) {
       return NextResponse.json({ error: "That update could not be removed." }, { status: 500 });
     }

@@ -32,5 +32,10 @@ export const createClient = () => {
 
   return createBrowserClient(supabaseUrl, supabaseKey, {
     global: { fetch: adminFetch },
+    auth: {
+      // Table calls do not use a Supabase auth session. The default browser
+      // lock waits 5 seconds whenever an older request is still holding it.
+      lock: async <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>) => fn(),
+    },
   });
 };

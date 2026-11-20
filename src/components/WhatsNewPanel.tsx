@@ -485,7 +485,7 @@ export function useWhatsNewUnreadCount(adminId: string | null | undefined) {
       setUnreadCount(0);
       return;
     }
-    const result = await fetchWhatsNewEntries(supabase, adminId, { limit: 1 });
+    const result = await fetchWhatsNewEntries(supabase, adminId, { limit: 1, seed: false });
     if (!result.error) setUnreadCount(result.unreadCount);
   }, [adminId, supabase]);
 
