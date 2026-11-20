@@ -15,11 +15,12 @@ function getSupabase() {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as {
+    const body = (await request.json().catch(() => null)) as {
       adminId?: string;
       loginLogId?: string;
       action?: string;
-    };
+    } | null;
+    if (!body) return NextResponse.json({ success: true });
     const adminId = body.adminId?.trim() || "";
     const loginLogId = body.loginLogId?.trim() || "";
     const action = body.action === "end" ? "end" : "heartbeat";

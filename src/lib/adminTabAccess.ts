@@ -180,6 +180,7 @@ export function resolveTabAccess(
   const explicitOnly =
     tab === "Merchant Support Login" ||
     tab === "Reviews" ||
+    tab === "Reported Businesses" ||
     tab === "Change Requests" ||
     tab === "Ownership Requests" ||
     tab === "Job Reports" ||

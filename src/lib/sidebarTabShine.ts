@@ -11,6 +11,7 @@ const STORAGE_KEY = "admin_sidebar_tab_shine_v1";
 
 export const SIDEBAR_TAB_INTRODUCED_ON: Record<string, string> = {
   Reviews: "2026-10-16",
+  "Reported Businesses": "2026-11-21",
   "Change Requests": "2026-10-16",
   "Ownership Requests": "2026-10-16",
   "Job Reports": "2026-10-16",

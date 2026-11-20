@@ -32,6 +32,7 @@ const TAB_ALIASES: Record<string, string[]> = {
   "Quick Onboard": ["quick onboard", "maps link", "google maps"],
   Leads: ["lead", "leads", "enquiry", "enquiries", "inquiry", "inquiries"],
   Reviews: ["review", "reviews", "rating", "ratings"],
+  "Reported Businesses": ["reported business", "reported businesses", "business report", "flagged business"],
   "Change Requests": ["change request", "change requests", "profile edit", "listing edit"],
   "Ownership Requests": ["ownership", "claim business", "transfer ownership"],
   "Merchant Support Login": ["support login", "impersonate", "login as merchant"],

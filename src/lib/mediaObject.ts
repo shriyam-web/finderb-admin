@@ -126,6 +126,20 @@ export async function finishIncomingImage(key: string): Promise<{ ok: true; url:
   }
 }
 
+export async function storeAdminAvatar(bytes: Buffer): Promise<string | null> {
+  if (!sniffImage(bytes) || bytes.length < 32 || bytes.length > 2_000_000) return null;
+  const store = storage();
+  if (!store) return null;
+  const now = new Date();
+  const base = `public/admin-avatar/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomBytes(16).toString("hex")}`;
+  try {
+    return await putPublicImage(store, base, bytes);
+  } catch (error) {
+    console.error("[admin avatar]", error instanceof Error ? error.name : "put failed");
+    return null;
+  }
+}
+
 export async function storeServerImage(bytes: Buffer): Promise<string | null> {
   if (!sniffImage(bytes) || bytes.length < 32 || bytes.length > 12_000_000) return null;
   const store = storage();

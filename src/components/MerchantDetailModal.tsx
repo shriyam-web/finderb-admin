@@ -129,6 +129,7 @@ export type MerchantBusinessRecord = {
   reviewReply: unknown;
   password?: string | null;
   onboardSource?: string | null;
+  listingHoldReason?: string | null;
 };
 
 type MerchantDetailModalProps = {
@@ -145,6 +146,7 @@ type MerchantDetailModalProps = {
   onDelete: () => void;
   onApprove: () => void;
   onReject: () => void;
+  onSnooze: () => void;
   onToggleStatus: () => void;
   onToggleFinderBVerified: () => void;
   onClearKyb: () => Promise<void>;
@@ -926,6 +928,7 @@ export default function MerchantDetailModal({
   onDelete,
   onApprove,
   onReject,
+  onSnooze,
   onToggleStatus,
   onToggleFinderBVerified,
   onClearKyb,
@@ -2436,6 +2439,11 @@ export default function MerchantDetailModal({
 
           {/* Footer */}
           <div className="px-5 py-3 border-t border-slate-200 bg-white flex flex-wrap items-center gap-2 shrink-0">
+            {(business.status || "").toLowerCase() === "ignored" && business.listingHoldReason ? (
+              <p className="w-full text-left text-[11px] text-slate-500">
+                Ignored: {business.listingHoldReason}
+              </p>
+            ) : null}
             {canManage && (
               <button
                 type="button"
@@ -2467,6 +2475,13 @@ export default function MerchantDetailModal({
                   <>
                     <button
                       type="button"
+                      onClick={onSnooze}
+                      className="admin-btn-secondary !text-xs !py-1.5"
+                    >
+                      😴 Snooze
+                    </button>
+                    <button
+                      type="button"
                       onClick={onReject}
                       className="admin-btn-danger !text-xs !py-1.5"
                     >
@@ -2480,6 +2495,16 @@ export default function MerchantDetailModal({
                       Approve listing
                     </button>
                   </>
+                )}
+              {canManage &&
+                (business.status || "").toLowerCase() === "ignored" && (
+                  <button
+                    type="button"
+                    onClick={onReject}
+                    className="admin-btn-danger !text-xs !py-1.5"
+                  >
+                    Reject listing
+                  </button>
                 )}
             </div>
           </div>

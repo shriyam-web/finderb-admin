@@ -121,6 +121,7 @@ assert.deepEqual(
   ["Blogs"],
 );
 assert.equal(resolveTabAccess({ role: "controller" }, "Reviews"), "none");
+assert.equal(resolveTabAccess({ role: "controller" }, "Reported Businesses"), "none");
 assert.equal(resolveTabAccess({ role: "controller" }, "Change Requests"), "none");
 assert.equal(resolveTabAccess({ role: "controller" }, "Ownership Requests"), "none");
 assert.equal(resolveTabAccess({ role: "controller" }, "Job Reports"), "none");

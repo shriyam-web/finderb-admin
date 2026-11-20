@@ -8,4 +8,6 @@ export type MerchantRequest = {
   registrationNumber: string | null;
   onboardSource: "self" | "admin" | null;
   createdAt: string | null;
+  holdReason: string | null;
+  holdAt: string | null;
 };

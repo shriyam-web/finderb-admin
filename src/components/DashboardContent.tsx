@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   ArrowRight,
@@ -21,10 +21,10 @@ import {
   Zap,
 } from "lucide-react";
 import { formatActivityDate, formatActivityTime, formatSessionLength } from "../lib/formatDateTime";
-import { waitingLabel } from "../lib/waitingLabel";
 import type { DashboardStats } from "../lib/dashboardStats";
 import type { MerchantRequest } from "../lib/merchantRequest";
 import AdminBarChart from "./AdminBarChart";
+import AdminTodoPanel from "./AdminTodoPanel";
 
 type ActivityItem = {
   id: string;
@@ -160,80 +160,12 @@ function QuickLink({
   );
 }
 
-const TODO_FILL_COUNT = 8;
-
-const TODO_TONES: Record<string, { label: string }> = {
-  "user-flag": { label: "Review" },
-  "business-flag": { label: "Review" },
-  change: { label: "Change" },
-  ownership: { label: "Ownership" },
-  "job-report": { label: "Job" },
-  engagement: { label: "Engage" },
-  merchant: { label: "Listing" },
-  job: { label: "Job" },
-  blog: { label: "Draft" },
-  "blog-cadence": { label: "Blog" },
-  more: { label: "More" },
-  fallback: { label: "Queue" },
-};
-
-type TodoCard = {
-  id: string;
-  tab: string;
-  title: string;
-  detail: string;
-  targetId: string | null;
-  waitingSince: string | null;
-  kind: string;
-};
-
-type LeavingTodo = TodoCard & { leaving: boolean; tone: number };
-
-function useLeavingTodos(items: TodoCard[]) {
-  const itemsRef = useRef(items);
-  itemsRef.current = items;
-  const signature = items.map((item) => `${item.id}\u0000${item.title}\u0000${item.detail}`).join("\n");
-  const [rows, setRows] = useState<LeavingTodo[]>(() =>
-    items.map((item, index) => ({ ...item, leaving: false, tone: index % TODO_FILL_COUNT })),
-  );
-
-  useEffect(() => {
-    const next = itemsRef.current;
-    setRows((prev) => {
-      const nextById = new Map(next.map((item) => [item.id, item]));
-      const seen = new Set(prev.map((row) => row.id));
-      const updated = prev.map((row) => {
-        const incoming = nextById.get(row.id);
-        if (!incoming) return { ...row, leaving: true };
-        return { ...incoming, leaving: false, tone: row.tone };
-      });
-      const added = next
-        .filter((item) => !seen.has(item.id))
-        .map((item, index) => ({
-          ...item,
-          leaving: false,
-          tone: (updated.length + index) % TODO_FILL_COUNT,
-        }));
-      return [...updated, ...added];
-    });
-  }, [signature]);
-
-  useEffect(() => {
-    if (!rows.some((row) => row.leaving)) return;
-    const timer = window.setTimeout(() => {
-      setRows((current) => current.filter((row) => !row.leaving));
-    }, 360);
-    return () => window.clearTimeout(timer);
-  }, [rows]);
-
-  return rows;
-}
-
 export default function DashboardContent({
   setActiveTab,
   merchantRequests,
   handleApprove,
   handleReject,
+  onSnooze,
   chartData,
   recentActivities,
   stats,
@@ -249,11 +181,13 @@ export default function DashboardContent({
   todos,
   todosReady,
   onOpenTodo,
+  onOpenTodoBoard,
 }: {
   setActiveTab: (tab: string) => void;
   merchantRequests: MerchantRequest[];
   handleApprove: (req: MerchantRequest) => void | Promise<void>;
   handleReject: (req: MerchantRequest) => void | Promise<void>;
+  onSnooze: (req: MerchantRequest) => void;
   chartData: ChartDay[];
   recentActivities: ActivityItem[];
   stats: DashboardStats;
@@ -286,11 +220,8 @@ export default function DashboardContent({
     targetId: string | null;
     kind: string;
   }) => void;
+  onOpenTodoBoard: () => void;
 }) {
-  const todoRows = useLeavingTodos(todos);
-  const [todoLimit, setTodoLimit] = useState(10);
-  const visibleTodos = todoRows.slice(0, todoLimit);
-  const hiddenTodoCount = todoRows.filter((row) => !row.leaving).length - todoLimit;
   const [showRevenue, setShowRevenue] = useState(false);
   const [activityFilter, setActivityFilter] = useState<
     "all" | "user" | "merchant" | "lead"
@@ -396,75 +327,59 @@ export default function DashboardContent({
         </div>
       </div>
 
-      <section className="admin-card overflow-hidden">
-        <div className="admin-card-header">
-          <div>
-            <h2 className="admin-card-title">To-do</h2>
-            <p className="admin-card-description">
-              {todosReady
-                ? todos.length
-                  ? `${todos.length} waiting · refreshes every 5 minutes`
-                  : "Refreshes every 5 minutes"
-                : "Checking what needs a review"}
-            </p>
-          </div>
-        </div>
-        {!todosReady ? (
-          <p className="px-4 py-6 text-sm text-slate-500">Loading the queue…</p>
-        ) : todoRows.length === 0 ? (
-          <div className="todo-clear">
-            <h3 className="todo-kudos">
-              <span aria-hidden>🎉</span>
-              Kudos
-            </h3>
-            <p>
-              Nothing needs a decision right now. Listings, reviews, claims, and reports will show up here as soon as they arrive.
-            </p>
-          </div>
-        ) : (
-          <div className="todo-list">
-            {visibleTodos.map((item, index) => {
-              const tone = TODO_TONES[item.kind] || TODO_TONES.fallback;
-              const waited = waitingLabel(item.waitingSince);
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    if (!item.leaving) onOpenTodo(item);
-                  }}
-                  className={item.leaving ? "todo-card is-leaving" : "todo-card"}
-                  data-tone={item.tone}
-                  tabIndex={item.leaving ? -1 : 0}
-                  aria-hidden={item.leaving || undefined}
-                >
-                  <span className="todo-index">{index + 1}</span>
-                  <span className="todo-copy">
-                    <span className="todo-title-row">
-                      <span className="todo-title">{item.title}</span>
-                      <span className="todo-chip">{tone.label}</span>
-                    </span>
-                    <span className="todo-detail">
-                      {item.detail}
-                      {waited ? ` · ${waited}` : ""}
-                    </span>
-                  </span>
-                  <ChevronRight className="todo-chevron" />
-                </button>
-              );
-            })}
-            {hiddenTodoCount > 0 ? (
-              <button
-                type="button"
-                className="admin-btn-primary mt-2 w-full"
-                onClick={() => setTodoLimit((count) => count + 10)}
-              >
-                Load more
-              </button>
-            ) : null}
-          </div>
+      <AdminTodoPanel
+        todos={todos}
+        todosReady={todosReady}
+        layout="compact"
+        onOpenTodo={onOpenTodo}
+        onOpenBoard={onOpenTodoBoard}
+      />
+
+      {/* Primary KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        {canAccessTab("Users") && (
+          <StatCard
+            label="Registered users"
+            value={stats.users.total.toLocaleString()}
+            sub={`+${stats.users.weekNew} this week · ${stats.users.todayNew} today`}
+            icon={Users}
+            accent="sky"
+            onClick={() => setActiveTab("Users")}
+          />
         )}
-      </section>
+        {canAccessTab("Merchants") && (
+          <StatCard
+            label="Active partners"
+            value={stats.merchants.total.toLocaleString()}
+            sub={`${stats.merchants.activeListings} live listings · ${stats.merchants.verified} verified`}
+            icon={Building2}
+            accent="emerald"
+            onClick={() => setActiveTab("Merchants")}
+          />
+        )}
+        {canAccessTab("Leads") && (
+          <StatCard
+            label="Total leads"
+            value={stats.leads.total.toLocaleString()}
+            sub={`+${stats.leads.weekNew} this week · ${stats.leads.profile} profile`}
+            icon={Zap}
+            accent="amber"
+            onClick={() => setActiveTab("Leads")}
+          />
+        )}
+        {(canAccessTab("Users") || canAccessTab("Merchants")) && (
+          <StatCard
+            label="Weekly sign-ups"
+            value={stats.weekSignups.total.toLocaleString()}
+            sub={`${stats.weekSignups.users} users · ${stats.weekSignups.merchants} partners`}
+            icon={UserPlus}
+            accent="primary"
+            onClick={() =>
+              setActiveTab(canAccessTab("Users") ? "Users" : "Merchants")
+            }
+          />
+        )}
+      </div>
 
       {(canAccessTab("Reviews") ||
         canAccessTab("Change Requests") ||
@@ -513,52 +428,6 @@ export default function DashboardContent({
           )}
         </div>
       )}
-
-      {/* Primary KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        {canAccessTab("Users") && (
-          <StatCard
-            label="Registered users"
-            value={stats.users.total.toLocaleString()}
-            sub={`+${stats.users.weekNew} this week · ${stats.users.todayNew} today`}
-            icon={Users}
-            accent="sky"
-            onClick={() => setActiveTab("Users")}
-          />
-        )}
-        {canAccessTab("Merchants") && (
-          <StatCard
-            label="Active partners"
-            value={stats.merchants.total.toLocaleString()}
-            sub={`${stats.merchants.activeListings} live listings · ${stats.merchants.verified} verified`}
-            icon={Building2}
-            accent="emerald"
-            onClick={() => setActiveTab("Merchants")}
-          />
-        )}
-        {canAccessTab("Leads") && (
-          <StatCard
-            label="Total leads"
-            value={stats.leads.total.toLocaleString()}
-            sub={`+${stats.leads.weekNew} this week · ${stats.leads.profile} profile`}
-            icon={Zap}
-            accent="amber"
-            onClick={() => setActiveTab("Leads")}
-          />
-        )}
-        {(canAccessTab("Users") || canAccessTab("Merchants")) && (
-          <StatCard
-            label="Weekly sign-ups"
-            value={stats.weekSignups.total.toLocaleString()}
-            sub={`${stats.weekSignups.users} users · ${stats.weekSignups.merchants} partners`}
-            icon={UserPlus}
-            accent="primary"
-            onClick={() =>
-              setActiveTab(canAccessTab("Users") ? "Users" : "Merchants")
-            }
-          />
-        )}
-      </div>
 
       {canAccessTab("Merchants") && (
         <section className="admin-card p-4">
@@ -1059,6 +928,15 @@ export default function DashboardContent({
                               d="M5 13l4 4L19 7"
                             />
                           </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onSnooze(merchant)}
+                          className="admin-icon-btn"
+                          title="Snooze"
+                          aria-label="Snooze"
+                        >
+                          <span aria-hidden className="text-base leading-none">😴</span>
                         </button>
                         <button
                           type="button"

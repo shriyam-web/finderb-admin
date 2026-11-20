@@ -17,6 +17,7 @@ import { createPortal } from "react-dom";
 import { createClient } from "../../../utils/supabase/client";
 import { deleteMerchantProfile } from "../../lib/deleteMerchant";
 import { stampListingLiveAt } from "../../lib/listingLiveAt";
+import { isListingIgnored, saveListingDecision } from "../../lib/listingDecision";
 import { uploadAdminImage } from "../../utils/cloudinary";
 import { Blog, BlogContent } from "../../components/BlogContent";
 import FinderBJobsContent, {
@@ -30,6 +31,9 @@ import AdminContentLoader from "../../components/AdminContentLoader";
 import AdminUniversalSearch from "../../components/AdminUniversalSearch";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
+import AdminAccountMenu from "../../components/AdminAccountMenu";
+import AdminTodoPanel from "../../components/AdminTodoPanel";
+import ListingDecisionDialog from "../../components/ListingDecisionDialog";
 import AdminEntryScreen, { consumeAdminEntryHandoff } from "../../components/AdminEntryScreen";
 import GoodbyeScreen from "../../components/GoodbyeScreen";
 import AccessRestrictedPanel from "../../components/AccessRestrictedPanel";
@@ -95,6 +99,7 @@ import {
   canAccessTab,
   canEditTab,
   isConsoleLoginUnlocked,
+  isDeveloperRole,
   normalizeAccessFields,
   type TabAccessMode,
 } from "../../lib/adminTabAccess";
@@ -252,6 +257,16 @@ function mapBusinessToMerchantRequest(m: any): MerchantRequest {
     registrationNumber: m.registrationNumber || null,
     onboardSource: normalizeOnboardSource(m.onboardSource),
     createdAt: m.createdAt || null,
+    holdReason: typeof m.listingHoldReason === "string" ? m.listingHoldReason : null,
+    holdAt: typeof m.listingHoldAt === "string" ? m.listingHoldAt : null,
+  };
+}
+
+function splitBusinessRows(rows: any[]) {
+  return {
+    active: rows.filter((row) => isManagedPartner(row.status)).map(mapBusinessToMerchant),
+    pending: rows.filter((row) => isListingPending(row.status)).map(mapBusinessToMerchantRequest),
+    ignored: rows.filter((row) => isListingIgnored(row.status)).map(mapBusinessToMerchantRequest),
   };
 }
 
@@ -350,6 +365,8 @@ interface BusinessData {
   yearsInBusiness: number | null;
   youtubeUrl: string | null;
   onboardSource?: string | null;
+  listingHoldReason?: string | null;
+  listingHoldAt?: string | null;
   review: unknown;
   reviewReply: unknown;
 }
@@ -635,6 +652,24 @@ const ALL_MENU_ITEMS = [
           strokeLinejoin="round"
           strokeWidth="2"
           d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.364 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.364-1.118L2.98 10.101c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+        />
+      </svg>
+    ),
+  },
+  {
+    name: "Reported Businesses",
+    icon: (
+      <svg
+        className="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"
         />
       </svg>
     ),
@@ -1038,6 +1073,7 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
       "Merchant Support Login",
       "Leads",
       "Reviews",
+      "Reported Businesses",
       "Change Requests",
       "Ownership Requests",
       "Ads Request",
@@ -1053,6 +1089,35 @@ const NAV_GROUPS: { label: string; items: NavEntry[] }[] = [
   { label: "Platform", items: ["Site Configurations", "Settings", "Manage Admins"] },
   { label: "Inactive", items: ["News", "Movies", "FinderB E-commerce"] },
 ];
+
+function sidebarReportTabs(): { name: string; label: string }[] {
+  const tabs: { name: string; label: string }[] = [];
+  for (const group of NAV_GROUPS) {
+    for (const entry of group.items) {
+      if (isNavBranch(entry)) {
+        tabs.push({ name: entry.name, label: entry.name });
+        for (const child of entry.children) tabs.push({ name: child.name, label: child.label });
+      } else {
+        tabs.push({ name: entry, label: entry });
+      }
+    }
+  }
+  return tabs;
+}
+
+function reportTabsFor(session: { role?: string | null; allowed_tabs?: string[] | null; allowed_tab_modes?: Record<string, TabAccessMode> | null } | null) {
+  if (!session) return [];
+  return sidebarReportTabs().filter((tab) => {
+    if (!canAccessTab(session, tab.name)) return false;
+    if (
+      !isDeveloperRole(session.role) &&
+      (tab.name === "News" || tab.name === "FinderB E-commerce" || tab.name === "Manage Admins")
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
 
 function reportFetchError(label: string, error: { code?: string } | null | undefined) {
   if (!error || error.code === "ADMIN_SESSION") return;
@@ -1316,6 +1381,13 @@ export default function Dashboard() {
   const [merchantRequests, setMerchantRequests] = useState<MerchantRequest[]>(
     [],
   );
+  const [ignoredRequests, setIgnoredRequests] = useState<MerchantRequest[]>([]);
+  const [listingDecision, setListingDecision] = useState<{
+    id: string;
+    name: string;
+    mode: "snooze" | "reject";
+  } | null>(null);
+  const [todoBoard, setTodoBoard] = useState(false);
   const [allBusinessData, setAllBusinessData] = useState<BusinessData[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -1381,6 +1453,10 @@ export default function Dashboard() {
               data.display_name.trim()) ||
             session.displayName ||
             null,
+          avatarUrl:
+            typeof data.avatar_url === "string" && data.avatar_url.trim()
+              ? data.avatar_url.trim()
+              : null,
           loginEnabled: isConsoleLoginUnlocked(
             data.role,
             data.login_enabled,
@@ -1736,16 +1812,10 @@ export default function Dashboard() {
           console.log("✅ Business data fetched:", merchantData?.length || 0);
           if (merchantData && merchantData.length > 0) {
             setAllBusinessData(merchantData);
-            setActiveMerchants(
-              merchantData
-                .filter((m: any) => isManagedPartner(m.status))
-                .map(mapBusinessToMerchant),
-            );
-            setMerchantRequests(
-              merchantData
-                .filter((m: any) => isListingPending(m.status))
-                .map(mapBusinessToMerchantRequest),
-            );
+            const buckets = splitBusinessRows(merchantData);
+            setActiveMerchants(buckets.active);
+            setMerchantRequests(buckets.pending);
+            setIgnoredRequests(buckets.ignored);
           } else {
             console.warn("⚠️ No business data returned from Supabase");
           }
@@ -1867,6 +1937,7 @@ export default function Dashboard() {
         item.name !== "Manage Admins" &&
         item.name !== "Merchant Support Login" &&
         item.name !== "Reviews" &&
+        item.name !== "Reported Businesses" &&
         item.name !== "Change Requests" &&
         item.name !== "Ownership Requests" &&
         item.name !== "Job Reports" &&
@@ -1906,6 +1977,8 @@ export default function Dashboard() {
         !hasTabAccess(adminSession, "Merchant Support Login")) ||
       (activeTab === "Reviews" &&
         !hasTabAccess(adminSession, "Reviews")) ||
+      (activeTab === "Reported Businesses" &&
+        !hasTabAccess(adminSession, "Reported Businesses")) ||
       (activeTab === "Change Requests" &&
         !hasTabAccess(adminSession, "Change Requests")) ||
       (activeTab === "Ownership Requests" &&
@@ -1947,6 +2020,8 @@ export default function Dashboard() {
       .from("Business")
       .update({
         status: "Active",
+        listingHoldReason: null,
+        listingHoldAt: null,
         updatedAt: new Date().toISOString(),
       })
       .eq("id", req.id);
@@ -1986,6 +2061,7 @@ export default function Dashboard() {
     setMerchantRequests((prev: MerchantRequest[]) =>
       prev.filter((r) => r.id !== req.id),
     );
+    setIgnoredRequests((prev) => prev.filter((r) => r.id !== req.id));
     await logMerchantAudit({
       merchantId: req.id,
       actor: adminSession,
@@ -1997,40 +2073,92 @@ export default function Dashboard() {
     toast(`${req.name} is now live on the public listing.`, "success");
   };
 
-  const handleDashboardReject = async (req: MerchantRequest) => {
+  const openDashboardDecision = (req: MerchantRequest, mode: "snooze" | "reject") => {
     if (!canEditListings) {
-      toast("You do not have permission to reject listings.", "error");
+      toast(
+        mode === "snooze"
+          ? "You do not have permission to snooze listings."
+          : "You do not have permission to reject listings.",
+        "error",
+      );
       return;
     }
-    if (confirm(`Are you sure you want to reject ${req.name}?`)) {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("Business")
-        .update({
-          status: "Rejected",
-          updatedAt: new Date().toISOString(),
-        })
-        .eq("id", req.id);
+    setListingDecision({ id: req.id, name: req.name, mode });
+  };
 
-      if (error) {
-        toast("Error rejecting merchant: " + error.message, "error");
-        return;
-      }
-      setMerchantRequests((prev: MerchantRequest[]) =>
-        prev.filter((r) => r.id !== req.id),
+  const handleDashboardReject = async (req: MerchantRequest) => {
+    openDashboardDecision(req, "reject");
+  };
+
+  const commitDashboardDecision = async (reason: string) => {
+    if (!listingDecision) return;
+    const target = listingDecision;
+    const supabase = createClient();
+    const saved = await saveListingDecision(supabase, {
+      id: target.id,
+      mode: target.mode,
+      reason,
+    });
+    if (saved.error) {
+      toast(
+        target.mode === "snooze"
+          ? "Could not snooze this listing: " + saved.error.message
+          : "Error rejecting merchant: " + saved.error.message,
+        "error",
       );
-      await logMerchantAudit({
-        merchantId: req.id,
-        actor: adminSession,
-        action: "listing.rejected",
-        summary: "Rejected merchant listing",
-        changes: diffAuditChanges(
-          { status: "Pending" },
-          { status: "Rejected" },
-        ),
-      });
-      toast(`${req.name} listing request has been rejected.`, "success");
+      return;
     }
+    setMerchantRequests((prev) => prev.filter((row) => row.id !== target.id));
+    if (target.mode === "snooze") {
+      setIgnoredRequests((prev) => {
+        const existing = merchantRequests.find((row) => row.id === target.id);
+        const next = existing
+          ? { ...existing, holdReason: saved.reason, holdAt: saved.at }
+          : {
+              id: target.id,
+              name: target.name,
+              email: "",
+              category: "",
+              city: null,
+              date: "",
+              registrationNumber: null,
+              onboardSource: null,
+              createdAt: null,
+              holdReason: saved.reason,
+              holdAt: saved.at,
+            };
+        return [next, ...prev.filter((row) => row.id !== target.id)];
+      });
+    } else {
+      setIgnoredRequests((prev) => prev.filter((row) => row.id !== target.id));
+    }
+    setAllBusinessData((prev) =>
+      prev.map((row) =>
+        row.id === target.id
+          ? { ...row, status: saved.status, listingHoldReason: saved.reason, listingHoldAt: saved.at }
+          : row,
+      ),
+    );
+    await logMerchantAudit({
+      merchantId: target.id,
+      actor: adminSession,
+      action: target.mode === "snooze" ? "listing.snoozed" : "listing.rejected",
+      summary:
+        target.mode === "snooze"
+          ? `Snoozed listing: ${reason}`
+          : `Rejected listing: ${reason}`,
+      changes: diffAuditChanges(
+        { status: "Pending" },
+        { status: saved.status, listingHoldReason: reason },
+      ),
+    });
+    setListingDecision(null);
+    toast(
+      target.mode === "snooze"
+        ? `${target.name} is in Ignored requests.`
+        : `${target.name} listing request has been rejected.`,
+      "success",
+    );
   };
 
   const chartData = useMemo(() => {
@@ -2766,6 +2894,7 @@ export default function Dashboard() {
             merchantRequests={merchantRequests}
             handleApprove={handleDashboardApprove}
             handleReject={handleDashboardReject}
+            onSnooze={(req) => openDashboardDecision(req, "snooze")}
             chartData={chartData}
             recentActivities={recentActivities}
             stats={dashboardStats}
@@ -2790,6 +2919,9 @@ export default function Dashboard() {
                   : null,
               );
             }}
+            onOpenTodoBoard={() => {
+              window.open("/dashboard?board=todos", "finderb-admin-todos");
+            }}
           />
         );
       case "Users":
@@ -2808,6 +2940,8 @@ export default function Dashboard() {
             setActiveMerchants={setActiveMerchants}
             merchantRequests={merchantRequests}
             setMerchantRequests={setMerchantRequests}
+            ignoredRequests={ignoredRequests}
+            setIgnoredRequests={setIgnoredRequests}
             adminSession={adminSession}
             categories={categories}
             toast={toast}
@@ -2833,16 +2967,10 @@ export default function Dashboard() {
                 .order("createdAt", { ascending: false });
               if (!merchantData) return;
               setAllBusinessData(merchantData);
-              setActiveMerchants(
-                merchantData
-                  .filter((m: any) => isManagedPartner(m.status))
-                  .map(mapBusinessToMerchant),
-              );
-              setMerchantRequests(
-                merchantData
-                  .filter((m: any) => isListingPending(m.status))
-                  .map(mapBusinessToMerchantRequest),
-              );
+              const buckets = splitBusinessRows(merchantData);
+              setActiveMerchants(buckets.active);
+              setMerchantRequests(buckets.pending);
+              setIgnoredRequests(buckets.ignored);
             }}
           />
         );
@@ -2863,16 +2991,10 @@ export default function Dashboard() {
                 .order("createdAt", { ascending: false });
               if (!merchantData) return;
               setAllBusinessData(merchantData);
-              setActiveMerchants(
-                merchantData
-                  .filter((m: any) => isManagedPartner(m.status))
-                  .map(mapBusinessToMerchant),
-              );
-              setMerchantRequests(
-                merchantData
-                  .filter((m: any) => isListingPending(m.status))
-                  .map(mapBusinessToMerchantRequest),
-              );
+              const buckets = splitBusinessRows(merchantData);
+              setActiveMerchants(buckets.active);
+              setMerchantRequests(buckets.pending);
+              setIgnoredRequests(buckets.ignored);
             }}
           />
         );
@@ -2913,6 +3035,13 @@ export default function Dashboard() {
           <TouristPlacesContent
             merchants={activeMerchants}
             canManage={hasFullTabAccess(adminSession, "Tourist Places")}
+          />
+        );
+      case "Reported Businesses":
+        return (
+          <ComingSoonContent
+            tabName="Reported Businesses"
+            message="This feature is coming soon."
           />
         );
       case "News":
@@ -3080,6 +3209,7 @@ export default function Dashboard() {
             merchantRequests={merchantRequests}
             handleApprove={handleDashboardApprove}
             handleReject={handleDashboardReject}
+            onSnooze={(req) => openDashboardDecision(req, "snooze")}
             chartData={chartData}
             recentActivities={recentActivities}
             stats={dashboardStats}
@@ -3104,10 +3234,17 @@ export default function Dashboard() {
                   : null,
               );
             }}
+            onOpenTodoBoard={() => {
+              window.open("/dashboard?board=todos", "finderb-admin-todos");
+            }}
           />
         );
     }
   };
+
+  useEffect(() => {
+    setTodoBoard(new URLSearchParams(window.location.search).get("board") === "todos");
+  }, []);
 
   if (goodbye) {
     return <GoodbyeScreen startedAt={goodbye.startedAt} endedAt={goodbye.endedAt} />;
@@ -3128,6 +3265,43 @@ export default function Dashboard() {
           setBootMinElapsed(true);
         }}
       />
+    );
+  }
+
+  if (todoBoard && adminSession) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-8">
+        <div className="mx-auto flex max-w-3xl flex-col gap-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-slate-500">To-do only</p>
+            <button
+              type="button"
+              className="admin-btn-secondary"
+              onClick={() => {
+                window.history.replaceState(null, "", "/dashboard");
+                setTodoBoard(false);
+              }}
+            >
+              Back to dashboard
+            </button>
+          </div>
+          <AdminTodoPanel
+            layout="board"
+            todos={adminTodos}
+            todosReady={!dataLoading && queueReady}
+            onOpenTodo={(item) => {
+              window.history.replaceState(null, "", "/dashboard");
+              setTodoBoard(false);
+              setActiveTab(item.tab);
+              setTodoFocus(
+                item.targetId
+                  ? { tab: item.tab, targetId: item.targetId, kind: item.kind }
+                  : null,
+              );
+            }}
+          />
+        </div>
+      </div>
     );
   }
 
@@ -3395,6 +3569,7 @@ export default function Dashboard() {
               const item = menuByName.get(name);
               if (!item) return null;
               const isComingSoon = COMING_SOON_TABS.has(name);
+              const showSoonBadge = isComingSoon || name === "Reported Businesses";
               const isActive = activeTab === name;
               const pendingCount = isComingSoon ? 0 : pendingCountForTab(name);
               const shineLabel = !isComingSoon && shiningTabs.has(name);
@@ -3444,7 +3619,7 @@ export default function Dashboard() {
                       {label}
                     </span>
                   )}
-                  {isComingSoon ? (
+                  {showSoonBadge ? (
                     <span className="admin-nav-badges">
                       <span className="admin-nav-badge admin-nav-badge-soon">
                         {DISABLED_FEATURE_TABS.has(name) ? "Off" : "Soon"}
@@ -3609,70 +3784,6 @@ export default function Dashboard() {
               <p className="px-2.5 py-3 text-[12px] text-slate-400">No menus match.</p>
             )}
         </nav>
-
-        <div className="admin-sidebar-footer">
-          {sidebarCollapsed ? (
-            <button
-              type="button"
-              onClick={() => setShowAdminProfile(true)}
-              className="admin-avatar-dark mx-auto"
-              title="Open your profile"
-            >
-              {(
-                adminSession?.displayName?.trim() ||
-                adminSession?.email ||
-                "A"
-              )
-                .charAt(0)
-                .toUpperCase()}
-            </button>
-          ) : (
-            <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-1.5 py-1.5">
-              <button
-                type="button"
-                onClick={() => setShowAdminProfile(true)}
-                className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-0.5 py-0.5 text-left hover:bg-slate-50"
-                title="Open your profile"
-              >
-                <div className="admin-avatar-dark !h-7 !w-7 !text-[10px]">
-                  {(
-                    adminSession?.displayName?.trim() ||
-                    adminSession?.email ||
-                    "A"
-                  )
-                    .charAt(0)
-                    .toUpperCase()}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-[12px] font-semibold leading-tight text-slate-900">
-                    {adminSession?.displayName?.trim() ||
-                      adminSession?.email?.split("@")[0] ||
-                      "Admin"}
-                  </p>
-                  <p className="truncate text-[10px] font-medium capitalize leading-tight text-slate-500">
-                    {adminSession?.role?.replace(/_/g, " ") || "Administrator"}
-                  </p>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                aria-label="Sign out"
-                title="Sign out"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"
-                  />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
       </aside>
 
       <div className="admin-content-area flex-1 flex flex-col min-w-0">
@@ -3871,27 +3982,20 @@ export default function Dashboard() {
                 </button>
               )}
               <span className="admin-topbar-divider" aria-hidden />
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="admin-sign-out"
-              >
-                <svg
-                  className="w-4 h-4 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1"
-                  />
-                </svg>
-                <span>Sign out</span>
-              </button>
+              <AdminAccountMenu
+                name={
+                  adminSession?.displayName?.trim() ||
+                  adminSession?.email?.split("@")[0] ||
+                  "Admin"
+                }
+                email={adminSession?.email || null}
+                role={adminSession?.role || "admin"}
+                avatarUrl={adminSession?.avatarUrl || null}
+                session={adminSession}
+                tabs={reportTabsFor(adminSession)}
+                onSettings={() => setShowAdminProfile(true)}
+                onSignOut={handleLogout}
+              />
             </div>
           </header>
 
@@ -3968,6 +4072,15 @@ export default function Dashboard() {
         </main>
       </div>
 
+      {listingDecision ? (
+        <ListingDecisionDialog
+          mode={listingDecision.mode}
+          businessName={listingDecision.name}
+          onClose={() => setListingDecision(null)}
+          onConfirm={commitDashboardDecision}
+        />
+      ) : null}
+
       {showAdminProfile && adminSession && (
         <AdminProfileModal
           session={adminSession}
@@ -3978,6 +4091,11 @@ export default function Dashboard() {
           }}
           onDisplayNameChange={(displayName) => {
             const updated = { ...adminSession, displayName };
+            localStorage.setItem("admin_session", JSON.stringify(updated));
+            setAdminSession(updated);
+          }}
+          onAvatarChange={(avatarUrl) => {
+            const updated = { ...adminSession, avatarUrl };
             localStorage.setItem("admin_session", JSON.stringify(updated));
             setAdminSession(updated);
           }}
@@ -5219,6 +5337,8 @@ function MerchantsContent({
   setActiveMerchants,
   merchantRequests,
   setMerchantRequests,
+  ignoredRequests,
+  setIgnoredRequests,
   adminSession,
   categories,
   toast,
@@ -5231,6 +5351,8 @@ function MerchantsContent({
   setActiveMerchants: Dispatch<SetStateAction<Merchant[]>>;
   merchantRequests: MerchantRequest[];
   setMerchantRequests: Dispatch<SetStateAction<MerchantRequest[]>>;
+  ignoredRequests: MerchantRequest[];
+  setIgnoredRequests: Dispatch<SetStateAction<MerchantRequest[]>>;
   adminSession: AdminSession | null;
   categories: Category[];
   toast: (message: string, tone?: "success" | "error" | "info") => void;
@@ -5241,9 +5363,14 @@ function MerchantsContent({
   canViewFinancialData: boolean;
   focusBusinessId?: string | null;
 }) {
-  const [merchantTab, setMerchantTab] = useState<"Active" | "Pending">(
+  const [merchantTab, setMerchantTab] = useState<"Active" | "Pending" | "Ignored">(
     "Active",
   );
+  const [merchantDecision, setMerchantDecision] = useState<{
+    id: string;
+    name: string;
+    mode: "snooze" | "reject";
+  } | null>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<BusinessData | null>(
     null,
   );
@@ -5373,6 +5500,19 @@ function MerchantsContent({
           ? !m.onboardSource
           : m.onboardSource === originFilter)),
   );
+  const filteredIgnoredRequests = ignoredRequests.filter(
+    (m) =>
+      matchesSearchTerm(
+        searchTerm,
+        m.id,
+        m.name,
+        m.email,
+        m.registrationNumber,
+        m.category,
+        m.holdReason,
+      ) &&
+      (categoryFilter === "all" || m.category === categoryFilter),
+  );
 
   // Reset to page 1 whenever the visible dataset changes.
   useEffect(() => {
@@ -5391,7 +5531,9 @@ function MerchantsContent({
   const currentList =
     merchantTab === "Active"
       ? filteredActiveMerchants
-      : filteredMerchantRequests;
+      : merchantTab === "Ignored"
+        ? filteredIgnoredRequests
+        : filteredMerchantRequests;
   const totalPages = Math.max(1, Math.ceil(currentList.length / rowsPerPage));
   const safePage = Math.min(page, totalPages);
   const pagedActiveMerchants = filteredActiveMerchants.slice(
@@ -5399,6 +5541,10 @@ function MerchantsContent({
     safePage * rowsPerPage,
   );
   const pagedMerchantRequests = filteredMerchantRequests.slice(
+    (safePage - 1) * rowsPerPage,
+    safePage * rowsPerPage,
+  );
+  const pagedIgnoredRequests = filteredIgnoredRequests.slice(
     (safePage - 1) * rowsPerPage,
     safePage * rowsPerPage,
   );
@@ -5649,6 +5795,8 @@ function MerchantsContent({
       .from("Business")
       .update({
         status: "Active",
+        listingHoldReason: null,
+        listingHoldAt: null,
         updatedAt: new Date().toISOString(),
       })
       .eq("id", merchant.id);
@@ -5681,6 +5829,7 @@ function MerchantsContent({
       },
     ]);
     setMerchantRequests(merchantRequests.filter((m) => m.id !== merchant.id));
+    setIgnoredRequests((prev) => prev.filter((row) => row.id !== merchant.id));
     await logMerchantAudit({
       merchantId: merchant.id,
       actor: adminSession,
@@ -5692,37 +5841,116 @@ function MerchantsContent({
     toast("Merchant listing approved", "success");
   };
 
-  const handleReject = async (id: string) => {
+  const openMerchantDecision = (id: string, name: string, mode: "snooze" | "reject") => {
     if (!canManage) {
       toast("You have read-only access to Merchants.", "error");
       return;
     }
-    if (confirm("Reject this merchant listing?")) {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("Business")
-        .update({
-          status: "Rejected",
-          updatedAt: new Date().toISOString(),
-        })
-        .eq("id", id);
-      if (error) {
-        toast("Error rejecting merchant: " + error.message, "error");
-        return;
-      }
-      setMerchantRequests(merchantRequests.filter((m) => m.id !== id));
-      await logMerchantAudit({
-        merchantId: id,
-        actor: adminSession,
-        action: "listing.rejected",
-        summary: "Rejected merchant listing",
-        changes: diffAuditChanges(
-          { status: "Pending" },
-          { status: "Rejected" },
-        ),
-      });
-      toast("Merchant listing rejected", "success");
+    setMerchantDecision({ id, name, mode });
+  };
+
+  const handleReject = async (id: string, name = "this business") => {
+    openMerchantDecision(id, name, "reject");
+  };
+
+  const commitMerchantDecision = async (reason: string) => {
+    if (!merchantDecision) return;
+    const target = merchantDecision;
+    const supabase = createClient();
+    const saved = await saveListingDecision(supabase, {
+      id: target.id,
+      mode: target.mode,
+      reason,
+    });
+    if (saved.error) {
+      toast(
+        target.mode === "snooze"
+          ? "Could not snooze this listing: " + saved.error.message
+          : "Error rejecting merchant: " + saved.error.message,
+        "error",
+      );
+      return;
     }
+    const source =
+      merchantRequests.find((row) => row.id === target.id) ||
+      ignoredRequests.find((row) => row.id === target.id);
+    setMerchantRequests((prev) => prev.filter((row) => row.id !== target.id));
+    if (target.mode === "snooze" && source) {
+      setIgnoredRequests((prev) => [
+        { ...source, holdReason: saved.reason, holdAt: saved.at },
+        ...prev.filter((row) => row.id !== target.id),
+      ]);
+    } else {
+      setIgnoredRequests((prev) => prev.filter((row) => row.id !== target.id));
+    }
+    if (selectedBusiness?.id === target.id) {
+      setSelectedBusiness((prev) =>
+        prev
+          ? { ...prev, status: saved.status, listingHoldReason: saved.reason, listingHoldAt: saved.at }
+          : prev,
+      );
+    }
+    await logMerchantAudit({
+      merchantId: target.id,
+      actor: adminSession,
+      action: target.mode === "snooze" ? "listing.snoozed" : "listing.rejected",
+      summary:
+        target.mode === "snooze" ? `Snoozed listing: ${reason}` : `Rejected listing: ${reason}`,
+      changes: diffAuditChanges(
+        { status: "Pending" },
+        { status: saved.status, listingHoldReason: reason },
+      ),
+    });
+    setMerchantDecision(null);
+    toast(
+      target.mode === "snooze" ? "Moved to Ignored requests" : "Merchant listing rejected",
+      "success",
+    );
+  };
+
+  const handleActivateIgnored = async (merchant: MerchantRequest) => {
+    if (!canManage) {
+      toast("You have read-only access to Merchants.", "error");
+      return;
+    }
+    const supabase = createClient();
+    const saved = await saveListingDecision(supabase, { id: merchant.id, mode: "activate" });
+    if (saved.error) {
+      toast("Could not activate this listing: " + saved.error.message, "error");
+      return;
+    }
+    void stampListingLiveAt(merchant.id);
+    setIgnoredRequests((prev) => prev.filter((row) => row.id !== merchant.id));
+    setActiveMerchants((prev) => [
+      ...prev,
+      {
+        ...merchant,
+        rating: 0,
+        sales: 0,
+        validUntil: "—",
+        status: "Active",
+        isFinderBVerified: false,
+        paymentStatus: "pending",
+        selectedPlan: "free",
+        billingCycle: "monthly",
+        planExpiresAt: null,
+        slug: null,
+        state: null,
+        phone: null,
+        createdAt: merchant.createdAt || new Date().toISOString(),
+        hasViewablePassword: false,
+      },
+    ]);
+    if (selectedBusiness?.id === merchant.id) setSelectedBusiness(null);
+    await logMerchantAudit({
+      merchantId: merchant.id,
+      actor: adminSession,
+      action: "listing.approved",
+      summary: "Activated a snoozed listing",
+      changes: diffAuditChanges({ status: "Ignored" }, { status: "Active" }),
+    });
+    void requestListingLiveEmail(adminSession?.id, merchant.id);
+    toast("Listing is live", "success");
   };
 
   const toggleMerchantStatus = async (id: string, currentStatus: string) => {
@@ -5888,6 +6116,7 @@ function MerchantsContent({
 
       setActiveMerchants(activeMerchants.filter((m) => m.id !== id));
       setMerchantRequests(merchantRequests.filter((m) => m.id !== id));
+      setIgnoredRequests((prev) => prev.filter((row) => row.id !== id));
 
       if (selectedBusiness && selectedBusiness.id === id) {
         setSelectedBusiness(null);
@@ -6031,6 +6260,7 @@ function MerchantsContent({
 
     if (isManagedPartner(data.status)) {
       setMerchantRequests((prev) => prev.filter((m) => m.id !== data.id));
+      setIgnoredRequests((prev) => prev.filter((row) => row.id !== data.id));
     }
   };
 
@@ -6271,6 +6501,7 @@ function MerchantsContent({
             {merchantRequests.length
               ? ` · ${merchantRequests.length} waiting for review`
               : ""}
+            {ignoredRequests.length ? ` · ${ignoredRequests.length} ignored` : ""}
           </p>
         </div>
         <div className="admin-segmented">
@@ -6292,6 +6523,15 @@ function MerchantsContent({
               className={`merchant-tab-count ${merchantRequests.length > 0 ? "is-alert" : merchantTab === "Pending" ? "is-on" : ""}`}
             >
               {merchantRequests.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setMerchantTab("Ignored")}
+            className={`admin-segmented-btn ${merchantTab === "Ignored" ? "admin-segmented-btn-active" : "admin-segmented-btn-idle"}`}
+          >
+            Ignored
+            <span className={`merchant-tab-count ${merchantTab === "Ignored" ? "is-on" : ""}`}>
+              {ignoredRequests.length}
             </span>
           </button>
         </div>
@@ -6479,7 +6719,7 @@ function MerchantsContent({
             noun="partners"
           />
         </div>
-      ) : (
+      ) : merchantTab === "Pending" ? (
         <div className="admin-card overflow-hidden">
           {toolbar}
           <div className="admin-table-wrap">
@@ -6550,7 +6790,10 @@ function MerchantsContent({
                             <button type="button" onClick={() => handleApprove(req)} className="admin-btn-primary text-[11px] !py-1 !px-2.5">
                               Approve
                             </button>
-                            <button type="button" onClick={() => handleReject(req.id)} className="admin-btn-danger text-[11px] !py-1 !px-2.5">
+                            <button type="button" onClick={() => openMerchantDecision(req.id, req.name, "snooze")} className="admin-btn-secondary text-[11px] !py-1 !px-2.5">
+                              😴 Snooze
+                            </button>
+                            <button type="button" onClick={() => handleReject(req.id, req.name)} className="admin-btn-danger text-[11px] !py-1 !px-2.5">
                               Reject
                             </button>
                             <button type="button" onClick={() => handleDeleteMerchant(req.id)} className="admin-btn-danger text-[11px] !py-1 !px-2.5">
@@ -6587,6 +6830,76 @@ function MerchantsContent({
             onPageChange={setPage}
             onRowsPerPageChange={setRowsPerPage}
             noun="requests"
+          />
+        </div>
+      ) : (
+        <div className="admin-card overflow-hidden">
+          {toolbar}
+          <div className="admin-table-wrap">
+            <table className="admin-table admin-table-compact admin-table-pin">
+              <thead>
+                <tr>
+                  <th>Business</th>
+                  <th>Contact</th>
+                  <th>Location</th>
+                  <th>Category</th>
+                  <th>Reason</th>
+                  <th>Snoozed</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedIgnoredRequests.map((req) => (
+                  <tr key={req.id}>
+                    <td>
+                      <button type="button" className="merchant-name-btn" onClick={() => handleViewMerchant(req.id)}>
+                        {req.name}
+                      </button>
+                    </td>
+                    <td className="max-w-[200px] truncate text-sm text-slate-700">{req.email || "—"}</td>
+                    <td className="whitespace-nowrap text-slate-600">{req.city || "—"}</td>
+                    <td className="whitespace-nowrap text-slate-700">{req.category}</td>
+                    <td className="max-w-[240px] text-xs text-slate-600">{req.holdReason || "—"}</td>
+                    <td className="whitespace-nowrap text-xs text-slate-500">
+                      {req.holdAt
+                        ? new Date(req.holdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                        : "—"}
+                    </td>
+                    <td className="text-right">
+                      <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+                        <button type="button" onClick={() => handleViewMerchant(req.id)} className="admin-btn-secondary text-[11px] !py-1 !px-2.5">
+                          Details
+                        </button>
+                        {canManage ? (
+                          <>
+                            <button type="button" onClick={() => void handleActivateIgnored(req)} className="admin-btn-primary text-[11px] !py-1 !px-2.5">
+                              Activate
+                            </button>
+                            <button type="button" onClick={() => handleReject(req.id, req.name)} className="admin-btn-danger text-[11px] !py-1 !px-2.5">
+                              Reject
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filteredIgnoredRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="admin-empty">No ignored registrations</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+          <PaginationFooter
+            total={filteredIgnoredRequests.length}
+            page={safePage}
+            totalPages={totalPages}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={setRowsPerPage}
+            noun="ignored"
           />
         </div>
       )}
@@ -6656,16 +6969,32 @@ function MerchantsContent({
               registrationNumber: selectedBusiness.registrationNumber || null,
               onboardSource: normalizeOnboardSource(selectedBusiness.onboardSource),
               createdAt: selectedBusiness.createdAt || null,
+              holdReason: selectedBusiness.listingHoldReason || null,
+              holdAt: selectedBusiness.listingHoldAt || null,
             });
             setSelectedBusiness(null);
           }}
-          onReject={() => {
-            handleReject(selectedBusiness.id);
-            setSelectedBusiness(null);
-          }}
-          onToggleStatus={() =>
-            toggleMerchantStatus(selectedBusiness.id, selectedBusiness.status)
+          onSnooze={() =>
+            openMerchantDecision(
+              selectedBusiness.id,
+              selectedBusiness.businessName || selectedBusiness.fullName || "this business",
+              "snooze",
+            )
           }
+          onReject={() =>
+            handleReject(
+              selectedBusiness.id,
+              selectedBusiness.businessName || selectedBusiness.fullName || "this business",
+            )
+          }
+          onToggleStatus={() => {
+            if (isListingIgnored(selectedBusiness.status)) {
+              const match = ignoredRequests.find((row) => row.id === selectedBusiness.id);
+              if (match) void handleActivateIgnored(match);
+              return;
+            }
+            toggleMerchantStatus(selectedBusiness.id, selectedBusiness.status);
+          }}
           onClearKyb={() => clearBusinessKyb(selectedBusiness.id)}
           onToggleFinderBVerified={() =>
             toggleFinderBVerified(
@@ -6679,6 +7008,14 @@ function MerchantsContent({
           onReorderImages={handleReorderBusinessImages}
         />
       )}
+      {merchantDecision ? (
+        <ListingDecisionDialog
+          mode={merchantDecision.mode}
+          businessName={merchantDecision.name}
+          onClose={() => setMerchantDecision(null)}
+          onConfirm={commitMerchantDecision}
+        />
+      ) : null}
     </div>
   );
 }

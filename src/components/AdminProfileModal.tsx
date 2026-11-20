@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "../../utils/supabase/client";
 import AdminChangePassword from "./AdminChangePassword";
 import AdminOverlay from "./AdminOverlay";
+import AdminProfilePhoto from "./AdminProfilePhoto";
 
 type AdminSession = {
   id: string;
@@ -11,6 +12,7 @@ type AdminSession = {
   role: string;
   allowed_tabs?: string[];
   displayName?: string | null;
+  avatarUrl?: string | null;
 };
 
 type AdminRow = {
@@ -39,11 +41,13 @@ export default function AdminProfileModal({
   onClose,
   onSignOut,
   onDisplayNameChange,
+  onAvatarChange,
 }: {
   session: AdminSession;
   onClose: () => void;
   onSignOut: () => void;
   onDisplayNameChange?: (displayName: string) => void;
+  onAvatarChange?: (avatarUrl: string | null) => void;
 }) {
   const [row, setRow] = useState<AdminRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,6 +58,7 @@ export default function AdminProfileModal({
     text: string;
   } | null>(null);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(session.avatarUrl || null);
 
   useEffect(() => {
     let cancelled = false;
@@ -164,20 +169,26 @@ export default function AdminProfileModal({
 
   return (
     <AdminOverlay>
-      <div className="admin-card w-full max-w-lg shadow-xl">
+      <div className="admin-card flex max-h-[min(92dvh,880px)] w-full max-w-3xl flex-col overflow-hidden shadow-xl">
         {changingPassword ? (
-          <AdminChangePassword
-            adminId={session.id}
-            email={email}
-            onClose={() => setChangingPassword(false)}
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <AdminChangePassword
+              adminId={session.id}
+              email={email}
+              onClose={() => setChangingPassword(false)}
+            />
+          </div>
         ) : (
           <>
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-5">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-8">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-50 text-lg font-semibold text-orange-800">
-                  {displayName.charAt(0).toUpperCase()}
-                </div>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                ) : (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-lg font-semibold text-orange-800">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div className="min-w-0">
                   <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
                     Your profile
@@ -196,7 +207,7 @@ export default function AdminProfileModal({
               </button>
             </div>
 
-            <div className="space-y-5 px-5 py-5">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-8">
               {loading ? (
                 <p className="text-sm text-slate-500">Loading profile…</p>
               ) : (
@@ -205,7 +216,7 @@ export default function AdminProfileModal({
                     <label htmlFor="admin-display-name" className="text-sm font-medium text-slate-800">
                       Profile name
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <input
                         id="admin-display-name"
                         value={nameDraft}
@@ -227,8 +238,16 @@ export default function AdminProfileModal({
                       </button>
                     </div>
                     <p className="text-xs text-slate-500">
-                      This name appears in the sidebar.
+                      This name appears on your account menu.
                     </p>
+                    <AdminProfilePhoto
+                      avatarUrl={avatarUrl}
+                      name={displayName}
+                      onChange={(next) => {
+                        setAvatarUrl(next);
+                        onAvatarChange?.(next);
+                      }}
+                    />
                     {nameNote ? (
                       <p className={`text-xs ${nameNote.tone === "success" ? "text-emerald-700" : "text-rose-600"}`}>
                         {nameNote.text}
@@ -236,7 +255,7 @@ export default function AdminProfileModal({
                     ) : null}
                   </div>
 
-                  <dl className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
+                  <dl className="grid grid-cols-1 gap-3 border-t border-slate-100 pt-4 sm:grid-cols-3">
                     <div>
                       <dt className="text-[11px] text-slate-400">Role</dt>
                       <dd className="mt-1 text-sm font-medium capitalize text-slate-900">
@@ -275,7 +294,7 @@ export default function AdminProfileModal({
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                  <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:flex-row sm:items-center">
                     <div>
                       <p className="text-sm font-medium text-slate-900">Password</p>
                       <p className="mt-0.5 text-xs text-slate-500">
