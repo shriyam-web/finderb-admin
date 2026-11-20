@@ -5,6 +5,7 @@ import { createClient } from "../../utils/supabase/client";
 import { formatDateTimeInr } from "../lib/formatDateTime";
 import {
   fetchWhatsNewEntries,
+  nextWhatsNewPublishDelay,
   markAllWhatsNewRead,
   markWhatsNewRead,
   removeWhatsNewEntry,
@@ -97,7 +98,7 @@ export default function WhatsNewPanel({
     }
     const result = await fetchWhatsNewEntries(supabase, adminId, {
       limit,
-      seed: mode === "initial",
+      seed: false,
     });
     if (result.error) {
       if (mode === "initial") {
@@ -494,6 +495,22 @@ export function useWhatsNewUnreadCount(adminId: string | null | undefined) {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!adminId || !supabase) return;
+    const publish = () => {
+      void fetchWhatsNewEntries(supabase, adminId, { limit: 1, seed: true }).then((result) => {
+        if (!result.error) setUnreadCount(result.unreadCount);
+      });
+    };
+    const wait = nextWhatsNewPublishDelay();
+    if (wait == null) {
+      publish();
+      return;
+    }
+    const timer = window.setTimeout(publish, wait);
+    return () => window.clearTimeout(timer);
+  }, [adminId, supabase]);
 
   useEffect(() => {
     if (!adminId || !supabase) return;

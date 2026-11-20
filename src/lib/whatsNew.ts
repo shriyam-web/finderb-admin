@@ -70,12 +70,17 @@ export async function fetchWhatsNewEntries(
   error: string | null;
 }> {
   const limit = Math.max(1, options?.limit ?? WHATS_NEW_PAGE_SIZE);
+  if (options?.seed) {
+    await ensureWhatsNewSeeds().catch(() => undefined);
+  }
   const [removedRows, itemsResult, catalogResult, readsResult] = await Promise.all([
     adminGet("admin_whats_new_removed?select=title"),
     adminGet(
-      `admin_whats_new?select=id,title,body,published_at,created_by,created_at&order=published_at.desc&limit=${limit}`,
+      `admin_whats_new?select=id,title,body,published_at,created_by,created_at&order=published_at.desc&limit=${limit}&published_at=lte.${encodeURIComponent(new Date().toISOString())}`,
     ),
-    adminGet("admin_whats_new?select=id,title&order=published_at.desc"),
+    adminGet(
+      `admin_whats_new?select=id,title,published_at&order=published_at.desc&published_at=lte.${encodeURIComponent(new Date().toISOString())}`,
+    ),
     adminGet(
       `admin_whats_new_reads?select=item_id,read_at&admin_id=eq.${encodeURIComponent(adminId)}`,
     ),
@@ -83,9 +88,6 @@ export async function fetchWhatsNewEntries(
   const removed = new Set(RETIRED_WHATS_NEW_TITLES);
   for (const row of (removedRows.data || []) as Array<{ title?: string }>) {
     if (row.title) removed.add(row.title);
-  }
-  if (options?.seed !== false) {
-    void ensureWhatsNewSeeds(supabase, removed).catch(() => undefined);
   }
   const items = itemsResult.data;
   const itemsError = itemsResult.error ? { message: itemsResult.error } : null;
@@ -103,8 +105,8 @@ export async function fetchWhatsNewEntries(
   );
 
   const visibleCatalog = uniqueWhatsNewTitles(
-    ((catalog || []) as Array<{ id: string; title: string }>).filter(
-      (item) => !removed.has(item.title),
+    ((catalog || []) as Array<{ id: string; title: string; published_at?: string }>).filter(
+      (item) => !removed.has(item.title) && isWhatsNewLive(item.published_at),
     ),
   );
   const readTitles = readWhatsNewTitles(
@@ -116,7 +118,9 @@ export async function fetchWhatsNewEntries(
     .map((item) => item.id);
 
   const entries = uniqueWhatsNewTitles(
-    ((items || []) as WhatsNewItem[]).filter((item) => !removed.has(item.title)),
+    ((items || []) as WhatsNewItem[]).filter(
+      (item) => !removed.has(item.title) && isWhatsNewLive(item.published_at),
+    ),
   ).map((item) => {
     const readAt = readMap.get(item.id) ?? null;
     return {
@@ -133,6 +137,12 @@ export async function fetchWhatsNewEntries(
     unreadIds,
     error: null,
   };
+}
+
+function isWhatsNewLive(publishedAt: string | undefined): boolean {
+  if (!publishedAt) return true;
+  const time = Date.parse(publishedAt);
+  return Number.isNaN(time) || time <= Date.now();
 }
 
 function uniqueWhatsNewTitles<T extends { title: string }>(rows: T[]): T[] {
@@ -166,6 +176,36 @@ const WHATS_NEW_SEEDS: Array<{
   body: string;
   published_at: string;
 }> = [
+  {
+    title: "Set your profile photo, and sign out from the account menu",
+    body: "Your photo is in the top bar, beside the theme switch. Open it to see your name, email, and role.\n\nSettings in that menu opens your profile. Choose a photo, drag and zoom the crop, then save it. You can change the photo or remove it later.\n\nSign out is in this same menu, under Settings.",
+    published_at: "2026-11-21T22:00:00+05:30",
+  },
+  {
+    title: "Hold a listing for later, or reject it with a reason",
+    body: "On a pending listing you can put it on snooze or reject it. Both ask for a reason. Pick a suggestion, or write your own.\n\nSnooze moves the business to Ignored. It leaves the to-do list and the Merchants count. You can activate it later, or reject it from there.\n\nReject stores the reason on the business and takes it out of the queue.\n\nThe approval queue buttons read Approve, Snooze, and Reject.",
+    published_at: "2026-11-21T22:00:00+05:30",
+  },
+  {
+    title: "Check that assigned tabs match what an admin can open",
+    body: "The tab access window groups the tabs and shows how many are edit, read, or hidden.\n\nAfter you set them, press Check access. A full match says 100% match. If something is off, it lists it straight away: assigned but hidden, visible but not assigned, or read where you chose edit.",
+    published_at: "2026-11-21T22:00:00+05:30",
+  },
+  {
+    title: "To-do is grouped, and the symbols are easier to see",
+    body: "Dashboard To-do groups waiting work by tab and shows a short list. Open the full list in its own window when you want every group.\n\nEach row uses a symbol at a normal size. Snooze shows a sleeping face.",
+    published_at: "2026-11-21T22:00:00+05:30",
+  },
+  {
+    title: "The main numbers sit above the request cards",
+    body: "Registered users, active partners, total leads, and weekly sign-ups come first on the dashboard.\n\nReviews, Change requests, Ownership requests, and Job reports sit under those four.",
+    published_at: "2026-11-21T22:00:00+05:30",
+  },
+  {
+    title: "Reported Businesses is a new sidebar tab",
+    body: "Reported Businesses is in the sidebar under Requests.\n\nOpen it and the page says this feature is coming soon.",
+    published_at: "2026-11-21T22:00:00+05:30",
+  },
   {
     title: "What's New updates on its own",
     body: "What's New is realtime now. A new notice shows up by itself, and the unread count moves with it. You do not need to refresh the page.\n\nThe latest 15 notices open first. Press Load more for the older ones.",
@@ -258,54 +298,103 @@ const WHATS_NEW_SEEDS: Array<{
   },
 ];
 
+/** Milliseconds until the next notice is allowed to appear. Null when nothing is waiting. */
+export function nextWhatsNewPublishDelay(now = Date.now()): number | null {
+  let next: number | null = null;
+  for (const item of WHATS_NEW_SEEDS) {
+    const time = Date.parse(item.published_at);
+    if (Number.isNaN(time) || time <= now) continue;
+    if (next == null || time < next) next = time;
+  }
+  return next == null ? null : next - now;
+}
+
 let whatsNewSeedsChecked = false;
 
-async function ensureWhatsNewSeeds(
-  supabase: SupabaseClient,
-  removed: Set<string>,
-): Promise<void> {
+async function adminSend(
+  method: string,
+  path: string,
+  body?: unknown,
+  prefer?: string,
+): Promise<{ ok: boolean }> {
+  const headers = adminSessionHeaders();
+  if (body !== undefined) headers.set("content-type", "application/json");
+  if (prefer) headers.set("prefer", prefer);
+  const response = await fetch(`/api/admin/db/${path}`, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    cache: "no-store",
+  });
+  return { ok: response.ok };
+}
+
+async function ensureWhatsNewSeeds(): Promise<void> {
   if (whatsNewSeedsChecked) return;
   whatsNewSeedsChecked = true;
-  const { data, error } = await supabase.from("admin_whats_new").select("title").limit(1000);
-  if (error || !data) {
+  const removedRows = await adminGet("admin_whats_new_removed?select=title");
+  const existing = await adminGet("admin_whats_new?select=title&limit=1000");
+  if (existing.error || !existing.data) {
     whatsNewSeedsChecked = false;
     return;
   }
-  const titles = new Set((data as Array<{ title: string }>).map((row) => row.title));
+  const removed = new Set(RETIRED_WHATS_NEW_TITLES);
+  for (const row of (removedRows.data || []) as Array<{ title?: string }>) {
+    if (row.title) removed.add(row.title);
+  }
+  const titles = new Set((existing.data as Array<{ title: string }>).map((row) => row.title));
   const stale = [...removed].filter((title) => titles.has(title));
   if (stale.length) {
-    await supabase.from("admin_whats_new").delete().in("title", stale);
+    const list = stale.map((title) => `"${title.replace(/"/g, '\\"')}"`).join(",");
+    await adminSend("DELETE", `admin_whats_new?title=in.(${encodeURIComponent(list)})`);
   }
-  const missing = WHATS_NEW_SEEDS.filter((item) => !titles.has(item.title) && !removed.has(item.title));
+  const now = Date.now();
+  const missing = WHATS_NEW_SEEDS.filter((item) => {
+    if (titles.has(item.title) || removed.has(item.title)) return false;
+    const time = Date.parse(item.published_at);
+    return Number.isNaN(time) || time <= now;
+  });
+  const waiting = WHATS_NEW_SEEDS.some((item) => {
+    if (removed.has(item.title) || titles.has(item.title)) return false;
+    const time = Date.parse(item.published_at);
+    return !Number.isNaN(time) && time > now;
+  });
+  if (waiting) whatsNewSeedsChecked = false;
   if (missing.length) {
-    await supabase.from("admin_whats_new").upsert(missing, {
-      onConflict: "title",
-      ignoreDuplicates: true,
-    });
+    await adminSend(
+      "POST",
+      "admin_whats_new?on_conflict=title",
+      missing,
+      "resolution=ignore-duplicates,return=minimal",
+    );
   }
   const patchTitles = [
     "Four new sidebar queues",
     "Business Promotions is a new tab under Payments",
   ];
-  const { data: storedPatches } = await supabase
-    .from("admin_whats_new")
-    .select("title, body")
-    .in("title", patchTitles);
+  const storedPatches = await adminGet(
+    `admin_whats_new?select=title,body&title=in.(${encodeURIComponent(patchTitles.map((title) => `"${title}"`).join(","))})`,
+  );
   const storedByTitle = new Map(
-    ((storedPatches || []) as Array<{ title: string; body: string }>).map((row) => [row.title, row.body]),
+    ((storedPatches.data || []) as Array<{ title: string; body: string }>).map((row) => [row.title, row.body]),
   );
   const queues = WHATS_NEW_SEEDS.find((item) => item.title === "Four new sidebar queues");
   const storedQueues = storedByTitle.get("Four new sidebar queues");
   if (queues && storedQueues?.includes("New sticker")) {
-    await supabase.from("admin_whats_new").update({ body: queues.body }).eq("title", queues.title);
+    await adminSend(
+      "PATCH",
+      `admin_whats_new?title=eq.${encodeURIComponent(queues.title)}`,
+      { body: queues.body },
+    );
   }
   const promo = WHATS_NEW_SEEDS.find((item) => item.title === "Business Promotions is a new tab under Payments");
   const storedPromo = promo ? storedByTitle.get(promo.title) : undefined;
   if (promo && storedPromo && storedPromo !== promo.body) {
-    await supabase
-      .from("admin_whats_new")
-      .update({ body: promo.body, published_at: promo.published_at })
-      .eq("title", promo.title);
+    await adminSend(
+      "PATCH",
+      `admin_whats_new?title=eq.${encodeURIComponent(promo.title)}`,
+      { body: promo.body, published_at: promo.published_at },
+    );
   }
 }
 
