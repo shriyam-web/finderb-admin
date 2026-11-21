@@ -4,7 +4,7 @@ export const PANEL_LOCK_KEY = "admin_panel_locked";
 export const PANEL_IDLE_MS = 15 * 60 * 1000;
 
 const TAB_KEY = "admin_panel_tab";
-const ACTIVITY_KEY = "admin_panel_activity";
+export const PANEL_ACTIVITY_KEY = "admin_panel_activity";
 
 // sessionStorage survives a refresh and is dropped when the tab is closed.
 // A missing flag means this visit is a new open, so the panel locks.
@@ -24,22 +24,34 @@ export function markPanelTab(): void {
   }
 }
 
-export function noteActivity(): void {
+export function readPanelActivity(): number {
   try {
-    sessionStorage.setItem(ACTIVITY_KEY, String(Date.now()));
+    const shared = Number(localStorage.getItem(PANEL_ACTIVITY_KEY) || 0);
+    const local = Number(sessionStorage.getItem(PANEL_ACTIVITY_KEY) || 0);
+    return Math.max(Number.isFinite(shared) ? shared : 0, Number.isFinite(local) ? local : 0);
+  } catch {
+    return 0;
+  }
+}
+
+export function noteActivity(): void {
+  const now = String(Date.now());
+  try {
+    localStorage.setItem(PANEL_ACTIVITY_KEY, now);
+  } catch {
+    /* ignore */
+  }
+  try {
+    sessionStorage.setItem(PANEL_ACTIVITY_KEY, now);
   } catch {
     /* ignore */
   }
 }
 
 export function idleTooLong(now = Date.now()): boolean {
-  try {
-    const at = Number(sessionStorage.getItem(ACTIVITY_KEY) || 0);
-    if (!at) return false;
-    return now - at >= PANEL_IDLE_MS;
-  } catch {
-    return false;
-  }
+  const at = readPanelActivity();
+  if (!at) return false;
+  return now - at >= PANEL_IDLE_MS;
 }
 
 export function isPanelLocked(): boolean {

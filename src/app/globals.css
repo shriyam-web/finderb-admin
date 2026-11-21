@@ -1104,9 +1104,46 @@ body {
     background: #fdba74;
   }
 
-  .admin-panel-lock-body > div[role="group"] {
+  .admin-panel-lock-pins {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
     width: 100%;
     max-width: 18.5rem;
+  }
+
+  .admin-panel-lock-pin {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #0f172a !important;
+    background: transparent !important;
+  }
+
+  .admin-panel-lock-pin::-ms-reveal,
+  .admin-panel-lock-pin::-ms-clear {
+    display: none;
+  }
+
+  .admin-panel-lock-reveal {
+    display: flex;
+    flex: none;
+    width: 2rem;
+    height: 2rem;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+  }
+
+  .admin-panel-lock-reveal svg {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .admin-panel-lock-reveal:hover {
+    color: #0f172a;
   }
 
   .admin-panel-lock-wait {

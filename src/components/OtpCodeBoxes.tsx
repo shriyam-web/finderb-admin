@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 type OtpCodeBoxesProps = {
   value: string;
@@ -26,6 +27,7 @@ export default function OtpCodeBoxes({
   autoComplete = "one-time-code",
   variant = "default",
 }: OtpCodeBoxesProps) {
+  const [masked, setMasked] = useState(true);
   const refs = useRef<Array<HTMLInputElement | null>>([]);
   const groupRef = useRef<HTMLDivElement | null>(null);
   const digits = value.replace(/\D/g, "").slice(0, length);
@@ -66,6 +68,7 @@ export default function OtpCodeBoxes({
       const target = event.target;
       if (target instanceof Node && refs.current.some((box) => box === target)) return;
       if (insideAccount(target)) return;
+      if (target instanceof Element && target.closest(".admin-panel-lock-reveal")) return;
       refs.current[activeIndexRef.current]?.focus();
     };
     const onKey = (event: KeyboardEvent) => {
@@ -107,10 +110,10 @@ export default function OtpCodeBoxes({
     if (clean.length === length) onComplete?.(clean);
   };
 
-  return (
+  const boxes = (
     <div
       ref={groupRef}
-      className={`flex justify-between ${variant === "pin" ? "w-full gap-2.5" : "gap-2 sm:gap-3"}`}
+      className={`flex justify-between ${variant === "pin" ? "min-w-0 flex-1 gap-2.5" : "gap-2 sm:gap-3"}`}
       role="group"
       aria-label={`${length}-digit code`}
     >
@@ -124,6 +127,7 @@ export default function OtpCodeBoxes({
             }}
             inputMode="numeric"
             pattern="[0-9]*"
+            type={variant === "pin" && masked ? "password" : "text"}
             autoFocus={Boolean(autoFocus && index === activeIndex)}
             autoComplete={index === 0 ? autoComplete : "off"}
             aria-label={`Digit ${index + 1}`}
@@ -160,7 +164,7 @@ export default function OtpCodeBoxes({
             }}
             className={
               variant === "pin"
-                ? `h-12 w-full min-w-0 rounded-none border-0 border-b-2 border-solid bg-transparent text-center text-xl font-medium text-slate-900 caret-slate-800 outline-none focus:border-b-slate-900! disabled:opacity-60 ${
+                ? `admin-panel-lock-pin h-12 w-full min-w-0 rounded-none border-0 border-b-2 border-solid bg-transparent text-center text-xl font-medium outline-none focus:border-b-slate-900! disabled:opacity-60 ${
                     invalid ? "border-b-rose-400!" : "border-b-slate-300!"
                   }`
                 : `h-13 w-full min-w-0 max-w-14 rounded-xl border-2 text-center text-xl font-semibold text-slate-900 caret-teal-600 outline-none transition-all duration-150 focus:border-teal-500! focus:ring-4 focus:ring-teal-500/15 disabled:opacity-60 sm:h-14 sm:text-2xl ${
@@ -174,6 +178,26 @@ export default function OtpCodeBoxes({
           />
         );
       })}
+    </div>
+  );
+
+  if (variant !== "pin") return boxes;
+
+  return (
+    <div className="admin-panel-lock-pins">
+      {boxes}
+      <button
+        type="button"
+        className="admin-panel-lock-reveal"
+        aria-label={masked ? "Show PIN" : "Hide PIN"}
+        aria-pressed={!masked}
+        onClick={() => {
+          setMasked((hidden) => !hidden);
+          refs.current[activeIndexRef.current]?.focus({ preventScroll: true });
+        }}
+      >
+        {masked ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
+      </button>
     </div>
   );
 }

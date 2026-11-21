@@ -34,11 +34,14 @@ import AdminProfileModal from "../../components/AdminProfileModal";
 import AdminAccountMenu from "../../components/AdminAccountMenu";
 import AdminPanelLock, { AdminPanelLocking } from "../../components/AdminPanelLock";
 import {
+  PANEL_ACTIVITY_KEY,
+  PANEL_IDLE_MS,
   PANEL_LOCK_KEY,
   idleTooLong,
   isPanelLocked,
   lockPanel,
   noteActivity,
+  readPanelActivity,
   tabWasAlreadyOpen,
   unlockPanel,
 } from "../../lib/adminPanelLock";
@@ -1585,33 +1588,54 @@ export default function Dashboard() {
   useEffect(() => {
     if (panelGate !== "open" || !adminSession?.id) return;
     let lastWrite = 0;
+    let exact = 0;
+    const tick = () => {
+      if (!idleTooLong()) return;
+      lockPanel();
+      setPanelGate("locked");
+    };
+    const arm = () => {
+      window.clearTimeout(exact);
+      const at = readPanelActivity();
+      const wait = at ? Math.max(0, PANEL_IDLE_MS - (Date.now() - at)) : PANEL_IDLE_MS;
+      exact = window.setTimeout(tick, wait + 250);
+    };
     const bump = () => {
+      if (document.visibilityState !== "visible" || !document.hasFocus()) return;
+      if (idleTooLong()) {
+        tick();
+        return;
+      }
       const now = Date.now();
       if (now - lastWrite < 10_000) return;
       lastWrite = now;
       noteActivity();
+      arm();
     };
-    const tick = () => {
-      if (idleTooLong()) {
-        lockPanel();
-        setPanelGate("locked");
-      }
-    };
-    const names = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
+    if (!readPanelActivity()) noteActivity();
+    arm();
+    const names = ["pointerdown", "keydown", "touchstart"] as const;
     names.forEach((name) => window.addEventListener(name, bump, { passive: true }));
+    document.addEventListener("scroll", bump, { passive: true, capture: true });
     const timer = window.setInterval(tick, 15_000);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") tick();
-    };
     const onStorage = (event: StorageEvent) => {
       if (event.key === PANEL_LOCK_KEY && event.newValue === "1") setPanelGate("locked");
+      if (event.key === PANEL_ACTIVITY_KEY) arm();
     };
-    document.addEventListener("visibilitychange", onVisible);
+    document.addEventListener("visibilitychange", tick);
+    document.addEventListener("resume", tick);
+    window.addEventListener("focus", tick);
+    window.addEventListener("pageshow", tick);
     window.addEventListener("storage", onStorage);
     return () => {
       names.forEach((name) => window.removeEventListener(name, bump));
+      document.removeEventListener("scroll", bump, true);
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
+      window.clearTimeout(exact);
+      document.removeEventListener("visibilitychange", tick);
+      document.removeEventListener("resume", tick);
+      window.removeEventListener("focus", tick);
+      window.removeEventListener("pageshow", tick);
       window.removeEventListener("storage", onStorage);
     };
   }, [panelGate, adminSession?.id]);
