@@ -11,6 +11,7 @@ import {
 } from "../lib/formatDateTime";
 import { PaginationControls, useClientPage } from "./AdminListControls";
 import AdminChangePassword from "./AdminChangePassword";
+import AdminChangePin from "./AdminChangePin";
 import AdminOverlay from "./AdminOverlay";
 import SiteModePanel from "./SiteModePanel";
 
@@ -88,6 +89,7 @@ export default function SettingsContent({
 }) {
   const [now, setNow] = useState(() => Date.now());
   const [changingPassword, setChangingPassword] = useState(false);
+  const [changingPin, setChangingPin] = useState(false);
   const loginPage = useClientPage(loginLogs, 10, String(loginLogs.length));
 
   useEffect(() => {
@@ -153,6 +155,28 @@ export default function SettingsContent({
             Change password
           </button>
         </div>
+      ) : null}
+
+      {adminId && adminEmail ? (
+        <div className="admin-card max-w-xl p-5 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">Panel PIN</h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Change the 4-digit PIN for {adminEmail}. FinderB asks for your password, then emails you a code, before the new PIN is saved.
+            </p>
+          </div>
+          <button type="button" onClick={() => setChangingPin(true)} className="admin-btn-primary shrink-0">
+            Change PIN
+          </button>
+        </div>
+      ) : null}
+
+      {changingPin && adminEmail ? (
+        <AdminOverlay>
+          <div className="admin-card w-full max-w-lg shadow-xl">
+            <AdminChangePin email={adminEmail} onClose={() => setChangingPin(false)} />
+          </div>
+        </AdminOverlay>
       ) : null}
 
       {changingPassword && adminId && adminEmail ? (

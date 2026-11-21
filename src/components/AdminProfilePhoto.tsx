@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import AdminOverlay from "./AdminOverlay";
 
 const VIEW = 280;
@@ -66,15 +66,22 @@ async function postPhoto(body: Record<string, unknown>) {
   return result || {};
 }
 
-export default function AdminProfilePhoto({
-  avatarUrl,
-  name,
-  onChange,
-}: {
+export type AdminProfilePhotoHandle = {
+  pick: () => void;
+  remove: () => Promise<void>;
+};
+
+const AdminProfilePhoto = forwardRef<AdminProfilePhotoHandle, {
   avatarUrl: string | null;
   name: string;
+  bare?: boolean;
   onChange: (avatarUrl: string | null) => void;
-}) {
+}>(function AdminProfilePhoto({
+  avatarUrl,
+  name,
+  bare = false,
+  onChange,
+}, ref) {
   const inputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<{ px: number; py: number; x: number; y: number } | null>(null);
@@ -167,12 +174,17 @@ export default function AdminProfilePhoto({
     }
   };
 
+  useImperativeHandle(ref, () => ({
+    pick: () => inputRef.current?.click(),
+    remove: () => removePhoto(),
+  }));
+
   const laid = crop ? layoutCrop(crop, VIEW) : null;
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium text-slate-800">Profile photo</p>
-      <div className="flex items-center gap-3">
+    <div className={bare ? "" : "space-y-2"}>
+      {bare ? null : <p className="text-sm font-medium text-slate-800">Profile photo</p>}
+      {bare ? null : <div className="flex items-center gap-3">
         {avatarUrl ? (
           <img src={avatarUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
         ) : (
@@ -195,7 +207,7 @@ export default function AdminProfilePhoto({
             </button>
           ) : null}
         </div>
-      </div>
+      </div>}
       <input
         ref={inputRef}
         type="file"
@@ -206,7 +218,7 @@ export default function AdminProfilePhoto({
           if (file) void openCrop(file);
         }}
       />
-      <p className="text-xs text-slate-500">Choose a photo, then drag and zoom it into a square.</p>
+      {bare ? null : <p className="text-xs text-slate-500">Choose a photo, then drag and zoom it into a square.</p>}
       {note ? <p className="text-xs text-emerald-700">{note}</p> : null}
       {error ? <p className="text-xs text-rose-600">{error}</p> : null}
       {crop && laid ? (
@@ -270,4 +282,6 @@ export default function AdminProfilePhoto({
       ) : null}
     </div>
   );
-}
+});
+
+export default AdminProfilePhoto;

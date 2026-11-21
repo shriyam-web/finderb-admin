@@ -245,6 +245,230 @@ async function consumeGrant(adminId: string, token: string): Promise<boolean> {
   return Boolean(removed?.length);
 }
 
+// Panel PIN uses its own email code so it never replaces a password-change code.
+const PIN_CODE_PURPOSE = "admin-pin";
+const PIN_GRANT_PURPOSE = "admin-pin-grant";
+
+export async function sendAdminPinCode(
+  email: string,
+): Promise<{ ok: true } | { ok: false; error: string; retryAfter?: number }> {
+  const normalized = email.trim().toLowerCase();
+  const client = service();
+  if (!client) return { ok: false, error: "Could not prepare the confirmation code. Please try again." };
+  const { data: recent } = await client
+    .from("otp_challenges")
+    .select("expires_at")
+    .eq("purpose", PIN_CODE_PURPOSE)
+    .eq("subject", normalized)
+    .maybeSingle();
+  const expiresAt = Date.parse(String(recent?.expires_at || ""));
+  const age = Number.isFinite(expiresAt) ? OTP_TTL_MS - (expiresAt - Date.now()) : null;
+  if (age != null && age >= 0 && age < RESEND_WAIT_MS) {
+    return {
+      ok: false,
+      error: "Please wait a minute before requesting another code.",
+      retryAfter: Math.ceil((RESEND_WAIT_MS - age) / 1000),
+    };
+  }
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  await client.from("otp_challenges").delete().eq("purpose", PIN_CODE_PURPOSE).eq("subject", normalized);
+  const { error } = await client.from("otp_challenges").insert({
+    purpose: PIN_CODE_PURPOSE,
+    subject: normalized,
+    code_hash: hashValue("admin-pin", normalized, code),
+    expires_at: new Date(Date.now() + OTP_TTL_MS).toISOString(),
+    attempts: 0,
+    send_count: 1,
+  });
+  if (error) return { ok: false, error: "Could not prepare the confirmation code. Please try again." };
+  const sent = await sendEmail(
+    normalized,
+    `${code} is your FinderB PIN code`,
+    [
+      "FinderB Admin",
+      "",
+      "Enter this code to continue changing your panel PIN.",
+      "",
+      code,
+      "",
+      "It expires in 15 minutes. If you did not ask to change your PIN, ignore this email.",
+    ].join("\n"),
+  );
+  if (!sent) {
+    await client.from("otp_challenges").delete().eq("purpose", PIN_CODE_PURPOSE).eq("subject", normalized);
+    return { ok: false, error: "Could not email the confirmation code. Try again in a moment." };
+  }
+  return { ok: true };
+}
+
+export async function consumeAdminPinCode(email: string, code: string): Promise<boolean> {
+  const digits = String(code || "").replace(/\D/g, "");
+  if (digits.length !== 6) return false;
+  const client = service();
+  if (!client) return false;
+  const subject = email.trim().toLowerCase();
+  const { data } = await client
+    .from("otp_challenges")
+    .select("id, code_hash, expires_at, attempts")
+    .eq("purpose", PIN_CODE_PURPOSE)
+    .eq("subject", subject)
+    .maybeSingle();
+  if (!data?.id) return false;
+  const expiresAt = Date.parse(String(data.expires_at || ""));
+  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+    await client.from("otp_challenges").delete().eq("id", data.id);
+    return false;
+  }
+  const attempts = Number(data.attempts || 0);
+  if (attempts >= 5) {
+    await client.from("otp_challenges").delete().eq("id", data.id);
+    return false;
+  }
+  if (!same(String(data.code_hash || ""), hashValue("admin-pin", subject, digits))) {
+    await client.from("otp_challenges").update({ attempts: attempts + 1 }).eq("id", data.id);
+    return false;
+  }
+  const { data: removed } = await client
+    .from("otp_challenges")
+    .delete()
+    .eq("id", data.id)
+    .eq("code_hash", data.code_hash)
+    .select("id");
+  return Boolean(removed?.length);
+}
+
+const PIN_UNLOCK_PURPOSE = "admin-pin-unlock";
+
+export async function sendAdminPinUnlockCode(
+  email: string,
+): Promise<{ ok: true } | { ok: false; error: string; retryAfter?: number }> {
+  const normalized = email.trim().toLowerCase();
+  const client = service();
+  if (!client) return { ok: false, error: "Could not prepare the sign-in code. Please try again." };
+  const { data: recent } = await client
+    .from("otp_challenges")
+    .select("expires_at")
+    .eq("purpose", PIN_UNLOCK_PURPOSE)
+    .eq("subject", normalized)
+    .maybeSingle();
+  const expiresAt = Date.parse(String(recent?.expires_at || ""));
+  const age = Number.isFinite(expiresAt) ? OTP_TTL_MS - (expiresAt - Date.now()) : null;
+  if (age != null && age >= 0 && age < RESEND_WAIT_MS) {
+    return {
+      ok: false,
+      error: "Please wait a minute before requesting another code.",
+      retryAfter: Math.ceil((RESEND_WAIT_MS - age) / 1000),
+    };
+  }
+  const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  await client.from("otp_challenges").delete().eq("purpose", PIN_UNLOCK_PURPOSE).eq("subject", normalized);
+  const { error } = await client.from("otp_challenges").insert({
+    purpose: PIN_UNLOCK_PURPOSE,
+    subject: normalized,
+    code_hash: hashValue("admin-pin-unlock", normalized, code),
+    expires_at: new Date(Date.now() + OTP_TTL_MS).toISOString(),
+    attempts: 0,
+    send_count: 1,
+  });
+  if (error) return { ok: false, error: "Could not prepare the sign-in code. Please try again." };
+  const sent = await sendEmail(
+    normalized,
+    `${code} is your FinderB sign-in code`,
+    [
+      "FinderB Admin",
+      "",
+      "Enter this code to open the panel without your PIN.",
+      "",
+      code,
+      "",
+      "It expires in 15 minutes. If you did not ask for this, ignore this email.",
+    ].join("\n"),
+  );
+  if (!sent) {
+    await client.from("otp_challenges").delete().eq("purpose", PIN_UNLOCK_PURPOSE).eq("subject", normalized);
+    return { ok: false, error: "Could not email the sign-in code. Try again in a moment." };
+  }
+  return { ok: true };
+}
+
+export async function consumeAdminPinUnlockCode(email: string, code: string): Promise<boolean> {
+  const digits = String(code || "").replace(/\D/g, "");
+  if (digits.length !== 6) return false;
+  const client = service();
+  if (!client) return false;
+  const subject = email.trim().toLowerCase();
+  const { data } = await client
+    .from("otp_challenges")
+    .select("id, code_hash, expires_at, attempts")
+    .eq("purpose", PIN_UNLOCK_PURPOSE)
+    .eq("subject", subject)
+    .maybeSingle();
+  if (!data?.id) return false;
+  const expiresAt = Date.parse(String(data.expires_at || ""));
+  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+    await client.from("otp_challenges").delete().eq("id", data.id);
+    return false;
+  }
+  const attempts = Number(data.attempts || 0);
+  if (attempts >= 5) {
+    await client.from("otp_challenges").delete().eq("id", data.id);
+    return false;
+  }
+  if (!same(String(data.code_hash || ""), hashValue("admin-pin-unlock", subject, digits))) {
+    await client.from("otp_challenges").update({ attempts: attempts + 1 }).eq("id", data.id);
+    return false;
+  }
+  const { data: removed } = await client
+    .from("otp_challenges")
+    .delete()
+    .eq("id", data.id)
+    .eq("code_hash", data.code_hash)
+    .select("id");
+  return Boolean(removed?.length);
+}
+
+export async function issuePinChangeGrant(adminId: string): Promise<string | null> {
+  const client = service();
+  if (!client) return null;
+  const token = signGrant(adminId);
+  await client.from("otp_challenges").delete().eq("purpose", PIN_GRANT_PURPOSE).eq("subject", adminId);
+  const { error } = await client.from("otp_challenges").insert({
+    purpose: PIN_GRANT_PURPOSE,
+    subject: adminId,
+    code_hash: hashValue("admin-pin-grant", adminId, token),
+    expires_at: new Date(Date.now() + GRANT_TTL_MS).toISOString(),
+  });
+  if (error) return null;
+  return token;
+}
+
+export async function consumePinChangeGrant(adminId: string, token: string): Promise<boolean> {
+  const parsed = readGrant(token);
+  if (!parsed || parsed.adminId !== adminId) return false;
+  const client = service();
+  if (!client) return false;
+  const { data } = await client
+    .from("otp_challenges")
+    .select("id, code_hash, expires_at")
+    .eq("purpose", PIN_GRANT_PURPOSE)
+    .eq("subject", adminId)
+    .maybeSingle();
+  if (!data?.id) return false;
+  const expiresAt = Date.parse(String(data.expires_at || ""));
+  if (!Number.isFinite(expiresAt) || Date.now() > expiresAt) {
+    await client.from("otp_challenges").delete().eq("id", data.id);
+    return false;
+  }
+  if (!same(String(data.code_hash || ""), hashValue("admin-pin-grant", adminId, token))) return false;
+  const { data: removed } = await client
+    .from("otp_challenges")
+    .delete()
+    .eq("id", data.id)
+    .eq("code_hash", data.code_hash)
+    .select("id");
+  return Boolean(removed?.length);
+}
+
 export async function changeAdminPassword(input: {
   adminId: string;
   changeToken: string;

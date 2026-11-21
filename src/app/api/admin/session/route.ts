@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { readAdminSession, sessionNeedsRefresh, signAdminSession } from "../../../../lib/adminSessionToken";
 
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -46,7 +47,21 @@ export async function POST(request: Request) {
       console.error("[admin session] update failed:", error.message);
     }
 
-    return NextResponse.json({ success: true });
+    let sessionToken: string | undefined;
+    if (action === "heartbeat") {
+      try {
+        const session = readAdminSession(request.headers.get("x-admin-session") || "");
+        if (session && session.adminId === adminId && sessionNeedsRefresh(session)) {
+          const epochRow = await supabase.from("admins").select("session_epoch").eq("id", adminId).maybeSingle();
+          const epoch = !epochRow.error && epochRow.data ? Number(epochRow.data.session_epoch || 0) : session.epoch;
+          if (epoch === session.epoch) sessionToken = signAdminSession(adminId, epoch);
+        }
+      } catch {
+        sessionToken = undefined;
+      }
+    }
+
+    return NextResponse.json({ success: true, sessionToken });
   } catch (error) {
     console.error("[admin session] failed", error);
     return NextResponse.json({ success: true });

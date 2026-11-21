@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { KeyRound, Lock, LogOut, Settings } from "lucide-react";
 import AdminAccessReportButton from "./AdminAccessReportButton";
 import type { AccessReportTab } from "../lib/adminAccessReport";
 import type { AdminAccessSession } from "../lib/adminTabAccess";
@@ -13,6 +14,7 @@ type AdminAccountMenuProps = {
   session: AdminAccessSession & { email?: string | null };
   tabs: AccessReportTab[];
   onSettings: () => void;
+  onLock: () => void;
   onSignOut: () => void;
 };
 
@@ -63,6 +65,7 @@ export default function AdminAccountMenu({
   session,
   tabs,
   onSettings,
+  onLock,
   onSignOut,
 }: AdminAccountMenuProps) {
   const [open, setOpen] = useState(false);
@@ -144,7 +147,8 @@ export default function AdminAccountMenu({
                     openReport();
                   }}
                 >
-                  Copy tab and permissions
+                  <KeyRound aria-hidden />
+                  Tab access
                 </button>
                 <button
                   type="button"
@@ -155,7 +159,20 @@ export default function AdminAccountMenu({
                     onSettings();
                   }}
                 >
+                  <Settings aria-hidden />
                   Settings
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="admin-account-action"
+                  onClick={() => {
+                    setOpen(false);
+                    onLock();
+                  }}
+                >
+                  <Lock aria-hidden />
+                  Lock system
                 </button>
                 <button
                   type="button"
@@ -166,6 +183,7 @@ export default function AdminAccountMenu({
                     onSignOut();
                   }}
                 >
+                  <LogOut aria-hidden />
                   Sign out
                 </button>
               </div>

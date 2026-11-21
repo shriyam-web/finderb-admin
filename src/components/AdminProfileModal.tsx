@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Pencil } from "lucide-react";
 import { createClient } from "../../utils/supabase/client";
 import AdminChangePassword from "./AdminChangePassword";
 import AdminOverlay from "./AdminOverlay";
-import AdminProfilePhoto from "./AdminProfilePhoto";
+import AdminProfilePhoto, { type AdminProfilePhotoHandle } from "./AdminProfilePhoto";
 
 type AdminSession = {
   id: string;
@@ -59,6 +60,9 @@ export default function AdminProfileModal({
   } | null>(null);
   const [changingPassword, setChangingPassword] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(session.avatarUrl || null);
+  const [editingName, setEditingName] = useState(false);
+  const [photoMenu, setPhotoMenu] = useState(false);
+  const photoRef = useRef<AdminProfilePhotoHandle>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,6 +155,7 @@ export default function AdminProfileModal({
       }
 
       onDisplayNameChange?.(next);
+      setEditingName(false);
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Could not update name.";
@@ -162,14 +167,14 @@ export default function AdminProfileModal({
 
   const accessLabel =
     role === "developer"
-      ? "Full console access, including Manage Admins"
+      ? "Full access, including Manage Admins"
       : role === "controller"
         ? "All tabs except Manage Admins"
         : "Only the tabs a Developer assigned";
 
   return (
     <AdminOverlay>
-      <div className="admin-card flex max-h-[min(92dvh,880px)] w-full max-w-3xl flex-col overflow-hidden shadow-xl">
+      <div className="admin-card admin-profile-sheet flex max-h-[min(92dvh,880px)] w-full max-w-3xl flex-col overflow-hidden">
         {changingPassword ? (
           <div className="min-h-0 flex-1 overflow-y-auto">
             <AdminChangePassword
@@ -180,31 +185,132 @@ export default function AdminProfileModal({
           </div>
         ) : (
           <>
-            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-5 py-5 sm:px-8">
-              <div className="flex min-w-0 items-center gap-3">
+            <div className="admin-profile-hero shrink-0">
+              <div className="flex items-start justify-between px-5 pt-4 sm:px-8">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">Your profile</p>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/30"
+                  aria-label="Close"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="relative px-5 sm:px-8">
+              <div className="relative -mt-12 w-fit">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                  <img src={avatarUrl} alt="" className="h-24 w-24 rounded-full border-4 border-white object-cover shadow-md" />
                 ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-orange-50 text-lg font-semibold text-orange-800">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-orange-50 text-3xl font-semibold text-orange-800 shadow-md">
                     {displayName.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div className="min-w-0">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400">
-                    Your profile
-                  </p>
-                  <h2 className="truncate text-lg font-semibold text-slate-900">{displayName}</h2>
-                  <p className="truncate text-sm text-slate-500">{email}</p>
-                </div>
+                <button
+                  type="button"
+                  className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-full border border-orange-200 bg-white text-orange-700 shadow-sm hover:bg-orange-50"
+                  aria-label="Edit profile photo"
+                  aria-expanded={photoMenu}
+                  onClick={() => setPhotoMenu((open) => !open)}
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden />
+                </button>
+                {photoMenu ? (
+                  <div className="absolute left-24 top-16 z-10 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-sm text-slate-800 hover:bg-orange-50"
+                      onClick={() => {
+                        setPhotoMenu(false);
+                        photoRef.current?.pick();
+                      }}
+                    >
+                      {avatarUrl ? "Change photo" : "Add photo"}
+                    </button>
+                    {avatarUrl ? (
+                      <button
+                        type="button"
+                        className="block w-full px-3 py-2 text-left text-sm text-rose-700 hover:bg-rose-50"
+                        onClick={() => {
+                          setPhotoMenu(false);
+                          void photoRef.current?.remove();
+                        }}
+                      >
+                        Remove photo
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="admin-btn-secondary !px-2.5 !py-1.5 text-xs"
-                aria-label="Close"
-              >
-                Close
-              </button>
+              <div className="mt-3 min-w-0 pb-4">
+                {editingName ? (
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <input
+                      id="admin-display-name"
+                      value={nameDraft}
+                      onChange={(e) => {
+                        setNameDraft(e.target.value);
+                        setNameNote(null);
+                      }}
+                      maxLength={60}
+                      className="admin-input"
+                      placeholder="Your name"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveName()}
+                      disabled={savingName || !nameDraft.trim()}
+                      className="admin-btn-primary shrink-0"
+                    >
+                      {savingName ? "Saving…" : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-btn-secondary shrink-0"
+                      onClick={() => {
+                        setNameDraft(displayName);
+                        setNameNote(null);
+                        setEditingName(false);
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <h2 className="truncate text-xl font-semibold text-slate-900">{displayName}</h2>
+                    <button
+                      type="button"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-orange-50 hover:text-orange-700"
+                      aria-label="Edit name"
+                      onClick={() => {
+                        setNameDraft(displayName);
+                        setEditingName(true);
+                      }}
+                    >
+                      <Pencil className="h-3.5 w-3.5" aria-hidden />
+                    </button>
+                  </div>
+                )}
+                <p className="truncate text-sm text-slate-500">{email}</p>
+                {nameNote ? (
+                  <p className={`mt-1 text-xs ${nameNote.tone === "success" ? "text-emerald-700" : "text-rose-600"}`}>
+                    {nameNote.text}
+                  </p>
+                ) : null}
+              </div>
+              <AdminProfilePhoto
+                ref={photoRef}
+                bare
+                avatarUrl={avatarUrl}
+                name={displayName}
+                onChange={(next) => {
+                  setAvatarUrl(next);
+                  onAvatarChange?.(next);
+                }}
+              />
             </div>
 
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-8">
@@ -212,50 +318,7 @@ export default function AdminProfileModal({
                 <p className="text-sm text-slate-500">Loading profile…</p>
               ) : (
                 <>
-                  <div className="space-y-2">
-                    <label htmlFor="admin-display-name" className="text-sm font-medium text-slate-800">
-                      Profile name
-                    </label>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <input
-                        id="admin-display-name"
-                        value={nameDraft}
-                        onChange={(e) => {
-                          setNameDraft(e.target.value);
-                          setNameNote(null);
-                        }}
-                        maxLength={60}
-                        className="admin-input"
-                        placeholder="Your name"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleSaveName}
-                        disabled={savingName || !nameDraft.trim()}
-                        className="admin-btn-primary shrink-0"
-                      >
-                        {savingName ? "Saving…" : "Save"}
-                      </button>
-                    </div>
-                    <p className="text-xs text-slate-500">
-                      This name appears on your account menu.
-                    </p>
-                    <AdminProfilePhoto
-                      avatarUrl={avatarUrl}
-                      name={displayName}
-                      onChange={(next) => {
-                        setAvatarUrl(next);
-                        onAvatarChange?.(next);
-                      }}
-                    />
-                    {nameNote ? (
-                      <p className={`text-xs ${nameNote.tone === "success" ? "text-emerald-700" : "text-rose-600"}`}>
-                        {nameNote.text}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <dl className="grid grid-cols-1 gap-3 border-t border-slate-100 pt-4 sm:grid-cols-3">
+                  <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div>
                       <dt className="text-[11px] text-slate-400">Role</dt>
                       <dd className="mt-1 text-sm font-medium capitalize text-slate-900">

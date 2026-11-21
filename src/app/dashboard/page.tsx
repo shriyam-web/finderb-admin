@@ -32,6 +32,16 @@ import AdminUniversalSearch from "../../components/AdminUniversalSearch";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
 import AdminAccountMenu from "../../components/AdminAccountMenu";
+import AdminPanelLock, { AdminPanelLocking } from "../../components/AdminPanelLock";
+import {
+  PANEL_LOCK_KEY,
+  idleTooLong,
+  isPanelLocked,
+  lockPanel,
+  noteActivity,
+  tabWasAlreadyOpen,
+  unlockPanel,
+} from "../../lib/adminPanelLock";
 import AdminTodoPanel from "../../components/AdminTodoPanel";
 import ListingDecisionDialog from "../../components/ListingDecisionDialog";
 import AdminEntryScreen, { consumeAdminEntryHandoff } from "../../components/AdminEntryScreen";
@@ -1429,9 +1439,23 @@ export default function Dashboard() {
           .eq("id", session.id)
           .single();
 
-        if (error || !data || data.is_disabled) {
+        if (error) {
+          const expired =
+            error.code === "ADMIN_SESSION" ||
+            /session expired/i.test(String(error.message || ""));
+          if (expired) {
+            clearAdminFloatingPositions();
+            localStorage.removeItem("admin_session");
+            unlockPanel();
+            return;
+          }
+          setAdminSession(session);
+          return;
+        }
+        if (!data || data.is_disabled) {
           clearAdminFloatingPositions();
           localStorage.removeItem("admin_session");
+          unlockPanel();
           return;
         }
 
@@ -1466,8 +1490,13 @@ export default function Dashboard() {
         localStorage.setItem("admin_session", JSON.stringify(updatedSession));
         setAdminSession(updatedSession);
       } catch {
-        clearAdminFloatingPositions();
-        localStorage.removeItem("admin_session");
+        try {
+          const raw = localStorage.getItem("admin_session");
+          const session = raw ? JSON.parse(raw) : null;
+          if (session?.id) setAdminSession(session);
+        } catch {
+          /* keep the saved sign-in */
+        }
       } finally {
         setSessionReady(true);
       }
@@ -1477,6 +1506,13 @@ export default function Dashboard() {
   }, [router]);
 
   const [goodbye, setGoodbye] = useState<{ startedAt: number; endedAt: number } | null>(null);
+  const [panelGate, setPanelGate] = useState<"pending" | "open" | "locking" | "locked">("pending");
+
+  useEffect(() => {
+    if (panelGate !== "locking") return;
+    const timer = window.setTimeout(() => setPanelGate("locked"), 1400);
+    return () => window.clearTimeout(timer);
+  }, [panelGate]);
 
   const handleLogout = useCallback(() => {
     const startedMs = Date.parse(String(adminSession?.startedAt || ""));
@@ -1484,6 +1520,7 @@ export default function Dashboard() {
     void reportAdminSession("end").finally(() => {
       clearAdminFloatingPositions();
       localStorage.removeItem("admin_session");
+      unlockPanel();
       setAdminSession(null);
       applyAdminConsoleTheme(readLaunchTheme());
       setGoodbye({
@@ -1492,6 +1529,92 @@ export default function Dashboard() {
       });
     });
   }, [adminSession?.startedAt]);
+
+  const logoutRef = useRef(handleLogout);
+  logoutRef.current = handleLogout;
+
+  useEffect(() => {
+    if (!sessionReady || !adminSession?.id) return;
+    let cancelled = false;
+    const decide = async () => {
+      let hasPin = true;
+      try {
+        const raw = localStorage.getItem("admin_session");
+        const token = raw ? String((JSON.parse(raw) as { token?: string }).token || "") : "";
+        const response = await fetch("/api/admin/panel-lock", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-session": token,
+          },
+          body: JSON.stringify({ action: "status" }),
+        });
+        const result = (await response.json().catch(() => null)) as { hasPin?: boolean; logout?: boolean } | null;
+        if (result?.logout) {
+          logoutRef.current();
+          return;
+        }
+        if (response.ok) hasPin = Boolean(result?.hasPin);
+      } catch {
+        hasPin = true;
+      }
+      if (cancelled) return;
+      if (!hasPin) {
+        setPanelGate("locked");
+        return;
+      }
+      if (arrival === "login") {
+        unlockPanel();
+        setPanelGate("open");
+        return;
+      }
+      if (!tabWasAlreadyOpen() || isPanelLocked()) {
+        lockPanel();
+        setPanelGate("locked");
+        return;
+      }
+      noteActivity();
+      setPanelGate("open");
+    };
+    void decide();
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionReady, adminSession?.id, arrival]);
+
+  useEffect(() => {
+    if (panelGate !== "open" || !adminSession?.id) return;
+    let lastWrite = 0;
+    const bump = () => {
+      const now = Date.now();
+      if (now - lastWrite < 10_000) return;
+      lastWrite = now;
+      noteActivity();
+    };
+    const tick = () => {
+      if (idleTooLong()) {
+        lockPanel();
+        setPanelGate("locked");
+      }
+    };
+    const names = ["pointerdown", "keydown", "scroll", "touchstart"] as const;
+    names.forEach((name) => window.addEventListener(name, bump, { passive: true }));
+    const timer = window.setInterval(tick, 15_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === PANEL_LOCK_KEY && event.newValue === "1") setPanelGate("locked");
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      names.forEach((name) => window.removeEventListener(name, bump));
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [panelGate, adminSession?.id]);
 
   useEffect(() => {
     const onRefresh = () => setPanelRefresh((value) => value + 1);
@@ -3249,6 +3372,26 @@ export default function Dashboard() {
     );
   }
 
+  if (adminSession && panelGate !== "open") {
+    if (panelGate === "locking") return <AdminPanelLocking />;
+    if (panelGate === "locked") {
+      return (
+        <AdminPanelLock
+          name={
+            adminSession.displayName?.trim() ||
+            adminSession.email?.split("@")[0] ||
+            "Admin"
+          }
+          email={adminSession.email || null}
+          avatarUrl={adminSession.avatarUrl || null}
+          onUnlock={() => setPanelGate("open")}
+          onLogout={handleLogout}
+        />
+      );
+    }
+    return <AdminEntryScreen loaderOnly status="checking" onResolved={() => {}} />;
+  }
+
   if (todoBoard && adminSession) {
     return (
       <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-8">
@@ -3975,6 +4118,10 @@ export default function Dashboard() {
                 session={adminSession}
                 tabs={reportTabsFor(adminSession)}
                 onSettings={() => setShowAdminProfile(true)}
+                onLock={() => {
+                  lockPanel();
+                  setPanelGate("locking");
+                }}
                 onSignOut={handleLogout}
               />
             </div>

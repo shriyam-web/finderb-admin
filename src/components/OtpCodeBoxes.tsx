@@ -10,6 +10,8 @@ type OtpCodeBoxesProps = {
   disabled?: boolean;
   autoFocus?: boolean;
   invalid?: boolean;
+  autoComplete?: string;
+  variant?: "default" | "pin";
 };
 
 /** One box per digit. Typing moves forward, Backspace moves back, and a pasted code fills every box. */
@@ -21,15 +23,82 @@ export default function OtpCodeBoxes({
   disabled,
   autoFocus,
   invalid,
+  autoComplete = "one-time-code",
+  variant = "default",
 }: OtpCodeBoxesProps) {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
+  const groupRef = useRef<HTMLDivElement | null>(null);
   const digits = value.replace(/\D/g, "").slice(0, length);
+  const empty = digits.length === 0;
+  const activeIndex = Math.min(digits.length, length - 1);
+  const activeIndexRef = useRef(activeIndex);
+  const digitsRef = useRef(digits);
+  const onChangeRef = useRef(onChange);
+  const onCompleteRef = useRef(onComplete);
+  activeIndexRef.current = activeIndex;
+  digitsRef.current = digits;
+  onChangeRef.current = onChange;
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
-    if (autoFocus && !disabled) refs.current[Math.min(digits.length, length - 1)]?.focus();
-    // Only refocus when the boxes become usable, not on every keystroke.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFocus, disabled]);
+    if (!autoFocus || disabled) return;
+    if (variant !== "pin") {
+      if (!empty) return;
+      refs.current[0]?.focus();
+      return;
+    }
+    const place = () => {
+      const node = refs.current[activeIndexRef.current];
+      if (!node || document.activeElement === node) return;
+      node.focus({ preventScroll: true });
+    };
+    place();
+    const timers = [40, 160, 400, 900].map((wait) => window.setTimeout(place, wait));
+    const insideAccount = (node: EventTarget | null) =>
+      node instanceof Element && Boolean(node.closest(".admin-panel-lock-person"));
+    const onFocusOut = (event: FocusEvent) => {
+      const next = event.relatedTarget;
+      if (next instanceof Node && refs.current.some((box) => box === next)) return;
+      if (insideAccount(next)) return;
+      window.setTimeout(place, 0);
+    };
+    const onPointer = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Node && refs.current.some((box) => box === target)) return;
+      if (insideAccount(target)) return;
+      refs.current[activeIndexRef.current]?.focus();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (refs.current.some((box) => box === document.activeElement)) return;
+      if (!/^\d$/.test(event.key)) {
+        place();
+        return;
+      }
+      event.preventDefault();
+      const index = activeIndexRef.current;
+      const current = digitsRef.current;
+      const next = (current.slice(0, index) + event.key + current.slice(index + 1)).replace(/\D/g, "").slice(0, length);
+      onChangeRef.current(next);
+      const focusAt = Math.min(index + 1, length - 1);
+      refs.current[focusAt]?.focus();
+      if (next.length === length) onCompleteRef.current?.(next);
+    };
+    const root = groupRef.current;
+    root?.addEventListener("focusout", onFocusOut);
+    document.addEventListener("visibilitychange", place);
+    window.addEventListener("pageshow", place);
+    window.addEventListener("pointerdown", onPointer, true);
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      root?.removeEventListener("focusout", onFocusOut);
+      document.removeEventListener("visibilitychange", place);
+      window.removeEventListener("pageshow", place);
+      window.removeEventListener("pointerdown", onPointer, true);
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, [autoFocus, disabled, empty, variant, length]);
 
   const setDigits = (next: string, focusIndex: number) => {
     const clean = next.replace(/\D/g, "").slice(0, length);
@@ -39,7 +108,12 @@ export default function OtpCodeBoxes({
   };
 
   return (
-    <div className="flex justify-between gap-2 sm:gap-3" role="group" aria-label={`${length}-digit code`}>
+    <div
+      ref={groupRef}
+      className={`flex justify-between ${variant === "pin" ? "w-full gap-2.5" : "gap-2 sm:gap-3"}`}
+      role="group"
+      aria-label={`${length}-digit code`}
+    >
       {Array.from({ length }, (_, index) => {
         const filled = Boolean(digits[index]);
         return (
@@ -50,7 +124,8 @@ export default function OtpCodeBoxes({
             }}
             inputMode="numeric"
             pattern="[0-9]*"
-            autoComplete={index === 0 ? "one-time-code" : "off"}
+            autoFocus={Boolean(autoFocus && index === activeIndex)}
+            autoComplete={index === 0 ? autoComplete : "off"}
             aria-label={`Digit ${index + 1}`}
             aria-invalid={invalid || undefined}
             disabled={disabled}
@@ -83,13 +158,19 @@ export default function OtpCodeBoxes({
               event.preventDefault();
               setDigits(event.clipboardData.getData("text"), length - 1);
             }}
-            className={`h-13 w-full min-w-0 max-w-14 rounded-xl border-2 text-center text-xl font-semibold text-slate-900 caret-teal-600 outline-none transition-all duration-150 focus:border-teal-500! focus:ring-4 focus:ring-teal-500/15 disabled:opacity-60 sm:h-14 sm:text-2xl ${
-              invalid
-                ? "border-rose-300! bg-rose-50/60"
-                : filled
-                  ? "border-teal-400/70! bg-teal-50/50"
-                  : "border-slate-200! bg-white hover:border-slate-300!"
-            }`}
+            className={
+              variant === "pin"
+                ? `h-12 w-full min-w-0 rounded-none border-0 border-b-2 border-solid bg-transparent text-center text-xl font-medium text-slate-900 caret-slate-800 outline-none focus:border-b-slate-900! disabled:opacity-60 ${
+                    invalid ? "border-b-rose-400!" : "border-b-slate-300!"
+                  }`
+                : `h-13 w-full min-w-0 max-w-14 rounded-xl border-2 text-center text-xl font-semibold text-slate-900 caret-teal-600 outline-none transition-all duration-150 focus:border-teal-500! focus:ring-4 focus:ring-teal-500/15 disabled:opacity-60 sm:h-14 sm:text-2xl ${
+                    invalid
+                      ? "border-rose-300! bg-rose-50/60"
+                      : filled
+                        ? "border-teal-400/70! bg-teal-50/50"
+                        : "border-slate-200! bg-white hover:border-slate-300!"
+                  }`
+            }
           />
         );
       })}

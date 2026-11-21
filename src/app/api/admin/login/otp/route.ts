@@ -144,10 +144,12 @@ export async function POST(request: Request) {
     }
 
     const access = normalizeAccessFields(admin.allowed_tabs, admin.allowed_tab_modes);
+    const epochRow = await supabase.from("admins").select("session_epoch").eq("id", admin.id).maybeSingle();
+    const epoch = !epochRow.error && epochRow.data ? Number(epochRow.data.session_epoch || 0) : 0;
     return NextResponse.json({
       success: true,
       loginLogId: logRow?.id ?? null,
-      sessionToken: signAdminSession(admin.id),
+      sessionToken: signAdminSession(admin.id, Number.isFinite(epoch) ? epoch : 0),
       admin: {
         id: admin.id,
         email: admin.email,

@@ -852,38 +852,38 @@ export default function DashboardContent({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-3">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-12">
         {/* Verification queue */}
         {canViewListingsQueue && (
-        <div className={`${canViewLoginLogs ? "xl:col-span-5" : "xl:col-span-8"} admin-card flex flex-col overflow-hidden`}>
-          <div className="admin-card-header">
-            <div>
+        <div className={`${canViewLoginLogs ? "xl:col-span-6" : "xl:col-span-8"} admin-card flex min-w-0 flex-col overflow-hidden`}>
+          <div className="admin-card-header flex-wrap gap-2">
+            <div className="min-w-0">
               <h3 className="admin-card-title flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-orange-600" />
-                Listing approval queue
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-orange-600" />
+                <span className="truncate">Listing approval queue</span>
               </h3>
               <p className="admin-card-description">
                 {merchantRequests.length} partner
                 {merchantRequests.length !== 1 ? "s" : ""} awaiting listing
                 approval
               </p>
+              {canAccessTab("Merchants") && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("Merchants")}
+                  className="admin-link mt-1"
+                >
+                  Open merchants
+                </button>
+              )}
             </div>
-            {canAccessTab("Merchants") && (
-              <button
-                type="button"
-                onClick={() => setActiveTab("Merchants")}
-                className="admin-link"
-              >
-                Open
-              </button>
-            )}
           </div>
-          <div className="divide-y divide-slate-100 overflow-y-auto max-h-[280px] custom-scrollbar">
+          <div className="divide-y divide-slate-100 overflow-y-auto max-h-[360px] custom-scrollbar">
             {merchantRequests.length > 0 ? (
               merchantRequests.slice(0, 8).map((merchant) => (
                 <div
                   key={merchant.id}
-                  className="px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors"
+                  className="flex flex-col gap-2.5 px-4 py-3 hover:bg-slate-50/80 transition-colors sm:px-5"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="admin-avatar shrink-0">
@@ -893,7 +893,7 @@ export default function DashboardContent({
                         .join("")
                         .slice(0, 2)}
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-slate-900 truncate">
                         {merchant.name}
                       </p>
@@ -901,49 +901,47 @@ export default function DashboardContent({
                         {merchant.category}
                         {merchant.email ? ` · ${merchant.email}` : ""}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        Requested {merchant.date}
-                      </p>
                     </div>
+                    <p className="shrink-0 text-[10px] text-slate-400">
+                      {merchant.date}
+                    </p>
                   </div>
-                  <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
-                    {canEditListings ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => handleApprove(merchant)}
-                          className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700"
-                        >
-                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                          </svg>
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onSnooze(merchant)}
-                          className="admin-btn-secondary inline-flex items-center gap-1 !px-2 !py-1 text-[11px]"
-                        >
-                          <span aria-hidden className="text-sm leading-none">😴</span>
-                          Snooze
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleReject(merchant)}
-                          className="admin-btn-danger inline-flex items-center gap-1 !px-2 !py-1 text-[11px]"
-                        >
-                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                          Reject
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-[10px] font-semibold text-slate-400 px-1">
-                        Read only
-                      </span>
-                    )}
-                  </div>
+                  {canEditListings ? (
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleApprove(merchant)}
+                        className="inline-flex min-w-0 items-center justify-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-[11px] font-semibold text-emerald-700"
+                      >
+                        <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="truncate">Approve</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onSnooze(merchant)}
+                        className="admin-btn-secondary inline-flex min-w-0 items-center justify-center gap-1 !px-2 !py-1.5 text-[11px]"
+                      >
+                        <span aria-hidden className="text-sm leading-none">😴</span>
+                        <span className="truncate">Snooze</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReject(merchant)}
+                        className="admin-btn-danger inline-flex min-w-0 items-center justify-center gap-1 !px-2 !py-1.5 text-[11px]"
+                      >
+                        <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        <span className="truncate">Reject</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] font-semibold text-slate-400">
+                      Read only
+                    </span>
+                  )}
                 </div>
               ))
             ) : (
@@ -965,7 +963,7 @@ export default function DashboardContent({
 
         {canViewLoginLogs && (
         <div
-          className={`${canViewListingsQueue ? "xl:col-span-3" : "xl:col-span-4"} admin-card overflow-hidden`}
+          className={`${canViewListingsQueue ? "xl:col-span-3" : "xl:col-span-4"} admin-card min-w-0 overflow-hidden`}
         >
           <div className="admin-card-header !flex-col !items-start">
             <h3 className="admin-card-title flex items-center gap-2">
@@ -1012,7 +1010,7 @@ export default function DashboardContent({
         )}
 
         {/* Platform health */}
-        <div className={`${canViewLoginLogs || canViewListingsQueue ? "xl:col-span-4" : "xl:col-span-12"} admin-card p-4`}>
+        <div className={`${canViewLoginLogs && canViewListingsQueue ? "xl:col-span-3" : canViewListingsQueue ? "xl:col-span-4" : canViewLoginLogs ? "xl:col-span-8" : "xl:col-span-12"} admin-card min-w-0 p-4`}>
           <h3 className="admin-card-title flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-orange-700" />
             Platform health
@@ -1062,7 +1060,7 @@ export default function DashboardContent({
                 : []),
             ].map((row) => (
               <div key={row.label}>
-                <div className="flex justify-between text-[11px] mb-1">
+                <div className="mb-1 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-[11px]">
                   <span className="font-medium text-slate-700">
                     {row.label}
                   </span>

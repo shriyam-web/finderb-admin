@@ -11,16 +11,30 @@ const RESPONSE_HEADERS = ["content-type", "content-range", "preference-applied",
 const ACTIVE_CHECK_MS = 60_000;
 const activeUntil = new Map<string, number>();
 
-async function isActiveAdmin(url: string, key: string, adminId: string): Promise<boolean> {
-  if ((activeUntil.get(adminId) ?? 0) > Date.now()) return true;
-  const res = await fetch(
-    `${url}/rest/v1/admins?select=id,is_disabled&id=eq.${encodeURIComponent(adminId)}`,
-    { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" },
+async function isActiveAdmin(url: string, key: string, adminId: string, epoch: number): Promise<boolean> {
+  const cacheKey = `${adminId}:${epoch}`;
+  if ((activeUntil.get(cacheKey) ?? 0) > Date.now()) return true;
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  const withEpoch = await fetch(
+    `${url}/rest/v1/admins?select=id,is_disabled,session_epoch&id=eq.${encodeURIComponent(adminId)}`,
+    { headers, cache: "no-store" },
   );
-  const rows = res.ok ? ((await res.json()) as { is_disabled?: boolean | null }[]) : [];
-  const active = Boolean(rows[0]) && !rows[0].is_disabled;
-  if (active) activeUntil.set(adminId, Date.now() + ACTIVE_CHECK_MS);
-  else activeUntil.delete(adminId);
+  if (!withEpoch.ok) {
+    const plain = await fetch(
+      `${url}/rest/v1/admins?select=id,is_disabled&id=eq.${encodeURIComponent(adminId)}`,
+      { headers, cache: "no-store" },
+    );
+    const rows = plain.ok ? ((await plain.json()) as { is_disabled?: boolean | null }[]) : [];
+    const active = Boolean(rows[0]) && !rows[0].is_disabled;
+    if (active) activeUntil.set(cacheKey, Date.now() + ACTIVE_CHECK_MS);
+    else activeUntil.delete(cacheKey);
+    return active;
+  }
+  const rows = (await withEpoch.json()) as { is_disabled?: boolean | null; session_epoch?: number | null }[];
+  const row = rows[0];
+  const active = Boolean(row) && !row.is_disabled && Number(row.session_epoch || 0) === epoch;
+  if (active) activeUntil.set(cacheKey, Date.now() + ACTIVE_CHECK_MS);
+  else activeUntil.delete(cacheKey);
   return active;
 }
 
@@ -32,7 +46,7 @@ async function proxy(request: NextRequest) {
   }
 
   const session = readAdminSession(request.headers.get("x-admin-session") || "");
-  if (!session || !(await isActiveAdmin(url, key, session.adminId))) {
+  if (!session || !(await isActiveAdmin(url, key, session.adminId, session.epoch))) {
     return NextResponse.json(
       { message: "Admin session expired. Please sign in again.", code: "ADMIN_SESSION" },
       { status: 401 },
@@ -42,6 +56,9 @@ async function proxy(request: NextRequest) {
   const restPath = request.nextUrl.pathname.replace(/^\/api\/admin\/db\/?/, "");
   if (!restPath || restPath.includes("..")) {
     return NextResponse.json({ message: "Invalid path." }, { status: 400 });
+  }
+  if (restPath.split("/")[0].split("?")[0] === "admin_panel_pins") {
+    return NextResponse.json({ message: "That table is not available here." }, { status: 403 });
   }
 
   const headers = new Headers({ apikey: key, Authorization: `Bearer ${key}` });
