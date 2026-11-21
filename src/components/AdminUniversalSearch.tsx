@@ -11,6 +11,7 @@ import {
   type SearchDoc,
   type SearchHit,
 } from "../lib/adminSearch";
+import Momo, { type MomoMood } from "./Momo";
 
 type Row = Record<string, unknown>;
 
@@ -19,6 +20,14 @@ function text(row: object | null | undefined, key: string): string {
   const value = (row as Record<string, unknown>)[key];
   if (value == null) return "";
   return String(value);
+}
+
+function momoHello(): string {
+  const hour = new Date().getHours();
+  if (hour < 5 || hour >= 21) return "Still up? I'm Momo.";
+  if (hour < 12) return "Good morning. I'm Momo.";
+  if (hour < 17) return "Good afternoon. I'm Momo.";
+  return "Good evening. I'm Momo.";
 }
 
 function Highlight({ text: value, query }: { text: string; query: string }) {
@@ -80,13 +89,19 @@ export default function AdminUniversalSearch({
   const [remoteDocs, setRemoteDocs] = useState<SearchDoc[]>([]);
   const [reviewDocs, setReviewDocs] = useState<SearchDoc[]>([]);
   const [remoteReady, setRemoteReady] = useState(false);
+  const [idle, setIdle] = useState<MomoMood>("look");
+  const [idleEpoch, setIdleEpoch] = useState(0);
+  const [reacting, setReacting] = useState(false);
+  const momoHover = useRef(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const fieldRef = useRef<HTMLDivElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [popBox, setPopBox] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [popBox, setPopBox] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
+  const businessesRef = useRef(businesses);
+  businessesRef.current = businesses;
 
   const localDocs = useMemo(() => {
     const docs: SearchDoc[] = tabs.map((name) => tabSearchDoc(name));
@@ -113,8 +128,10 @@ export default function AdminUniversalSearch({
       );
     }
 
+    const indexedBusinesses = new Set<string>();
     const pushMerchant = (merchant: object, pending: boolean) => {
       const id = text(merchant, "id");
+      if (id) indexedBusinesses.add(id);
       const business = businessById.get(id);
       const name = text(merchant, "name") || "Merchant";
       docs.push(
@@ -165,6 +182,40 @@ export default function AdminUniversalSearch({
       if (merchants.some((row) => text(row, "id") === text(merchant, "id"))) return;
       pushMerchant(merchant, true);
     });
+    for (const business of businesses) {
+      const id = text(business, "id");
+      if (!id || indexedBusinesses.has(id)) continue;
+      const status = text(business, "status").toLowerCase();
+      const kind = status === "ignored" ? "Ignored listing" : status === "rejected" ? "Rejected listing" : "Merchant";
+      docs.push(
+        makeSearchDoc({
+          key: `merchant:${id}`,
+          kind,
+          focusKind: "merchant",
+          tab: "Merchants",
+          title: text(business, "businessName") || text(business, "fullName") || "Merchant",
+          subtitle: [
+            text(business, "category"),
+            [text(business, "city"), text(business, "state")].filter(Boolean).join(", "),
+            text(business, "status"),
+          ].filter(Boolean).join(" · "),
+          targetId: id,
+          extra: [
+            text(business, "workEmail"),
+            text(business, "email"),
+            text(business, "publicPhone"),
+            text(business, "mobile"),
+            text(business, "owner_name"),
+            text(business, "owner_mobile"),
+            text(business, "slug"),
+            text(business, "registrationNumber"),
+            text(business, "listingHoldReason"),
+            text(business, "status"),
+            id,
+          ],
+        }),
+      );
+    }
 
     for (const lead of leads) {
       const id = text(lead, "id");
@@ -191,8 +242,14 @@ export default function AdminUniversalSearch({
       );
     }
 
+    const categoryName = new Map<string, string>();
     for (const category of categories) {
       const id = text(category, "id");
+      if (id) categoryName.set(id, text(category, "name"));
+    }
+    for (const category of categories) {
+      const id = text(category, "id");
+      const parent = categoryName.get(text(category, "parent_id"));
       docs.push(
         makeSearchDoc({
           key: `category:${id}`,
@@ -200,9 +257,9 @@ export default function AdminUniversalSearch({
           focusKind: "category",
           tab: "Categories",
           title: text(category, "name") || "Category",
-          subtitle: text(category, "type") || text(category, "status"),
+          subtitle: [parent, text(category, "type") || text(category, "status")].filter(Boolean).join(" · "),
           targetId: id,
-          extra: [text(category, "status"), text(category, "type"), id],
+          extra: [parent, text(category, "status"), text(category, "type"), id],
         }),
       );
     }
@@ -311,10 +368,10 @@ export default function AdminUniversalSearch({
           kind: "Admin",
           focusKind: "admin",
           tab: "Manage Admins",
-          title: text(admin, "email") || "Admin",
-          subtitle: text(admin, "role").replace(/_/g, " "),
+          title: text(admin, "display_name") || text(admin, "email") || "Admin",
+          subtitle: [text(admin, "email"), text(admin, "role").replace(/_/g, " ")].filter(Boolean).join(" · "),
           targetId: id,
-          extra: [text(admin, "role"), id],
+          extra: [text(admin, "email"), text(admin, "display_name"), text(admin, "role"), id],
         }),
       );
     }
@@ -367,6 +424,48 @@ export default function AdminUniversalSearch({
           }),
         );
       });
+    }
+
+    if (tabs.includes("Settings")) {
+      for (const item of [
+        ["password", "Password", "Change the password for this admin"],
+        ["pin", "Panel PIN", "Change the 4-digit panel PIN"],
+        ["compression", "Image Compression", "Store compressed images"],
+        ["login", "Login Activity", "Recent admin sign-ins"],
+        ["mode", "Website mode", "Live, text only, or maintenance"],
+      ]) {
+        docs.push(
+          makeSearchDoc({
+            key: `settings:${item[0]}`,
+            kind: "Settings",
+            focusKind: "tab",
+            tab: "Settings",
+            title: item[1],
+            subtitle: item[2],
+          }),
+        );
+      }
+    }
+
+    if (tabs.includes("Site Configurations")) {
+      for (const item of [
+        ["Media", "Photo storage", "Cloudinary or Amazon S3"],
+        ["Plans", "Plan prices", "Growth monthly and Pro annual"],
+        ["Promote", "Promote your business online", "Promotion switch and package prices"],
+        ["Contact", "Public contact", "Company, email, phone, and address"],
+      ]) {
+        docs.push(
+          makeSearchDoc({
+            key: `site:${item[0]}`,
+            kind: "Site config",
+            focusKind: "site-config",
+            tab: "Site Configurations",
+            title: item[1],
+            subtitle: item[2],
+            targetId: item[0],
+          }),
+        );
+      }
     }
 
     return docs;
@@ -553,6 +652,199 @@ export default function AdminUniversalSearch({
         );
       }
 
+      const nameOf = (id: string) => {
+        const row = businessesRef.current.find((item) => text(item, "id") === id);
+        return row ? text(row, "businessName") || text(row, "fullName") : "";
+      };
+
+      if (allowed.has("Ads Request") || allowed.has("Business Promotions")) {
+        tasks.push(
+          (async () => {
+            const supabase = createClient();
+            const [ordersRes, verifyRes, packageRes, customRes] = await Promise.all([
+              supabase
+                .from("promotion_orders")
+                .select("id, business_id, package_id, package_snapshot, target_area, target_pincode, payment_status, campaign_status, ad_review_status, amount_inr, razorpay_payment_id, video_public_id, video_url")
+                .order("created_at", { ascending: false })
+                .limit(200),
+              allowed.has("Business Promotions")
+                ? supabase.from("business_verifications").select("id, business_id, status, rejection_reason").order("created_at", { ascending: false }).limit(200)
+                : Promise.resolve({ data: [] as Row[] }),
+              allowed.has("Business Promotions")
+                ? supabase.from("promotion_packages").select("id, name, price_inr, coverage_label, active")
+                : Promise.resolve({ data: [] as Row[] }),
+              allowed.has("Business Promotions")
+                ? supabase.from("promotion_custom_requests").select("id, business_id, status, phone, goal, area, pincode, coverage").order("created_at", { ascending: false }).limit(200)
+                : Promise.resolve({ data: [] as Row[] }),
+            ]);
+            for (const row of ordersRes.data || []) {
+              const snap = row.package_snapshot && typeof row.package_snapshot === "object"
+                ? (row.package_snapshot as Record<string, unknown>)
+                : {};
+              const business = nameOf(String(row.business_id || ""));
+              const packageName = String(snap.name || row.package_id || "");
+              if (allowed.has("Business Promotions")) {
+                docs.push(
+                  makeSearchDoc({
+                    key: `promo-order:${row.id}`,
+                    kind: "Promotion order",
+                    focusKind: "promotion-order",
+                    tab: "Business Promotions",
+                    title: business || packageName || "Promotion order",
+                    subtitle: [packageName, String(row.payment_status || ""), String(row.campaign_status || ""), String(row.target_area || "")].filter(Boolean).join(" · "),
+                    targetId: String(row.id),
+                    extra: [business, packageName, String(row.target_pincode || ""), String(row.razorpay_payment_id || ""), String(row.amount_inr || "")],
+                  }),
+                );
+              }
+              const review = String(row.ad_review_status || "");
+              const hasVideo = Boolean(row.video_public_id || row.video_url);
+              if (allowed.has("Ads Request") && (review === "pending" || review === "approved" || review === "denied" || hasVideo)) {
+                docs.push(
+                  makeSearchDoc({
+                    key: `ad:${row.id}`,
+                    kind: "Ad request",
+                    focusKind: "ad",
+                    tab: "Ads Request",
+                    title: business || packageName || "Ad request",
+                    subtitle: [packageName, review || "pending", String(row.target_area || "")].filter(Boolean).join(" · "),
+                    targetId: String(row.id),
+                    extra: [business, packageName, String(snap.audience || ""), String(snap.content || ""), String(row.target_pincode || ""), String(row.payment_status || "")],
+                  }),
+                );
+              }
+            }
+            for (const row of verifyRes.data || []) {
+              const business = nameOf(String(row.business_id || ""));
+              docs.push(
+                makeSearchDoc({
+                  key: `verify:${row.id}`,
+                  kind: "Verification",
+                  focusKind: "promotion-verification",
+                  tab: "Business Promotions",
+                  title: business || "Shop check",
+                  subtitle: String(row.status || "Verification"),
+                  targetId: String(row.id),
+                  extra: [business, String(row.rejection_reason || ""), String(row.status || "")],
+                }),
+              );
+            }
+            for (const row of packageRes.data || []) {
+              docs.push(
+                makeSearchDoc({
+                  key: `package:${row.id}`,
+                  kind: "Ad package",
+                  focusKind: "promotion-package",
+                  tab: "Business Promotions",
+                  title: String(row.name || "Package"),
+                  subtitle: [row.coverage_label, row.price_inr != null ? `₹${row.price_inr}` : ""].filter(Boolean).join(" · "),
+                  targetId: String(row.id),
+                  extra: [String(row.coverage_label || ""), String(row.price_inr || ""), row.active ? "active" : "hidden"],
+                }),
+              );
+            }
+            for (const row of customRes.data || []) {
+              const business = nameOf(String(row.business_id || ""));
+              docs.push(
+                makeSearchDoc({
+                  key: `custom-promo:${row.id}`,
+                  kind: "Custom promotion",
+                  focusKind: "promotion-custom",
+                  tab: "Business Promotions",
+                  title: business || "Custom promotion",
+                  subtitle: [String(row.goal || ""), String(row.status || "")].filter(Boolean).join(" · "),
+                  targetId: String(row.id),
+                  extra: [business, String(row.phone || ""), String(row.area || ""), String(row.pincode || ""), String(row.coverage || "")],
+                }),
+              );
+            }
+          })(),
+        );
+      }
+
+      if (allowed.has("Broadcast Email")) {
+        tasks.push(
+          (async () => {
+            const supabase = createClient();
+            const { data } = await supabase
+              .from("admin_outbound_emails")
+              .select("id, subject, to_emails, cc_emails")
+              .order("created_at", { ascending: false })
+              .limit(80);
+            for (const row of data || []) {
+              const to = Array.isArray(row.to_emails) ? row.to_emails.map((item) => String(item)) : [];
+              const cc = Array.isArray(row.cc_emails) ? row.cc_emails.map((item) => String(item)) : [];
+              docs.push(
+                makeSearchDoc({
+                  key: `email:${row.id}`,
+                  kind: "Email",
+                  focusKind: "tab",
+                  tab: "Broadcast Email",
+                  title: String(row.subject || "Email"),
+                  subtitle: to.slice(0, 2).join(", "),
+                  extra: [...to, ...cc],
+                }),
+              );
+            }
+          })(),
+        );
+      }
+
+      if (allowed.has("Manage Admins")) {
+        tasks.push(
+          (async () => {
+            const supabase = createClient();
+            const { data } = await supabase.from("admins").select("id, email, role, display_name").limit(100);
+            for (const row of data || []) {
+              docs.push(
+                makeSearchDoc({
+                  key: `admin:${row.id}`,
+                  kind: "Admin",
+                  focusKind: "admin",
+                  tab: "Manage Admins",
+                  title: String(row.display_name || row.email || "Admin"),
+                  subtitle: [row.email, String(row.role || "").replace(/_/g, " ")].filter(Boolean).join(" · "),
+                  targetId: String(row.id),
+                  extra: [row.email, row.display_name, row.role],
+                }),
+              );
+            }
+          })(),
+        );
+      }
+
+      if (allowed.has("Site Configurations")) {
+        tasks.push(
+          (async () => {
+            const supabase = createClient();
+            const { data } = await supabase.from("site_config").select("config").eq("id", "finderb").maybeSingle();
+            const config = data?.config && typeof data.config === "object" ? (data.config as Record<string, Record<string, unknown>>) : {};
+            const pricing = config.pricing || {};
+            const contact = config.contact || {};
+            const add = (key: string, title: string, subtitle: string, section: string, extra: Array<string | null | undefined>) => {
+              docs.push(
+                makeSearchDoc({
+                  key: `site-value:${key}`,
+                  kind: "Site config",
+                  focusKind: "site-config",
+                  tab: "Site Configurations",
+                  title,
+                  subtitle,
+                  targetId: section,
+                  extra,
+                }),
+              );
+            };
+            if (pricing.growthMonthly) add("growth", `Growth monthly ₹${pricing.growthMonthly}`, "Plan price", "Plans", ["growth", "monthly", String(pricing.growthMonthlyRetail || "")]);
+            if (pricing.proAnnual) add("pro", `Pro annual ₹${pricing.proAnnual}`, "Plan price", "Plans", ["pro", "annual", String(pricing.proAnnualRetail || "")]);
+            if (contact.email) add("email", String(contact.email), "Public email", "Contact", [String(contact.companyName || ""), String(contact.brand || "")]);
+            if (contact.phone || contact.phoneDisplay) add("phone", String(contact.phoneDisplay || contact.phone), "Public phone", "Contact", [String(contact.phone || "")]);
+            if (contact.companyName) add("company", String(contact.companyName), "Company", "Contact", [String(contact.addressLine1 || ""), String(contact.addressLine2 || ""), String(contact.pincode || "")]);
+            if (contact.grievanceEmail) add("grievance", String(contact.grievanceEmail), "Grievance email", "Contact", [String(contact.grievanceName || "")]);
+          })(),
+        );
+      }
+
       await Promise.all(tasks.map((task) => task.catch(() => undefined)));
       if (!cancelled) {
         setRemoteDocs(docs);
@@ -613,6 +905,71 @@ export default function AdminUniversalSearch({
     [localDocs, remoteDocs, reviewDocs, query],
   );
 
+  const searchMood: MomoMood = !query.trim()
+    ? "wave"
+    : reacting
+      ? "curious"
+      : hits.length > 0
+        ? "happy"
+        : remoteReady
+          ? "sad"
+          : "curious";
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setReacting(false);
+      return;
+    }
+    setReacting(true);
+    const timer = window.setTimeout(() => setReacting(false), 700);
+    return () => window.clearTimeout(timer);
+  }, [query]);
+
+  useEffect(() => {
+    if (open) {
+      setIdle("look");
+      return;
+    }
+    const launch = document.querySelector(".admin-universal-search-launch");
+    if (!launch || !launch.matches(":hover")) momoHover.current = false;
+    const play: { mood: MomoMood; ms: number }[] = [
+      { mood: "look", ms: 4200 },
+      { mood: "peek", ms: 4200 },
+      { mood: "wave", ms: 2000 },
+      { mood: "dash", ms: 2100 },
+      { mood: "walk", ms: 3800 },
+      { mood: "look", ms: 6500 },
+      { mood: "workout", ms: 2600 },
+      { mood: "happy", ms: 2000 },
+      { mood: "look", ms: 5200 },
+    ];
+    let step = 0;
+    let settled = false;
+    let ticker = 0;
+    const advance = () => {
+      if (settled) return;
+      if (!momoHover.current) setIdle(play[step].mood);
+      const wait = play[step].ms;
+      step = (step + 1) % play.length;
+      ticker = window.setTimeout(advance, wait);
+    };
+    setIdle("look");
+    ticker = window.setTimeout(advance, play[0].ms);
+    step = 1;
+    const yawnAt = window.setTimeout(() => {
+      settled = true;
+      if (!momoHover.current) setIdle("yawn");
+    }, 72_000);
+    const sleepAt = window.setTimeout(() => {
+      if (!momoHover.current) setIdle("sleep");
+    }, 80_000);
+    return () => {
+      window.clearTimeout(ticker);
+      window.clearTimeout(yawnAt);
+      window.clearTimeout(sleepAt);
+    };
+  }, [open, idleEpoch]);
+
   useEffect(() => {
     setActive(0);
   }, [query, hits.length]);
@@ -621,6 +978,7 @@ export default function AdminUniversalSearch({
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
+        setQuery("");
         setOpen(true);
         window.setTimeout(() => inputRef.current?.focus(), 0);
       }
@@ -649,18 +1007,34 @@ export default function AdminUniversalSearch({
     const place = () => {
       const rect = fieldRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.min(448, window.innerWidth - 24);
-      const left = Math.min(Math.max(12, rect.right - width), window.innerWidth - width - 12);
-      setPopBox({ top: rect.bottom + 8, left, width });
+      const viewport = window.visualViewport;
+      const viewportWidth = viewport?.width ?? window.innerWidth;
+      const viewportHeight = viewport?.height ?? window.innerHeight;
+      const offsetLeft = viewport?.offsetLeft ?? 0;
+      const width = viewportWidth >= 768
+        ? Math.min(query.trim() ? 760 : 540, viewportWidth - 24)
+        : viewportWidth - 24;
+      const left = Math.min(Math.max(offsetLeft + 12, rect.right - width), offsetLeft + viewportWidth - width - 12);
+      const top = rect.bottom + 8;
+      setPopBox({
+        top,
+        left,
+        width,
+        maxHeight: Math.max(180, viewportHeight - top - 12),
+      });
     };
     place();
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
+    window.visualViewport?.addEventListener("resize", place);
+    window.visualViewport?.addEventListener("scroll", place);
     return () => {
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
+      window.visualViewport?.removeEventListener("resize", place);
+      window.visualViewport?.removeEventListener("scroll", place);
     };
-  }, [open]);
+  }, [open, query]);
 
   const choose = (hit: SearchHit) => {
     onOpen(hit);
@@ -672,9 +1046,7 @@ export default function AdminUniversalSearch({
     <div className="admin-universal-search" ref={rootRef}>
       {open ? (
         <div className="admin-universal-search-field" ref={fieldRef}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+          <Momo mood={searchMood} className="admin-momo-field" />
           <input
             ref={inputRef}
             value={query}
@@ -695,8 +1067,8 @@ export default function AdminUniversalSearch({
                 choose(hits[active]);
               }
             }}
-            placeholder="Search the whole panel"
-            aria-label="Search the admin panel"
+            placeholder="Momo Search"
+            aria-label="Momo Search"
             aria-expanded
             aria-controls="admin-universal-search-list"
             role="combobox"
@@ -712,15 +1084,21 @@ export default function AdminUniversalSearch({
                   className="admin-universal-search-pop admin-card"
                   id="admin-universal-search-list"
                   role="listbox"
-                  style={{ top: popBox.top, left: popBox.left, width: popBox.width }}
+                  style={{ top: popBox.top, left: popBox.left, width: popBox.width, maxHeight: popBox.maxHeight }}
                 >
                   {query.trim() ? (
-                    hits.length === 0 ? (
-                      <p className="admin-universal-search-empty">
-                        {remoteReady ? "No matches. Try a name, email, phone, city, or id." : "Searching records…"}
-                      </p>
-                    ) : (
-                      hits.map((hit, index) => (
+                    <>
+                      <div className="admin-momo-live">
+                        <Momo mood={searchMood} />
+                        <span>
+                          {searchMood === "happy"
+                            ? "Here they are."
+                            : searchMood === "sad"
+                              ? "Momo couldn't find that. Try a name, email, phone, or city."
+                              : "Momo is looking…"}
+                        </span>
+                      </div>
+                      {hits.map((hit, index) => (
                         <button
                           key={hit.key}
                           type="button"
@@ -743,12 +1121,21 @@ export default function AdminUniversalSearch({
                           </span>
                           <span className="admin-universal-search-tab">{hit.tab}</span>
                         </button>
-                      ))
-                    )
+                      ))}
+                    </>
                   ) : (
-                    <p className="admin-universal-search-empty">
-                      Find a user, merchant, lead, payment, review, job, blog, or menu. Ctrl K opens this from anywhere.
-                    </p>
+                    <div className="admin-momo-greet">
+                      <div className="admin-momo-stage">
+                        <span className="admin-momo-star admin-momo-star-a" aria-hidden />
+                        <span className="admin-momo-star admin-momo-star-b" aria-hidden />
+                        <span className="admin-momo-float-heart" aria-hidden />
+                        <Momo mood="wave" />
+                      </div>
+                      <div>
+                        <p className="admin-momo-hi">{momoHello()} A search bot from FinderB.</p>
+                        <p className="admin-momo-ask">Who should I look for?</p>
+                      </div>
+                    </div>
                   )}
                 </div>,
                 document.body,
@@ -759,11 +1146,33 @@ export default function AdminUniversalSearch({
         <button
           type="button"
           className="admin-btn-ghost admin-universal-search-launch"
-          onClick={() => setOpen(true)}
-          aria-label="Open universal search"
-          title="Search the admin panel"
+          onMouseEnter={() => {
+            momoHover.current = true;
+            setIdle("look");
+          }}
+          onMouseLeave={() => {
+            momoHover.current = false;
+            setIdleEpoch((value) => value + 1);
+          }}
+          onClick={() => {
+            setQuery("");
+            setOpen(true);
+          }}
+          aria-label="Momo Search"
+          title="Momo Search"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+          <span className="admin-momo-lane" aria-hidden>
+            <span className={`admin-momo-face is-${idle}`}>
+              <span className="admin-momo-zs">
+                <i>z</i>
+                <i>z</i>
+                <i>z</i>
+              </span>
+              <Momo mood={idle} />
+            </span>
+          </span>
+          <span className="admin-momo-launch-label">Momo Search</span>
+          <svg className="admin-momo-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </button>

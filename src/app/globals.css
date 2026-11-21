@@ -3907,8 +3907,706 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
 }
 
 .admin-universal-search-launch {
-  width: 2.1rem;
+  width: auto;
   height: 2.1rem;
+  gap: 0.4rem;
+  padding: 0 0.7rem 0 1.95rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid #e7e5e4 !important;
+  border-radius: 999px;
+  background: #fff !important;
+  color: #44403c;
+  overflow: visible;
+  position: relative;
+}
+
+.admin-universal-search-launch:hover {
+  border-color: #fdba74 !important;
+  background: #fff7ed !important;
+}
+
+.admin-momo-search-icon {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: none;
+  color: #a8a29e;
+  position: relative;
+  z-index: 3;
+}
+
+.admin-momo-lane {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.admin-momo-lane:has(.is-sleep),
+.admin-momo-lane:has(.is-yawn) {
+  overflow: visible;
+}
+
+.admin-momo-face {
+  position: absolute;
+  left: 0.06rem;
+  top: 50%;
+  width: 1.85rem;
+  height: 1.85rem;
+  margin-top: -0.92rem;
+}
+
+.admin-momo-face.is-run {
+  animation: admin-momo-pass 3.4s ease-in-out infinite;
+}
+
+.admin-momo-face.is-peek {
+  animation: admin-momo-peek 4.2s ease-in-out forwards;
+}
+
+.admin-momo-face.is-dash {
+  animation: admin-momo-dash 2.1s ease-in forwards;
+}
+
+.admin-momo-face.is-walk {
+  animation: admin-momo-stroll 3.8s linear forwards;
+}
+
+.admin-momo-face.is-happy {
+  animation: admin-momo-pop 2s ease-in-out;
+}
+
+.admin-momo-face.is-workout {
+  animation: admin-momo-center 3.4s ease-in-out infinite;
+}
+
+.admin-momo-face .admin-momo {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.admin-momo-zs {
+  display: none;
+  position: absolute;
+  left: 0.7rem;
+  top: -0.62rem;
+  gap: 0.02rem;
+  pointer-events: none;
+}
+
+.admin-momo-face.is-sleep .admin-momo-zs {
+  display: flex;
+}
+
+.admin-momo-zs i {
+  font-style: normal;
+  font-family: var(--font-sans), sans-serif;
+  font-weight: 600;
+  color: #a8a29e;
+  line-height: 1;
+  animation: admin-momo-z 1.8s ease-in-out infinite;
+}
+
+.admin-momo-zs i:nth-child(1) { font-size: 0.48rem; }
+.admin-momo-zs i:nth-child(2) { font-size: 0.62rem; animation-delay: 0.22s; }
+.admin-momo-zs i:nth-child(3) { font-size: 0.76rem; animation-delay: 0.44s; }
+
+.admin-momo-greet {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 0.85rem 0.7rem;
+}
+
+.admin-momo-stage {
+  position: relative;
+  width: 6.75rem;
+  height: 6.75rem;
+  flex: none;
+}
+
+.admin-momo-stage .admin-momo {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.admin-momo-star,
+.admin-momo-float-heart {
+  position: absolute;
+  pointer-events: none;
+}
+
+.admin-momo-star {
+  width: 0.62rem;
+  height: 0.62rem;
+  background: #fb923c;
+  clip-path: polygon(50% 0%, 62% 36%, 100% 36%, 70% 58%, 80% 100%, 50% 74%, 20% 100%, 30% 58%, 0% 36%, 38% 36%);
+}
+
+.admin-momo-star-a {
+  top: 0.05rem;
+  left: 0.05rem;
+  animation: admin-momo-twinkle 1.35s ease-in-out infinite;
+}
+
+.admin-momo-star-b {
+  top: 0.55rem;
+  right: 0;
+  width: 0.42rem;
+  height: 0.42rem;
+  background: #fb7185;
+  animation: admin-momo-twinkle 1.35s ease-in-out 0.45s infinite;
+}
+
+.admin-momo-float-heart {
+  top: 0.15rem;
+  right: 0.15rem;
+  width: 0.48rem;
+  height: 0.48rem;
+  background: #fb7185;
+  transform: rotate(-45deg);
+  animation: admin-momo-heart 1.7s ease-in-out infinite;
+}
+
+.admin-momo-float-heart::before,
+.admin-momo-float-heart::after {
+  content: "";
+  position: absolute;
+  width: 0.48rem;
+  height: 0.48rem;
+  background: #fb7185;
+  border-radius: 50%;
+}
+
+.admin-momo-float-heart::before { left: 0.24rem; top: 0; }
+.admin-momo-float-heart::after { left: 0; top: -0.24rem; }
+
+.admin-universal-search-pop .admin-momo-hi {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 650;
+  line-height: 1.3;
+  color: #1c1917;
+  white-space: nowrap;
+}
+
+.admin-universal-search-pop .admin-momo-role,
+.admin-universal-search-pop .admin-momo-ask {
+  margin: 0.16rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 400;
+  line-height: 1.35;
+  color: #78716c;
+}
+
+.admin-momo-bob {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: admin-momo-bob 2.2s ease-in-out infinite;
+}
+
+.admin-momo-shadow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: admin-momo-shadow 2.2s ease-in-out infinite;
+}
+
+.admin-momo-ear {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: admin-momo-ear 2.4s ease-in-out infinite;
+}
+
+.admin-momo-ear-r { animation-delay: -0.55s; }
+
+.admin-momo-lid {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: admin-momo-blink 3.8s ease-in-out infinite;
+}
+
+.admin-momo-pupil {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.admin-momo-blush {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: admin-momo-blush 2.2s ease-in-out infinite;
+}
+
+.admin-momo-arm {
+  transform-box: fill-box;
+  transform-origin: 12% 82%;
+  animation: admin-momo-wave-soft 2.8s ease-in-out infinite;
+}
+
+.admin-momo.is-wave {
+  animation: admin-momo-in 0.55s cubic-bezier(0.2, 1.45, 0.4, 1);
+}
+
+.admin-momo.is-wave .admin-momo-arm {
+  animation: admin-momo-wave 0.72s ease-in-out infinite;
+}
+
+.admin-momo.is-wave .admin-momo-ear {
+  animation-duration: 1.15s;
+}
+
+.admin-momo-sweat { opacity: 0; }
+
+.admin-momo.is-run .admin-momo-bob {
+  animation: admin-momo-run 0.28s ease-in-out infinite;
+}
+
+.admin-momo.is-run .admin-momo-foot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: admin-momo-step 0.28s ease-in-out infinite;
+}
+
+.admin-momo.is-run .admin-momo-foot-r { animation-delay: 0.14s; }
+
+.admin-momo.is-run .admin-momo-arm {
+  animation: admin-momo-pump 0.28s ease-in-out infinite;
+}
+
+.admin-momo.is-peek .admin-momo-bob,
+.admin-momo.is-peek .admin-momo-ear { animation: none; }
+
+.admin-momo.is-peek .admin-momo-pupil {
+  transform: translate(26%, 2%);
+}
+
+.admin-momo.is-dash .admin-momo-bob {
+  animation: admin-momo-run 0.22s ease-in-out infinite;
+}
+
+.admin-momo.is-dash .admin-momo-foot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: admin-momo-step 0.22s ease-in-out infinite;
+}
+
+.admin-momo.is-dash .admin-momo-foot-r { animation-delay: 0.11s; }
+
+.admin-momo.is-dash .admin-momo-arm {
+  animation: admin-momo-pump 0.22s ease-in-out infinite;
+}
+
+.admin-momo.is-walk .admin-momo-bob {
+  animation: admin-momo-run 0.52s ease-in-out infinite;
+}
+
+.admin-momo.is-walk .admin-momo-foot {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: admin-momo-step 0.52s ease-in-out infinite;
+}
+
+.admin-momo.is-walk .admin-momo-foot-r { animation-delay: 0.26s; }
+
+.admin-momo.is-walk .admin-momo-arm {
+  animation: admin-momo-pump 0.52s ease-in-out infinite;
+}
+
+.admin-momo.is-workout .admin-momo-bob {
+  animation: admin-momo-jack 0.46s ease-in-out infinite;
+}
+
+.admin-momo.is-workout .admin-momo-arm,
+.admin-momo.is-workout .admin-momo-paw {
+  transform-box: fill-box;
+  transform-origin: 50% 80%;
+  animation: admin-momo-pump 0.46s ease-in-out infinite;
+}
+
+.admin-momo.is-workout .admin-momo-paw { animation-delay: 0.23s; }
+
+.admin-momo.is-workout .admin-momo-sweat {
+  opacity: 1;
+  transform-box: fill-box;
+  transform-origin: center top;
+  animation: admin-momo-drip 0.9s ease-in infinite;
+}
+
+.admin-momo-joy {
+  fill: none;
+  stroke: #1c1412;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  opacity: 0;
+}
+
+.admin-momo-tear { opacity: 0; }
+
+.admin-momo-mouth-smile path {
+  fill: #ff335c;
+  stroke: none;
+}
+
+.admin-momo-mouth-gleam {
+  fill: #fff;
+  opacity: 0.9;
+}
+
+@keyframes admin-momo-in {
+  0% { transform: translateY(10px) scale(0.72); }
+  70% { transform: translateY(-2px) scale(1.06); }
+  100% { transform: none; }
+}
+
+@keyframes admin-momo-bob {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-7%) scale(1.035, 0.965); }
+}
+
+@keyframes admin-momo-shadow {
+  0%, 100% { transform: scaleX(1); opacity: 0.16; }
+  50% { transform: scaleX(0.72); opacity: 0.07; }
+}
+
+@keyframes admin-momo-ear {
+  0%, 100% { transform: rotate(-7deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@keyframes admin-momo-blink {
+  0%, 38%, 46%, 100% { transform: scaleY(0); }
+  42% { transform: scaleY(1); }
+}
+
+@keyframes admin-momo-look {
+  0%, 100% { transform: translate(0, 0); }
+  35% { transform: translate(12%, 6%); }
+  55% { transform: translate(-8%, 4%); }
+  75% { transform: translate(4%, -4%); }
+}
+
+@keyframes admin-momo-blush {
+  0%, 100% { opacity: 0.72; transform: scale(0.92); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes admin-momo-wave-soft {
+  0%, 62%, 100% { transform: rotate(0deg); }
+  76% { transform: rotate(18deg); }
+  88% { transform: rotate(-8deg); }
+}
+
+@keyframes admin-momo-wave {
+  0%, 100% { transform: rotate(-12deg); }
+  50% { transform: rotate(26deg); }
+}
+
+@keyframes admin-momo-twinkle {
+  0%, 100% { transform: scale(0.7) rotate(0deg); opacity: 0.35; }
+  50% { transform: scale(1.15) rotate(18deg); opacity: 1; }
+}
+
+@keyframes admin-momo-heart {
+  0%, 100% { transform: rotate(-45deg) translateY(0) scale(0.9); opacity: 0.55; }
+  50% { transform: rotate(-45deg) translateY(-5px) scale(1.08); opacity: 1; }
+}
+
+.admin-momo-mouth { opacity: 0; }
+.admin-momo-mouth-frown {
+  fill: none;
+  stroke: #c23b66;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+.admin-momo-mouth-smile { opacity: 1; stroke: none; fill: #ff335c; }
+.admin-momo-mouth-o { fill: #3b241c; }
+.admin-momo-shut {
+  fill: none;
+  stroke: #3b241c;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  opacity: 0;
+}
+.admin-momo-zzz {
+  opacity: 0;
+  font-family: var(--font-sans), sans-serif;
+  font-size: 8px;
+  font-weight: 650;
+  fill: #a8a29e;
+}
+.admin-universal-search-launch .admin-momo-zzz { display: none; }
+
+.admin-momo.is-look .admin-momo-pupil {
+  animation: admin-momo-glance 6.8s ease-in-out infinite;
+}
+.admin-momo.is-wave .admin-momo-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scaleY(0.9);
+}
+.admin-momo.is-wave .admin-momo-pupil {
+  transform: translate(6%, -18%);
+}
+.admin-momo.is-happy .admin-momo-eye { opacity: 0; }
+.admin-momo.is-happy .admin-momo-joy { opacity: 1; }
+.admin-momo.is-happy .admin-momo-mouth-smile {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(1.06, 1.1);
+}
+.admin-momo.is-happy .admin-momo-blush {
+  animation: none;
+  opacity: 1;
+  transform: scale(1.2);
+}
+.admin-momo.is-curious .admin-momo-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(1.08);
+}
+.admin-momo.is-curious .admin-momo-pupil {
+  animation: admin-momo-search 0.7s ease-in-out infinite;
+}
+.admin-momo.is-curious .admin-momo-mouth-smile,
+.admin-momo.is-sad .admin-momo-mouth-smile,
+.admin-momo.is-yawn .admin-momo-mouth-smile { opacity: 0; }
+.admin-momo.is-curious .admin-momo-mouth-o { opacity: 1; }
+.admin-momo.is-sad .admin-momo-mouth-frown { opacity: 1; }
+.admin-momo.is-sad .admin-momo-pupil { transform: translate(0, 28%); }
+.admin-momo.is-sad .admin-momo-tear {
+  opacity: 1;
+  transform-box: fill-box;
+  transform-origin: center top;
+  animation: admin-momo-drip 1.3s ease-in infinite;
+}
+.admin-momo.is-sad .admin-momo-bob,
+.admin-momo.is-sad .admin-momo-ear { animation: none; }
+.admin-momo.is-sad .admin-momo-ear-l { transform: rotate(14deg); }
+.admin-momo.is-sad .admin-momo-ear-r { transform: rotate(-14deg); }
+.admin-momo.is-yawn .admin-momo-lid {
+  animation: none;
+  transform: scaleY(0.62);
+}
+.admin-momo.is-yawn .admin-momo-mouth-yawn { opacity: 1; }
+.admin-momo.is-yawn .admin-momo-bob { animation-duration: 3.6s; }
+.admin-momo.is-yawn .admin-momo-ear { animation: none; }
+.admin-momo.is-yawn .admin-momo-ear-l { transform: rotate(10deg); }
+.admin-momo.is-yawn .admin-momo-ear-r { transform: rotate(-10deg); }
+.admin-momo-nap { display: none; }
+.admin-momo.is-sleep .admin-momo-bob,
+.admin-momo.is-sleep .admin-momo-shadow { display: none; }
+.admin-momo.is-sleep .admin-momo-nap {
+  display: block;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: admin-momo-snooze 3.2s ease-in-out infinite;
+}
+.admin-momo.is-sleep .admin-momo-zzz { opacity: 1; }
+.admin-momo.is-sleep .admin-momo-zzz text { animation: admin-momo-z 1.8s ease-in-out infinite; }
+.admin-momo.is-sleep .admin-momo-zzz text:nth-child(2) { animation-delay: 0.2s; }
+.admin-momo.is-sleep .admin-momo-zzz text:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes admin-momo-glance {
+  0%, 68%, 100% { transform: translate(0, 0); }
+  76% { transform: translate(16%, 4%); }
+  84% { transform: translate(0, 0); }
+  92% { transform: translate(-12%, 2%); }
+}
+
+@keyframes admin-momo-pass {
+  0%, 8% { left: 0.06rem; transform: scaleX(1); }
+  42% { left: calc(100% - 2.2rem); transform: scaleX(1); }
+  50% { left: calc(100% - 2.2rem); transform: scaleX(-1); }
+  88% { left: 0.06rem; transform: scaleX(-1); }
+  100% { left: 0.06rem; transform: scaleX(1); }
+}
+
+@keyframes admin-momo-peek {
+  0%, 10% { left: -1.62rem; }
+  22%, 70% { left: -0.92rem; }
+  88%, 100% { left: 0.06rem; }
+}
+
+@keyframes admin-momo-dash {
+  0% { left: 0.06rem; }
+  100% { left: calc(100% + 0.4rem); }
+}
+
+@keyframes admin-momo-stroll {
+  0% { left: calc(100% + 0.2rem); transform: scaleX(-1); }
+  100% { left: 0.06rem; transform: scaleX(-1); }
+}
+
+@keyframes admin-momo-pop {
+  0%, 100% { transform: translateY(0) scale(1); }
+  45% { transform: translateY(-4px) scale(1.08); }
+  72% { transform: translateY(1px) scale(0.97); }
+}
+
+@keyframes admin-momo-center {
+  0%, 100% { left: 0.06rem; }
+  28%, 72% { left: calc(50% - 0.92rem); }
+}
+
+@keyframes admin-momo-run {
+  0%, 100% { transform: translateY(0) rotate(-7deg); }
+  50% { transform: translateY(-10%) rotate(6deg); }
+}
+
+@keyframes admin-momo-step {
+  0%, 100% { transform: translateY(2px) rotate(-16deg); }
+  50% { transform: translateY(-7px) rotate(18deg); }
+}
+
+@keyframes admin-momo-pump {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(24deg); }
+}
+
+@keyframes admin-momo-jack {
+  0%, 100% { transform: translateY(0) scale(1, 1); }
+  50% { transform: translateY(-14%) scale(0.96, 1.05); }
+}
+
+@keyframes admin-momo-drip {
+  0% { transform: translateY(0); opacity: 0; }
+  30% { opacity: 1; }
+  100% { transform: translateY(8px); opacity: 0; }
+}
+
+@keyframes admin-momo-search {
+  0%, 100% { transform: translate(-28%, -10%); }
+  50% { transform: translate(30%, -18%); }
+}
+
+@keyframes admin-momo-snooze {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.04, 0.96); }
+}
+
+@keyframes admin-momo-z {
+  0%, 100% { opacity: 0.3; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-momo-bob,
+  .admin-momo-shadow,
+  .admin-momo-ear,
+  .admin-momo-lid,
+  .admin-momo-pupil,
+  .admin-momo-blush,
+  .admin-momo-arm,
+  .admin-momo.is-wave,
+  .admin-momo-face.is-run,
+  .admin-momo-face.is-workout,
+  .admin-momo-face.is-peek,
+  .admin-momo-face.is-dash,
+  .admin-momo-face.is-walk,
+  .admin-momo-face.is-happy,
+  .admin-momo-star-a,
+  .admin-momo-star-b,
+  .admin-momo-float-heart,
+  .admin-momo-zs i,
+  .admin-momo.is-sleep .admin-momo-zzz text {
+    animation: none;
+  }
+
+  .admin-momo-lid { transform: scaleY(0); }
+}
+
+.admin-momo-intro-root {
+  position: fixed;
+  inset: 0;
+  z-index: 460;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(28, 25, 23, 0.4);
+  backdrop-filter: blur(3px);
+}
+
+.admin-momo-intro {
+  width: min(26rem, 100%);
+  padding: 1.35rem 1.4rem 1.2rem;
+  border: 1px solid #e7e5e4;
+  border-radius: 1.25rem;
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(28, 25, 23, 0.18);
+  text-align: center;
+  font-family: var(--font-sans), sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #44403c;
+}
+
+.admin-momo-stage.admin-momo-stage-intro {
+  width: 9.4rem;
+  height: 9.4rem;
+  margin: 0 auto 0.15rem;
+}
+
+.admin-momo-intro h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #1c1917;
+}
+
+.admin-momo-intro-role {
+  margin: 0.3rem 0 0;
+  font-size: 0.95rem;
+  color: #78716c;
+}
+
+.admin-momo-intro p {
+  margin: 0.85rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.admin-momo-intro ul {
+  margin: 0.45rem auto 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: #57534e;
+}
+
+.admin-momo-intro li + li { margin-top: 0.15rem; }
+
+.admin-momo-intro-close {
+  margin-top: 1rem;
+  height: 2.2rem;
+  padding: 0 1.15rem;
+  border: 1px solid #e7e5e4;
+  border-radius: 999px;
+  background: #fff;
+  color: #44403c;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.admin-momo-intro-close:hover {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.admin-universal-search-pop,
+.admin-universal-search-pop * {
+  font-family: var(--font-sans), sans-serif;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .admin-universal-search-field {
@@ -3917,19 +4615,18 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   align-items: center;
 }
 
-.admin-universal-search-field svg {
+.admin-universal-search-field .admin-momo-field {
   position: absolute;
-  left: 0.65rem;
-  width: 0.95rem;
-  height: 0.95rem;
-  color: #94a3b8;
+  left: 0.28rem;
+  width: 1.7rem;
+  height: 1.7rem;
   pointer-events: none;
 }
 
 .admin-universal-search-field input {
   width: min(18rem, 42vw);
   height: 2.1rem;
-  padding: 0 2.6rem 0 2rem;
+  padding: 0 2.6rem 0 2.2rem;
   border-radius: 999px;
   border: 1px solid #e2e8f0;
   background: #fff;
@@ -3964,7 +4661,29 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22) !important;
 }
 
+.admin-momo-live {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.45rem 0.55rem 0.3rem;
+}
+
+.admin-momo-live .admin-momo {
+  width: 3.4rem;
+  height: 3.4rem;
+  flex: none;
+}
+
+.admin-momo-live span {
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #78716c;
+}
+
 .admin-universal-search-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   margin: 0;
   padding: 0.85rem 0.75rem;
   font-size: 0.78rem;
@@ -3972,9 +4691,15 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
   color: #64748b;
 }
 
+.admin-momo-status {
+  width: 2.8rem;
+  height: 2.8rem;
+  flex: none;
+}
+
 .admin-universal-search-hit {
   display: grid;
-  grid-template-columns: 6.5rem minmax(0, 1fr) auto;
+  grid-template-columns: 7.6rem minmax(0, 1fr) auto;
   gap: 0.55rem;
   align-items: center;
   width: 100%;
@@ -3992,10 +4717,7 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
 
 .admin-universal-search-kind,
 .admin-universal-search-tab {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
+  font-size: 0.72rem;
   color: #c2410c;
 }
 
@@ -4012,7 +4734,6 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
 
 .admin-universal-search-title {
   font-size: 0.82rem;
-  font-weight: 650;
   color: #0f172a;
   white-space: nowrap;
   overflow: hidden;
@@ -4042,6 +4763,52 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
 html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search-hit.is-active,
 html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search-hit:hover {
   background: rgba(255, 255, 255, 0.06);
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search-launch {
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  background: transparent !important;
+  color: #f5f5f4 !important;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search-launch:hover {
+  border-color: rgba(253, 186, 116, 0.7) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-momo-search-icon {
+  color: #d6d3d1;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-momo-hi {
+  color: #f5f5f4;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-momo-role,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-momo-ask,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-momo-live span {
+  color: #a8a29e;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-momo-intro {
+  background: #171717;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e7e5e4;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-momo-intro h2 {
+  color: #fafaf9;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-momo-intro-role,
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-momo-intro ul {
+  color: #a8a29e;
+}
+
+html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-momo-intro-close {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #f5f5f4;
 }
 
 html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-universal-search-title {
@@ -4149,8 +4916,81 @@ html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-
     white-space: nowrap;
   }
 
+  .admin-universal-search {
+    flex: 1 1 12.5rem;
+    min-width: min(100%, 11.5rem);
+    max-width: 100%;
+  }
+
+  .admin-universal-search-launch,
+  .admin-universal-search-field,
   .admin-universal-search-field input {
-    width: min(16rem, calc(100vw - 6.5rem));
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .admin-momo-launch-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-universal-search-pop {
+    max-width: calc(100vw - 24px);
+  }
+
+  .admin-momo-greet {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+    padding: 0.65rem 0.75rem 0.55rem;
+  }
+
+  .admin-momo-stage {
+    width: 4.4rem;
+    height: 4.4rem;
+  }
+
+  .admin-universal-search-pop .admin-momo-hi {
+    white-space: normal;
+    font-size: 0.88rem;
+  }
+
+  .admin-momo-live {
+    align-items: flex-start;
+  }
+
+  .admin-momo-live .admin-momo {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .admin-universal-search-hit {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.12rem;
+    padding: 0.65rem 0.55rem;
+  }
+
+  .admin-universal-search-tab {
+    text-align: left;
+  }
+
+  .admin-momo-intro-root {
+    padding: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .admin-momo-intro {
+    width: 100%;
+    max-height: calc(100dvh - 1.5rem);
+    overflow: auto;
+    padding: 1rem 1rem 0.9rem;
+  }
+
+  .admin-momo-stage.admin-momo-stage-intro {
+    width: 7rem;
+    height: 7rem;
   }
 
   .admin-page-header > div {

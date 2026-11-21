@@ -28,7 +28,7 @@ const TAB_ALIASES: Record<string, string[]> = {
   Dashboard: ["home", "overview", "stats", "console"],
   Users: ["user", "users", "customer", "customers", "account", "accounts"],
   Merchants: ["merchant", "merchants", "business", "businesses", "listing", "listings", "partner", "partners"],
-  "Business Onboarding": ["onboarding", "merchant form", "register business"],
+  "Business Onboarding": ["onboarding", "merchant form", "register business", "merchant onboarding form", "onboarding form"],
   "Quick Onboard": ["quick onboard", "maps link", "google maps"],
   Leads: ["lead", "leads", "enquiry", "enquiries", "inquiry", "inquiries"],
   Reviews: ["review", "reviews", "rating", "ratings"],
@@ -43,10 +43,10 @@ const TAB_ALIASES: Record<string, string[]> = {
   Blogs: ["blog", "blogs", "article", "articles", "post"],
   "YouTube Playlists": ["youtube", "playlist", "playlists", "video", "videos", "tutorial", "tutorials"],
   "Tourist Places": ["tourist", "place", "places", "destination", "destinations"],
-  Broadcasts: ["broadcast", "broadcasts", "notification", "notifications", "push"],
-  "Broadcast Email": ["email", "emails", "mail", "resend"],
-  Settings: ["settings", "setting", "maintenance", "site mode"],
-  "Site Configurations": ["site configuration", "pricing", "plan price", "contact", "promote switch"],
+  Broadcasts: ["broadcast", "broadcasts", "notification", "notifications", "push", "broadcast notification"],
+  "Broadcast Email": ["email", "emails", "mail", "resend", "outbound email"],
+  Settings: ["settings", "setting", "maintenance", "site mode", "password", "panel pin", "login activity", "image compression", "website mode"],
+  "Site Configurations": ["site configuration", "pricing", "plan price", "contact", "promote switch", "growth price", "pro annual", "photo storage", "public contact"],
   "Business Promotions": ["promote", "promotion", "verification", "campaign", "booster", "ads"],
   "Ads Request": ["ad request", "ads request", "ad approval", "video approval", "deny ad"],
   "Manage Admins": ["admin", "admins", "controller", "developer", "staff"],
@@ -107,15 +107,21 @@ export function makeSearchDoc(input: {
   };
 }
 
+const TAB_LABELS: Record<string, string> = {
+  Broadcasts: "Broadcast Notification",
+  "Business Onboarding": "Merchant Onboarding Form",
+};
+
 export function tabSearchDoc(name: string): SearchDoc {
+  const label = TAB_LABELS[name];
   return makeSearchDoc({
     key: `tab:${name}`,
     kind: "Menu",
     focusKind: "tab",
     tab: name,
-    title: name,
-    subtitle: "Open this tab",
-    extra: TAB_ALIASES[name] || [],
+    title: label || name,
+    subtitle: label ? name : "Open this tab",
+    extra: [name, label, ...(TAB_ALIASES[name] || [])],
   });
 }
 

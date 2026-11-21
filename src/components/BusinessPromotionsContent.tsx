@@ -4,7 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminContentLoader from "./AdminContentLoader";
 import { inr } from "../lib/promotionOps";
 
-type Props = { adminId: string; canManage: boolean };
+type PromoSection = "Verification" | "Orders" | "Custom" | "Packages";
+
+type Props = {
+  adminId: string;
+  canManage: boolean;
+  focus?: { id: string; section: PromoSection } | null;
+};
 
 type Business = {
   businessName?: string;
@@ -155,7 +161,7 @@ function Empty({ children }: { children: string }) {
   );
 }
 
-export default function BusinessPromotionsContent({ adminId, canManage }: Props) {
+export default function BusinessPromotionsContent({ adminId, canManage, focus = null }: Props) {
   const [section, setSection] = useState<(typeof SECTIONS)[number]>("Overview");
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState("");
@@ -171,6 +177,22 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
   const [metrics, setMetrics] = useState({ reach: "", views: "", visits: "" });
   const [statusChoice, setStatusChoice] = useState<Record<string, string>>({});
   const [campaignChoice, setCampaignChoice] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!focus?.id) return;
+    setSection(focus.section);
+    setQuery("");
+    setStatus("all");
+    setPackageId("all");
+    setFromDate("");
+    setToDate("");
+    if (focus.section === "Orders") setSelected(focus.id);
+  }, [focus?.id, focus?.section]);
+
+  useEffect(() => {
+    if (!focus?.id || !ready) return;
+    document.getElementById(`admin-focus-${focus.id}`)?.scrollIntoView({ block: "center" });
+  }, [focus?.id, ready, section, data]);
 
   const load = useCallback(async () => {
     const response = await fetch(`/api/admin/promotions?adminId=${encodeURIComponent(adminId)}`);
@@ -301,7 +323,7 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
           {(data?.verifications || []).map((item) => {
             const proofs = (item.document_urls || []).filter((url): url is string => Boolean(url));
             return (
-              <article key={item.id} className="admin-card">
+              <article key={item.id} id={`admin-focus-${item.id}`} className="admin-card">
                 <div className="admin-card-header">
                   <div>
                     <h2 className="admin-card-title">{item.business?.businessName || item.business_id}</h2>
@@ -432,6 +454,7 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
                   {filtered.map((order) => (
                     <tr
                       key={order.id}
+                      id={`admin-focus-${order.id}`}
                       onClick={() => setSelected(order.id)}
                       className={`cursor-pointer ${selected === order.id ? "admin-row-selected" : ""}`}
                     >
@@ -577,7 +600,7 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
               <tbody>
                 {(data?.customRequests || []).length === 0 ? <Empty>No custom plans yet.</Empty> : null}
                 {(data?.customRequests || []).map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} id={`admin-focus-${item.id}`}>
                     <td>
                       <p className="font-medium">{item.id}</p>
                       <p className="admin-card-description">{when(item.created_at)}</p>
@@ -629,6 +652,7 @@ export default function BusinessPromotionsContent({ adminId, canManage }: Props)
           {(data?.packages || []).map((item) => (
             <form
               key={item.id}
+              id={`admin-focus-${item.id}`}
               className="admin-card p-4 space-y-2"
               onSubmit={(event) => {
                 event.preventDefault();

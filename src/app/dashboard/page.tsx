@@ -29,6 +29,7 @@ import PaymentsContent from "../../components/PaymentsContent";
 import DashboardContent from "../../components/DashboardContent";
 import AdminContentLoader from "../../components/AdminContentLoader";
 import AdminUniversalSearch from "../../components/AdminUniversalSearch";
+import MomoIntro from "../../components/MomoIntro";
 import MerchantDetailModal from "../../components/MerchantDetailModal";
 import AdminProfileModal from "../../components/AdminProfileModal";
 import AdminAccountMenu from "../../components/AdminAccountMenu";
@@ -3291,6 +3292,21 @@ export default function Dashboard() {
           <BusinessPromotionsContent
             adminId={adminSession?.id || ""}
             canManage={hasFullTabAccess(adminSession, "Business Promotions")}
+            focus={
+              todoFocus?.tab === "Business Promotions" && todoFocus.targetId
+                ? {
+                    id: todoFocus.targetId,
+                    section:
+                      todoFocus.kind === "promotion-verification"
+                        ? "Verification"
+                        : todoFocus.kind === "promotion-custom"
+                          ? "Custom"
+                          : todoFocus.kind === "promotion-package"
+                            ? "Packages"
+                            : "Orders",
+                  }
+                : null
+            }
           />
         );
       case "Ads Request":
@@ -3306,6 +3322,15 @@ export default function Dashboard() {
           <SiteConfigurationsContent
             adminId={adminSession?.id || ""}
             canManage={hasFullTabAccess(adminSession, "Site Configurations")}
+            focusSection={
+              todoFocus?.tab === "Site Configurations" &&
+              (todoFocus.targetId === "Media" ||
+                todoFocus.targetId === "Plans" ||
+                todoFocus.targetId === "Promote" ||
+                todoFocus.targetId === "Contact")
+                ? todoFocus.targetId
+                : null
+            }
           />
         );
       case "Settings":
@@ -4263,6 +4288,8 @@ export default function Dashboard() {
           }}
         />
       )}
+
+      {adminSession?.id && !accessLocked && <MomoIntro />}
 
       {adminSession?.id && !accessLocked && (
         <WhatsNewPanel

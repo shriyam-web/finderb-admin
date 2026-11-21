@@ -7,9 +7,12 @@ import {
 } from "../lib/siteConfigAdmin";
 import AdminContentLoader from "./AdminContentLoader";
 
+type Section = "Media" | "Plans" | "Promote" | "Contact";
+
 type Props = {
   adminId: string;
   canManage: boolean;
+  focusSection?: Section | null;
 };
 
 type PromotionPrice = {
@@ -18,8 +21,6 @@ type PromotionPrice = {
   priceInr: number;
   referenceInr: number;
 };
-
-type Section = "Media" | "Plans" | "Promote" | "Contact";
 
 const SECTIONS: Section[] = ["Media", "Plans", "Promote", "Contact"];
 
@@ -104,7 +105,7 @@ function PricePair({
   );
 }
 
-export default function SiteConfigurationsContent({ adminId, canManage }: Props) {
+export default function SiteConfigurationsContent({ adminId, canManage, focusSection = null }: Props) {
   const [form, setForm] = useState<SiteConfigForm>(DEFAULT_SITE_CONFIG_FORM);
   const [promotionPrices, setPromotionPrices] = useState<PromotionPrice[]>([]);
   const [section, setSection] = useState<Section>("Plans");
@@ -114,6 +115,10 @@ export default function SiteConfigurationsContent({ adminId, canManage }: Props)
   const [savedSnapshot, setSavedSnapshot] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (focusSection) setSection(focusSection);
+  }, [focusSection]);
 
   useEffect(() => {
     let cancelled = false;
