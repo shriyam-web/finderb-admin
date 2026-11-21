@@ -653,13 +653,13 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.85rem;
-    height: 2.85rem;
+    width: 2.15rem;
+    height: 2.15rem;
     padding: 0;
     border-radius: 999px;
-    border: 1px solid #e2e8f0;
-    background: #fff;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .admin-account-trigger:hover,
@@ -786,28 +786,97 @@ body {
   }
 
   .admin-profile-sheet {
-    box-shadow: 0 28px 70px rgba(124, 45, 18, 0.18) !important;
-  }
-
-  .admin-profile-hero {
     position: relative;
-    height: 8.5rem;
-    overflow: hidden;
-    background:
-      radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.38), transparent 36%),
-      radial-gradient(circle at 86% 8%, rgba(255, 255, 255, 0.22), transparent 32%),
-      linear-gradient(115deg, #fdba74 0%, #ea580c 46%, #e11d48 100%);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16) !important;
   }
 
-  .admin-profile-hero::after {
+  .admin-profile-sheet::before {
     content: "";
     position: absolute;
-    right: -2rem;
-    bottom: -2.5rem;
-    width: 9rem;
-    height: 9rem;
+    z-index: 0;
+    left: -25%;
+    top: 0;
+    width: 150%;
+    height: 28%;
+    background: radial-gradient(ellipse 100% 100% at 50% 0%, #7dd3fc 0%, rgba(56, 189, 248, 0.55) 46%, transparent 74%);
+    filter: blur(10px);
+    transform-origin: top center;
+    animation: admin-profile-float 6.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .admin-profile-sheet > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  @keyframes admin-profile-float {
+    0%, 100% { transform: translate3d(-14%, 0, 0) scale(1); }
+    50% { transform: translate3d(14%, 0, 0) scale(1.16); }
+  }
+
+  .admin-profile-close {
+    color: #334155;
+  }
+
+  .admin-profile-close:hover {
+    background: rgba(15, 23, 42, 0.06);
+  }
+
+  html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-profile-close {
+    color: #e2e8f0 !important;
+  }
+
+  html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-profile-close:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  .admin-profile-go {
+    display: flex;
+    height: 2rem;
+    width: 2rem;
+    flex: none;
+    align-items: center;
+    justify-content: center;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
+    color: #64748b;
+  }
+
+  .admin-profile-go:hover {
+    background: rgba(15, 23, 42, 0.06);
+    color: #0f172a;
+  }
+
+  html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-profile-go {
+    color: #cbd5e1;
+  }
+
+  html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-profile-go:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f8fafc;
+  }
+
+  .admin-profile-signout {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    justify-content: center;
+    margin-top: 0.25rem;
+    border-radius: 0.55rem;
+    border: 1px solid #fecdd3;
+    background: #fff1f2;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #be123c !important;
+  }
+
+  .admin-profile-signout:hover {
+    background: #ffe4e6;
+  }
+
+  .admin-profile-photo {
+    box-shadow: 0 0 0 1px #fff;
   }
 
   .admin-panel-lock {
@@ -1185,8 +1254,8 @@ body {
   html[data-admin-theme="dark"] .admin-account-trigger,
   html[data-admin-theme="controller"] .admin-account-trigger,
   html[data-admin-theme="silver"] .admin-account-trigger {
-    background: #1c1917;
-    border-color: rgba(148, 163, 184, 0.35);
+    background: transparent;
+    border-color: transparent;
   }
 
   html[data-admin-theme="dark"] .admin-account-popover-card,
@@ -1248,10 +1317,19 @@ body {
   }
 
   .admin-account-photo {
-    width: 2.55rem;
-    height: 2.55rem;
+    width: 2.15rem;
+    height: 2.15rem;
     border-radius: 999px;
     object-fit: cover;
+  }
+
+  html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-account-trigger .admin-account-photo,
+  html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-account-trigger .admin-avatar-dark {
+    box-shadow: 0 0 0 1px #fff;
+  }
+
+  html:is([data-admin-theme="dark"], [data-admin-theme="controller"], [data-admin-theme="silver"]) .admin-account-popover-card .admin-avatar-dark {
+    box-shadow: 0 0 0 2px #fff;
   }
 
   .admin-account-photo-large {

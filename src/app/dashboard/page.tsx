@@ -3942,7 +3942,6 @@ export default function Dashboard() {
               {isDeveloper ? (
                 <>
                   <strong>Developer access</strong>
-                  <span>Full platform authority · Manage Admins · premium console</span>
                 </>
               ) : (
                 <>

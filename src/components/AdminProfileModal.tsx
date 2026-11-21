@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pencil } from "lucide-react";
+import { ChevronRight, Pencil, X } from "lucide-react";
 import { createClient } from "../../utils/supabase/client";
 import AdminChangePassword from "./AdminChangePassword";
+import AdminChangePin from "./AdminChangePin";
 import AdminOverlay from "./AdminOverlay";
 import AdminProfilePhoto, { type AdminProfilePhotoHandle } from "./AdminProfilePhoto";
 
@@ -25,6 +26,19 @@ type AdminRow = {
   created_at: string | null;
   display_name?: string | null;
 };
+
+function shortAdminId(id: string): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const hex = id.replace(/-/g, "").slice(0, 8);
+  let value = Number.parseInt(hex, 16);
+  if (!Number.isFinite(value)) value = 0;
+  let code = "";
+  for (let i = 0; i < 4; i += 1) {
+    code = alphabet[value % alphabet.length] + code;
+    value = Math.floor(value / alphabet.length);
+  }
+  return code;
+}
 
 function resolveDisplayName(
   session: AdminSession,
@@ -58,7 +72,7 @@ export default function AdminProfileModal({
     tone: "success" | "error";
     text: string;
   } | null>(null);
-  const [changingPassword, setChangingPassword] = useState(false);
+  const [panel, setPanel] = useState<"account" | "password" | "pin">("account");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(session.avatarUrl || null);
   const [editingName, setEditingName] = useState(false);
   const [photoMenu, setPhotoMenu] = useState(false);
@@ -112,6 +126,7 @@ export default function AdminProfileModal({
   const role = row?.role || session.role;
   const tabs = row?.allowed_tabs ?? session.allowed_tabs ?? null;
   const displayName = resolveDisplayName(session, row);
+  const adminCode = shortAdminId(session.id);
   const joined = row?.created_at
     ? new Date(row.created_at).toLocaleDateString(undefined, {
         year: "numeric",
@@ -174,42 +189,41 @@ export default function AdminProfileModal({
 
   return (
     <AdminOverlay>
-      <div className="admin-card admin-profile-sheet flex max-h-[min(92dvh,880px)] w-full max-w-3xl flex-col overflow-hidden">
-        {changingPassword ? (
+      <div className="admin-card admin-profile-sheet flex max-h-[min(92dvh,760px)] w-full max-w-lg flex-col overflow-hidden">
+        {panel === "password" ? (
           <div className="min-h-0 flex-1 overflow-y-auto">
             <AdminChangePassword
               adminId={session.id}
               email={email}
-              onClose={() => setChangingPassword(false)}
+              onClose={() => setPanel("account")}
             />
+          </div>
+        ) : panel === "pin" ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <AdminChangePin email={email} onClose={() => setPanel("account")} />
           </div>
         ) : (
           <>
-            <div className="admin-profile-hero shrink-0">
-              <div className="flex items-start justify-between px-5 pt-4 sm:px-8">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">Your profile</p>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/30"
-                  aria-label="Close"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-            <div className="relative px-5 sm:px-8">
-              <div className="relative -mt-12 w-fit">
+            <button
+              type="button"
+              onClick={onClose}
+              className="admin-profile-close absolute right-3 top-3 z-[2] flex h-8 w-8 items-center justify-center rounded-full"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+            <div className="relative px-6 pt-5">
+              <div className="relative w-fit">
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="" className="h-24 w-24 rounded-full border-4 border-white object-cover shadow-md" />
+                  <img src={avatarUrl} alt="" className="admin-profile-photo h-16 w-16 rounded-full object-cover" />
                 ) : (
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-orange-50 text-3xl font-semibold text-orange-800 shadow-md">
+                  <div className="admin-profile-photo flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-xl text-slate-700">
                     {displayName.charAt(0).toUpperCase()}
                   </div>
                 )}
                 <button
                   type="button"
-                  className="absolute bottom-1 right-1 flex h-8 w-8 items-center justify-center rounded-full border border-orange-200 bg-white text-orange-700 shadow-sm hover:bg-orange-50"
+                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                   aria-label="Edit profile photo"
                   aria-expanded={photoMenu}
                   onClick={() => setPhotoMenu((open) => !open)}
@@ -217,7 +231,7 @@ export default function AdminProfileModal({
                   <Pencil className="h-3.5 w-3.5" aria-hidden />
                 </button>
                 {photoMenu ? (
-                  <div className="absolute left-24 top-16 z-10 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+                  <div className="absolute left-16 top-12 z-10 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
                     <button
                       type="button"
                       className="block w-full px-3 py-2 text-left text-sm text-slate-800 hover:bg-orange-50"
@@ -295,6 +309,9 @@ export default function AdminProfileModal({
                   </div>
                 )}
                 <p className="truncate text-sm text-slate-500">{email}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Admin ID <span className="font-medium tracking-wide text-slate-800">{adminCode}</span>
+                </p>
                 {nameNote ? (
                   <p className={`mt-1 text-xs ${nameNote.tone === "success" ? "text-emerald-700" : "text-rose-600"}`}>
                     {nameNote.text}
@@ -313,7 +330,7 @@ export default function AdminProfileModal({
               />
             </div>
 
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-8">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
               {loading ? (
                 <p className="text-sm text-slate-500">Loading profile…</p>
               ) : (
@@ -357,25 +374,44 @@ export default function AdminProfileModal({
                     )}
                   </div>
 
-                  <div className="flex flex-col items-start justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:flex-row sm:items-center">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">Password</p>
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        Confirm your current password, then a code sent to your email.
-                      </p>
+                  <div className="divide-y divide-slate-100 border-t border-slate-100">
+                    <div className="flex items-center justify-between gap-4 py-4">
+                      <div>
+                        <p className="text-sm text-slate-900">Password</p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          Current password, then a code sent to your email.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPanel("password")}
+                        className="admin-profile-go"
+                        aria-label="Change password"
+                      >
+                        <ChevronRight className="h-4 w-4" aria-hidden />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setChangingPassword(true)}
-                      className="admin-btn-secondary shrink-0"
-                    >
-                      Change
-                    </button>
+                    <div className="flex items-center justify-between gap-4 py-4">
+                      <div>
+                        <p className="text-sm text-slate-900">Panel PIN</p>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                          Password, then a code sent to your email, then a new 4-digit PIN.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPanel("pin")}
+                        className="admin-profile-go"
+                        aria-label="Change panel PIN"
+                      >
+                        <ChevronRight className="h-4 w-4" aria-hidden />
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
 
-              <button type="button" onClick={onSignOut} className="text-sm font-medium text-rose-700 hover:text-rose-800">
+              <button type="button" onClick={onSignOut} className="admin-profile-signout">
                 Sign out
               </button>
             </div>

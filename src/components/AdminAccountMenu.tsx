@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { KeyRound, Lock, LogOut, Settings } from "lucide-react";
+import { CircleUser, KeyRound, Lock, LogOut } from "lucide-react";
 import AdminAccessReportButton from "./AdminAccessReportButton";
 import type { AccessReportTab } from "../lib/adminAccessReport";
 import type { AdminAccessSession } from "../lib/adminTabAccess";
@@ -159,8 +159,8 @@ export default function AdminAccountMenu({
                     onSettings();
                   }}
                 >
-                  <Settings aria-hidden />
-                  Settings
+                  <CircleUser aria-hidden />
+                  My account
                 </button>
                 <button
                   type="button"
