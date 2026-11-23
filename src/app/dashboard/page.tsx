@@ -70,6 +70,7 @@ import BroadcastEmailContent from "../../components/BroadcastEmailContent";
 import ChangeRequestsContent from "../../components/ChangeRequestsContent";
 import OwnershipRequestsContent from "../../components/OwnershipRequestsContent";
 import JobReportsContent from "../../components/JobReportsContent";
+import ReportedBusinessesContent from "../../components/ReportedBusinessesContent";
 import ManageAdminsContent from "../../components/ManageAdminsContent";
 import SuspiciousLoginModal from "../../components/SuspiciousLoginModal";
 import AdminOverlay from "../../components/AdminOverlay";
@@ -3226,9 +3227,9 @@ export default function Dashboard() {
         );
       case "Reported Businesses":
         return (
-          <ComingSoonContent
-            tabName="Reported Businesses"
-            message="This feature is coming soon."
+          <ReportedBusinessesContent
+            adminSession={adminSession}
+            canManage={hasFullTabAccess(adminSession, "Reported Businesses")}
           />
         );
       case "News":
@@ -3800,7 +3801,7 @@ export default function Dashboard() {
               const item = menuByName.get(name);
               if (!item) return null;
               const isComingSoon = COMING_SOON_TABS.has(name);
-              const showSoonBadge = isComingSoon || name === "Reported Businesses";
+              const showSoonBadge = isComingSoon;
               const isActive = activeTab === name;
               const pendingCount = isComingSoon ? 0 : pendingCountForTab(name);
               const shineLabel = !isComingSoon && shiningTabs.has(name);

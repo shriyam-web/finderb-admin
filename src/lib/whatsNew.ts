@@ -203,7 +203,7 @@ const WHATS_NEW_SEEDS: Array<{
   },
   {
     title: "Reported Businesses is a new sidebar tab",
-    body: "Reported Businesses is in the sidebar under Requests.\n\nOpen it and the page says this feature is coming soon.",
+    body: "Reports sent from a business profile land here.\n\nEach row shows who reported it, when, the reason, the business, and how many reports that business has.\n\nMark report as false removes a report that should not stay.",
     published_at: "2026-11-21T22:00:00+05:30",
   },
   {
