@@ -32,7 +32,42 @@ type ActivityItem = {
   title: string;
   description: string;
   timestamp: string;
+  faceName?: string;
+  imageUrl?: string | null;
 };
+
+function ActivityFace({ activity }: { activity: ActivityItem }) {
+  const photo = /^https?:\/\//i.test(activity.imageUrl?.trim() || "")
+    ? activity.imageUrl!.trim()
+    : "";
+  const [failed, setFailed] = useState(false);
+  const tone =
+    activity.type === "user"
+      ? "!bg-sky-50 !text-sky-700 !border-sky-100"
+      : activity.type === "merchant"
+        ? "!bg-emerald-50 !text-emerald-700 !border-emerald-100"
+        : "!bg-amber-50 !text-amber-700 !border-amber-100";
+  const label = (activity.faceName || activity.type).trim();
+  const initials = label
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || activity.type.slice(0, 1).toUpperCase();
+  if (photo && !failed) {
+    return (
+      <span className={`admin-avatar shrink-0 !h-8 !w-8 overflow-hidden p-0 ${tone}`}>
+        <img src={photo} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
+      </span>
+    );
+  }
+  return (
+    <div className={`admin-avatar shrink-0 !h-8 !w-8 text-[10px] ${tone}`}>
+      {initials}
+    </div>
+  );
+}
 
 type ChartDay = { label: string; users: number; merchants: number };
 
@@ -1116,21 +1151,7 @@ export default function DashboardContent({
                 key={`${activity.type}-${activity.id}`}
                 className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors"
               >
-                <div
-                  className={`admin-avatar shrink-0 !w-8 !h-8 text-[10px] ${
-                    activity.type === "user"
-                      ? "!bg-sky-50 !text-sky-700 !border-sky-100"
-                      : activity.type === "merchant"
-                        ? "!bg-emerald-50 !text-emerald-700 !border-emerald-100"
-                        : "!bg-amber-50 !text-amber-700 !border-amber-100"
-                  }`}
-                >
-                  {activity.type === "user"
-                    ? "U"
-                    : activity.type === "merchant"
-                      ? "M"
-                      : "L"}
-                </div>
+                <ActivityFace activity={activity} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-900">
                     {activity.title}

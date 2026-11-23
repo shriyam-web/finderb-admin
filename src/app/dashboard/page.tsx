@@ -251,7 +251,7 @@ function mapBusinessToMerchant(m: any): Merchant {
     phone: m.publicPhone || m.mobile || m.owner_mobile || null,
     createdAt: m.createdAt || null,
     onboardSource: normalizeOnboardSource(m.onboardSource),
-    profilePictureUrl: m.profilePictureUrl || null,
+    profilePictureUrl: coverPhoto(m),
     hasViewablePassword: (() => {
       const classified = classifyStoredPassword(m.password);
       return Boolean(classified && classified !== PASSWORD_HASHED_DISPLAY);
@@ -276,7 +276,7 @@ function mapBusinessToMerchantRequest(m: any): MerchantRequest {
     createdAt: m.createdAt || null,
     holdReason: typeof m.listingHoldReason === "string" ? m.listingHoldReason : null,
     holdAt: typeof m.listingHoldAt === "string" ? m.listingHoldAt : null,
-    profilePictureUrl: m.profilePictureUrl || null,
+    profilePictureUrl: coverPhoto(m),
   };
 }
 
@@ -287,22 +287,40 @@ function personInitials(name: string) {
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 }
 
-function httpsPhoto(value: string | null | undefined) {
-  const url = value?.trim() || "";
-  return /^https?:\/\//i.test(url) ? url : "";
+function coverPhoto(row: { profilePictureUrl?: string | null; images?: unknown }): string | null {
+  const direct = typeof row.profilePictureUrl === "string" ? row.profilePictureUrl.trim() : "";
+  if (/^https?:\/\//i.test(direct)) return direct;
+  let list: unknown[] = [];
+  if (Array.isArray(row.images)) {
+    list = row.images;
+  } else if (typeof row.images === "string" && row.images.trim().startsWith("[")) {
+    try {
+      const parsed = JSON.parse(row.images);
+      if (Array.isArray(parsed)) list = parsed;
+    } catch {
+      list = [];
+    }
+  }
+  for (const item of list) {
+    const url = typeof item === "string" ? item.trim() : "";
+    if (/^https?:\/\//i.test(url)) return url;
+  }
+  return null;
 }
 
 function PersonFace({ name, photoUrl }: { name: string; photoUrl?: string | null }) {
-  const photo = httpsPhoto(photoUrl);
+  const photo = /^https?:\/\//i.test(photoUrl?.trim() || "") ? photoUrl!.trim() : "";
   const [failed, setFailed] = useState(false);
   if (photo && !failed) {
     return (
-      <img
-        src={photo}
-        alt=""
-        className="admin-avatar !h-8 !w-8 object-cover p-0"
-        onError={() => setFailed(true)}
-      />
+      <span className="admin-avatar !h-8 !w-8 overflow-hidden p-0">
+        <img
+          src={photo}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      </span>
     );
   }
   return <div className="admin-avatar !h-8 !w-8 !text-[11px]">{personInitials(name)}</div>;
@@ -499,6 +517,8 @@ interface Activity {
   title: string;
   description: string;
   timestamp: string;
+  faceName?: string;
+  imageUrl?: string | null;
 }
 
 export interface LoginLog {
@@ -2364,6 +2384,8 @@ export default function Dashboard() {
         title: `New User Joined`,
         description: `${u.fullName} (${u.email})`,
         timestamp: u.createdAt,
+        faceName: u.fullName || u.email || "User",
+        imageUrl: u.avatarUrl,
       });
     });
 
@@ -2374,6 +2396,8 @@ export default function Dashboard() {
         title: `New Business Onboarding`,
         description: `${m.businessName || m.fullName} · listing ${m.status || "—"}`,
         timestamp: m.createdAt,
+        faceName: m.businessName || m.fullName || "Business",
+        imageUrl: coverPhoto(m),
       });
     });
 
@@ -2391,6 +2415,7 @@ export default function Dashboard() {
         title: `New Lead — ${source}`,
         description: `${l.name} · ${l.category}${l.merchant_name ? ` → ${l.merchant_name}` : ""}`,
         timestamp: l.created_at,
+        faceName: l.name || "Lead",
       });
     });
 
