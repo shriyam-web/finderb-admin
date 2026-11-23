@@ -37,6 +37,7 @@ export type AdminProfile = {
   login_enabled?: boolean | null;
   allowed_tabs: string[] | null;
   allowed_tab_modes?: Record<string, TabAccessMode> | null;
+  avatar_url?: string | null;
   created_at: string;
 };
 
@@ -125,6 +126,27 @@ function roleBadgeClass(role: string) {
 function initials(email: string) {
   const local = email.split("@")[0] || email;
   return local.slice(0, 2).toUpperCase();
+}
+
+function photoUrl(value: string | null | undefined) {
+  const url = value?.trim() || "";
+  return /^https:\/\//i.test(url) ? url : "";
+}
+
+function AdminFace({ email, avatarUrl }: { email: string; avatarUrl?: string | null }) {
+  const photo = photoUrl(avatarUrl);
+  const [failed, setFailed] = useState(false);
+  if (photo && !failed) {
+    return (
+      <img
+        src={photo}
+        alt=""
+        className="admin-avatar object-cover p-0"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return <div className="admin-avatar">{initials(email)}</div>;
 }
 
 function formatJoined(iso: string) {
@@ -762,9 +784,7 @@ export default function ManageAdminsContent({
                   >
                     <td>
                       <div className="flex items-center gap-3 min-w-[200px]">
-                        <div className="admin-avatar">
-                          {initials(admin.email)}
-                        </div>
+                        <AdminFace email={admin.email} avatarUrl={admin.avatar_url} />
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-slate-900 truncate">
                             {admin.email}
@@ -978,9 +998,7 @@ export default function ManageAdminsContent({
               className={`admin-card p-3.5 space-y-3 ${admin.is_disabled ? "opacity-60" : ""}`}
             >
               <div className="flex items-start gap-3">
-                <div className="admin-avatar shrink-0">
-                  {initials(admin.email)}
-                </div>
+                <AdminFace email={admin.email} avatarUrl={admin.avatar_url} />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-slate-900 break-all">
                     {admin.email}

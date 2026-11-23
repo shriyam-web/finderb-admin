@@ -446,6 +446,7 @@ interface AdminProfile {
   login_enabled?: boolean | null;
   allowed_tabs: string[] | null;
   allowed_tab_modes?: Record<string, TabAccessMode> | null;
+  avatar_url?: string | null;
   created_at: string;
 }
 
@@ -4274,6 +4275,9 @@ export default function Dashboard() {
             const updated = { ...adminSession, avatarUrl };
             localStorage.setItem("admin_session", JSON.stringify(updated));
             setAdminSession(updated);
+            setAdmins((rows) =>
+              rows.map((row) => (row.id === updated.id ? { ...row, avatar_url: avatarUrl } : row)),
+            );
           }}
         />
       )}
