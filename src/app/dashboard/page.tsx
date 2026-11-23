@@ -6835,6 +6835,7 @@ function MerchantsContent({
                               {formatRevealedPassword(visiblePasswords[merchant.id])}
                             </p>
                           ) : null}
+                          </div>
                         </div>
                       </td>
                       <td>
