@@ -187,6 +187,7 @@ interface Merchant {
   createdAt: string | null;
   hasViewablePassword: boolean;
   onboardSource: OnboardSource | null;
+  profilePictureUrl?: string | null;
 }
 
 interface AdminSession {
@@ -250,6 +251,7 @@ function mapBusinessToMerchant(m: any): Merchant {
     phone: m.publicPhone || m.mobile || m.owner_mobile || null,
     createdAt: m.createdAt || null,
     onboardSource: normalizeOnboardSource(m.onboardSource),
+    profilePictureUrl: m.profilePictureUrl || null,
     hasViewablePassword: (() => {
       const classified = classifyStoredPassword(m.password);
       return Boolean(classified && classified !== PASSWORD_HASHED_DISPLAY);
@@ -274,7 +276,36 @@ function mapBusinessToMerchantRequest(m: any): MerchantRequest {
     createdAt: m.createdAt || null,
     holdReason: typeof m.listingHoldReason === "string" ? m.listingHoldReason : null,
     holdAt: typeof m.listingHoldAt === "string" ? m.listingHoldAt : null,
+    profilePictureUrl: m.profilePictureUrl || null,
   };
+}
+
+function personInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
+function httpsPhoto(value: string | null | undefined) {
+  const url = value?.trim() || "";
+  return /^https?:\/\//i.test(url) ? url : "";
+}
+
+function PersonFace({ name, photoUrl }: { name: string; photoUrl?: string | null }) {
+  const photo = httpsPhoto(photoUrl);
+  const [failed, setFailed] = useState(false);
+  if (photo && !failed) {
+    return (
+      <img
+        src={photo}
+        alt=""
+        className="admin-avatar !h-8 !w-8 object-cover p-0"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return <div className="admin-avatar !h-8 !w-8 !text-[11px]">{personInitials(name)}</div>;
 }
 
 function splitBusinessRows(rows: any[]) {
@@ -2186,6 +2217,7 @@ export default function Dashboard() {
         createdAt: new Date().toISOString(),
         hasViewablePassword: false,
         onboardSource: req.onboardSource,
+        profilePictureUrl: req.profilePictureUrl || null,
       },
     ]);
     setMerchantRequests((prev: MerchantRequest[]) =>
@@ -5133,13 +5165,7 @@ function UsersContent({
                 <tr key={user.id} id={`admin-focus-${user.id}`}>
                   <td>
                     <div className="flex items-center gap-3 min-w-[180px]">
-                      <div className="admin-avatar !w-8 !h-8 !text-[11px]">
-                        {(user.fullName || "?")
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .slice(0, 2)}
-                      </div>
+                      <PersonFace name={user.fullName || "?"} photoUrl={user.avatarUrl} />
                       <div className="min-w-0">
                         <button
                           type="button"
@@ -6745,7 +6771,9 @@ function MerchantsContent({
                   return (
                     <tr key={merchant.id}>
                       <td>
-                        <div className="min-w-[190px]">
+                        <div className="flex min-w-[190px] items-center gap-2.5">
+                          <PersonFace name={merchant.name} photoUrl={merchant.profilePictureUrl} />
+                          <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
@@ -6926,7 +6954,9 @@ function MerchantsContent({
                     className={focusBusinessId === req.id ? "bg-amber-50" : ""}
                   >
                     <td>
-                      <div className="min-w-[180px]">
+                      <div className="flex min-w-[180px] items-center gap-2.5">
+                        <PersonFace name={req.name} photoUrl={req.profilePictureUrl} />
+                        <div className="min-w-0">
                         <button
                           type="button"
                           className="merchant-name-btn"
@@ -6947,6 +6977,7 @@ function MerchantsContent({
                           >
                             Profile
                           </a>
+                        </div>
                         </div>
                       </div>
                     </td>
@@ -7034,9 +7065,12 @@ function MerchantsContent({
                 {pagedIgnoredRequests.map((req) => (
                   <tr key={req.id}>
                     <td>
-                      <button type="button" className="merchant-name-btn" onClick={() => handleViewMerchant(req.id)}>
-                        {req.name}
-                      </button>
+                      <div className="flex items-center gap-2.5">
+                        <PersonFace name={req.name} photoUrl={req.profilePictureUrl} />
+                        <button type="button" className="merchant-name-btn" onClick={() => handleViewMerchant(req.id)}>
+                          {req.name}
+                        </button>
+                      </div>
                     </td>
                     <td className="max-w-[200px] truncate text-sm text-slate-700">{req.email || "—"}</td>
                     <td className="whitespace-nowrap text-slate-600">{req.city || "—"}</td>

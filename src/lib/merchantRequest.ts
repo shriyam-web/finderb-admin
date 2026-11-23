@@ -10,4 +10,5 @@ export type MerchantRequest = {
   createdAt: string | null;
   holdReason: string | null;
   holdAt: string | null;
+  profilePictureUrl?: string | null;
 };
